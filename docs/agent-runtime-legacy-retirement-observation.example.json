@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "replace-with-tested-source-revision",
+  "reviewedBy": "replace-with-reviewer",
+  "unresolvedRegressions": [],
+  "observations": [
+    {
+      "id": "initial-readonly-task",
+      "status": "pending",
+      "sourceRevision": "replace-with-tested-source-revision",
+      "observedAt": "",
+      "evidenceRef": ""
+    },
+    {
+      "id": "approved-side-effect-continuation",
+      "status": "pending",
+      "sourceRevision": "replace-with-tested-source-revision",
+      "observedAt": "",
+      "evidenceRef": ""
+    },
+    {
+      "id": "automatic-recovery-continuation",
+      "status": "pending",
+      "sourceRevision": "replace-with-tested-source-revision",
+      "observedAt": "",
+      "evidenceRef": ""
+    },
+    {
+      "id": "cancellation",
+      "status": "pending",
+      "sourceRevision": "replace-with-tested-source-revision",
+      "observedAt": "",
+      "evidenceRef": ""
+    },
+    {
+      "id": "model-iteration-limit",
+      "status": "pending",
+      "sourceRevision": "replace-with-tested-source-revision",
+      "observedAt": "",
+      "evidenceRef": ""
+    },
+    {
+      "id": "task-state-identity",
+      "status": "pending",
+      "sourceRevision": "replace-with-tested-source-revision",
+      "observedAt": "",
+      "evidenceRef": ""
+    }
+  ]
+}

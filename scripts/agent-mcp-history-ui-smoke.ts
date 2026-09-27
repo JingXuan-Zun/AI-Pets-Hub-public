@@ -1,0 +1,40 @@
+import { strict as assert } from 'node:assert';
+import { readProjectFile } from './smokeTestHarness.ts';
+
+const preloadSource = readProjectFile('electron/preload.cjs');
+const bridgeSource = readProjectFile('src/desktopShellBridge.ts');
+const runtimeSource = readProjectFile('src/desktopShellRuntime.ts');
+const viteEnvSource = readProjectFile('src/vite-env.d.ts');
+const sectionSource = readProjectFile('src/components/settings/SettingsMcpSection.tsx');
+const operationalPanelsSource = readProjectFile('src/components/settings/SettingsMcpOperationalPanels.tsx');
+const panelSource = readProjectFile('src/components/settings/SettingsMcpHistoryPanel.tsx');
+const controlsSource = readProjectFile('src/components/settings/SettingsMcpHistoryControls.tsx');
+const filterSource = readProjectFile('src/components/settings/SettingsMcpHistoryServerFilter.tsx');
+const ipcSource = readProjectFile('electron/mcpHistoryIpcHandlers.cjs');
+
+assert.match(preloadSource, /clearMcpHistory/u);
+assert.match(preloadSource, /exportMcpHistory/u);
+assert.match(preloadSource, /setMcpHistoryRetention/u);
+assert.match(bridgeSource, /clearMcpHistory/u);
+assert.match(bridgeSource, /exportMcpHistory/u);
+assert.match(bridgeSource, /setMcpHistoryRetention/u);
+assert.match(runtimeSource, /clearMcpHistory/u);
+assert.match(viteEnvSource, /DesktopPetMcpHistoryExportResultLike/u);
+assert.match(viteEnvSource, /setMcpHistoryRetention/u);
+assert.match(sectionSource, /SettingsMcpOperationalPanels/u);
+assert.match(operationalPanelsSource, /SettingsMcpHistoryPanel/u);
+assert.doesNotMatch(sectionSource, /className="hidden"/u);
+assert.match(operationalPanelsSource, /selectHistoryServer/u);
+assert.match(panelSource, /SettingsMcpHistoryControls/u);
+assert.match(panelSource, /SettingsMcpHistoryList/u);
+assert.match(panelSource, /SettingsMcpHistoryServerFilter/u);
+assert.match(readProjectFile('src/components/settings/SettingsMcpHistoryList.tsx'), /retryAfterMs/u);
+assert.match(filterSource, /History server/u);
+assert.match(controlsSource, /downloadHistoryExport/u);
+assert.match(controlsSource, /selectedServerId/u);
+assert.match(controlsSource, /onSetRetentionLimit/u);
+assert.match(ipcSource, /desktop-pet:clear-mcp-history/u);
+assert.match(ipcSource, /desktop-pet:export-mcp-history/u);
+assert.match(ipcSource, /desktop-pet:set-mcp-history-retention/u);
+
+console.log('agent MCP history UI smoke passed');

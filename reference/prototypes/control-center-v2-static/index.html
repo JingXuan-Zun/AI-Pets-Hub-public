@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>控制中心 V3</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="navigator" aria-label="主导航">
+        <div class="brand-block">
+          <div class="brand-mark">P</div>
+          <div>
+            <div class="brand-title">控制中心</div>
+            <div class="brand-subtitle">桌宠平台 V3</div>
+          </div>
+        </div>
+
+        <nav class="nav-list" id="primaryNav"></nav>
+
+        <section class="entity-dock" id="entityDock"></section>
+      </aside>
+
+      <main class="editor-column" id="editorRoot" aria-label="配置编辑区"></main>
+
+      <aside class="workspace-column" id="workspaceRoot" aria-label="工作区"></aside>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

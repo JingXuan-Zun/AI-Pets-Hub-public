@@ -1,0 +1,139 @@
+{
+  "name": "ai-pets-hub",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "lint": "tsc --noEmit",
+    "check:agent-runtime-architecture": "node .\\scripts\\agent-runtime-architecture-guard.mjs",
+    "check:agent-runtime-retirement": "node .\\scripts\\agent-runtime-legacy-retirement-gate.mjs",
+    "report:agent-runtime-retirement": "node .\\scripts\\agent-runtime-legacy-retirement-gate.mjs --report-only",
+    "report:agent-runtime-source-revision": "node .\\scripts\\agent-runtime-source-revision.mjs",
+    "prepare:agent-runtime-observation": "node .\\scripts\\agent-runtime-observation-prepare.mjs",
+    "smoke:agent:p0": "node scripts/agent-p0-smoke-health.mjs",
+    "smoke:collaborator-port": "npx.cmd tsx .\\scripts\\agent-session-v2-tool-execution-transaction-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-parallel-tool-execution-transaction-smoke.ts && npx.cmd tsx .\\scripts\\agent-task-runtime-model-iteration-continuation-smoke.ts && npx.cmd tsx .\\scripts\\collaborator-port-agent-outcome-smoke.ts && npx.cmd tsx .\\scripts\\collaborator-port-regression-smoke.ts && node .\\scripts\\local-voice-runtime-smoke.cjs",
+    "smoke:neural-persona:contract": "npx.cmd tsx .\\scripts\\neural-persona-contract-smoke.ts",
+    "smoke:neural-persona:graph": "npx.cmd tsx .\\scripts\\neural-persona-graph-smoke.ts",
+    "smoke:neural-persona:relationship-activation": "npx.cmd tsx .\\scripts\\neural-persona-relationship-activation-smoke.ts",
+    "smoke:neural-persona:relationship-scenarios": "npx.cmd tsx .\\scripts\\neural-persona-relationship-scenarios-smoke.ts",
+    "smoke:neural-persona:persistence": "npx.cmd tsx .\\scripts\\neural-persona-persistence-smoke.ts",
+    "smoke:neural-persona:file-store": "node .\\scripts\\neural-persona-file-store-smoke.cjs",
+    "smoke:neural-persona:file-store-wiring": "node .\\scripts\\neural-persona-file-store-wiring-smoke.cjs",
+    "smoke:neural-persona:graph-explorer": "npx.cmd tsx .\\scripts\\neural-persona-graph-explorer-smoke.ts",
+    "smoke:neural-persona:packaged-probe": "node .\\scripts\\neural-persona-packaged-persistence-probe-smoke.cjs",
+    "probe:neural-persona:packaged-persistence": "node .\\scripts\\neural-persona-packaged-persistence-runner.cjs",
+    "smoke:neural-persona:node-command": "npx.cmd tsx .\\scripts\\neural-persona-node-command-smoke.ts",
+    "smoke:neural-persona:node-generation": "npx.cmd tsx .\\scripts\\neural-persona-node-generation-smoke.ts",
+    "smoke:neural-persona:edge-command": "npx.cmd tsx .\\scripts\\neural-persona-edge-command-smoke.ts",
+    "smoke:neural-persona:graph-exchange": "npx.cmd tsx .\\scripts\\neural-persona-graph-exchange-smoke.ts",
+    "smoke:neural-persona:semantic-tag-review": "npx.cmd tsx .\\scripts\\neural-persona-semantic-tag-review-smoke.ts",
+    "smoke:neural-persona:tag-review-command": "npx.cmd tsx .\\scripts\\neural-persona-tag-review-command-smoke.ts",
+    "smoke:neural-persona:feedback-ledger": "npx.cmd tsx .\\scripts\\neural-persona-feedback-ledger-smoke.ts",
+    "smoke:neural-persona:feedback-command": "npx.cmd tsx .\\scripts\\neural-persona-feedback-command-smoke.ts",
+    "smoke:neural-persona:learning-proposal": "npx.cmd tsx .\\scripts\\neural-persona-learning-proposal-smoke.ts",
+    "smoke:neural-persona:learning-application": "npx.cmd tsx .\\scripts\\neural-persona-learning-application-smoke.ts",
+    "smoke:neural-persona:learning-reversal": "npx.cmd tsx .\\scripts\\neural-persona-learning-reversal-smoke.ts",
+    "smoke:neural-persona:configured-provider": "npx.cmd tsx .\\scripts\\neural-persona-configured-provider-smoke.ts",
+    "smoke:neural-persona:personality-scenarios": "npx.cmd tsx .\\scripts\\neural-persona-personality-scenarios-smoke.ts",
+    "smoke:neural-persona:single-chat-ab": "npx.cmd tsx .\\scripts\\neural-persona-single-chat-ab-smoke.ts",
+    "smoke:neural-persona:dialogue-preset": "npx.cmd tsx .\\scripts\\neural-persona-dialogue-completion-preset-smoke.ts",
+    "smoke:neural-persona:single-node-relationship": "npx.cmd tsx .\\scripts\\neural-persona-single-node-relationship-smoke.ts",
+    "smoke:neural-persona:content-health": "npx.cmd tsx .\\scripts\\neural-persona-content-health-smoke.ts",
+    "smoke:neural-persona:response-quality-ab": "npx.cmd tsx .\\scripts\\neural-persona-response-quality-ab-smoke.ts",
+    "run:neural-persona:response-quality-ab": "npx.cmd tsx .\\scripts\\neural-persona-response-quality-ab-runner.ts",
+    "smoke:agent:user-flows": "node scripts/agent-real-user-flow-matrix-smoke.mjs && npx.cmd tsx .\\scripts\\agent-readonly-negated-side-effect-scope-smoke.ts && npx.cmd tsx .\\scripts\\agent-runtime-core-v0-2-smoke.ts && npx.cmd tsx .\\scripts\\agent-open-move-display-sequence-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-display-observation-open-move-continuation-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-explicit-display-role-binding-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-window-target-identity-preflight-smoke.ts && npx.cmd tsx .\\scripts\\desktop-organization-verification-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-approval-ready-followup-smoke.ts && npx.cmd tsx .\\scripts\\agent-execute-desktop-action-tool-smoke.ts && npx.cmd tsx .\\scripts\\app-launch-verification-smoke.ts && npx.cmd tsx .\\scripts\\app-launch-packaged-windows-app-smoke.ts && npx.cmd tsx .\\scripts\\agent-local-folder-app-launcher-search-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-in-app-launch-flow-smoke.ts && npx.cmd tsx .\\scripts\\agent-observe-windows-fast-default-smoke.ts && npx.cmd tsx .\\scripts\\agent-action-evidence-performance-guard-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-failed-tool-recovery-signal-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-recoverable-unverified-rejection-signal-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-repeated-unverified-action-retry-rejection-signal-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-desktop-organization-unverified-final-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-merged-approval-tool-calls-smoke.ts && npx.cmd tsx .\\scripts\\agent-approval-batching-ux-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-open-app-observation-final-rejection-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-unverified-result-final-rejection-signal-smoke.ts && npx.cmd tsx .\\scripts\\agent-stale-outer-target-evidence-continuation-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-window-only-launch-recovery-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-pre-dispatch-wait-observation-launch-smoke.ts",
+    "desktop": "npm run build && electron .",
+    "dist:win": "vite build && node scripts/dist-win-incremental.mjs",
+    "dist:win:force": "vite build && node scripts/dist-win-incremental.mjs --force",
+    "dist:win:fresh": "vite build --outDir release/.fresh-renderer-dist --emptyOutDir && node scripts/dist-win-fresh.mjs",
+    "dist:win:production": "vite build --outDir release/.fresh-renderer-dist --emptyOutDir && node scripts/dist-win-fresh.mjs --require-marketplace-production",
+    "check:marketplace-production-config": "node scripts/check-marketplace-production-config.mjs --require",
+    "bootstrap:marketplace:first-publisher": "node scripts/marketplace-first-publisher-bootstrap.mjs",
+    "moss:bridge": "powershell -ExecutionPolicy Bypass -File scripts/build-moss-bridge-windows.ps1",
+    "unity:build-runtime": "node scripts/build-unity-runtime.mjs",
+    "unity:diagnostic-runtime": "node scripts/unity-bridge-diagnostic-runtime.mjs"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.4.0",
+    "@fontsource-variable/geist": "^5.2.8",
+    "@google/genai": "^1.29.0",
+    "@noble/curves": "^1.9.7",
+    "@pixiv/three-vrm": "^3.5.2",
+    "@pixiv/three-vrm-animation": "^3.5.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/three": "^0.183.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "ajv": "^8.18.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "fflate": "0.8.2",
+    "ffmpeg-static": "^5.3.0",
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.38.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "shadcn": "^4.2.0",
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.183.2",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "electron": "^37.10.3",
+    "electron-builder": "^25.1.8",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  },
+  "build": {
+    "appId": "com.codex.desktoppet",
+    "productName": "AI Desktop Pet",
+    "directories": {
+      "output": "release"
+    },
+    "icon": "build/icon.png",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "resources/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "AI-Desktop-Pet-${version}.exe"
+    }
+  }
+}
