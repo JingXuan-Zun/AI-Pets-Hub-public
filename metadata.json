@@ -1,0 +1,6 @@
+{
+  "name": "AI Desktop Pet (桌宠)",
+  "description": "一个可以自定义人格和模型的AI桌宠软件，支持2D和3D模型切换，通过Gemini驱动互动。",
+  "requestFramePermissions": ["display-capture"],
+  "majorCapabilities": []
+}

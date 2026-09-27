@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { expressionReviewCounts, expressionReviewStatus } from '../src/expression/expressionReviewQueue';
+import { expressionCategoryNameError } from '../src/expression/expressionCategoryName';
+import type { ExpressionCategory, ExpressionImageAsset } from '../src/expression/expressionLibraryTypes';
+const category: ExpressionCategory = { id: 'happy', name: '开心', description: '开心', folderRelativePath: '开心', available: true, semanticVersion: 2, reviewRequired: true };
+const asset: ExpressionImageAsset = { id: 'one', fileName: 'a.png', relativePath: '开心/a.png', mimeType: 'image/png', categoryId: category.id, available: true, classificationStatus: 'accepted', assignmentSemanticVersion: 2 };
+assert.equal(expressionReviewStatus(asset, category), 'accepted');
+assert.equal(expressionReviewStatus({ ...asset, assignmentSemanticVersion: 1 }, category), 'needs-review');
+assert.equal(expressionReviewStatus({ ...asset, classificationStatus: 'excluded' }, category), 'needs-review');
+assert.equal(expressionReviewStatus({ ...asset, available: false }, category), 'missing');
+assert.equal(expressionReviewStatus(asset, { ...category, nameIssue: '需修复' }), 'needs-review');
+assert.deepEqual(expressionReviewCounts([asset, { ...asset, classificationStatus: 'needs-review' }, { ...asset, available: false }, { ...asset, removedFromLibrary: true }], category), { all: 3, 'needs-review': 1, accepted: 1, missing: 1 });
+for (const invalid of ['', 'CON', 'bad.', ' a', 'a\nb', 'x'.repeat(65)]) assert.ok(expressionCategoryNameError(invalid));
+assert.equal(expressionCategoryNameError('开心与庆祝'), null);
+console.log('expression review queue smoke: ok');

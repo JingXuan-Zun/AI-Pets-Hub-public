@@ -1,0 +1,25 @@
+{
+  "servers": [
+    {
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ],
+      "command": "npx.cmd",
+      "id": "filesystem",
+      "timeoutMs": 30000,
+      "title": "Filesystem MCP server"
+    },
+    {
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "command": "npx.cmd",
+      "id": "memory",
+      "timeoutMs": 30000,
+      "title": "Memory MCP server"
+    }
+  ]
+}

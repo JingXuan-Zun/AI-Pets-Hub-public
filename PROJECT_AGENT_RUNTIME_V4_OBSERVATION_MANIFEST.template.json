@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+  "reviewedBy": "REPLACE_WITH_REVIEWER",
+  "unresolvedRegressions": [],
+  "observations": [
+    {
+      "id": "initial-readonly-task",
+      "status": "pending",
+      "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+      "observedAt": null,
+      "evidenceRef": ""
+    },
+    {
+      "id": "approved-side-effect-continuation",
+      "status": "pending",
+      "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+      "observedAt": null,
+      "evidenceRef": ""
+    },
+    {
+      "id": "automatic-recovery-continuation",
+      "status": "pending",
+      "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+      "observedAt": null,
+      "evidenceRef": ""
+    },
+    {
+      "id": "cancellation",
+      "status": "pending",
+      "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+      "observedAt": null,
+      "evidenceRef": ""
+    },
+    {
+      "id": "model-iteration-limit",
+      "status": "pending",
+      "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+      "observedAt": null,
+      "evidenceRef": ""
+    },
+    {
+      "id": "task-state-identity",
+      "status": "pending",
+      "sourceRevision": "REPLACE_WITH_TESTED_SOURCE_REVISION",
+      "observedAt": null,
+      "evidenceRef": ""
+    }
+  ]
+}
