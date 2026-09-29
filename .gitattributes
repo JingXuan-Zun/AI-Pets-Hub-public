@@ -11,6 +11,8 @@
 *.html text eol=lf
 *.py text eol=lf
 *.ps1 text eol=crlf
+*.sh text eol=lf
+scripts/git-hooks/pre-push text eol=lf
 
 *.png binary
 *.ico binary
