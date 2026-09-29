@@ -1,0 +1,29 @@
+#!/bin/sh
+# AI-PETS-HUB-PRIVACY-HOOK
+set -eu
+
+repo=$(git rev-parse --show-toplevel)
+audit_script="$repo/scripts/public-privacy-audit.mjs"
+if [ ! -f "$audit_script" ]; then
+  echo 'Privacy audit script is missing; push blocked.' >&2
+  exit 1
+fi
+
+head_sha=$(git rev-parse HEAD)
+while read local_ref local_sha remote_ref remote_sha; do
+  target_commit=$(git rev-parse "$local_sha^{commit}" 2>/dev/null) || {
+    echo 'Push target could not be checked; push blocked.' >&2
+    exit 1
+  }
+  if [ "$target_commit" != "$head_sha" ]; then
+    echo 'Push of a non-current commit requires a separate privacy review.' >&2
+    exit 1
+  fi
+done
+
+if ! git diff --quiet --exit-code || ! git diff --cached --quiet --exit-code; then
+  echo 'Tracked files have uncommitted changes; push blocked pending review.' >&2
+  exit 1
+fi
+
+node "$audit_script" --root "$repo" --strict --max-list 30
