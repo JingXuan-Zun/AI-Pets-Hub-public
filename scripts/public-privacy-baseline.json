@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "3e52ceed6706e10f5db87bf9f17ceecb5e28f857",
+  "note": "Previously published dependency metadata, test fixtures, and service URL. Any file change requires a new privacy review.",
+  "allowedBinarySha256": {
+    "src/assets/pet-character-26-optimized.png": "603c0e6bfb49af8b8067f8a2d1cd58b110ac6f0f80584645f24f420389da2f20"
+  },
+  "approvedTextSha256": {
+    "reference/prototypes/control-center-v2-static/app.js": "3f2504f85f76e0f5a94a0be53f9011a64e97203d7217abe32553fdc9f157a809",
+    "scripts/story-conversation-pacing-smoke.ts": "9b7ccf8b4bfa1177a752bf9b7c9b3d646f7b8585d14881191e9d74dbccd78998"
+  },
+  "sha256": {
+    "package-lock.json": "1eccfadd379ed8169757b85752320a0157f5d04ff84f3c9b639d030c748b3963",
+    "scripts/group-memory-shadow-corpus-import-smoke.ts": "cf3d30c916a525e5ff9a717f62e386401293bc893b1929d644fd343d71997bd4",
+    "scripts/neural-persona-response-quality-ab-smoke.ts": "a08815e9bb82928e264a5fc6751279af5bbf1fdfbd6d1f13a20d92163eeabb0b",
+    "scripts/story-prompt-preset-smoke.ts": "0c97552320c97badb600b2bb4ed744f6b2b16854068daef2665c588063b31d13",
+    "services/persona-community/README.md": "efe895ec4a32374a1bc4de1e6865ae1b5cbea7d0b552ad3a014e4aa8565b3387",
+    "src/components/settings/PersonaCommunityPanel.tsx": "c8d23c458949b61d2e73848a90b68bd37ea11710539ffe7b260df05a7c4e6677"
+  }
+}
