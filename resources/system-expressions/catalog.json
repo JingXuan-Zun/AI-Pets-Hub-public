@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "emoji": [
+    { "id": "system-emoji-happy", "value": "😊", "intents": ["开心", "友好"] },
+    { "id": "system-emoji-celebrate", "value": "🎉", "intents": ["开心", "庆祝"] },
+    { "id": "system-emoji-like", "value": "👍", "intents": ["赞同", "鼓励"] },
+    { "id": "system-emoji-sad", "value": "😢", "intents": ["伤心", "安慰"] },
+    { "id": "system-emoji-confused", "value": "🤔", "intents": ["疑惑", "思考"] },
+    { "id": "system-emoji-care", "value": "🤗", "intents": ["关心", "安慰"] },
+    { "id": "system-emoji-shy", "value": "☺️", "intents": ["害羞", "友好"] },
+    { "id": "system-emoji-hello", "value": "👋", "intents": ["打招呼", "告别"] }
+  ],
+  "kaomoji": [
+    { "id": "system-kaomoji-happy", "value": "(｡･ω･｡)ﾉ♡", "intents": ["开心", "友好"] },
+    { "id": "system-kaomoji-celebrate", "value": "ヽ(✿ﾟ▽ﾟ)ノ", "intents": ["开心", "庆祝"] },
+    { "id": "system-kaomoji-like", "value": "(๑•̀ㅂ•́)و✧", "intents": ["赞同", "鼓励"] },
+    { "id": "system-kaomoji-sad", "value": "(╥﹏╥)", "intents": ["伤心", "安慰"] },
+    { "id": "system-kaomoji-confused", "value": "(・_・ヾ", "intents": ["疑惑", "思考"] },
+    { "id": "system-kaomoji-care", "value": "(つ´ω`)つ", "intents": ["关心", "安慰"] },
+    { "id": "system-kaomoji-shy", "value": "(⁄ ⁄•⁄ω⁄•⁄ ⁄)", "intents": ["害羞", "友好"] },
+    { "id": "system-kaomoji-hello", "value": "ヾ(•ω•`)o", "intents": ["打招呼", "告别"] }
+  ]
+}

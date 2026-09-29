@@ -1,0 +1,292 @@
+import {
+  type AgentCapability,
+  type AgentCapabilityId,
+} from './agentCapabilityTypes';
+
+export const AGENT_CAPABILITY_CATALOG: AgentCapability[] = [
+  {
+    defaultEnabled: true,
+    goal: '提供通用只读文件系统观察能力，让 Agent 可以按用户给出的本机路径逐步查看目录、搜索文件并读取小型文本文件。',
+    id: 'local-file-system',
+    notes: [
+      '观察动作只读，不移动、不删除、不写入文件。',
+      '读取文本文件会限制大小，并拒绝明显的二进制内容。',
+      '递归搜索限制深度和数量，默认跳过 node_modules、.git、dist、build 等大目录。',
+      '写入类文件管理动作和桌面文件整理会先预览，执行前必须确认。',
+    ],
+    requiredSignals: [
+      'local-path',
+      'directory-entries',
+      'text-file-snippet',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'get-path-info',
+      'list-directory',
+      'search-files',
+      'read-text-file',
+      'preview-file-management-action',
+      'move-local-path',
+      'copy-local-path',
+      'rename-local-path',
+      'create-local-directory',
+      'trash-local-path',
+      'propose-desktop-file-organization',
+      'execute-desktop-file-organization',
+    ],
+    title: '本机文件系统观察',
+  },
+  {
+    defaultEnabled: true,
+    goal: '让桌宠在用户授权后读取桌面图标位置和屏幕视觉上下文。',
+    id: 'desktop-observation',
+    notes: [
+      '复用现有 listDesktopIcons、显示器列表和区域捕获能力。',
+      '视觉输入只在用户主动请求或显式开启观察模式后采集。',
+      '默认不把截图长期保存。',
+    ],
+    requiredSignals: [
+      'desktop-icons',
+      'capture-source',
+      'selected-area',
+    ],
+    stage: 'foundation',
+    supportedActions: [
+      'answer-agent-context-query',
+      'list-desktop-icons',
+      'diagnose-desktop-icons',
+      'capture-screen-context',
+      'locate-screen-elements',
+      'get-active-window-info',
+      'observe-windows-and-apps',
+      'list-capture-sources',
+      'get-cursor-position',
+    ],
+    title: '桌面观察',
+  },
+  {
+    defaultEnabled: true,
+    goal: '提供通用 Agent 记忆读写能力，让模型可以按需查询、记录或忘记用户明确授权的长期偏好和事实。',
+    id: 'agent-memory',
+    notes: [
+      '读取记忆是只读动作，可以作为规划前的观察步骤。',
+      '写入和删除记忆会修改全局知识库，必须经过用户确认。',
+      '不使用记忆回答实时电脑状态；屏幕、窗口、系统配置等仍然必须调用观察工具。',
+    ],
+    requiredSignals: [
+      'agent-global-memory',
+      'user-instruction',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'read-agent-memory',
+      'remember-agent-memory',
+      'forget-agent-memory',
+    ],
+    title: 'Agent 通用记忆',
+  },
+  {
+    defaultEnabled: true,
+    goal: '用桌宠动画演出桌面图标整理过程，并把用户明确指定的图标位置写回 Windows 桌面。',
+    id: 'desktop-organization',
+    notes: [
+      '支持图标副本拖动动画，并调用 Windows 桌面列表视图移动真实图标坐标。',
+      '真实文件移动必须展示预览、获得确认并记录撤销清单。',
+      '删除、覆盖、批量重命名不进入第一版。',
+    ],
+    requiredSignals: [
+      'desktop-icons',
+      'pet-position',
+      'organization-plan',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'move-desktop-icon',
+      'preview-desktop-icon-arrangement',
+      'propose-desktop-file-organization',
+      'execute-desktop-file-organization',
+      'undo-desktop-file-organization',
+    ],
+    title: '桌面图标整理',
+  },
+  {
+    defaultEnabled: true,
+    goal: '让桌宠按用户输入查找本机应用快捷方式，并打开指定应用。',
+    id: 'app-launcher',
+    notes: [
+      '候选应用来自开始菜单和桌面快捷方式。',
+      '也支持用户直接输入完整 exe、lnk、url 或 appref-ms 路径。',
+      '只在用户通过 Agent 指令明确要求打开应用时执行。',
+    ],
+    requiredSignals: [
+      'app-index',
+      'user-instruction',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'search-local-app',
+      'get-default-app-for-uri',
+      'observe-windows-and-apps',
+      'list-running-apps',
+      'focus-window',
+      'control-window',
+      'move-window-to-display',
+      'close-window',
+      'interact-window-ui',
+      'invoke-window-ui',
+      'execute-desktop-input',
+      'execute-desktop-sequence',
+      'open-resource',
+      'control-browser-read',
+      'control-browser-open',
+      'search-web',
+      'remember-local-app',
+      'launch-local-app',
+    ],
+    title: '应用查找与打开',
+  },
+  {
+    defaultEnabled: true,
+    goal: '只读分析用户指定的本机文件夹或程序目录，判断入口文件、项目类型和可能的启动方式。',
+    id: 'local-project-inspector',
+    notes: [
+      '第一步只读取顶层目录和关键配置文件，不递归读取大量内容。',
+      '能识别 package.json、Python、Unity、exe/lnk/bat/cmd、.NET、Go、Rust、Java 等常见入口。',
+      '只给出可能的运行方式；真正执行启动命令必须进入后续确认流程。',
+    ],
+    requiredSignals: [
+      'local-path',
+      'top-level-files',
+      'known-entry-files',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'inspect-local-project',
+      'run-local-project-action',
+    ],
+    title: '本机项目运行分析',
+  },
+  {
+    defaultEnabled: true,
+    goal: '读取当前电脑基础配置和显示器信息，用真实本机数据回答用户问题。',
+    id: 'system-inspector',
+    notes: [
+      '只读取系统摘要，不读取文件内容、窗口内容或截图。',
+      '屏幕信息复用 Electron display API，包含数量、分辨率、工作区和缩放比例。',
+      '这类问题必须走工具结果，不能由角色模型凭空猜测。',
+    ],
+    requiredSignals: [
+      'system-info',
+      'display-list',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'read-system-info',
+      'read-display-info',
+      'run-controlled-command',
+    ],
+    title: '系统与屏幕信息',
+  },
+  {
+    defaultEnabled: true,
+    goal: '让桌宠通过聊天读取和修改完整运行配置，并在修改后保存和回读。',
+    id: 'pet-settings',
+    notes: [
+      '配置路径从当前 PetConfig 动态读取，不维护逐字段白名单。',
+      '修改操作必须使用现有路径和同类型 JSON 值，随后会经过配置规范化、保存和回读。',
+      'API Key、密码、令牌等敏感值可被设置，但在聊天读取结果中会脱敏。',
+    ],
+    requiredSignals: [
+      'pet-configuration-tree',
+      'user-instruction',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'read-pet-settings',
+      'update-pet-settings',
+    ],
+    title: '桌宠完整设置控制',
+  },
+  {
+    defaultEnabled: true,
+    goal: '让桌宠通过 Agent 指令读取语音状态、切换播报来源、预热本地语音，并调整语音输入开关。',
+    id: 'voice-control',
+    notes: [
+      '状态读取只看当前配置和本地语音健康状态，不启动麦克风。',
+      '切换 TTS 来源、预热本地语音、修改语音输入开关都需要用户确认。',
+      '第一版只复用现有语音设置和本地语音 runtime；连续听写和回声抑制后续单独做。',
+    ],
+    requiredSignals: [
+      'voice-settings',
+      'local-voice-health',
+      'user-instruction',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'read-voice-status',
+      'switch-tts-provider',
+      'warmup-local-voice',
+      'set-voice-input',
+      'start-voice-input-session',
+      'stop-voice-input-session',
+    ],
+    title: '语音控制',
+  },
+  {
+    defaultEnabled: true,
+    goal: '让桌宠观察游戏窗口，低频理解画面后陪聊、吐槽或提醒。',
+    id: 'game-companion',
+    notes: [
+      '只做窗口/区域捕获，不读游戏内存，不注入游戏进程。',
+      '截图频率需要限制，避免影响性能和隐私。',
+      '快节奏游戏需要后续做游戏专属识别配置。',
+    ],
+    requiredSignals: [
+      'selected-game-window',
+      'vision-summary',
+      'recent-observations',
+    ],
+    stage: 'mvp',
+    supportedActions: [
+      'observe-game-window',
+      'manage-game-companion-loop',
+    ],
+    title: '游戏陪玩观察',
+  },
+  {
+    defaultEnabled: true,
+    goal: 'Expose platform-owned Agent skills so roles can resolve capabilities without directly owning tools.',
+    id: 'skill-system',
+    notes: [
+      'Skill discovery is read-only.',
+      'Skill execution currently resolves intent, preferred tool routes, and dry-run markers.',
+      'Character animation skills return markers first; animation queue binding is a later slice.',
+    ],
+    requiredSignals: ['skill-registry', 'user-intent'],
+    stage: 'foundation',
+    supportedActions: ['list-agent-skills', 'read-agent-skill', 'execute-agent-skill'],
+    title: 'Agent Skill System',
+  },
+  {
+    defaultEnabled: true,
+    goal: 'Expose a local MCP-style facade through Agent permission checks before adding external MCP clients.',
+    id: 'mcp-tools',
+    notes: [
+      'MCP tool listing is read-only.',
+      'MCP tool calls use a conservative approval path because future servers may mutate state.',
+      'The first server is a local platform facade for skills.list and skills.execute.',
+    ],
+    requiredSignals: ['mcp-server-registry', 'mcp-tool-definition'],
+    stage: 'foundation',
+    supportedActions: ['list-mcp-tools', 'call-mcp-tool'],
+    title: 'MCP Tool Facade',
+  },
+];
+
+export function getAgentCapability(capabilityId: AgentCapabilityId) {
+  return AGENT_CAPABILITY_CATALOG.find((capability) => capability.id === capabilityId) ?? null;
+}
+
+export function listDefaultEnabledAgentCapabilities() {
+  return AGENT_CAPABILITY_CATALOG.filter((capability) => capability.defaultEnabled);
+}
