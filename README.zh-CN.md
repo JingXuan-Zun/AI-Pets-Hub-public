@@ -292,6 +292,8 @@ npm run dist:win        # Windows 分发构建流程
 
 ## 🤝 贡献与反馈
 
+贡献或发布前，请先按[隐私检查流程](./docs/PUBLIC_PRIVACY_WORKFLOW.md)处理本机数据和提交邮箱。
+
 欢迎通过 Issue 反馈问题或提交 Pull Request。较大的架构改动可以先开 Issue 讨论。报告问题时请尽量附上：
 
 - Windows 版本及项目 commit / release 版本

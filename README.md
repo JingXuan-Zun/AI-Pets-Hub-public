@@ -292,6 +292,8 @@ Before copying, modifying, or redistributing source, builds, or assets, confirm 
 
 ## 🤝 Contributing and Support
 
+Before contributing or publishing, follow the [privacy checklist](./docs/PUBLIC_PRIVACY_WORKFLOW.md) to protect local data and commit email addresses.
+
 Issues and pull requests are welcome. For larger architectural changes, open an issue first to discuss the design. When reporting a problem, include as much of the following as possible:
 
 - Windows version and project commit / release
