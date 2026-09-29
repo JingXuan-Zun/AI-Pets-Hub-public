@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
 
 const args = process.argv.slice(2);
 const rootIndex = args.indexOf('--root');
@@ -210,9 +211,53 @@ function isDependencyMetadataEmail(contents, email) {
   }
 }
 
+function inspectableBinaryText(bytes, name) {
+  if (!/\.png$/i.test(name) || !bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) {
+    return bytes.toString('latin1');
+  }
+  const parts = [];
+  for (let offset = 8; offset + 12 <= bytes.length;) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.toString('ascii', offset + 4, offset + 8);
+    const start = offset + 8;
+    const end = start + length;
+    if (end + 4 > bytes.length) break;
+    const data = bytes.subarray(start, end);
+    if (type === 'tEXt' || type === 'eXIf') parts.push(data.toString('latin1'));
+    if (type === 'zTXt' || type === 'iTXt') {
+      try {
+        if (type === 'zTXt') {
+          const marker = data.indexOf(0);
+          if (marker >= 0 && data[marker + 1] === 0) {
+            parts.push(inflateSync(data.subarray(marker + 2), { maxOutputLength: maxBytes }).toString('utf8'));
+          }
+        } else {
+          const marker = data.indexOf(0);
+          const languageEnd = data.indexOf(0, marker + 3);
+          const translatedEnd = data.indexOf(0, languageEnd + 1);
+          if (marker >= 0 && languageEnd >= 0 && translatedEnd >= 0) {
+            const payload = data.subarray(translatedEnd + 1);
+            parts.push(data[marker + 1] === 1
+              ? inflateSync(payload, { maxOutputLength: maxBytes }).toString('utf8')
+              : payload.toString('utf8'));
+          }
+        }
+      } catch {
+        parts.push(data.toString('latin1'));
+      }
+    }
+    offset = end + 4;
+    if (type === 'IEND') break;
+  }
+  return parts.join('\n');
+}
+
 for (const name of [...paths].sort()) {
   for (const [pattern, category] of excludedPath) {
     if (pattern.test(name)) add(name, category);
+  }
+  if ([...localPrivate.roleNames].some((value) => name.includes(value))) {
+    add(name, 'local private character name in path');
   }
 
   const filename = path.join(root, ...name.split('/'));
@@ -236,6 +281,17 @@ for (const name of [...paths].sort()) {
   }
   if (bytes.includes(0)) {
     totals.binaryFiles++;
+    const embeddedText = inspectableBinaryText(bytes, name);
+    if ([...embeddedText.matchAll(emailPattern)].some((email) => !isPlaceholderEmail(email[0]))) {
+      add(name, 'possible email embedded in binary file');
+    }
+    if (phonePattern.test(embeddedText)) add(name, 'possible phone embedded in binary file');
+    phonePattern.lastIndex = 0;
+    if (providerSecretPattern.test(embeddedText) || assignedSecretPattern.test(embeddedText)) {
+      add(name, 'possible credential embedded in binary file');
+    }
+    providerSecretPattern.lastIndex = 0;
+    assignedSecretPattern.lastIndex = 0;
     continue;
   }
   totals.textFiles++;
@@ -353,6 +409,9 @@ if (historyRoots.length !== 1 || historyRoots[0] !== baseline.sourceCommit) {
       for (const [pattern, category] of excludedPath) {
         if (pattern.test(name)) add(`[history] ${name}`, category);
       }
+      if ([...localPrivate.roleNames].some((value) => name.includes(value))) {
+        add(`[history] ${name}`, 'historical local private character name in path');
+      }
       if (Number(match[2]) > maxBytes) {
         add(`[history] ${name}`, 'historical file exceeds content scan limit');
       } else {
@@ -380,7 +439,20 @@ if (historyRoots.length !== 1 || historyRoots[0] !== baseline.sourceCommit) {
         if (baseline.allowedBinarySha256?.[name] && baseline.allowedBinarySha256[name] !== digest) {
           add(`[history] ${name}`, 'historical public placeholder differs from approved image');
         }
-        if (bytes.includes(0)) continue;
+        if (bytes.includes(0)) {
+          const embeddedText = inspectableBinaryText(bytes, name);
+          if ([...embeddedText.matchAll(emailPattern)].some((email) => !isPlaceholderEmail(email[0]))) {
+            add(`[history] ${name}`, 'historical possible email embedded in binary file');
+          }
+          if (phonePattern.test(embeddedText)) add(`[history] ${name}`, 'historical possible phone embedded in binary file');
+          phonePattern.lastIndex = 0;
+          if (providerSecretPattern.test(embeddedText) || assignedSecretPattern.test(embeddedText)) {
+            add(`[history] ${name}`, 'historical possible credential embedded in binary file');
+          }
+          providerSecretPattern.lastIndex = 0;
+          assignedSecretPattern.lastIndex = 0;
+          continue;
+        }
         const contents = bytes.toString('utf8');
         const normalizedDigest = createHash('sha256').update(contents.replaceAll('\r\n', '\n')).digest('hex');
         if (baseline.sha256[name] === normalizedDigest || baseline.approvedTextSha256?.[name] === normalizedDigest) continue;
