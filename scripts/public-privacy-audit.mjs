@@ -104,6 +104,71 @@ const providerSecretPattern = /\b(?:sk-(?:proj-|live-)?[A-Za-z0-9_-]{20,}|gh[pou
 const assignedSecretPattern = /(?:api[_-]?key|client[_-]?secret|access[_-]?token|password)\s*[:=]\s*['"`]\s*[A-Za-z0-9._/+~=-]{24,}\s*['"`]/gi;
 const bearerPattern = /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g;
 
+// Compare candidate files with this computer's app profile without ever logging the values.
+// The profile may not exist on CI or collaborators' fresh machines.
+const localPrivate = { roleNames: new Set(), credentials: new Set(), chatTexts: new Set() };
+function readLocalJson(filename) {
+  if (!existsSync(filename)) return null;
+  try {
+    return JSON.parse(readFileSync(filename, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+function collectCredentials(value) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectCredentials(item);
+  } else if (value && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value)) {
+      if (typeof item === 'string'
+        && item.trim().length >= 12
+        && /(?:api.?key|secret|token|password|authorization|credential)/i.test(key)) {
+        localPrivate.credentials.add(item.trim());
+      } else {
+        collectCredentials(item);
+      }
+    }
+  }
+}
+function addRoleName(value) {
+  if (typeof value === 'string' && value.trim().length >= 2) localPrivate.roleNames.add(value.trim());
+}
+const appData = process.env.APPDATA;
+collectCredentials(readLocalJson(path.join(root, '.desktop-pet-mcp.json')));
+const localEnvPath = path.join(root, '.env.local');
+if (existsSync(localEnvPath)) {
+  for (const line of readFileSync(localEnvPath, 'utf8').split(/\r?\n/)) {
+    const entry = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!entry) continue;
+    const value = entry[2].trim().replace(/^["']|["']$/g, '');
+    if (value.length >= 12 && /(?:api.?key|secret|token|password|authorization|credential)/i.test(entry[1])) {
+      localPrivate.credentials.add(value);
+    }
+  }
+}
+if (appData) {
+  for (const directory of ['react-example', 'AI Desktop Pet']) {
+    const profileRoot = path.join(appData, directory);
+    const persisted = readLocalJson(path.join(profileRoot, 'desktop-pet-config.v1.json'));
+    const config = persisted?.config ?? persisted;
+    if (config && typeof config === 'object') {
+      collectCredentials(config);
+      addRoleName(config.personality?.name);
+      for (const pet of config.companionPets ?? []) addRoleName(pet?.personality?.name);
+      for (const relation of config.directedRelationshipRepository?.candidates ?? []) {
+        addRoleName(relation?.sourceRoleName);
+        addRoleName(relation?.targetRoleName);
+      }
+    }
+    const chat = readLocalJson(path.join(profileRoot, 'desktop-pet-chat-history.v1.json'));
+    for (const message of chat?.messages ?? []) {
+      if (typeof message?.text === 'string' && message.text.trim().length >= 24) {
+        localPrivate.chatTexts.add(message.text.trim());
+      }
+    }
+  }
+}
+
 function isPlaceholderEmail(value) {
   const domain = value.slice(value.lastIndexOf('@') + 1).toLowerCase();
   return /^(?:example\.(?:com|org|net|invalid)|users\.noreply\.github\.com|noreply\.github\.com)$/.test(domain);
@@ -152,6 +217,24 @@ for (const name of [...paths].sort()) {
   const approvedTextHash = baseline.approvedTextSha256?.[name];
   if (approvedTextHash && createHash('sha256').update(contents.replaceAll('\r\n', '\n')).digest('hex') !== approvedTextHash) {
     add(name, 'sanitized character sample changed; private name review required');
+  }
+  for (const value of localPrivate.roleNames) {
+    if (contents.includes(`"${value}"`) || contents.includes(`'${value}'`) || contents.includes(`\`${value}\``)) {
+      add(name, 'local private character name');
+      break;
+    }
+  }
+  for (const value of localPrivate.credentials) {
+    if (contents.includes(value)) {
+      add(name, 'local credential value');
+      break;
+    }
+  }
+  for (const value of localPrivate.chatTexts) {
+    if (contents.includes(value)) {
+      add(name, 'local conversation text');
+      break;
+    }
   }
 
   for (const email of contents.matchAll(emailPattern)) {
