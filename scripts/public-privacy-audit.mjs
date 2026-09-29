@@ -83,6 +83,7 @@ function addHint(name, category, contents, index, matchedValue = '') {
 
 const excludedPath = [
   [/^reports\//i, 'report data'],
+  [/^(?:dist|release)\//i, 'generated build or release artifact'],
   [/^docs\/diagnostics\//i, 'diagnostic data'],
   [/^docs\/项目档案\.md$/i, 'internal project notes'],
   [/^\.env(?!\.example$)/i, 'environment or credential file'],
@@ -318,6 +319,101 @@ const ancestry = spawnSync('git', ['-C', root, 'merge-base', '--is-ancestor', ba
   windowsHide: true,
 });
 if (ancestry.status !== 0) add('[current branch history]', 'branch is not based on the reviewed public snapshot');
+const historyRoots = git(['rev-list', '--max-parents=0', 'HEAD']).trim().split(/\r?\n/);
+if (historyRoots.length !== 1 || historyRoots[0] !== baseline.sourceCommit) {
+  add('[current branch history]', 'branch includes another Git root or an unreviewed base');
+} else {
+  // A secret committed and removed later is still available in Git history.
+  const indexedBlobs = new Set(git(['ls-files', '-s', '-z'], 'buffer')
+    .toString('utf8')
+    .split('\0')
+    .map((entry) => entry.match(/^[0-7]{6} ([0-9a-f]{40}) [0-3]\t/))
+    .filter(Boolean)
+    .map((match) => match[1]));
+  const historyObjects = new Map();
+  for (const line of git(['rev-list', '--objects', 'HEAD']).split(/\r?\n/)) {
+    const match = line.match(/^([0-9a-f]{40})(?: (.*))?$/);
+    if (match && !indexedBlobs.has(match[1])) historyObjects.set(match[1], match[2] ?? '');
+  }
+  const objectIds = [...historyObjects.keys()];
+  if (objectIds.length > 0) {
+    const checked = spawnSync('git', ['-C', root, 'cat-file', '--batch-check=%(objectname) %(objecttype) %(objectsize)'], {
+      input: `${objectIds.join('\n')}\n`,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      windowsHide: true,
+    });
+    if (checked.status !== 0) throw new Error('Could not inspect Git history objects');
+    const historicalBlobs = [];
+    for (const line of checked.stdout.trim().split(/\r?\n/)) {
+      const match = line.match(/^([0-9a-f]{40}) blob (\d+)$/);
+      if (!match) continue;
+      const name = historyObjects.get(match[1]);
+      if (!name) continue;
+      for (const [pattern, category] of excludedPath) {
+        if (pattern.test(name)) add(`[history] ${name}`, category);
+      }
+      if (Number(match[2]) > maxBytes) {
+        add(`[history] ${name}`, 'historical file exceeds content scan limit');
+      } else {
+        historicalBlobs.push({ id: match[1], name });
+      }
+    }
+    if (historicalBlobs.length > 0) {
+      const inspected = spawnSync('git', ['-C', root, 'cat-file', '--batch'], {
+        input: Buffer.from(`${historicalBlobs.map((blob) => blob.id).join('\n')}\n`, 'utf8'),
+        maxBuffer: 256 * 1024 * 1024,
+        windowsHide: true,
+      });
+      if (inspected.status !== 0) throw new Error('Could not read Git history blobs');
+      let offset = 0;
+      for (const { id, name } of historicalBlobs) {
+        const endHeader = inspected.stdout.indexOf(10, offset);
+        const header = inspected.stdout.toString('utf8', offset, endHeader);
+        const match = header.match(/^([0-9a-f]{40}) blob (\d+)$/);
+        if (!match || match[1] !== id) throw new Error('Unexpected Git history blob response');
+        const start = endHeader + 1;
+        const end = start + Number(match[2]);
+        const bytes = inspected.stdout.subarray(start, end);
+        offset = end + 1;
+        const digest = createHash('sha256').update(bytes).digest('hex');
+        if (baseline.allowedBinarySha256?.[name] && baseline.allowedBinarySha256[name] !== digest) {
+          add(`[history] ${name}`, 'historical public placeholder differs from approved image');
+        }
+        if (bytes.includes(0)) continue;
+        const contents = bytes.toString('utf8');
+        const normalizedDigest = createHash('sha256').update(contents.replaceAll('\r\n', '\n')).digest('hex');
+        if (baseline.sha256[name] === normalizedDigest || baseline.approvedTextSha256?.[name] === normalizedDigest) continue;
+        if ([...contents.matchAll(emailPattern)].some((email) =>
+          !isPlaceholderEmail(email[0]) && !(name === 'package-lock.json' && isDependencyMetadataEmail(contents, email[0])))) {
+          add(`[history] ${name}`, 'historical email address');
+        }
+        if (phonePattern.test(contents)) add(`[history] ${name}`, 'historical possible Chinese mobile number');
+        phonePattern.lastIndex = 0;
+        if (providerSecretPattern.test(contents) || assignedSecretPattern.test(contents) || bearerPattern.test(contents)
+          || /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(contents)) {
+          add(`[history] ${name}`, 'historical possible credential');
+        }
+        providerSecretPattern.lastIndex = 0;
+        assignedSecretPattern.lastIndex = 0;
+        bearerPattern.lastIndex = 0;
+        if ([...localPrivate.roleNames].some((value) =>
+          contents.includes(`"${value}"`) || contents.includes(`'${value}'`) || contents.includes(`\`${value}\``))) {
+          add(`[history] ${name}`, 'historical local private character name');
+        }
+        if ([...localPrivate.credentials].some((value) => contents.includes(value))) {
+          add(`[history] ${name}`, 'historical local credential value');
+        }
+        if ([...localPrivate.chatTexts].some((value) => contents.includes(value))) {
+          add(`[history] ${name}`, 'historical local conversation text');
+        }
+        if ([...localPrivate.roleTexts].some((value) => contents.includes(value))) {
+          add(`[history] ${name}`, 'historical local private character setting');
+        }
+      }
+    }
+  }
+}
 
 const ordered = [...findings].map(([name, categories]) => ({ name, categories: [...categories].sort() }));
 const existingSamples = [];
