@@ -3,7 +3,7 @@
 // Audits files that Git could publish. Match values are deliberately never printed.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -106,7 +106,7 @@ const bearerPattern = /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g;
 
 // Compare candidate files with this computer's app profile without ever logging the values.
 // The profile may not exist on CI or collaborators' fresh machines.
-const localPrivate = { roleNames: new Set(), credentials: new Set(), chatTexts: new Set() };
+const localPrivate = { roleNames: new Set(), roleTexts: new Set(), credentials: new Set(), chatTexts: new Set() };
 function readLocalJson(filename) {
   if (!existsSync(filename)) return null;
   try {
@@ -133,6 +133,22 @@ function collectCredentials(value) {
 function addRoleName(value) {
   if (typeof value === 'string' && value.trim().length >= 2) localPrivate.roleNames.add(value.trim());
 }
+function collectRoleTexts(value) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectRoleTexts(item);
+  } else if (value && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value)) {
+      if (typeof item === 'string'
+        && item.trim().length >= 40
+        && item.trim().length <= 4000
+        && /(?:prompt|personality|description|background|bio|story|relationship|memory|normalizedContent|retrievalSummary|quote|influenceSummary)/i.test(key)) {
+        localPrivate.roleTexts.add(item.trim());
+      } else {
+        collectRoleTexts(item);
+      }
+    }
+  }
+}
 const appData = process.env.APPDATA;
 collectCredentials(readLocalJson(path.join(root, '.desktop-pet-mcp.json')));
 const localEnvPath = path.join(root, '.env.local');
@@ -153,6 +169,7 @@ if (appData) {
     const config = persisted?.config ?? persisted;
     if (config && typeof config === 'object') {
       collectCredentials(config);
+      collectRoleTexts(config);
       addRoleName(config.personality?.name);
       for (const pet of config.companionPets ?? []) addRoleName(pet?.personality?.name);
       for (const relation of config.directedRelationshipRepository?.candidates ?? []) {
@@ -164,6 +181,14 @@ if (appData) {
     for (const message of chat?.messages ?? []) {
       if (typeof message?.text === 'string' && message.text.trim().length >= 24) {
         localPrivate.chatTexts.add(message.text.trim());
+      }
+    }
+    const personaDirectory = path.join(profileRoot, 'neural-persona');
+    if (existsSync(personaDirectory)) {
+      for (const filename of readdirSync(personaDirectory)) {
+        if (filename.endsWith('.record.json')) {
+          collectRoleTexts(readLocalJson(path.join(personaDirectory, filename)));
+        }
       }
     }
   }
@@ -233,6 +258,12 @@ for (const name of [...paths].sort()) {
   for (const value of localPrivate.chatTexts) {
     if (contents.includes(value)) {
       add(name, 'local conversation text');
+      break;
+    }
+  }
+  for (const value of localPrivate.roleTexts) {
+    if (contents.includes(value)) {
+      add(name, 'local private character setting');
       break;
     }
   }
