@@ -1,0 +1,6 @@
+{
+  "kind": "external-skill-marketplace-publisher-catalog-delivery-config.v1",
+  "enabled": false,
+  "catalogUrl": null,
+  "allowedOrigins": []
+}
