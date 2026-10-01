@@ -12,11 +12,13 @@ const {
   contextSource,
   plannerSource,
   senderSource,
+  sendExecutionSource,
   controllerSource,
 } = readProjectSources({
   contextSource: 'src/agent/agentChatContext.ts',
   plannerSource: 'src/agent/agentPlanner.ts',
   senderSource: 'src/components/chat/usePetChatMessageSender.ts',
+  sendExecutionSource: 'src/components/chat/petChatMessageSendExecution.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
 });
 
@@ -34,6 +36,12 @@ assert.match(
 
 assert.match(
   senderSource,
+  /executePetChatMessageSend\(/u,
+  'Chat sender should delegate sending to the shared send execution',
+);
+
+assert.match(
+  sendExecutionSource,
   /runPreparedAgentProductionSession\(\{/u,
   'Chat sender should delegate Agent memory capture to the Agent run controller',
 );

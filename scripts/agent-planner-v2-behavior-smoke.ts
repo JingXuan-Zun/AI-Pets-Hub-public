@@ -5,7 +5,7 @@ import {
 } from '../src/agent/agentLegacy.ts';
 
 const badJsonFallback = createAgentCommandFromPlannerDecision(
-  '翠竹小桃 看一下我现在电脑屏幕和配�?,
+  '翠竹小桃 看一下我现在电脑屏幕和配置',
   null,
 );
 assert.equal(badJsonFallback?.kind, 'tool-call');
@@ -13,7 +13,7 @@ assert.equal(badJsonFallback?.toolCall?.name, 'get_system_info');
 assert.equal(badJsonFallback?.toolCall?.input.includeDisplays, true);
 
 const clarifyFallback = createAgentCommandFromPlannerDecision(
-  '帮我把副屏上的图标整理整�?,
+  '帮我把副屏上的图标整理整齐',
   {
     intent: 'clarify',
     message: '需要确认显示器',
@@ -67,7 +67,7 @@ assert.equal(stepFallback?.toolCall?.name, 'inspect_local_project');
 assert.equal(stepFallback?.toolCall?.input.path, 'D:\\Projects\\ai-pets-hub');
 
 const appFallback = createAgentCommandFromPlannerDecision(
-  '帮我打开浏览�?,
+  '帮我打开浏览器',
   {
     intent: 'unsupported',
     message: '模型误判',
@@ -97,8 +97,8 @@ assert.equal(
 assert.equal(placementFallback?.toolCall?.input.anchorName, undefined);
 assert.equal(placementFallback?.toolCall?.input.direction, undefined);
 
-assert.equal(resolveAgentChatCommand('帮我打开浏览�?), null);
+assert.equal(resolveAgentChatCommand('帮我打开浏览器'), null);
 assert.equal(resolveAgentChatCommand('帮我把回收站整理到控制面板下面放整齐'), null);
-assert.equal(resolveAgentChatCommand('小桃子帮我整理副屏图标到右下�?), null);
+assert.equal(resolveAgentChatCommand('小桃子帮我整理副屏图标到右下角'), null);
 
 console.log('agent planner v2 behavior smoke ok');
