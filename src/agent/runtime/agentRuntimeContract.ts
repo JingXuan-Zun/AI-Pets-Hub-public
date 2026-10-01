@@ -15,6 +15,7 @@ import {
   type AgentRuntimeTaskTransactionEvent,
   type AgentRuntimeTaskTransactionState,
 } from './agentRuntimeTaskTransaction';
+import type { AgentCanonicalEventJournal } from './agentCanonicalEventJournal.ts';
 
 export type AgentRuntimeImplementation =
   | 'stable'
@@ -35,6 +36,7 @@ export interface AgentRuntimeAdapter<Result> {
 
 export interface RunAgentRuntimeOptions<Result> {
   adapter: AgentRuntimeAdapter<Result>;
+  canonicalEventJournal?: AgentCanonicalEventJournal | null;
   onProgress?: AgentRuntimeProgressHandler | null;
   taskIdentity?: {
     sourceText: string;
@@ -51,6 +53,7 @@ export interface AgentRuntimeAdapterContext {
   onProgress: AgentRuntimeProgressHandler;
   taskTransaction: AgentRuntimeTaskTransactionState | null;
   cancellationSignal?: AbortSignal | null;
+  canonicalEventJournal?: AgentCanonicalEventJournal | null;
 }
 
 export type AgentRuntimeTimingEntryKind = 'model' | 'tool';

@@ -141,6 +141,9 @@ assert.equal(transaction.result, result);
 assert.equal(transaction.timing.status, 'success');
 assert.equal(transaction.timing.label, 'execute_desktop_observation');
 assert.equal(transaction.timing.detail, 'get_cursor_position');
+assert.equal(transaction.outcome?.classification, 'unknown');
+assert.equal(transaction.outcome?.effect, 'none');
+assert.equal(transaction.outcome?.retryPolicy, 'safe');
 assert.equal(timingEntries.length, 1);
 
 assert.equal(traceEvents.length, 2);
@@ -158,6 +161,47 @@ assert.equal(traceEvents[1]?.details?.durationMs, 15);
 assert.equal(traceEvents[1]?.details?.timingDetail, 'get_cursor_position');
 assert.equal(traceEvents[1]?.details?.timingStatus, 'success');
 assert.equal(traceEvents[1]?.details?.cacheHit, false);
+assert.equal(traceEvents[1]?.details?.outcomeClass, transaction.outcome?.classification);
+assert.equal(traceEvents[1]?.details?.retryPolicy, 'safe');
+
+const sideEffectCommand: AgentChatCommand = {
+  ...command,
+  toolCall: { input: { action: 'click' }, name: 'execute_desktop_action' },
+};
+const sideEffectTransaction = await runAgentToolTransaction({
+  appendTraceEvent: () => undefined,
+  command: sideEffectCommand,
+  executeCommand: async () => ({ ok: true, responseText: 'Sent input' }),
+  getTimingDetail: () => 'click',
+  resolveTimingStatus: () => 'success',
+  stepIndex: 5,
+  timingTracker: {
+    beginEntry: () => ({ id: 'timing-side-effect', kind: 'tool', label: 'action', startedAt: 1, status: 'running', stepIndex: 5 }),
+    finishEntry: (entry, status) => ({ ...entry, status }),
+  },
+});
+assert.equal(sideEffectTransaction.outcome?.classification, 'failure');
+assert.equal(sideEffectTransaction.outcome?.uncertainEffects, true);
+assert.equal(sideEffectTransaction.outcome?.retryPolicy, 'halt');
+
+const blockedTransaction = await runAgentToolTransaction({
+  appendTraceEvent: () => undefined,
+  command: sideEffectCommand,
+  executeCommand: async () => ({
+    ok: false,
+    receipt: { status: 'blocked', summaryLines: [], title: 'Blocked' },
+    responseText: '',
+  }),
+  getTimingDetail: () => 'blocked',
+  resolveTimingStatus: () => 'failed',
+  stepIndex: 6,
+  timingTracker: {
+    beginEntry: () => ({ id: 'timing-blocked', kind: 'tool', label: 'action', startedAt: 1, status: 'running', stepIndex: 6 }),
+    finishEntry: (entry, status) => ({ ...entry, status }),
+  },
+});
+assert.equal(blockedTransaction.outcome?.execution, 'blocked');
+assert.equal(blockedTransaction.outcome?.classification, 'failure');
 
 const thrownTraceEvents: AgentRuntimeTraceEventDraft[] = [];
 const thrownTransaction = await runAgentToolTransaction({
@@ -191,5 +235,6 @@ assert.equal(thrownTransaction.result.errorText, 'tool backend exploded');
 assert.equal(thrownTransaction.timing.status, 'failed');
 assert.equal(thrownTraceEvents.at(-1)?.type, 'tool_finished');
 assert.equal(thrownTraceEvents.at(-1)?.status, 'failed');
+assert.equal(thrownTransaction.outcome?.retryPolicy, 'safe');
 
 console.log('agent session v2 tool execution transaction smoke ok');

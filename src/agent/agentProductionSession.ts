@@ -27,6 +27,7 @@ import {
   type AgentRuntimeResult,
   type AgentRuntimeToolExecutor,
 } from './runtime/agentRuntimeContract';
+import type { AgentCanonicalEventJournal } from './runtime/agentCanonicalEventJournal.ts';
 import { type AgentExecutionPlan } from './agentOrchestrator';
 import { buildAgentPermissionRoute } from './agentPermissionRouter';
 import {
@@ -61,6 +62,7 @@ export function runAgentProductionSession(
 }
 
 export interface RunAgentProductionRuntimeOptions extends RunAgentProductionSessionOptions {
+  canonicalEventJournal?: AgentCanonicalEventJournal | null;
   taskTransactionEvent?: AgentRuntimeTaskTransactionEvent | null;
 }
 
@@ -68,6 +70,7 @@ export async function runAgentProductionRuntime(
   options: RunAgentProductionRuntimeOptions,
 ) {
   const {
+    canonicalEventJournal = null,
     taskTransactionEvent = null,
     ...sessionOptions
   } = options;
@@ -108,12 +111,14 @@ export async function runAgentProductionRuntime(
     },
     taskTransaction: sessionOptions.continuation?.taskTransaction ?? null,
     taskTransactionEvent,
+    canonicalEventJournal,
     cancellationSignal: sessionOptions.cancellationSignal,
   });
 }
 
 export interface CancelAgentProductionRuntimeOptions {
   continuation: AgentRuntimeContinuation;
+  canonicalEventJournal?: AgentCanonicalEventJournal | null;
 }
 
 export function cancelAgentProductionRuntime(
@@ -130,6 +135,14 @@ export function cancelAgentProductionRuntime(
     },
     previous,
   });
+  if (transition.accepted && options.canonicalEventJournal && transition.state.taskState) {
+    options.canonicalEventJournal.append({
+      payload: { reason: 'user-cancelled' },
+      runId: transition.state.taskState.runId ?? transition.state.taskState.taskId,
+      taskId: transition.state.taskState.taskId,
+      type: 'task_cancelled',
+    });
+  }
 
   return {
     accepted: transition.accepted,
@@ -246,6 +259,7 @@ export interface RunAgentProductionApprovalContinuationsOptions {
   approvedCommand: AgentChatCommand;
   approvedPlan: AgentExecutionPlan;
   cancellationSignal?: AbortSignal | null;
+  canonicalEventJournal?: AgentCanonicalEventJournal | null;
   createSkippedResult: (command: AgentChatCommand) => AgentChatCommandResult;
   executeApprovedCommand: (command: AgentChatCommand) => Promise<AgentChatCommandResult>;
   initialPendingApproval?: AgentRuntimePendingApproval | null;
@@ -304,6 +318,7 @@ export function runAgentProductionApprovalContinuations(
         : null;
       const routed = await runAgentProductionRuntime({
         approvedToolResult: { command, result },
+        canonicalEventJournal: options.canonicalEventJournal,
         cancellationSignal: options.cancellationSignal,
         continuation: previousResult.continuation,
         onProgress: options.onProgress,

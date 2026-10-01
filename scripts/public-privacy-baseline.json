@@ -5,7 +5,7 @@
     "src/assets/pet-character-26-optimized.png": "603c0e6bfb49af8b8067f8a2d1cd58b110ac6f0f80584645f24f420389da2f20"
   },
   "approvedTextSha256": {
-    "reference/prototypes/control-center-v2-static/app.js": "3f2504f85f76e0f5a94a0be53f9011a64e97203d7217abe32553fdc9f157a809",
+    "reference/prototypes/control-center-v2-static/app.js": "f5e559a70ea91955642b60fff7e9e3204f0d0550ddd92c36773794ce98088495",
     "scripts/story-conversation-pacing-smoke.ts": "9b7ccf8b4bfa1177a752bf9b7c9b3d646f7b8585d14881191e9d74dbccd78998"
   },
   "sha256": {

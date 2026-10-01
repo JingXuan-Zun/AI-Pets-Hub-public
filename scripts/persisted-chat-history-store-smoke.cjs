@@ -27,6 +27,40 @@ try {
   assert.deepEqual(recovered.messages, messages);
   assert.equal(recovered.repairedPrimary, true);
 
+  fs.writeFileSync(paths.primaryPath, '{broken json', 'utf8');
+  const originalCopy = fs.copyFileSync;
+  const originalRename = fs.renameSync;
+  const failPrimaryWrite = (source, target, ...args) => {
+    if (target === paths.primaryPath) throw new Error('simulated primary write failure');
+    return originalCopy(source, target, ...args);
+  };
+  try {
+    fs.copyFileSync = failPrimaryWrite;
+    fs.renameSync = (source, target, ...args) => {
+      if (target === paths.primaryPath) throw new Error('simulated primary write failure');
+      return originalRename(source, target, ...args);
+    };
+    assert.equal(store.save(nextMessages).ok, false);
+  } finally {
+    fs.copyFileSync = originalCopy;
+    fs.renameSync = originalRename;
+  }
+  assert.equal(store.load().ok, true, 'A failed save must retain the last valid backup.');
+  assert.deepEqual(store.load().messages, messages);
+  assert.equal(fs.readdirSync(tempRoot).some((name) => name.endsWith('.tmp')), false);
+
+  try {
+    fs.renameSync = (source, target, ...args) => {
+      if (target === paths.primaryPath) throw new Error('simulated replacement failure');
+      return originalRename(source, target, ...args);
+    };
+    assert.equal(store.save(nextMessages).ok, false);
+  } finally {
+    fs.renameSync = originalRename;
+  }
+  assert.deepEqual(store.load().messages, messages, 'A failed replacement must leave the primary readable.');
+  assert.equal(fs.readdirSync(tempRoot).some((name) => name.endsWith('.tmp')), false);
+
   console.log('persisted chat history store smoke passed');
 } finally {
   fs.rmSync(tempRoot, { force: true, recursive: true });

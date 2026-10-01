@@ -36,9 +36,12 @@ function readHistoryFile(filePath) {
 function writeTextFileSafely(targetPath, text) {
   const tempPath = `${targetPath}.${process.pid}.tmp`;
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  fs.writeFileSync(tempPath, text, 'utf8');
-  fs.copyFileSync(tempPath, targetPath);
-  fs.rmSync(tempPath, { force: true });
+  try {
+    fs.writeFileSync(tempPath, text, 'utf8');
+    fs.renameSync(tempPath, targetPath);
+  } finally {
+    fs.rmSync(tempPath, { force: true });
+  }
 }
 
 function createPersistedChatHistoryStore({ log, userDataPath }) {
@@ -95,9 +98,8 @@ function createPersistedChatHistoryStore({ log, userDataPath }) {
       ? messages.filter((message) => message && typeof message === 'object')
       : [];
     try {
-      if (fs.existsSync(primaryPath)) {
-        fs.mkdirSync(path.dirname(backupPath), { recursive: true });
-        fs.copyFileSync(primaryPath, backupPath);
+      if (readHistoryFile(primaryPath).ok) {
+        writeTextFileSafely(backupPath, fs.readFileSync(primaryPath, 'utf8'));
       }
       const serialized = JSON.stringify({ messages: safeMessages, version: 1 });
       writeTextFileSafely(primaryPath, serialized);

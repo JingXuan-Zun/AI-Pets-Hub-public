@@ -49,13 +49,13 @@ assert.equal(
 );
 
 const stepFallback = createAgentCommandFromPlannerDecision(
-  '帮我看看 D:\\projects\\zc\\ai-desktop-pet 这个项目怎么运行',
+  '帮我看看 D:\\Projects\\ai-pets-hub 这个项目怎么运行',
   {
     intent: 'tool',
     steps: [
       {
         args: {
-          path: 'D:\\projects\\zc\\ai-desktop-pet',
+          path: 'D:\\Projects\\ai-pets-hub',
         },
         tool: 'inspect_local_project',
       },
@@ -64,7 +64,7 @@ const stepFallback = createAgentCommandFromPlannerDecision(
 );
 assert.equal(stepFallback?.kind, 'tool-call');
 assert.equal(stepFallback?.toolCall?.name, 'inspect_local_project');
-assert.equal(stepFallback?.toolCall?.input.path, 'D:\\projects\\zc\\ai-desktop-pet');
+assert.equal(stepFallback?.toolCall?.input.path, 'D:\\Projects\\ai-pets-hub');
 
 const appFallback = createAgentCommandFromPlannerDecision(
   '帮我打开浏览�?,

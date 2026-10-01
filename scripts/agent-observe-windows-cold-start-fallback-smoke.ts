@@ -29,7 +29,7 @@ const firstGoodSnapshot = {
   taskbarPinnedApps: [
     {
       name: 'WeGame',
-      path: 'C:\\Users\\ASUS\\AppData\\Roaming\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\WeGame.lnk',
+      path: 'C:\\Users\\example\\AppData\\Roaming\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\WeGame.lnk',
       taskbarPinned: true,
     },
   ],

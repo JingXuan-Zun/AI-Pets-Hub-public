@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { assertProductionRuntimeCancellation } from './agentRuntimeCancellationGuard.mjs';
 import { auditAgentRuntimeLegacyImports } from './agentRuntimeLegacyImportAuditCore.mjs';
 
 const runtimeDir = join(process.cwd(), 'src', 'agent', 'runtime');
@@ -211,7 +212,7 @@ assert.doesNotMatch(
   'UI Controller must not classify or construct duplicate/stale approval evidence.',
 );
 assert.match(controllerSource, /runAgentProductionRuntime/gu);
-assert.match(controllerSource, /cancelAgentProductionRuntime\(\{ continuation \}\)/u);
+assertProductionRuntimeCancellation(controllerSource, controllerPath);
 assert.doesNotMatch(
   controllerSource,
   /\brunAgentRuntime\b|createAgentRuntimeProductionAdapter|\brunAgentProductionSession\b|transitionAgentRuntimeTaskTransaction/u,
@@ -258,7 +259,7 @@ const legacyAgentIndexSource = readFileSync(
 const sessionSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'agentProductionSessionImplementation.ts'),
   'utf8',
-);
+).replace(/\r\n?/gu, '\n');
 const dispatchEvidenceSource = readFileSync(
   join(runtimeDir, 'agentDispatchEvidence.ts'),
   'utf8',

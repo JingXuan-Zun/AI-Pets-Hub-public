@@ -95,7 +95,7 @@ const inspectCommand: AgentChatCommand = {
   sourceText: 'inspect project',
   toolCall: {
     input: {
-      path: 'D:\\projects\\zc\\ai-desktop-pet',
+      path: 'D:\\Projects\\ai-pets-hub',
     },
     name: 'inspect_local_project',
   },
@@ -110,7 +110,7 @@ const projectActions: AgentChatFollowUpAction[] = [1, 2, 3].map((actionIndex) =>
     toolCall: {
       input: {
         actionIndex,
-        path: 'D:\\projects\\zc\\ai-desktop-pet',
+        path: 'D:\\Projects\\ai-pets-hub',
       },
       name: 'run_local_project_action',
     },

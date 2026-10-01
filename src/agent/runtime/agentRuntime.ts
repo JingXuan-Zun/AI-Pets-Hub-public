@@ -14,6 +14,22 @@ import {
   transitionAgentRuntimeTaskTransaction,
   type AgentRuntimeTaskTransactionState,
 } from './agentRuntimeTaskTransaction';
+import type { AgentCanonicalEventJournal } from './agentCanonicalEventJournal.ts';
+
+function appendTaskEvent(
+  journal: AgentCanonicalEventJournal | null | undefined,
+  state: { taskId?: string | null; runId?: string | null } | null,
+  type: Parameters<AgentCanonicalEventJournal['append']>[0]['type'],
+  payload?: Record<string, unknown>,
+) {
+  if (!journal || !state?.taskId || !state.runId) return;
+  journal.append({
+    payload,
+    runId: state.runId,
+    taskId: state.taskId,
+    type,
+  });
+}
 
 function isAgentRuntimeResult(value: unknown): value is AgentRuntimeResult {
   if (!value || typeof value !== 'object') {
@@ -36,6 +52,7 @@ export async function runAgentRuntime<Result>(
   }
 
   let currentTaskState = null;
+  const canonicalEventJournal = options.canonicalEventJournal ?? null;
   let taskTransaction: AgentRuntimeTaskTransactionState | null = options.taskTransaction ?? null;
   currentTaskState = taskTransaction?.taskState ?? null;
   if (!taskTransaction && options.taskIdentity) {
@@ -53,6 +70,10 @@ export async function runAgentRuntime<Result>(
     if (started.accepted) {
       taskTransaction = started.state;
       currentTaskState = taskTransaction.taskState;
+      appendTaskEvent(canonicalEventJournal, currentTaskState, 'task_started', {
+        sourceText: options.taskIdentity.sourceText,
+        userGoal: options.taskIdentity.userGoal,
+      });
     }
   }
   if (taskTransaction && options.taskTransactionEvent) {
@@ -63,6 +84,12 @@ export async function runAgentRuntime<Result>(
     if (controlled.accepted) {
       taskTransaction = controlled.state;
       currentTaskState = taskTransaction.taskState;
+      if (options.taskTransactionEvent.type === 'approve') {
+        appendTaskEvent(canonicalEventJournal, currentTaskState, 'approval_granted');
+      }
+      if (options.taskTransactionEvent.type === 'cancel') {
+        appendTaskEvent(canonicalEventJournal, currentTaskState, 'task_cancelled');
+      }
     }
   }
   if (taskTransaction?.phase === 'resuming') {
@@ -117,6 +144,7 @@ export async function runAgentRuntime<Result>(
     },
     taskTransaction,
     cancellationSignal: options.cancellationSignal ?? null,
+      canonicalEventJournal,
   });
   if (outcome.implementation !== 'unavailable' && !outcome.result) {
     throw new Error(`AgentRuntime adapter ${adapterId} returned no result for ${outcome.implementation}.`);
@@ -151,6 +179,20 @@ export async function runAgentRuntime<Result>(
           taskTransaction,
         },
       } as Result;
+      const runtimeResult = result as AgentRuntimeResult;
+      const lifecycleEvent = runtimeResult.status === 'completed'
+        ? 'task_completed'
+        : runtimeResult.status === 'cancelled'
+          ? 'task_cancelled'
+          : runtimeResult.status === 'needs-approval'
+            ? 'approval_requested'
+            : 'task_failed';
+      appendTaskEvent(
+        canonicalEventJournal,
+        runtimeResult.taskState ?? taskTransaction.taskState,
+        lifecycleEvent,
+        { status: runtimeResult.status },
+      );
     }
   }
 

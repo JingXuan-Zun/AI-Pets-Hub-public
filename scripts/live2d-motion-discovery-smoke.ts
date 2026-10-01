@@ -3,10 +3,10 @@ import {
   resolveLive2DMotionAssetsFromDirectoryEntries,
 } from '../src/pet-runtime/live2d/live2dExpressionDiscovery';
 
-const modelUrl = 'D:/projects/zc/ai-desktop-pet/public/models-3d/live2d/示例模型�?示例模型�?model3.json';
+const modelUrl = 'D:/Projects/ai-pets-hub/public/models-3d/live2d/sample-model/sample-model.model3.json';
 const entries = [
-  { kind: 'file', name: 'Scene1.motion3.json', path: 'D:/projects/zc/ai-desktop-pet/public/models-3d/live2d/示例模型�?Scene1.motion3.json' },
-  { kind: 'file', name: '神秘动画.can3', path: 'D:/projects/zc/ai-desktop-pet/public/models-3d/live2d/示例模型�?神秘动画.can3' },
+  { kind: 'file', name: 'Scene1.motion3.json', path: 'D:/Projects/ai-pets-hub/public/models-3d/live2d/sample-model/Scene1.motion3.json' },
+  { kind: 'file', name: 'sample-animation.can3', path: 'D:/Projects/ai-pets-hub/public/models-3d/live2d/sample-model/sample-animation.can3' },
 ];
 
 const motions = resolveLive2DMotionAssetsFromDirectoryEntries(entries, modelUrl);
@@ -14,7 +14,7 @@ if (motions.length !== 1 || motions[0]?.name !== 'Scene1') {
   throw new Error(`Expected to discover Scene1.motion3.json, got ${JSON.stringify(motions)}`);
 }
 
-const can3Reason = resolveUnsupportedLive2DMotionImportReason('神秘动画.can3');
+const can3Reason = resolveUnsupportedLive2DMotionImportReason('sample-animation.can3');
 if (!can3Reason?.includes('.can3') || !can3Reason.includes('.motion3.json')) {
   throw new Error(`Expected .can3 export guidance, got ${can3Reason ?? 'null'}`);
 }

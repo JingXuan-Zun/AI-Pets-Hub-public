@@ -89,10 +89,10 @@ const boundarySource = readProjectFile('src/agent/agentSessionV3RuntimeBoundary.
 const auditText = readProjectFile('PROJECT_AGENT_V3_FULL_RUNTIME_PREFLIGHT_AUDIT.md');
 const statusText = readProjectFile('PROJECT_AGENT_V2_STATUS.md');
 const previousGuardSource = readProjectFile(
-  'scripts/agent-session-v3-runtime-boundary-source-gap-chain-final-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-smoke.ts',
+  'scripts/agent-session-v3-runtime-boundary-source-gap-chain-final-guard-co-sum-guard-x6-smoke.ts',
 );
 const previousSummarySource = readProjectFile(
-  'scripts/agent-session-v3-runtime-boundary-source-gap-chain-final-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-smoke.ts',
+  'scripts/agent-session-v3-runtime-boundary-source-gap-chain-final-guard-co-sum-guard-x5-co-sum-smoke.ts',
 );
 
 const boundaryContract = createAgentSessionV3RuntimeBoundaryContract();

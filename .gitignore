@@ -87,3 +87,11 @@ PROJECT_AGENT_RUNTIME_V4_OBSERVATION_MANIFEST.json
 
 # Local Windows component-store diagnostic helper
 /.codex-verify-component-cleanup.*
+
+# Personal Claude Code permissions
+/.claude/settings.local.json
+
+# Persona community self-host runtime output
+/services/persona-community-selfhost/**/certificates/
+/services/persona-community-selfhost/**/data/
+/services/persona-community-selfhost/**/server.config.json

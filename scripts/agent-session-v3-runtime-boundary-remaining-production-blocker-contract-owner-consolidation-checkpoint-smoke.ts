@@ -172,7 +172,7 @@ const inventorySource = readProjectFile(
   'scripts/agent-session-v3-runtime-boundary-remaining-non-evidence-production-blocker-inventory-checkpoint-smoke.ts',
 );
 const finalGuardSource = readProjectFile(
-  'scripts/agent-session-v3-runtime-boundary-caller-owned-real-exported-intake-final-negative-handoff-guard-summary-wording-consistency-final-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-smoke.ts',
+  'scripts/agent-session-v3-runtime-boundary-rx-intake-fn-handoff-final-co-sum-guard-x3-smoke.ts',
 );
 const authorityDriftSource = readProjectFile(
   'scripts/agent-session-v3-runtime-boundary-production-authority-drift-final-guard-smoke.ts',

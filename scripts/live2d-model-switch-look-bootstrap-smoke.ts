@@ -62,7 +62,7 @@ assert.equal(runtimeProfile.capabilities.bodySway, false);
 const controller = createLive2DPointerLookRuntimeController(
   { internalModel },
   {
-    modelUrl: 'Mavuika.model3.json',
+    modelUrl: 'sample-model-b.model3.json',
     onDiagnosticFrame: (frame) => {
       appliedSource = frame.appliedSource;
     },

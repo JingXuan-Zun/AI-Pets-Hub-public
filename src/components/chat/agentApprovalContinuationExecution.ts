@@ -10,11 +10,13 @@ import {
 } from '../../agent';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import type { PetConfig } from '../../types';
+import type { AgentCanonicalEventJournal } from '../../agent/runtime/agentCanonicalEventJournal.ts';
 
 export async function runChatAgentApprovalContinuations(options: {
   approvedCommand: AgentChatCommand;
   approvedPlan: AgentExecutionPlan;
   cancellationSignal: AbortSignal;
+  canonicalEventJournal?: AgentCanonicalEventJournal | null;
   createSkippedResult: (command: AgentChatCommand) => AgentChatCommandResult;
   executeApprovedCommand: (command: AgentChatCommand) => Promise<AgentChatCommandResult>;
   initialResult: AgentProductionSessionResult;

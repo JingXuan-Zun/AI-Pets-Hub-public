@@ -93,7 +93,7 @@ const previousSummarySource = readProjectFile(
   'scripts/agent-session-v3-runtime-boundary-source-gap-chain-summary-7-smoke.ts',
 );
 const previousGuardSource = readProjectFile(
-  'scripts/agent-session-v3-runtime-boundary-source-gap-chain-final-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-closeout-summary-guard-smoke.ts',
+  'scripts/agent-session-v3-runtime-boundary-source-gap-chain-final-guard-co-sum-guard-x6-smoke.ts',
 );
 
 const boundaryContract = createAgentSessionV3RuntimeBoundaryContract();

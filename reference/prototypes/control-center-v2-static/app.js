@@ -448,7 +448,7 @@ const modules = [
             title: "模型库",
             summary: "统一管理 Live2D、3D、2D 模型资源。",
             fields: [
-              field("当前模型", "示例模型安.model3.json", "Live2D"),
+              field("当前模型", "sample-model.model3.json", "Live2D"),
               field("模型总数", "19", "来自静态快照"),
               selectField("模型类型", "Live2D", ["Live2D", "3D", "2D"], "右侧显示对应预览"),
             ],
@@ -654,7 +654,7 @@ const modules = [
             title: "模型资源",
             summary: "对应旧模型页的模型库、上传模型、恢复内置模型和当前槽位模型。",
             fields: [
-              field("当前槽位模型", "示例模型安.model3.json", "当前角色使用"),
+              field("当前槽位模型", "sample-model.model3.json", "当前角色使用"),
               field("模型数量", "19", "内置 + 自定义"),
               chips("支持格式", ["2D 图片", "Live2D .model3.json", "VRM", "PMX", "FBX", "GLB / GLTF"]),
               selectField("3D Runtime", "Three.js", ["Three.js", "Unity 3D Runtime"], "只显示选择项"),
@@ -665,7 +665,7 @@ const modules = [
             title: "模型预设卡片",
             summary: "原模型卡片里的应用模型、删除模型、当前使用状态。",
             fields: [
-              field("当前使用", "示例模型安 Live2D", "已应用"),
+              field("当前使用", "sample-model Live2D", "已应用"),
               field("自定义模型", "可上传", "静态按钮占位"),
               field("恢复内置模型", "可用", "静态按钮占位"),
             ],
@@ -680,7 +680,7 @@ const modules = [
             ["2D", "支持", "blue"],
             ["模型数", "19", "green"],
           ],
-          timeline: ["当前模型：示例模型安.model3.json", "Runtime：Three.js", "上传入口：静态占位"],
+          timeline: ["当前模型：sample-model.model3.json", "Runtime：Three.js", "上传入口：静态占位"],
         },
       },
       {

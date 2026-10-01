@@ -94,10 +94,10 @@ const projectInspectCommand: AgentChatCommand = {
   capabilityId: 'local-project-inspector',
   instruction: 'inspect project',
   kind: 'tool-call',
-  sourceText: '/agent inspect D:\\projects\\zc\\ai-desktop-pet',
+  sourceText: '/agent inspect D:\\Projects\\ai-pets-hub',
   toolCall: {
     input: {
-      path: 'D:\\projects\\zc\\ai-desktop-pet',
+      path: 'D:\\Projects\\ai-pets-hub',
     },
     name: 'inspect_local_project',
   },
@@ -112,7 +112,7 @@ const projectRunAction: AgentChatFollowUpAction = {
     toolCall: {
       input: {
         actionIndex: 2,
-        path: 'D:\\projects\\zc\\ai-desktop-pet',
+        path: 'D:\\Projects\\ai-pets-hub',
       },
       name: 'run_local_project_action',
     },

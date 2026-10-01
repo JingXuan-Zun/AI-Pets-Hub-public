@@ -15,6 +15,9 @@ import {
   runAgentProductionRuntime,
   runAgentProductionApprovedAction,
   runAgentProductionApprovalContinuations,
+  getAgentCanonicalEventJournal,
+  getOrCreateAgentCanonicalEventJournal,
+  releaseAgentCanonicalEventJournal,
   type AgentChatCommand,
   type AgentChatCommandResult,
   type AgentChatCommandHandler,
@@ -1812,7 +1815,10 @@ export function stopAgentRunMessage(messageId?: string | null) {
     const continuation = resolveChatAgentRuntimeContinuation(message.agentRun)
       ?? resolveChatAgentRuntimeContinuation(message.agentApproval);
     const cancelledContinuation = continuation
-      ? cancelAgentProductionRuntime({ continuation }).continuation
+      ? cancelAgentProductionRuntime({
+          canonicalEventJournal: getAgentCanonicalEventJournal(targetMessageId),
+          continuation,
+        }).continuation
       : null;
     cancelledTaskState = cancelledContinuation?.taskState ?? null;
 
@@ -1861,6 +1867,7 @@ export function stopAgentRunMessage(messageId?: string | null) {
     status: 'cancelled',
     taskState: cancelledTaskState,
   });
+  releaseAgentCanonicalEventJournal(targetMessageId);
 
   return true;
 }
@@ -2394,6 +2401,9 @@ export async function runPreparedAgentProductionSession({
     preparedRequest,
   });
   const runMessageId = runMessage.id ?? null;
+  const canonicalEventJournal = getOrCreateAgentCanonicalEventJournal(
+    runMessageId ?? `request-${preparedRequest.requestToken}`,
+  );
   desktopPetChatStore.addMessage(runMessage);
   const persistGroupTaskEvent = () => {
     const event = preparedRequest.groupTaskConversationEvent;
@@ -2462,6 +2472,7 @@ export async function runPreparedAgentProductionSession({
 
     const routedResult = await runAgentProductionRuntime({
       approvedToolResult,
+      canonicalEventJournal,
       initialCommand,
       cancellationSignal: abortController.signal,
       onProgress,
@@ -2480,6 +2491,9 @@ export async function runPreparedAgentProductionSession({
     }
     result = routedResult.result;
 
+  } catch (error) {
+    releaseAgentCanonicalEventJournal(runMessageId ?? `request-${preparedRequest.requestToken}`);
+    throw error;
   } finally {
     unregisterAbortController();
   }
@@ -2574,6 +2588,7 @@ export async function runPreparedAgentProductionSession({
       const continuationRun = await runAgentProductionApprovalContinuations({
         approvedCommand: approvedScopeCommand,
         approvedPlan: approvedScopePlan,
+        canonicalEventJournal,
         cancellationSignal: abortController.signal,
         createSkippedResult: createSkippedStaleOuterApprovalResult,
         executeApprovedCommand: (command) => runAgentControllerToolTransactionWithLiveProgress({
@@ -2653,6 +2668,7 @@ export async function runPreparedAgentProductionSession({
               targetSlot,
             },
           });
+          releaseAgentCanonicalEventJournal(runMessageId ?? `request-${preparedRequest.requestToken}`);
           return;
         }
         if (result.pendingApproval) {
@@ -2713,6 +2729,7 @@ export async function runPreparedAgentProductionSession({
       targetSlot,
     },
   });
+  releaseAgentCanonicalEventJournal(runMessageId ?? `request-${preparedRequest.requestToken}`);
 }
 
 function createAgentProductionSessionDisplayResult(
@@ -2777,8 +2794,17 @@ export async function resolveAgentApprovalRequest({
   }
 
   const approvalRuntime = resolveChatAgentRuntimeContinuation(approval);
+  const canonicalEventJournal = getAgentCanonicalEventJournal(messageId);
 
   if (decision === 'deny') {
+    if (canonicalEventJournal && approvalRuntime?.taskState) {
+      canonicalEventJournal.append({
+        payload: { reason: 'user-denied' },
+        runId: approvalRuntime.taskState.runId ?? approvalRuntime.taskState.taskId,
+        taskId: approvalRuntime.taskState.taskId,
+        type: 'task_cancelled',
+      });
+    }
     const deniedGroupTaskEvent = updateGroupTaskConversationEvent({
       event: approval.groupTaskEvent ?? approvalMessage?.groupTaskEvent,
       outcome: 'failed',
@@ -2836,6 +2862,7 @@ export async function resolveAgentApprovalRequest({
       deniedGroupTaskEvent,
       approvalMessage.petId,
     );
+    releaseAgentCanonicalEventJournal(messageId);
     return;
   }
 
@@ -3013,6 +3040,7 @@ export async function resolveAgentApprovalRequest({
     ) => runChatAgentApprovalContinuations({
         approvedCommand: approval.command,
         approvedPlan: approval.plan,
+        canonicalEventJournal,
         cancellationSignal: abortController.signal,
         createSkippedResult: createSkippedStaleOuterApprovalResult,
         executeApprovedCommand: async (command) => onAgentChatCommand
@@ -3035,6 +3063,7 @@ export async function resolveAgentApprovalRequest({
         toolExecutor,
       });
     const routedResult = await runAgentProductionApprovedAction({
+      canonicalEventJournal,
       approval: {
         command: approval.command,
         plan: approval.plan,
@@ -3162,6 +3191,7 @@ export async function resolveAgentApprovalRequest({
       ? await runAgentProductionApprovalContinuations({
           approvedCommand: approval.command,
           approvedPlan: approval.plan,
+          canonicalEventJournal,
           cancellationSignal: abortController.signal,
           createSkippedResult: createSkippedStaleOuterApprovalResult,
           executeApprovedCommand: (command) => runAgentControllerToolTransactionWithLiveProgress({
@@ -3395,6 +3425,10 @@ export async function resolveAgentApprovalRequest({
       });
     }
 
+    if (!isAgentTaskRuntimeWaitingApproval(sessionResult)) {
+      releaseAgentCanonicalEventJournal(messageId);
+    }
+
     pushFrontendRuntimeLog('agent-session-v2', 'approved session continued', {
       status: sessionResult.status,
       stepCount: sessionResult.steps.length,
@@ -3408,6 +3442,15 @@ export async function resolveAgentApprovalRequest({
     }
 
     const errorText = error instanceof Error ? error.message : String(error);
+    if (canonicalEventJournal && approvalRuntime?.taskState) {
+      canonicalEventJournal.append({
+        payload: { reason: 'approval-continuation-error' },
+        runId: approvalRuntime.taskState.runId ?? approvalRuntime.taskState.taskId,
+        taskId: approvalRuntime.taskState.taskId,
+        type: 'task_failed',
+      });
+    }
+    releaseAgentCanonicalEventJournal(messageId);
     publishAgentRuntimeWorldResult({
       status: 'failed',
       taskState: approvalRuntime?.taskState ?? null,

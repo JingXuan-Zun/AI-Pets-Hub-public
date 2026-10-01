@@ -9,6 +9,12 @@ import {
   type AgentRuntimeTimingStopReason,
   type AgentRuntimeTraceEventDraft,
 } from './agentRuntimeContract';
+import {
+  createAgentToolOutcomeContract,
+  type AgentToolEffectState,
+  type AgentToolOutcomeContract,
+  type AgentToolVerificationState,
+} from './agentToolOutcomeContract.ts';
 
 export interface AgentToolTransactionTimingPort {
   beginEntry: (
@@ -31,6 +37,7 @@ export interface AgentToolTransactionBudgetPort extends AgentToolTransactionTimi
 
 export interface AgentToolTransactionResult {
   command: AgentChatCommand;
+  outcome?: AgentToolOutcomeContract;
   result: AgentChatCommandResult;
   timing: AgentRuntimeTimingEntry;
 }
@@ -50,6 +57,71 @@ export interface RunAgentToolTransactionOptions {
 
 function getAgentToolTransactionToolName(command: AgentChatCommand) {
   return command.toolCall?.name ?? command.kind;
+}
+
+const AGENT_READ_ONLY_TOOL_NAMES = new Set([
+  'analyze_game_screen', 'browser_search', 'execute_desktop_observation',
+  'get_active_window_info', 'get_cursor_position', 'get_default_app_for_uri',
+  'get_display_info', 'get_path_info', 'get_system_info', 'list_capture_sources',
+  'list_directory', 'list_mcp_tools', 'list_running_apps', 'locate_screen_elements',
+  'observe_windows_and_apps', 'read_text_file', 'search_files', 'search_web',
+  'summarize_visual_snapshot',
+]);
+
+const AGENT_NON_IDEMPOTENT_TOOL_NAMES = new Set([
+  'call_mcp_tool', 'close_window', 'control_browser', 'execute_desktop_action',
+  'execute_desktop_input', 'execute_desktop_sequence', 'execute_file_management_action',
+  'execute_local_file_action', 'launch_local_app', 'open_resource',
+  'organize_desktop_icons', 'place_desktop_icon', 'run_controlled_command',
+  'run_local_project_action', 'update_pet_settings',
+]);
+
+function resolveOutcomeStates(toolName: string, result: AgentChatCommandResult) {
+  const evidence = result.stateSummary?.actionEvidence
+    ?? result.receipt?.stateSummary?.actionEvidence
+    ?? null;
+  const verification: AgentToolVerificationState = result.receipt?.status === 'blocked'
+    ? 'blocked'
+    : result.receipt?.status === 'success'
+      ? 'satisfied'
+      : result.receipt?.status === 'unverified'
+        ? 'unknown'
+          : result.receipt?.status === 'failed'
+          ? 'blocked'
+          : result.verification
+            ? 'partial'
+            : 'unknown';
+  const effect: AgentToolEffectState = evidence?.outcome === 'changed'
+    ? 'changed'
+    : evidence?.outcome === 'no-op'
+      ? 'no-op'
+      : evidence?.outcome === 'blocked'
+        ? 'none'
+        : evidence?.outcome === 'uncertain'
+          ? 'uncertain'
+            : result.receipt?.status === 'success'
+              ? 'none'
+          : AGENT_READ_ONLY_TOOL_NAMES.has(toolName)
+            ? 'none'
+            : 'uncertain';
+  return { effect, verification };
+}
+
+function createTransactionOutcome(command: AgentChatCommand, result: AgentChatCommandResult) {
+  const toolName = getAgentToolTransactionToolName(command);
+  if (result.receipt?.status === 'blocked') {
+    return createAgentToolOutcomeContract({ execution: 'blocked', effect: 'none', verification: 'blocked' });
+  }
+  const { effect: evidenceEffect, verification } = resolveOutcomeStates(toolName, result);
+  const effect = AGENT_READ_ONLY_TOOL_NAMES.has(toolName) && !result.stateSummary?.actionEvidence
+    ? 'none'
+    : evidenceEffect;
+  return createAgentToolOutcomeContract({
+    effect,
+    execution: 'executed',
+    nonIdempotentSideEffect: AGENT_NON_IDEMPOTENT_TOOL_NAMES.has(toolName),
+    verification,
+  });
 }
 
 function isAgentRuntimeCachedToolResult(result: AgentChatCommandResult) {
@@ -91,6 +163,7 @@ export function createAgentToolTransactionFinishedTraceDetails(
   const actionEvidence = stateSummary?.actionEvidence ?? null;
   const structuredEvidence = stateSummary?.structuredEvidence ?? null;
   const visualActionReadiness = structuredEvidence?.visualActionReadiness ?? null;
+  const outcome = extra?.outcome as AgentToolOutcomeContract | undefined;
   return {
     actionDiff: actionEvidence?.diff?.summary,
     actionOutcome: actionEvidence?.outcome,
@@ -109,6 +182,12 @@ export function createAgentToolTransactionFinishedTraceDetails(
     visualActionBlocker: createAgentRuntimeVisualActionBlocker(visualActionReadiness),
     visualActionReadiness,
     launcherReason: structuredEvidence?.launcherVerification?.reason,
+    outcomeClass: outcome?.classification,
+    outcomeEffect: outcome?.effect,
+    outcomeExecution: outcome?.execution,
+    retryPolicy: outcome?.retryPolicy,
+    uncertainEffects: outcome?.uncertainEffects,
+    outcomeVerification: outcome?.verification,
     ...extra,
   };
 }
@@ -152,6 +231,7 @@ export async function runAgentToolTransaction(
     } as AgentChatCommandResult;
   }
   const timingStatus = options.resolveTimingStatus(result);
+  const outcome = createTransactionOutcome(options.command, result);
   const finishedTiming = options.timingTracker.finishEntry(
     {
       ...timing,
@@ -168,6 +248,7 @@ export async function runAgentToolTransaction(
       result,
       finishedTiming,
       {
+        outcome,
         ...(options.traceDetails ?? {}),
         ...(traceSource ? { source: traceSource } : {}),
       },
@@ -181,6 +262,7 @@ export async function runAgentToolTransaction(
 
   return {
     command: options.command,
+    outcome,
     result,
     timing: finishedTiming,
   };

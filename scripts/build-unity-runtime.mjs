@@ -3,10 +3,12 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 const projectRoot = process.cwd();
-const unityProjectRoot = process.env.DESKTOP_PET_UNITY_PROJECT_ROOT
-  || 'D:\\projects\\zc\\ai-zc-2\\My project';
-const unityExecutable = process.env.DESKTOP_PET_UNITY_EXE
-  || 'D:\\projects\\6000.4.6f1\\Editor\\Unity.exe';
+const unityProjectRoot = process.env.DESKTOP_PET_UNITY_PROJECT_ROOT?.trim();
+const unityExecutable = process.env.DESKTOP_PET_UNITY_EXE?.trim();
+if (!unityProjectRoot || !unityExecutable) {
+  console.error('Set DESKTOP_PET_UNITY_PROJECT_ROOT (Unity project folder) and DESKTOP_PET_UNITY_EXE (Unity.exe path) before running this script.');
+  process.exit(1);
+}
 const unityEditorScriptSource = path.join(projectRoot, 'scripts', 'unity-runtime-builder', 'UnityRuntimeBuilder.cs');
 const unityEditorScriptTarget = path.join(unityProjectRoot, 'Assets', 'Scripts', 'Bridge', 'Editor', 'UnityRuntimeBuilder.cs');
 const unityRuntimeScriptCopies = [

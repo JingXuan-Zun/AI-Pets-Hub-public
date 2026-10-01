@@ -428,8 +428,8 @@ const idleLookLater = resolveLive2DAutonomousIdleLookTarget({
   seed: 'idle-look-smoke',
 });
 const idleLookRegressionSeeds = [
-  'primary:public/models-3d/live2d/示例模型安/示例模型安.model3.json:idle-look',
-  'primary:/models-3d/live2d/示例模型安/示例模型安.model3.json:idle-look',
+  'primary:public/models-3d/live2d/sample-model/sample-model.model3.json:idle-look',
+  'primary:/models-3d/live2d/sample-model/sample-model.model3.json:idle-look',
   'primary:mock-live2d.model3.json:idle-look',
   'smoke:mock-live2d.model3.json:idle-look',
 ];
