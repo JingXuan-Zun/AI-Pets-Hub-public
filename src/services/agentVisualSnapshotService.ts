@@ -1,5 +1,7 @@
 ﻿import { type PetConfig } from '../types';
 import { normalizeOpenAICompatibleUrl } from '../modelProviderSettings';
+import { getGeminiClient } from './geminiClient';
+import { requestModelFetch } from './modelTransport';
 import {
   applyGeminiVisionModelRequestParams,
   resolveGeminiVisionModelName,
@@ -7,17 +9,6 @@ import {
   resolveVisionModelRequestParams,
   resolveVisionModelSettings,
 } from '../visionModelSettings';
-
-let aiClientPromise: Promise<any> | null = null;
-
-async function getAiClient() {
-  if (!aiClientPromise) {
-    aiClientPromise = import('@google/genai')
-      .then(({ GoogleGenAI }) => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }));
-  }
-
-  return aiClientPromise;
-}
 
 function extractOpenAICompatibleText(payload: any): string | null {
   const content = payload?.choices?.[0]?.message?.content;
@@ -136,12 +127,11 @@ async function requestOpenAICompatibleVisualSnapshotSummary(options: AgentVisual
   const endpoint = normalizeOpenAICompatibleUrl(visionModelSettings.apiUrl);
   const requestParams = resolveVisionModelRequestParams(options.settings);
   const prompt = buildAgentVisualSnapshotPrompt(options);
-  const response = await fetch(endpoint, {
+  const response = await requestModelFetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(visionModelSettings.apiKey?.trim() ? { Authorization: `Bearer ${visionModelSettings.apiKey.trim()}` } : {}),
     },
     body: JSON.stringify({
       ...requestParams,
@@ -161,7 +151,7 @@ async function requestOpenAICompatibleVisualSnapshotSummary(options: AgentVisual
       ],
       stream: false,
     }),
-  });
+  }, visionModelSettings.apiKey ?? '', visionModelSettings.inherited ? 'customApiKey' : 'visionCustomApiKey');
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -179,7 +169,7 @@ async function requestOpenAICompatibleVisualSnapshotSummary(options: AgentVisual
 
 async function requestGeminiVisualSnapshotSummary(options: AgentVisualSnapshotSummaryOptions) {
   const { base64, mimeType } = parseVisualSnapshotDataUrl(options.imageDataUrl);
-  const aiClient = await getAiClient();
+  const aiClient = await getGeminiClient(options.settings.geminiApiKey);
   const config: Record<string, unknown> = {
     systemInstruction: getAgentVisualSnapshotSystemInstruction(options),
   };

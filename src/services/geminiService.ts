@@ -14,6 +14,8 @@ import {
   type CognitionTaskKind,
 } from '../cognition';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
+import { getGeminiClient } from './geminiClient';
+import { requestModelFetch } from './modelTransport';
 import { readOpenAITextStream } from './openAITextStream';
 import {
   applyGeminiModelRequestParams,
@@ -57,17 +59,6 @@ export {
   buildPersonaBeginDialogMessages,
   resolveRoleKnowledgeAttachment,
 } from './geminiPromptService';
-
-let aiClientPromise: Promise<any> | null = null;
-
-async function getAiClient() {
-  if (!aiClientPromise) {
-    aiClientPromise = import('@google/genai')
-      .then(({ GoogleGenAI }) => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }));
-  }
-
-  return aiClientPromise;
-}
 
 function mapOpenAICompatibleRole(role: ChatMessage['role']) {
   return role === 'model' ? 'assistant' : 'user';
@@ -257,12 +248,11 @@ async function requestOpenAICompatibleResponse(
   const endpoint = normalizeOpenAICompatibleUrl(settings.customApiUrl);
   const requestParams = resolveCognitionRequestParams(settings, maxTokensOverride);
 
-  const response = await fetch(endpoint, {
+  const response = await requestModelFetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(settings.customApiKey.trim() ? { Authorization: `Bearer ${settings.customApiKey.trim()}` } : {}),
     },
     body: JSON.stringify({
       ...requestParams,
@@ -281,7 +271,7 @@ async function requestOpenAICompatibleResponse(
       stream: false,
     }),
     signal: signal ?? undefined,
-  });
+  }, settings.customApiKey);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -320,10 +310,9 @@ async function* requestOpenAICompatibleResponseStream(
   const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   const timeout = setTimeout(() => controller.abort(new Error('流式请求超时，请重试。')), 300_000);
   try {
-    const response = await fetch(normalizeOpenAICompatibleUrl(settings.customApiUrl), {
+    const response = await requestModelFetch(normalizeOpenAICompatibleUrl(settings.customApiUrl), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
-        ...(settings.customApiKey.trim() ? { Authorization: `Bearer ${settings.customApiKey.trim()}` } : {}) },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ ...resolveCognitionRequestParams(settings, maxTokensOverride),
         model: settings.customModelName.trim(), stream: true,
         messages: [{ role: 'system', content: systemInstruction },
@@ -331,7 +320,7 @@ async function* requestOpenAICompatibleResponseStream(
           { role: 'user', content: buildOpenAICompatibleMessageContent(userInput, userAttachments, true) }],
       }),
       signal: combined,
-    });
+    }, settings.customApiKey);
     yield* readOpenAITextStream(response);
   } finally { clearTimeout(timeout); controller.abort(); }
 }
@@ -346,7 +335,7 @@ async function requestGeminiResponse(
   signal?: AbortSignal | null,
   maxTokensOverride?: number,
 ) {
-  const aiClient = await getAiClient();
+  const aiClient = await getGeminiClient(settings.geminiApiKey);
   const config: Record<string, unknown> = {
     systemInstruction,
   };
@@ -391,7 +380,7 @@ async function* requestGeminiResponseStream(
   signal?: AbortSignal,
   maxTokensOverride?: number,
 ) {
-  const aiClient = await getAiClient();
+  const aiClient = await getGeminiClient(settings.geminiApiKey);
   const config: Record<string, unknown> = {
     systemInstruction,
   };

@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   platform: process.platform,
   packaged: process.env.DESKTOP_PET_LOCAL_TEST === '1' || process.env.NODE_ENV === 'production',
   desktopMode: true,
+  openModelRequest: (request) => ipcRenderer.invoke('desktop-pet:model-open', request),
+  readModelRequest: (id) => ipcRenderer.invoke('desktop-pet:model-read', id),
+  cancelModelRequest: (id) => ipcRenderer.invoke('desktop-pet:model-cancel', id),
   getPathForFile: (file) => {
     try {
       return webUtils.getPathForFile(file) || '';

@@ -90,12 +90,21 @@ function writeToLocalStorage(config: PetConfig) {
   }
 
   try {
-    window.localStorage.setItem(PERSISTED_PET_CONFIG_KEY, JSON.stringify(config));
+    const settings = { ...config.settings };
+    for (const field of Object.keys(settings)) {
+      if (field.endsWith('ApiKey')) settings[field] = '';
+    }
+    window.localStorage.setItem(PERSISTED_PET_CONFIG_KEY, JSON.stringify({ ...config, settings }));
     return true;
   } catch (error) {
     pushFrontendRuntimeError('config', 'localStorage persisted config save failed', error);
     return false;
   }
+}
+
+function clearLegacyLocalStorageCredentials() {
+  const legacy = loadFromLocalStorage();
+  if (legacy) writeToLocalStorage(legacy.config);
 }
 
 function loadFromDesktopPersistedConfigStore(): DesktopPersistedConfigLoadResult {
@@ -141,6 +150,7 @@ export function loadPersistedPetConfig() {
       desktopLoadResult.source ?? 'desktop-file',
     );
     if (normalizedConfig) {
+      clearLegacyLocalStorageCredentials();
       if (desktopLoadResult.recoveredFromBackup) {
         pushFrontendRuntimeLog('config', 'desktop persisted config restored from backup', {
           source: desktopLoadResult.source ?? 'backup-file',
@@ -158,6 +168,7 @@ export function loadPersistedPetConfig() {
 
   const localStorageResult = loadFromLocalStorage();
   if (localStorageResult?.config) {
+    if (!canUseDesktopPersistedConfigSaveStore()) writeToLocalStorage(localStorageResult.config);
     const desktopStoreGenuinelyEmpty = desktopLoadResult == null
       || (
         desktopLoadResult.primaryError === 'missing-file'
@@ -181,6 +192,7 @@ export function loadPersistedPetConfig() {
     ) {
       void saveToDesktopPersistedConfigStore(buildPersistedPetConfig(localStorageResult.config))
         .then((migrationResult) => {
+          if (migrationResult?.ok) clearLegacyLocalStorageCredentials();
           pushFrontendRuntimeLog('config', 'migrated localStorage config into desktop persisted store', {
             ok: Boolean(migrationResult?.ok),
             bytes: migrationResult?.bytes ?? 0,
@@ -214,6 +226,7 @@ export async function persistPetConfig(config: PetConfig) {
   if (canUseDesktopPersistedConfigSaveStore()) {
     const desktopSaveResult = await saveToDesktopPersistedConfigStore(persistedConfig);
     if (desktopSaveResult?.ok) {
+      clearLegacyLocalStorageCredentials();
       return true;
     }
 

@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
 function resolveAppVersion() {
   if (process.env.npm_package_version?.trim()) {
@@ -85,8 +85,7 @@ function resolveVendorChunk(id: string) {
   return undefined;
 }
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   const appVersion = resolveAppVersion();
 
   return {
@@ -94,7 +93,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
       preserveSymlinks: true,

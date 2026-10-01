@@ -1,4 +1,5 @@
 import { RefreshCw } from 'lucide-react';
+import { requestModelFetch } from '../../services/modelTransport';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -51,14 +52,12 @@ export function SettingsOpenAIModelPicker({
     setStatus('loading');
     setMessage('正在读取模型列表...');
     try {
-      const response = await fetch(modelsUrl, {
+      const response = await requestModelFetch(modelsUrl, {
+        method: 'GET',
         headers: {
           Accept: 'application/json',
-          ...(apiKey.trim()
-            ? { Authorization: `Bearer ${apiKey.trim()}` }
-            : {}),
         },
-      });
+      }, apiKey, apiKey === 'desktop-pet-credential:visionCustomApiKey' ? 'visionCustomApiKey' : 'customApiKey');
       if (!response.ok) {
         throw new Error(`读取失败：${response.status} ${response.statusText}`);
       }

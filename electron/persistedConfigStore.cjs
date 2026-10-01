@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { MODEL_ASSET_DIRECTORY_NAME } = require('./modelAssetRoot.cjs');
+const { createConfigCredentialCodec, hasPlaintextCredentials, modelCredentialReferences } = require('./configCredentials.cjs');
 
 const PRIMARY_FILE_NAME = 'desktop-pet-config.v1.json';
 const BACKUP_FILE_NAME = 'desktop-pet-config.v1.backup.json';
@@ -101,9 +102,10 @@ function readPersistedConfigFile(filePath) {
 function writeTextFileSafely(targetPath, text) {
   const tempPath = `${targetPath}.${process.pid}.tmp`;
   ensureDirectory(path.dirname(targetPath));
-  fs.writeFileSync(tempPath, text, 'utf8');
-  fs.copyFileSync(tempPath, targetPath);
-  fs.rmSync(tempPath, { force: true });
+  try {
+    fs.writeFileSync(tempPath, text, 'utf8');
+    fs.renameSync(tempPath, targetPath);
+  } finally { fs.rmSync(tempPath, { force: true }); }
 }
 
 function writeBufferFileSafely(targetPath, buffer) {
@@ -319,7 +321,9 @@ function createPersistedConfigStore({
   assetRootPath,
   userDataPath,
   log,
+  safeStorage,
 }) {
+  const credentials = createConfigCredentialCodec(safeStorage);
   const storeDir = userDataPath;
   const primaryPath = path.join(storeDir, PRIMARY_FILE_NAME);
   const backupPath = path.join(storeDir, BACKUP_FILE_NAME);
@@ -368,9 +372,35 @@ function createPersistedConfigStore({
     };
   }
 
-  function load() {
-    const primaryResult = readPersistedConfigFile(primaryPath);
+  function readConfig(filePath) {
+    const result = readPersistedConfigFile(filePath);
+    if (!result.ok) return result;
+    try { return { ...result, config: credentials.decode(result.config) }; }
+    catch (error) { return { ok: false, credentialReadFailed: true, error: normalizeErrorMessage(error) }; }
+  }
+
+  function load(options = {}) {
+    try {
+      const result = loadInternal();
+      if (result.ok && !options.includeModelSecrets) result.config = modelCredentialReferences(result.config);
+      return result;
+    } catch (error) {
+      return { ok: false, source: 'credential-error', error: normalizeErrorMessage(error), primaryPath, backupPath };
+    }
+  }
+
+  function migrateCredentials(config) {
+    const files = [primaryPath, backupPath].map(readPersistedConfigFile);
+    if (files.some((result) => result.ok && hasPlaintextCredentials(result.config))) {
+      const result = save(config);
+      if (!result.ok) throw new Error(result.error);
+    }
+  }
+
+  function loadInternal() {
+    const primaryResult = readConfig(primaryPath);
     if (primaryResult.ok) {
+      migrateCredentials(primaryResult.config);
       const migration = migrateLoadedConfig(primaryResult.config, 'primary-file');
       logMessage('persisted config loaded', {
         source: 'primary-file',
@@ -392,13 +422,13 @@ function createPersistedConfigStore({
       };
     }
 
-    const backupResult = readPersistedConfigFile(backupPath);
+    const backupResult = readConfig(backupPath);
     if (backupResult.ok) {
       let repairedPrimary = false;
       let repairError = null;
 
       try {
-        const backupText = fs.readFileSync(backupPath, 'utf8');
+        const backupText = JSON.stringify(buildPersistedPayload(credentials.encode(backupResult.config)), null, 2);
         writeTextFileSafely(primaryPath, backupText);
         repairedPrimary = true;
       } catch (error) {
@@ -416,6 +446,7 @@ function createPersistedConfigStore({
       });
 
       const migration = migrateLoadedConfig(backupResult.config, 'backup-file');
+      migrateCredentials(migration.config);
 
       return {
         ok: true,
@@ -461,16 +492,26 @@ function createPersistedConfigStore({
       const migration = externalizeConfigImageDataUrls(config, assetDir, sequenceAssetDir);
 
       let backupMode = 'existing-backup-retained';
-      const currentPrimaryResult = readPersistedConfigFile(primaryPath);
-      const currentBackupResult = readPersistedConfigFile(backupPath);
+      const currentPrimaryResult = readConfig(primaryPath);
+      const currentBackupResult = readConfig(backupPath);
+      if (!currentPrimaryResult.ok && !currentBackupResult.ok
+        && (currentPrimaryResult.credentialReadFailed || currentBackupResult.credentialReadFailed)) {
+        throw new Error('credential-decryption-failed');
+      }
+      const protectedConfig = credentials.encode(migration.config,
+        currentPrimaryResult.ok ? currentPrimaryResult.config : currentBackupResult.config);
+      const serializedPayload = JSON.stringify(buildPersistedPayload(protectedConfig), null, 2);
       if (currentPrimaryResult.ok) {
-        const currentPrimaryText = fs.readFileSync(primaryPath, 'utf8');
+        const currentPrimaryText = JSON.stringify(buildPersistedPayload(credentials.encode(currentPrimaryResult.config)), null, 2);
         writeTextFileSafely(backupPath, currentPrimaryText);
         backupMode = 'previous-primary';
       }
 
-      const serializedPayload = JSON.stringify(buildPersistedPayload(migration.config), null, 2);
       writeTextFileSafely(primaryPath, serializedPayload);
+
+      if (!currentPrimaryResult.ok && currentBackupResult.ok) {
+        writeTextFileSafely(backupPath, JSON.stringify(buildPersistedPayload(credentials.encode(currentBackupResult.config)), null, 2));
+      }
 
       if (!currentPrimaryResult.ok && !currentBackupResult.ok) {
         writeTextFileSafely(backupPath, serializedPayload);
