@@ -1050,6 +1050,9 @@ interface Window {
     getPathForFile?: (file: File) => string;
     loadPersistedConfigSync?: () => DesktopPetPersistedConfigLoadResultLike;
     savePersistedConfig?: (config: unknown) => Promise<DesktopPetPersistedConfigSaveResultLike>;
+    openModelRequest?: (request: import('./services/modelTransport').DesktopModelRequest & { id: string }) => Promise<{ status: number; contentType: string }>;
+    readModelRequest?: (id: string) => Promise<{ done: boolean; value?: Uint8Array }>;
+    cancelModelRequest?: (id: string) => Promise<void>;
     probeDeepSeekHarness?: (request?: { pythonPath?: string }) => Promise<{ available: boolean; error?: string | null; pythonVersion?: string | null; sdkVersion?: string | null }>;
     checkDeepSeekHarnessUpdate?: (request?: { pythonPath?: string }) => Promise<{ checked: boolean; error?: string | null; latestVersion?: string | null }>;
     prepareDeepSeekHarnessProfile?: (request?: { dshHome?: string }) => Promise<{ error?: string; ok: boolean; profilePath?: string }>;

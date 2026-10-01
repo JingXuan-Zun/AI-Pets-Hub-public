@@ -4,6 +4,7 @@
   dialog,
   ipcMain,
   session,
+  safeStorage,
   screen,
   shell,
 } = require('electron');
@@ -329,6 +330,7 @@ installPackagedQuitTrace({
   log: (message, details) => runtimeLogger.log('backend', 'main-process', message, details),
 });
 const persistedConfigStore = createPersistedConfigStore({
+  safeStorage,
   assetRootPath: importedModelAssetRoot,
   userDataPath: app.getPath('userData'),
   log: (message, details) => runtimeLogger.log('backend', 'config', message, details),

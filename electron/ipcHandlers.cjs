@@ -1,5 +1,6 @@
 ﻿const { summarizeRuntimeValue } = require('./runtimeLogger.cjs');
 const { registerMcpHistoryIpcHandlers } = require('./mcpHistoryIpcHandlers.cjs');
+const { registerModelRequestIpc } = require('./modelRequestIpc.cjs');
 
 const { BrowserWindow, dialog } = require('electron');
 
@@ -117,6 +118,7 @@ function registerDesktopPetIpcHandlers({
   windowManager,
 }) {
   void app;
+  registerModelRequestIpc({ ipcMain, persistedConfigStore, app });
   let persistedConfigSaveQueue = Promise.resolve();
   registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:deepseek-harness-probe', (_event, request) => (
     deepseekHarnessRuntimeService?.probe(request ?? {}) ?? { available: false, error: 'service-unavailable', pythonVersion: null, sdkVersion: null }
@@ -1300,6 +1302,7 @@ function registerDesktopPetIpcHandlers({
     );
     return saveTask;
   }, {
+    logArgs: false,
     summarizeResult: (result) => ({
       ok: Boolean(result?.ok),
       backupMode: result?.backupMode ?? 'unknown',

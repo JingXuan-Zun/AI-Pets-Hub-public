@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { requestModelFetch } from '../../services/modelTransport';
 import { Brain, FileText, ImageIcon, Plug, Settings2, Trash2, Wrench } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
@@ -160,12 +161,11 @@ export function SettingsModelProviderTools({
     try {
       const params = resolveModelRequestParams(settings);
       const apiKey = customApiDraft.apiKey.trim() || settings.customApiKey.trim();
-      const response = await fetch(normalizeOpenAICompatibleUrl(apiUrl), {
+      const response = await requestModelFetch(normalizeOpenAICompatibleUrl(apiUrl), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
         body: JSON.stringify({
           ...params,
@@ -173,7 +173,7 @@ export function SettingsModelProviderTools({
           messages: [{ role: 'user', content: 'Reply PONG only.' }],
           stream: false,
         }),
-      });
+      }, apiKey);
 
       updateTestStatus(
         response.ok
