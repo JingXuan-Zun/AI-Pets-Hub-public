@@ -11,6 +11,8 @@ Excluded content:
 - bundled Live2D, VRM, PMX, FBX, GLTF, animation-frame, motion, and audio assets
 - local model runtimes, speech-model data, Python environments, dependencies, and build output
 - internal project notes, diagnostics, temporary files, and branch backups
+- smoke scripts that check those internal notes (`PROJECT_AGENT_V*` docs), which cannot run
+  without them
 
 The source code for model, animation, voice, and persona features remains so contributors can
 use their own locally licensed assets and locally configured providers. Empty placeholder folders
