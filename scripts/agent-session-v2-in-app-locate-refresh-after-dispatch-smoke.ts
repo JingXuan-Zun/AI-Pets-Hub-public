@@ -106,10 +106,28 @@ const continuation: AgentSessionV2ContinuationState = {
   userGoal: '打开 WeGame 里的英雄联盟',
 };
 
-let modelCalled = false;
-const modelCaller: AgentSessionV2ModelCaller = async () => {
-  modelCalled = true;
-  assert.fail('Runtime should refresh in-app locate after approved input dispatch before asking the model again.');
+let modelCallCount = 0;
+const modelCaller: AgentSessionV2ModelCaller = async ({ userInput }) => {
+  modelCallCount += 1;
+  // The Runtime must refresh the in-app locate (plus its focused refinement)
+  // after the approved dispatch before the model plans the next click.
+  assert.equal(locateCallCount, 2, 'Runtime should refresh in-app locate after approved input dispatch before asking the model again.');
+  assert.match(userInput, /in-app target locate result:/u);
+  assert.match(userInput, /elementCenter=1200,700/u);
+  return JSON.stringify({
+    action: 'tool_call',
+    args: {
+      stepsJson: JSON.stringify([
+        {
+          args: { action: 'click', x: 1200, y: 700 },
+          reason: 'Click the located League of Legends start button.',
+          tool: 'execute_desktop_input',
+        },
+      ]),
+    },
+    reason: 'The refreshed in-app locate found the start button; request approval for the click.',
+    tool: 'execute_desktop_sequence',
+  });
 };
 
 let locateCallCount = 0;
@@ -171,11 +189,11 @@ const result = await runAgentProductionSession({
   userGoal: '打开 WeGame 里的英雄联盟',
 });
 
-assert.equal(modelCalled, false);
-assert.equal(locateCallCount, 1);
+assert.equal(modelCallCount, 1);
+assert.equal(locateCallCount, 2);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1200/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval after in-app target locate/u);
+assert.match(result.continuation.historyLines.join('\n'), /in-app target locate result:[\s\S]*selected approval-required tool:/u);
 
 console.log('agent session v2 in-app locate refresh after dispatch smoke ok');

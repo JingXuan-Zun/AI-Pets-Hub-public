@@ -179,6 +179,7 @@ function closeMcpProcess(state, reason = 'close') {
   if (process.platform === 'win32' && state.child.pid) {
     try {
       execFileSync('taskkill', ['/pid', String(state.child.pid), '/T', '/F'], { stdio: 'ignore' });
+      return true;
     } catch {
       // Fall through to the direct kill below.
     }

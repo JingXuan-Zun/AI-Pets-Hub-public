@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
-import { copyFile, cp, lstat, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, cp, lstat, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { extractFile, listPackage } from '@electron/asar';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import {
@@ -22,6 +23,7 @@ const localElectronDist = path.join(projectRoot, 'node_modules', 'electron', 'di
 const freshRendererDist = path.join(releaseRoot, '.fresh-renderer-dist');
 const packagingInputRoot = path.join(releaseRoot, '.fresh-package-input');
 const packagingAppDir = path.join(packagingInputRoot, 'app');
+const packagingConfigPath = path.join(packagingInputRoot, 'electron-builder.json');
 const windowsIconPath = path.join(projectRoot, 'build', 'icon.ico');
 const windowsIconSignaturePath = path.join(projectRoot, 'build', 'icon.png');
 const execFileAsync = promisify(execFile);
@@ -92,6 +94,10 @@ async function prepareFreshPackagingInput() {
   await cp(path.join(projectRoot, 'resources', 'system-expressions'), path.join(packagingAppDir, 'resources', 'system-expressions'), { recursive: true });
   await copyFile(path.join(projectRoot, 'package.json'), path.join(packagingAppDir, 'package.json'));
   const packageInfo = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'));
+  // The builder concatenates package.json build.files with API overrides. Load
+  // an explicit config without those root patterns to avoid stale dist files.
+  const { files: ignoredRootFiles, ...baseBuildConfig } = packageInfo.build;
+  await writeFile(packagingConfigPath, JSON.stringify(baseBuildConfig, null, 2), 'utf8');
   await writeFile(
     path.join(packagingAppDir, 'build-info.json'),
     `${JSON.stringify({ buildId: buildStamp, builtAt: new Date().toISOString(), version: packageInfo.version ?? '0.0.1' }, null, 2)}\n`,
@@ -122,6 +128,7 @@ async function copyFileWithRetry(sourcePath, targetPath, attempts = 5) {
 }
 
 async function copyFreshExtraResources(context) {
+  await verifyFreshArchive(context.appOutDir);
   const resourcesPath = path.join(context.appOutDir, 'resources');
   const entries = [
     { from: windowsIconPath, to: 'icon.ico' },
@@ -131,6 +138,39 @@ async function copyFreshExtraResources(context) {
   for (const entry of entries) {
     await copyFileWithRetry(entry.from, path.join(resourcesPath, entry.to));
   }
+}
+
+async function verifyFreshArchive(appOutDir) {
+  const archivePath = path.join(appOutDir, 'resources', 'app.asar');
+  const expectedFiles = new Set();
+  async function verifyDirectory(relativeDir) {
+    for (const entry of await readdir(path.join(packagingAppDir, relativeDir), { withFileTypes: true })) {
+      const relativePath = path.join(relativeDir, entry.name);
+      if (entry.isDirectory()) {
+        await verifyDirectory(relativePath);
+      } else {
+        expectedFiles.add(relativePath);
+        const expected = await readFile(path.join(packagingAppDir, relativePath));
+        if (!extractFile(archivePath, relativePath).equals(expected)) {
+          throw new Error(`Fresh package content mismatch: ${relativePath}`);
+        }
+      }
+    }
+  }
+  for (const directory of ['dist', 'electron', 'resources']) {
+    await verifyDirectory(directory);
+  }
+  const buildInfoPath = 'build-info.json';
+  if (!extractFile(archivePath, buildInfoPath).equals(await readFile(path.join(packagingAppDir, buildInfoPath)))) {
+    throw new Error('Fresh package build information mismatch.');
+  }
+  for (const entry of listPackage(archivePath)) {
+    const relativePath = entry.replace(/^[\\/]+/u, '');
+    if (relativePath.startsWith(`dist${path.sep}`) && path.extname(relativePath) && !expectedFiles.has(relativePath)) {
+      throw new Error(`Unexpected renderer file in fresh package: ${relativePath}`);
+    }
+  }
+  console.log(`Verified fresh archive: ${expectedFiles.size} files and build information`);
 }
 
 function projectRelative(targetPath) {
@@ -260,17 +300,18 @@ await prepareFreshPackagingInput();
 
 await buildElectronApp({
   config: {
+    extends: packagingConfigPath,
     afterPack: copyFreshExtraResources,
     directories: {
       output: outputDir,
     },
     electronDist: localElectronDist,
     files: [
-      { from: projectRelative(path.join(packagingAppDir, 'dist')), to: 'dist' },
-      { from: projectRelative(path.join(packagingAppDir, 'electron')), to: 'electron' },
-      { from: projectRelative(path.join(packagingAppDir, 'resources')), to: 'resources' },
-      { from: projectRelative(path.join(packagingAppDir, 'package.json')), to: 'package.json' },
-      { from: projectRelative(path.join(packagingAppDir, 'build-info.json')), to: 'build-info.json' },
+      {
+        from: projectRelative(packagingAppDir),
+        to: '.',
+        filter: ['dist/**/*', 'electron/**/*', 'resources/**/*', 'package.json', 'build-info.json'],
+      },
     ],
     forceCodeSigning: false,
     win: {

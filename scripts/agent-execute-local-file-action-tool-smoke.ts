@@ -70,14 +70,12 @@ const {
   runtimeSource,
   localFileToolsSource,
   sessionSource,
-  coreSource,
 } = readProjectSources({
   registrySource: 'src/agent/agentToolRegistry.ts',
   orchestratorSource: 'src/agent/agentOrchestrator.ts',
   runtimeSource: 'src/agent/agentRuntimeExecutor.ts',
   localFileToolsSource: 'src/agent/agentRuntimeLocalFileTools.ts',
   sessionSource: 'src/agent/agentProductionSessionImplementation.ts',
-  coreSource: 'src/agent/agentCore.ts',
 });
 
 assert.match(registrySource, /name: 'execute_local_file_action'/u);
@@ -86,7 +84,6 @@ assert.match(runtimeSource, /execute_local_file_action: \(\{ toolCall \}\) => ex
 assert.match(localFileToolsSource, /export async function executeLocalFileAction/u);
 assert.match(localFileToolsSource, /Local file action:/u);
 assert.match(sessionSource, /execute_local_file_action/u);
-assert.match(coreSource, /toolName === 'execute_local_file_action'/u);
 
 const settings = {} as PetConfig['settings'];
 let modelCallCount = 0;

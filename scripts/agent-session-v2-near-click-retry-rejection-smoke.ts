@@ -71,13 +71,16 @@ const result = await runAgentProductionSession({
     modelCalls += 1;
     return JSON.stringify({
       action: 'tool_call',
+      // Same primitive a few pixels from the unchanged click: a near-repeat
+      // that must be rejected. (Changing the primitive, e.g. to double_click,
+      // is an allowed escalation.)
       args: {
-        action: 'double_click',
+        action: 'click',
         coordinateSpace: 'native-screen',
         x: 1206,
         y: 820,
       },
-      reason: 'Try double-clicking the same visible start button.',
+      reason: 'Try clicking the same visible start button again.',
       tool: 'execute_desktop_input',
     });
   },

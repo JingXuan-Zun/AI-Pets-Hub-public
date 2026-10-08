@@ -1,8 +1,257 @@
+import { readChatMessageSource } from './chatMessageSource.mjs';
+import { readModuleProjectFile, readModuleProjectFunction } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
+import ts from 'typescript';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertProductionRuntimeCancellation } from './agentRuntimeCancellationGuard.mjs';
 import { auditAgentRuntimeLegacyImports } from './agentRuntimeLegacyImportAuditCore.mjs';
+
+const readOnlyFileToolsEntry = readFileSync(join(process.cwd(), 'src/agent/agentRuntimeLocalFileTools.ts'), 'utf8');
+const readOnlyFileResultsSource = readFileSync(join(process.cwd(), 'src/agent/localFiles/readOnlyFileResults.ts'), 'utf8');
+assert.match(readOnlyFileToolsEntry, /from '\.\/localFiles\/readOnlyFileResults'/u);
+assert.match(readOnlyFileToolsEntry, /return createLocalPathInfoResult\(localPath, result\)/u);
+assert.match(readOnlyFileToolsEntry, /return createLocalDirectoryListResult\(localPath, result\)/u);
+assert.match(readOnlyFileToolsEntry, /return createLocalFileSearchResult\(localPath, query, result\)/u);
+assert.match(readOnlyFileToolsEntry, /return createLocalTextReadResult\(localPath, result\)/u);
+assert.doesNotMatch(readOnlyFileResultsSource, /desktopPetShellRuntime|appendAgentRuntimeToolEvidence|buildAgentPermissionRoute|await /u);
+const localAppProjectPlansSource = readFileSync(join(process.cwd(), 'src/agent/planning/agentLocalAppProjectPlans.ts'), 'utf8');
+const localAppProjectPlansEntry = readFileSync(join(process.cwd(), 'src/agent/planning/agentResourcePlans.ts'), 'utf8');
+assert.match(localAppProjectPlansEntry, /from '\.\/agentLocalAppProjectPlans'/u);
+assert.match(localAppProjectPlansEntry, /return buildLocalAppProjectToolPlan\(command, toolName, targetDescription, explicitGoal\)/u);
+assert.match(localAppProjectPlansSource, /case 'run_local_project_action':[\s\S]*'inspect-local-project'[\s\S]*'run-local-project-action'/u);
+assert.match(localAppProjectPlansSource, /from '\.\/agentPlanShared'/u);
+assert.doesNotMatch(localAppProjectPlansSource, /desktopPetShellRuntime|appendAgentRuntimeToolEvidence|await /u);
+const windowUiInspectionEntry = readFileSync(join(process.cwd(), 'src/agent/desktopObservation/windowUiInspection.ts'), 'utf8');
+const windowUiInspectionEvidenceSource = readFileSync(join(process.cwd(), 'src/agent/desktopObservation/windowUiInspectionEvidence.ts'), 'utf8');
+assert.match(windowUiInspectionEntry, /from '\.\/windowUiInspectionEvidence'/u);
+assert.match(windowUiInspectionEntry, /const structuredEvidence = createWindowUiStructuredEvidence\(result\)/u);
+assert.match(windowUiInspectionEntry, /structuredEvidence \?\? createFailedWindowUiInspectionStructuredEvidence\(result \?\? \{\}\)/u);
+assert.match(windowUiInspectionEvidenceSource, /export function createWindowUiStructuredEvidence/u);
+assert.doesNotMatch(windowUiInspectionEvidenceSource, /desktopPetShellRuntime|buildAgentPermissionRoute|appendAgentRuntimeToolEvidence|await /u);
+const targetContextEntry = readFileSync(join(process.cwd(), 'src/agent/runtime/agentTargetResolutionContext.ts'), 'utf8');
+const targetWindowHintsSource = readFileSync(join(process.cwd(), 'src/agent/runtime/targetResolution/windowEvidenceAndHints.ts'), 'utf8');
+assert.match(targetContextEntry, /from '\.\/targetResolution\/windowEvidenceAndHints'/u);
+assert.match(targetContextEntry, /findLatestOuterAppWindowEvidenceEntry\(options.toolResults, requestText\)/u);
+assert.match(targetContextEntry, /resolveAgentTargetResolutionHints\(options.sourceText, options.userGoal\)/u);
+assert.match(targetWindowHintsSource, /export function resolveAgentObservedWindowTargetEvidence/u);
+assert.doesNotMatch(targetWindowHintsSource, /desktopPetShellRuntime|createAgentRequestedActionCoverage|appendAgentRuntimeToolEvidence|await /u);
+const taskEvidenceEntry = readFileSync(join(process.cwd(), 'src/agent/runtime/agentRuntimeTaskEvidence.ts'), 'utf8');
+const surfaceIdentitySource = readFileSync(join(process.cwd(), 'src/agent/runtime/taskEvidence/operationSurfaceIdentity.ts'), 'utf8');
+assert.match(taskEvidenceEntry, /from '\.\/taskEvidence\/operationSurfaceIdentity'/u);
+assert.match(taskEvidenceEntry, /resolveAgentRuntimeOperationSurface\(\{ entry, now: options.now, previous: surface \}\)/u);
+assert.match(taskEvidenceEntry, /const resolvedTargetBinding = resolveTargetBinding\(/u);
+assert.match(surfaceIdentitySource, /export function resolveAgentRuntimeOperationSurface/u);
+assert.doesNotMatch(surfaceIdentitySource, /desktopPetShellRuntime|appendAgentRuntimeToolEvidence|completedActions|evidenceById|await /u);
+const desktopObservationPlansEntry = readFileSync(join(process.cwd(), 'src/agent/planning/agentDesktopObservationPlans.ts'), 'utf8');
+const executeDesktopObservationPlanSource = readFileSync(join(process.cwd(), 'src/agent/planning/executeDesktopObservationPlan.ts'), 'utf8');
+assert.match(desktopObservationPlansEntry, /from '\.\/executeDesktopObservationPlan'/u);
+assert.match(desktopObservationPlansEntry, /return buildExecuteDesktopObservationPlan\(command\)/u);
+assert.match(executeDesktopObservationPlanSource, /export function buildExecuteDesktopObservationPlan/u);
+assert.match(executeDesktopObservationPlanSource, /from '\.\/agentPlanShared'/u);
+assert.doesNotMatch(executeDesktopObservationPlanSource, /desktopPetShellRuntime|executeDesktopObservation\(|appendAgentRuntimeToolEvidence|await /u);
+const desktopActionPlansEntry = readFileSync(join(process.cwd(), 'src/agent/planning/agentDesktopActionPlans.ts'), 'utf8');
+const executeDesktopActionPlanSource = readFileSync(join(process.cwd(), 'src/agent/planning/executeDesktopActionPlan.ts'), 'utf8');
+assert.match(desktopActionPlansEntry, /from '\.\/executeDesktopActionPlan'/u);
+assert.match(desktopActionPlansEntry, /return buildExecuteDesktopActionPlan\(command\)/u);
+assert.match(executeDesktopActionPlanSource, /export function buildExecuteDesktopActionPlan/u);
+assert.match(executeDesktopActionPlanSource, /from '\.\/agentPlanShared'/u);
+assert.doesNotMatch(executeDesktopActionPlanSource, /desktopPetShellRuntime|executeDesktopAction\(|appendAgentRuntimeToolEvidence|await /u);
+const taskRuntimeEntry = readFileSync(join(process.cwd(), 'src/agent/runtime/agentTaskRuntime.ts'), 'utf8');
+const taskTransitionPolicySource = readFileSync(join(process.cwd(), 'src/agent/runtime/taskRuntime/transitionPolicy.ts'), 'utf8');
+assert.match(taskRuntimeEntry, /from '\.\/taskRuntime\/transitionPolicy'/u);
+assert.match(taskRuntimeEntry, /validateAgentTaskRuntimeLifecycleTransition\(/u);
+assert.match(taskRuntimeEntry, /const selection = selectAgentTaskRuntimeNextSubgoal\(state\)/u);
+assert.match(taskTransitionPolicySource, /export function validateAgentTaskRuntimeLifecycleTransition/u);
+assert.doesNotMatch(taskTransitionPolicySource, /desktopPetShellRuntime|buildAgentPermissionRoute|appendAgentRuntimeToolEvidence|upsertAgentRuntimeDiagnostic|await /u);
+const sequenceExecutionEntry = readFileSync(join(process.cwd(), 'src/agent/desktopSequence/sequenceExecution.ts'), 'utf8');
+const sequenceOutcomeSource = readFileSync(join(process.cwd(), 'src/agent/desktopSequence/sequenceOutcome.ts'), 'utf8');
+assert.match(sequenceExecutionEntry, /from '\.\/sequenceOutcome'/u);
+assert.match(sequenceExecutionEntry, /return createAgentRuntimeDesktopSequenceOutcome\(/u);
+assert.match(sequenceExecutionEntry, /await executeDesktopSequencePostVerification\(/u);
+assert.match(sequenceOutcomeSource, /hasChangedStepBeforeFailure[\s\S]*failed && !hasChangedStepBeforeFailure/u);
+assert.match(sequenceOutcomeSource, /hasUnverifiedStep[\s\S]*'unverified'/u);
+assert.doesNotMatch(sequenceOutcomeSource, /desktopPetShellRuntime|buildAgentPermissionRoute|await |executeDesktopAction\(|executeDesktopInput\(/u);
+const resultEvidenceEntry = readFileSync(join(process.cwd(), 'src/agent/resultAssessment/resultEvidenceAssessment.ts'), 'utf8');
+const readOnlyCompletionSource = readFileSync(join(process.cwd(), 'src/agent/resultAssessment/readOnlyObservationCompletion.ts'), 'utf8');
+assert.match(resultEvidenceEntry, /from '\.\/readOnlyObservationCompletion'/u);
+assert.match(resultEvidenceEntry, /!hasAgentReadOnlyObservationActionCompletionEvidence\(result\)[\s\S]*return 'unverified'/u);
+assert.match(resultEvidenceEntry, /createAgentReadOnlyActionCompletionMissingEvidence\(command, result\)/u);
+assert.match(readOnlyCompletionSource, /export function hasAgentReadOnlyObservationActionCompletionEvidence/u);
+assert.match(readOnlyCompletionSource, /missing:action-completion-evidence/u);
+assert.doesNotMatch(readOnlyCompletionSource, /desktopPetShellRuntime|buildAgentPermissionRoute|appendAgentRuntimeToolEvidence|await /u);
+const recoveryBudgetEntry = readFileSync(join(process.cwd(), 'src/agent/capabilities/recoveryObservation/recoveryObservationBudget.ts'), 'utf8');
+const recoveryProgressSource = readFileSync(join(process.cwd(), 'src/agent/capabilities/recoveryObservation/recoveryProgressEvidence.ts'), 'utf8');
+assert.match(recoveryBudgetEntry, /from '\.\/recoveryProgressEvidence'/u);
+assert.match(recoveryBudgetEntry, /const extraWaits = hasAgentDesktopAutoRecoveryAdvancingProgressEvidence\(/u);
+assert.match(recoveryBudgetEntry, /return previousWaits < maxWaits/u);
+assert.match(recoveryProgressSource, /export function hasAgentDesktopAutoRecoveryAdvancingProgressEvidence/u);
+assert.doesNotMatch(recoveryProgressSource, /desktopPetShellRuntime|buildAgentPermissionRoute|AGENT_DESKTOP_AUTO_RECOVERY_PROGRESS_EXTRA_WAITS|executeObservation|await /u);
+const windowAppObservationEntry = readFileSync(join(process.cwd(), 'src/agent/desktopObservation/windowAppObservation.ts'), 'utf8');
+const windowAppEvidenceSource = readFileSync(join(process.cwd(), 'src/agent/desktopObservation/windowAppEvidence.ts'), 'utf8');
+assert.match(windowAppObservationEntry, /from '\.\/windowAppEvidence'/u);
+assert.match(windowAppObservationEntry, /attachWindowObservationFreshness\(createObserveWindowsAndAppsStructuredEvidence\(/u);
+assert.match(windowAppObservationEntry, /lastGoodObserveWindowsAndAppsSnapshot = result/u);
+assert.match(windowAppObservationEntry, /observationFallback \? 'stale-fallback' : 'live'/u);
+assert.match(windowAppEvidenceSource, /export function createObserveWindowsAndAppsStructuredEvidence/u);
+assert.doesNotMatch(windowAppEvidenceSource, /desktopPetShellRuntime|buildAgentPermissionRoute|lastGoodObserveWindowsAndAppsSnapshot|observationGeneration|await /u);
+const chatContextEntry = readFileSync(join(process.cwd(), 'src/agent/agentChatContext.ts'), 'utf8');
+const chatWorkingMemorySource = readFileSync(join(process.cwd(), 'src/agent/chatContext/workingMemory.ts'), 'utf8');
+assert.match(chatContextEntry, /createAgentWorkingMemorySnapshot,[\s\S]*from '\.\/chatContext\/workingMemory'/u);
+assert.match(chatContextEntry, /export function createAgentContextFromResult/u);
+assert.match(chatWorkingMemorySource, /export function createAgentWorkingMemorySnapshot/u);
+assert.match(chatWorkingMemorySource, /seenIds\.has\(entryId\)/u);
+assert.doesNotMatch(chatWorkingMemorySource, /desktopPetShellRuntime|buildAgentPermissionRoute|appendAgentRuntimeToolEvidence|await /u);
+const windowUiInteractionEntry = readFileSync(join(process.cwd(), 'src/agent/desktopTools/windowUiInteraction.ts'), 'utf8');
+const windowUiInteractionEvidence = readFileSync(join(process.cwd(), 'src/agent/desktopTools/windowUiInteractionEvidence.ts'), 'utf8');
+assert.match(windowUiInteractionEntry, /from '\.\/windowUiInteractionEvidence'/u);
+assert.match(windowUiInteractionEntry, /return createWindowUiMissingValueResult\(/u);
+assert.match(windowUiInteractionEntry, /createWindowUiInteractionStructuredEvidence\(result/u);
+assert.match(windowUiInteractionEvidence, /export function createWindowUiInteractionStructuredEvidence/u);
+assert.match(windowUiInteractionEvidence, /export function createWindowUiMissingValueResult/u);
+assert.doesNotMatch(windowUiInteractionEvidence, /desktopPetShellRuntime|buildAgentPermissionRoute|executeObservation|await /u);
+const approvedDispatchEntry = readFileSync(join(process.cwd(), 'src/agent/runtime/agentApprovedDispatchResolution.ts'), 'utf8');
+const windowCommandIdentitySource = readFileSync(join(process.cwd(), 'src/agent/runtime/approvedDispatch/windowCommandIdentity.ts'), 'utf8');
+assert.match(approvedDispatchEntry, /from '\.\/approvedDispatch\/windowCommandIdentity'/u);
+assert.match(approvedDispatchEntry, /nextSteps = updateDependentInputIdentities\(/u);
+assert.match(approvedDispatchEntry, /await options.executeObservation\(forcedObservation\)/u);
+assert.match(windowCommandIdentitySource, /export function getResolutionArgs/u);
+assert.match(windowCommandIdentitySource, /export function updateDependentInputIdentities/u);
+assert.doesNotMatch(windowCommandIdentitySource, /desktopPetShellRuntime|buildAgentPermissionRoute|appendAgentRuntimeToolEvidence|resolveAgentWindowTargetBeforeDispatch|executeObservation/u);
+
+const approvalContinuationEntry = readFileSync(join(process.cwd(), 'src/agent/runtime/agentApprovalContinuationRuntime.ts'), 'utf8');
+const approvalResultPresentation = readFileSync(join(process.cwd(), 'src/agent/runtime/approvalContinuation/resultPresentation.ts'), 'utf8');
+assert.match(approvalContinuationEntry, /from '\.\/approvalContinuation\/resultPresentation'/u);
+assert.match(approvalContinuationEntry, /result = appendAgentApprovalContinuationDiagnostic\(result, outcome, maxContinuations\)/u);
+assert.match(approvalResultPresentation, /export function createAgentDuplicateApprovalBlockedResult/u);
+assert.match(approvalResultPresentation, /export function appendAgentApprovalContinuationDiagnostic/u);
+assert.doesNotMatch(approvalResultPresentation, /desktopPetShellRuntime|advanceAgentTaskRuntimeLifecycle|validateAgentRuntimeApprovalContext|options.execute/u);
+
+const visualApprovalEntry = readFileSync(join(process.cwd(), 'src/agent/productionSession/visualApproval.ts'), 'utf8');
+const visualInputFallbackSource = readFileSync(join(process.cwd(), 'src/agent/productionSession/visualInputFallback.ts'), 'utf8');
+assert.match(visualApprovalEntry, /from '\.\/visualInputFallback'/u);
+assert.match(visualApprovalEntry, /createAgentProductionVisualInputFallback\(\{/u);
+assert.match(visualApprovalEntry, /const route = buildAgentPermissionRoute\(command\)/u);
+assert.match(visualInputFallbackSource, /getAgentPostActionState\(previousAttempt\) !== 'unchanged'/u);
+assert.match(visualInputFallbackSource, /previousActions.includes\('double_click'\)/u);
+assert.doesNotMatch(visualInputFallbackSource, /desktopPetShellRuntime|buildAgentPermissionRoute|authorizeRecovery|authorizeModelIteration/u);
+
+const runtimeCoreEntry = readFileSync(join(process.cwd(), 'src/agent/agentRuntimeCore.ts'), 'utf8');
+const runtimeCorePlanSource = readFileSync(join(process.cwd(), 'src/agent/runtimeCore/openMovePlan.ts'), 'utf8');
+assert.match(runtimeCoreEntry, /from '\.\/runtimeCore\/openMovePlan'/u);
+assert.match(runtimeCoreEntry, /export function appendAgentRuntimeCoreEvent/u);
+assert.match(runtimeCoreEntry, /export function resolveAgentRuntimeCoreSequenceOutcome/u);
+assert.match(runtimeCorePlanSource, /export function createAgentRuntimeCoreOpenMoveTaskPlan/u);
+assert.match(runtimeCorePlanSource, /export function parseAgentRuntimeCoreTaskPlanJson/u);
+assert.match(runtimeCorePlanSource, /import type \{[^}]*\} from '\.\.\/agentRuntimeCore'/u);
+assert.doesNotMatch(runtimeCorePlanSource, /desktopPetShellRuntime|appendAgentRuntimeCoreEvent|authorizeRecovery|authorizeModelIteration/u);
+
+const visualCandidateEvidenceEntry = readFileSync(join(process.cwd(), 'src/agent/productionSession/visualCandidateEvidence.ts'), 'utf8');
+const visualCandidateScoringSource = readFileSync(join(process.cwd(), 'src/agent/productionSession/visualCandidateScoring.ts'), 'utf8');
+assert.match(visualCandidateEvidenceEntry, /from '\.\/visualCandidateScoring'/u);
+assert.match(visualCandidateEvidenceEntry, /export function hasAgentVisualVerifiedPrimaryActionOwnership/u);
+assert.match(visualCandidateEvidenceEntry, /export function hasAgentVisualSafeLoginContinuationApprovalEvidence/u);
+assert.match(visualCandidateScoringSource, /export function getAgentVisualCandidateCrossSourceAgreementScore/u);
+assert.match(visualCandidateScoringSource, /export function createAgentVisualCandidateFocusBounds/u);
+assert.doesNotMatch(visualCandidateScoringSource, /desktopPetShellRuntime|from ['"]\.\/visualCandidateEvidence|authorizeRecovery|authorizeModelIteration|resolveAgentAuthenticationGate/u);
+
+const plannerNormalizationEntry = readFileSync(join(process.cwd(), 'src/agent/planner/plannerCommandNormalization.ts'), 'utf8');
+const plannerRequestTextSource = readFileSync(join(process.cwd(), 'src/agent/planner/plannerRequestText.ts'), 'utf8');
+assert.match(plannerNormalizationEntry, /from '\.\/plannerRequestText'/u);
+assert.match(plannerNormalizationEntry, /const targetDisplay = normalizePlannerDisplayMoveTarget\(sourceText\)/u);
+assert.match(plannerRequestTextSource, /export function extractPlannerOpenAndMoveTargetFromText/u);
+assert.match(plannerRequestTextSource, /export function isPlannerVideoSummaryIntentWithoutSearch/u);
+assert.match(plannerRequestTextSource, /resolveAgentExplicitDisplayRoleFromText\(text\)/u);
+assert.doesNotMatch(plannerRequestTextSource, /desktopPetShellRuntime|from ['"]\.\/plannerCommandNormalization|authorizeRecovery|authorizeModelIteration/u);
+
+const executionStrategyEntry = readFileSync(join(process.cwd(), 'src/agent/agentExecutionStrategy.ts'), 'utf8');
+const executionVisualEvidenceSource = readFileSync(join(process.cwd(), 'src/agent/executionStrategy/visualEvidence.ts'), 'utf8');
+assert.match(executionStrategyEntry, /from '\.\/executionStrategy\/visualEvidence'/u);
+assert.match(executionStrategyEntry, /const evidence = resolveAgentVisualExecutionStrategyStructuredEvidence\(options.result\)/u);
+assert.match(executionStrategyEntry, /const coordinateResolution = resolveAgentExecutionStrategyCoordinatePoint\(evidence\)/u);
+assert.match(executionStrategyEntry, /export \{ resolveAgentExecutionStrategyExpectedWindowHwnd \}/u);
+assert.match(executionVisualEvidenceSource, /export function resolveAgentExecutionStrategyCoordinatePoint/u);
+assert.match(executionVisualEvidenceSource, /export function resolveAgentExecutionStrategyExpectedWindowHwnd/u);
+assert.doesNotMatch(executionVisualEvidenceSource, /desktopPetShellRuntime|createAgentToolCommand|authorizeRecovery|authorizeModelIteration/u);
+
+const sequenceVerificationEntry = readFileSync(join(process.cwd(), 'src/agent/desktopSequence/sequenceVerification.ts'), 'utf8');
+const sequenceRecoverySource = readFileSync(join(process.cwd(), 'src/agent/desktopSequence/sequencePostActionRecovery.ts'), 'utf8');
+assert.match(sequenceVerificationEntry, /from '\.\/sequencePostActionRecovery'/u);
+assert.match(sequenceVerificationEntry, /const postActionState = inferAgentRuntimeDesktopSequencePostActionState\(visualVerificationResult\)/u);
+assert.match(sequenceVerificationEntry, /const postActionRecovery = createAgentRuntimeDesktopSequencePostActionRecoveryDirective\(/u);
+assert.match(sequenceRecoverySource, /export function inferAgentRuntimeDesktopSequencePostActionState/u);
+assert.match(sequenceRecoverySource, /export function createAgentRuntimeDesktopSequencePostActionRecoveryDirective/u);
+assert.doesNotMatch(sequenceRecoverySource, /desktopPetShellRuntime|executeSummarizeVisualSnapshot|executeObserveWindowsAndApps|authorizeRecovery|authorizeModelIteration/u);
+
+const windowToolEntry = readFileSync(join(process.cwd(), 'src/agent/agentRuntimeWindowTools.ts'), 'utf8');
+const windowMovementSource = readModuleProjectFile('src/agent/agentRuntimeWindowTools.ts');
+assert.match(windowToolEntry, /export \{ executeMoveWindowToDisplay, executeControlWindow \} from '\.\/windowTools\/windowMovementControl'/u);
+assert.match(windowToolEntry, /from '\.\/desktopTools\/desktopToolInput'/u);
+assert.match(windowMovementSource, /export async function executeMoveWindowToDisplay/u);
+assert.match(windowMovementSource, /export async function executeControlWindow/u);
+assert.match(readFileSync(join(process.cwd(), 'src/agent/windowTools/windowMovementControl.ts'), 'utf8'), /from '\.\.\/desktopTools\/desktopToolInput'/u);
+
+const iconPlanEntry = readFileSync(join(process.cwd(), 'src/agent/desktopIconArrangementPlan.ts'), 'utf8');
+const iconGeometrySource = readModuleProjectFile('src/agent/desktopIconArrangementPlan.ts');
+assert.match(iconPlanEntry, /from '\.\/iconArrangement\/layoutGeometry'/u);
+assert.match(iconPlanEntry, /const grid = createDesktopIconGrid\(/u);
+assert.match(iconPlanEntry, /const nextPosition = resolveRelativePlacementPosition\(/u);
+assert.match(iconGeometrySource, /export function createDesktopIconGrid/u);
+assert.match(iconGeometrySource, /export function resolveRelativePlacementPosition/u);
+assert.doesNotMatch(readFileSync(join(process.cwd(), 'src/agent/iconArrangement/layoutGeometry.ts'), 'utf8'), /desktopPetShellRuntime|window\.|document\./u);
+
+const resourcePlanEntry = readFileSync(join(process.cwd(), 'src/agent/planning/agentResourcePlans.ts'), 'utf8');
+const localFilePlanSource = readFileSync(join(process.cwd(), 'src/agent/planning/agentLocalFilePlans.ts'), 'utf8');
+assert.match(resourcePlanEntry, /import \{ buildLocalFileToolPlan \} from '\.\/agentLocalFilePlans'/u);
+assert.match(resourcePlanEntry, /return buildLocalFileToolPlan\(command, toolName, targetDescription, explicitGoal\)/u);
+assert.match(localFilePlanSource, /export function buildLocalFileToolPlan/u);
+assert.match(localFilePlanSource, /from '\.\/agentPlanShared'/u);
+assert.doesNotMatch(localFilePlanSource, /desktopPetShellRuntime|AgentSessionV[23]|agentSessionV[23]/u);
+
+const actionCoverageEntry = readFileSync(join(process.cwd(), 'src/agent/runtime/agentActionCoverage.ts'), 'utf8');
+const requestedCoverageSource = readModuleProjectFile('src/agent/runtime/agentActionCoverage.ts');
+assert.match(actionCoverageEntry, /from '\.\/actionCoverage\/requestedActionCoverage'/u);
+assert.match(actionCoverageEntry, /export \{ createAgentCommandActionCoverage, diagnoseAgentCommandExplicitProhibition \} from '\.\/actionCoverage\/commandActionCoverage'/u);
+assert.match(actionCoverageEntry, /export \{ createAgentAttemptedActionCoverage \} from '\.\/actionCoverage\/attemptedActionCoverage'/u);
+assert.match(requestedCoverageSource, /const prohibitedActionCoverage = createAgentExplicitlyProhibitedActionCoverage\(/u);
+assert.match(requestedCoverageSource, /export function createAgentRequestedActionCoverage/u);
+assert.match(requestedCoverageSource, /export function createAgentExplicitlyProhibitedActionCoverage/u);
+assert.doesNotMatch(requestedCoverageSource, /AgentSessionV[23]|agentSessionV[23]|v2-fallback/u);
+
+const sharedCancellation = readFileSync(join(process.cwd(), 'src/agent/agentRuntimeCancellation.ts'), 'utf8');
+for (const [file, specifier] of [
+  ['src/agent/agentRuntimeExecutor.ts', './agentRuntimeCancellation'],
+  ['src/agent/agentRuntimeBrowserTools.ts', './agentRuntimeCancellation'],
+  ['src/agent/agentRuntimeWindowWorkflowTools.ts', './agentRuntimeCancellation'],
+  ['src/agent/systemTools/localProjectTools.ts', '../agentRuntimeCancellation'],
+]) {
+  const source = readFileSync(join(process.cwd(), file), 'utf8');
+  assert.ok(source.includes(`from '${specifier}'`), 'Tool cancellation must use the shared implementation.');
+  assert.doesNotMatch(source, /function isAgentRuntimeCancellationRequested|function runCancellableAgentRuntimeTask/u, 'Duplicate cancellation detection/racing must remain removed.');
+}
+assert.match(sharedCancellation, /export async function runCancellableAgentRuntimeTask/u);
+assert.match(readFileSync(join(process.cwd(), 'src/agent/visual/visualTaskCancellation.ts'), 'utf8'), /from '\.\.\/agentRuntimeCancellation'/u);
+
+const toolExecutorRoot = readFileSync(join(process.cwd(), 'src/agent/agentRuntimeExecutor.ts'), 'utf8');
+const observationExecutor = readFileSync(join(process.cwd(), 'src/agent/executor/desktopObservationExecution.ts'), 'utf8');
+assert.match(toolExecutorRoot, /import \{ createDesktopObservationExecutor \} from '\.\/executor\/desktopObservationExecution'/u);
+assert.match(toolExecutorRoot, /const executeDesktopObservation = createDesktopObservationExecutor\(\{\s*isAgentRuntimeCancellationRequested,\s*createAgentRuntimeCancelledResult,/u);
+assert.match(toolExecutorRoot, /executeDesktopObservation\(runtime, toolCall, command\.sourceText\)/u);
+assert.match(observationExecutor, /export function createDesktopObservationExecutor/u);
+assert.match(observationExecutor, /return executeDesktopObservation;/u);
+
+const toolInputSchemaRoot = readFileSync(join(process.cwd(), 'src/agent/agentToolInputSchema.ts'), 'utf8');
+const toolInputSchemaModules = readModuleProjectFile('src/agent/agentToolInputSchema.ts');
+for (const [moduleName, symbol] of [
+  ['desktopActionSpecs', 'AGENT_DESKTOP_ACTION_INPUT_SPECS'],
+  ['observationSpecs', 'AGENT_OBSERVATION_INPUT_SPECS'],
+  ['localServiceSpecs', 'AGENT_LOCAL_SERVICE_INPUT_SPECS'],
+]) {
+  assert.ok(toolInputSchemaRoot.includes(`from './inputSchema/${moduleName}'`), 'Schema entry must import its capability declarations.');
+  assert.ok(toolInputSchemaRoot.includes(`${symbol}.`), 'Schema entry must assemble the imported capability declarations.');
+  assert.ok(toolInputSchemaModules.includes(`export const ${symbol} = {`), 'Schema declarations must remain reachable from the public entry.');
+}
+assert.match(toolInputSchemaRoot, /export function prepareAgentToolInput/u, 'Input validation must retain one public implementation.');
 
 const runtimeDir = join(process.cwd(), 'src', 'agent', 'runtime');
 assert.deepEqual(
@@ -25,7 +274,7 @@ for (const filePath of runtimeFiles) {
 }
 
 const controllerPath = join(process.cwd(), 'src', 'components', 'chat', 'agentRunController.ts');
-const controllerSource = readFileSync(controllerPath, 'utf8');
+const controllerSource = readModuleProjectFile('src/components/chat/agentRunController.ts');
 const chatSendExecutionSource = readFileSync(
   join(process.cwd(), 'src', 'components', 'chat', 'petChatMessageSendExecution.ts'),
   'utf8',
@@ -38,10 +287,7 @@ const chatRuntimeCompatibilitySource = readFileSync(
   join(process.cwd(), 'src', 'components', 'chat', 'chatAgentRuntimeCompatibility.ts'),
   'utf8',
 );
-const chatProcessPanelSource = readFileSync(
-  join(process.cwd(), 'src', 'components', 'chat', 'PetChatConversationMessageBubble.tsx'),
-  'utf8',
-);
+const chatProcessPanelSource = readChatMessageSource();
 const sharedTypesSource = readFileSync(join(process.cwd(), 'src', 'types.ts'), 'utf8');
 const productionSessionSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'agentProductionSession.ts'),
@@ -51,10 +297,7 @@ const permissionRouterSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'agentPermissionRouter.ts'),
   'utf8',
 );
-const approvalContinuationRuntimeSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'runtime', 'agentApprovalContinuationRuntime.ts'),
-  'utf8',
-);
+const approvalContinuationRuntimeSource = readModuleProjectFile('src/agent/runtime/agentApprovalContinuationRuntime.ts');
 const pendingApprovalResolverSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentPendingApprovalResolver.ts'),
   'utf8',
@@ -225,11 +468,15 @@ assert.match(
   /function isAgentTaskRuntimeWaitingApproval[\s\S]*result\.taskState\.state === ['"]waiting_approval['"]/u,
   'Approval UI projection must prefer the production Task Runtime state.',
 );
-assert.match(
-  controllerSource,
-  /from ['"]\.\/agentRuntimeUiStatusProjection['"]/u,
-  'Controller must consume the centralized Task Runtime UI status projection.',
-);
+for (const lifecycle of ['initialRunLifecycle', 'approvalRunLifecycle']) {
+  const lifecycleSource = readFileSync(join(process.cwd(), 'src', 'components', 'chat', 'runController', `${lifecycle}.ts`), 'utf8');
+  assert.match(
+    lifecycleSource,
+    /import\s*\{\s*isAgentTaskRuntimeWaitingApproval\s*\}\s*from ['"]\.\.\/agentRuntimeUiStatusProjection['"]/u,
+    `${lifecycle} must consume the centralized Task Runtime UI status projection.`,
+  );
+  assert.match(lifecycleSource, /isAgentTaskRuntimeWaitingApproval\((?:result|sessionResult)\)/u);
+}
 assert.equal(
   (runtimeUiStatusProjectionSource.match(/result\.status === ['"]needs-approval['"]/gu) ?? []).length,
   1,
@@ -256,9 +503,8 @@ const legacyAgentIndexSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'legacy', 'index.ts'),
   'utf8',
 );
-const sessionSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'agentProductionSessionImplementation.ts'),
-  'utf8',
+const sessionSource = readModuleProjectFile(
+  'src/agent/agentProductionSessionImplementation.ts',
 ).replace(/\r\n?/gu, '\n');
 const dispatchEvidenceSource = readFileSync(
   join(runtimeDir, 'agentDispatchEvidence.ts'),
@@ -269,22 +515,13 @@ assert.match(
   /const receiptStatus = result\?\.receipt\?\.status[\s\S]*hasExplicitSuccessReceipt[\s\S]*hasChangedActionEvidence[\s\S]*result\?\.ok === true[\s\S]*receiptStatus !== 'unverified'[\s\S]*actionOutcome !== 'no-op'[\s\S]*actionOutcome !== 'uncertain'/u,
   'Committed dispatch evidence must require explicit success or changed evidence and reject weak outcomes.',
 );
-const dispatchActionCoverageSource = readFileSync(
-  join(runtimeDir, 'agentActionCoverage.ts'),
-  'utf8',
-);
+const dispatchActionCoverageSource = readModuleProjectFile('src/agent/runtime/agentActionCoverage.ts');
 const windowTargetResolutionSource = readFileSync(
   join(runtimeDir, 'agentWindowTargetResolutionRuntime.ts'),
   'utf8',
 );
-const approvedDispatchResolutionSource = readFileSync(
-  join(runtimeDir, 'agentApprovedDispatchResolution.ts'),
-  'utf8',
-);
-const desktopSequenceSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'agentRuntimeDesktopSequenceTools.ts'),
-  'utf8',
-);
+const approvedDispatchResolutionSource = readModuleProjectFile('src/agent/runtime/agentApprovedDispatchResolution.ts');
+const desktopSequenceSource = readModuleProjectFile('src/agent/agentRuntimeDesktopSequenceTools.ts');
 const shadowAdapterSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'agentTaskRuntimeV4SessionV2ShadowAdapter.ts'),
   'utf8',
@@ -292,6 +529,10 @@ const shadowAdapterSource = readFileSync(
 assert.match(sessionSource, /export async function runAgentProductionSessionImplementation/u);
 assert.match(sessionSource, /const commitToolResult =/u);
 assert.match(sessionSource, /getProductionLifecycleFacts/u);
+const productionSessionResultContextSource = readModuleProjectFile('src/agent/productionSession/sessionResultContext.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/sessionResultContext'/u);
+assert.match(sessionSource, /const \{ createProgressSnapshot, createFinalResult, createBudgetExceededResult \} = createAgentProductionSessionResultContext\(\{/u);
+assert.match(productionSessionResultContextSource, /createAgentTaskRuntimeV4SessionV2Shadow\(/u);
 assert.match(sessionSource, /collectAgentRuntimeLifecycleFacts/u);
 assert.equal(
   (sessionSource.match(/toolResults\.push\(/gu) ?? []).length,
@@ -320,7 +561,7 @@ assert.match(
 );
 assert.match(
   dispatchActionCoverageSource,
-  /from ['"]\.\/agentDispatchEvidence['"]/u,
+  /from ['"]\.\.\/agentDispatchEvidence['"]/u,
   'Action Coverage must use the shared dispatch evidence predicates.',
 );
 assert.match(
@@ -337,10 +578,7 @@ const actionLifecycleSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'agentActionLifecycle.ts'),
   'utf8',
 );
-const taskEvidenceSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'runtime', 'agentRuntimeTaskEvidence.ts'),
-  'utf8',
-);
+const taskEvidenceSource = readModuleProjectFile('src/agent/runtime/agentRuntimeTaskEvidence.ts');
 assert.match(
   actionLifecycleSource,
   /postActionState !== 'launched'[\s\S]*actionEvidence\?\.outcome === 'no-op'[\s\S]*status: 'failed_no_effect'[\s\S]*receipt\?\.status === 'success'/u,
@@ -407,12 +645,12 @@ assert.match(
   'Coordinate visual actions must land inside an actionable candidate area before approval.',
 );
 assert.match(
-  readFileSync(join(process.cwd(), 'src', 'agent', 'runtime', 'agentTargetResolutionContext.ts'), 'utf8'),
+  readModuleProjectFile('src/agent/runtime/agentTargetResolutionContext.ts'),
   /function isUsableTargetEvidence[\s\S]*receiptStatus !== 'unverified'[\s\S]*observationFreshness !== 'stale-fallback'/u,
   'Target resolution must reject unverified receipts and stale fallback observations while allowing read-only assessment states.',
 );
 assert.match(
-  readFileSync(join(process.cwd(), 'src', 'agent', 'runtime', 'agentTargetResolutionContext.ts'), 'utf8'),
+  readModuleProjectFile('src/agent/runtime/agentTargetResolutionContext.ts'),
   /hasAgentTargetResolutionSinceLastDispatch[\s\S]*isUsableTargetEvidence\(entry\)/u,
   'Target-resolution suppression must use the same usable-evidence gate as actionable window binding.',
 );
@@ -497,9 +735,14 @@ assert.match(
   'All window-dependent sequence actions must inherit the freshly resolved window identity when available.',
 );
 assert.match(
-  desktopSequenceSource,
-  /preDispatchWindowResolution=blocked[\s\S]*!latestFocusedWindow/u,
+  readModuleProjectFunction('src/agent/agentRuntimeDesktopSequenceTools.ts', 'runAgentRuntimeDesktopSequenceSteps'),
+  /isAgentRuntimeDesktopSequenceSurfaceChangingStep\(previousStep\)[\s\S]*isAgentRuntimeDesktopSequenceWindowDependentStep\(step\)[\s\S]*!latestFocusedWindow[\s\S]*createAgentRuntimeDesktopSequenceUnresolvedWindowResult/u,
   'A post-creation dispatch must be blocked when the live target window cannot be resolved.',
+);
+assert.match(
+  readModuleProjectFunction('src/agent/agentRuntimeDesktopSequenceTools.ts', 'createAgentRuntimeDesktopSequenceUnresolvedWindowResult'),
+  /preDispatchWindowResolution=blocked/u,
+  'An unresolved post-creation window must report blocked dispatch evidence.',
 );
 assert.match(
   desktopSequenceSource,
@@ -547,6 +790,39 @@ assert.deepEqual(
   [],
   'Retired SessionV2 compatibility Modules must remain deleted.',
 );
+for (const relativePath of [
+  'src/agent/agentCore.ts',
+  'src/agent/agentLegacy.ts',
+  'src/agent/agentLegacyChatCommand.ts',
+  'src/agent/agentSessionV3ExperimentalChatRunner.ts',
+  'src/agent/agentSessionV3ExperimentalFeatureFlag.ts',
+  'src/agent/agentSessionV3ExperimentalSession.ts',
+  'src/agent/agentSessionV3ExperimentalV2Adapters.ts',
+  'src/agent/agentSessionV3PilotCorpusReadiness.ts',
+  'src/agent/agentSessionV3PilotDebugSampleCollector.ts',
+  'src/agent/agentSessionV3PilotDebugSampleCorpus.ts',
+  'src/agent/agentSessionV3PilotDiagnosticSampleRunner.ts',
+  'src/agent/agentSessionV3PilotExternalReadinessCalibration.ts',
+  'src/agent/agentSessionV3PilotExternalSampleFixtureBatch.ts',
+  'src/agent/agentSessionV3PilotExternalSampleFixtureSetExport.ts',
+  'src/agent/agentSessionV3PilotExternalSampleIntake.ts',
+  'src/agent/agentSessionV3PilotHarness.ts',
+  'src/agent/agentSessionV3PilotPhaseCoverageReadiness.ts',
+  'src/agent/agentSessionV3PilotPhaseDriver.ts',
+  'src/agent/agentSessionV3PilotReadinessFailureDiagnostics.ts',
+  'src/agent/agentSessionV3PilotReadinessThresholdProfileComparison.ts',
+  'src/agent/agentSessionV3PilotShadowAgreement.ts',
+  'src/agent/agentSessionV3PilotShadowDebugExport.ts',
+  'src/agent/agentSessionV3RuntimeAdapters.ts',
+  'src/agent/agentSessionV3RuntimeBoundary.ts',
+  'src/agent/agentSessionV3RuntimeController.ts',
+]) {
+  assert.equal(
+    existsSync(join(process.cwd(), relativePath)),
+    false,
+    `Unreachable V3 Experimental/Pilot, legacy Core and Legacy barrel Modules must remain deleted: ${relativePath}`,
+  );
+}
 const modelDecisionRuntimeSource = readFileSync(
   join(runtimeDir, 'agentModelDecisionRuntime.ts'),
   'utf8',
@@ -673,7 +949,6 @@ assert.doesNotMatch(
   /agentRuntimeLegacyVersionAdapter|agentRecoveryLegacyV2Adapter/u,
   'Retired Legacy routing and recovery Adapters must not be exported again.',
 );
-assert.match(legacyAgentIndexSource, /agentSessionV3ExperimentalChatRunner/u);
 assert.match(modelDecisionRuntimeSource, /export async function runAgentModelDecisionTurn/u);
 assert.match(decisionContractRuntimeSource, /export function parseAgentDecisionContract/u);
 assert.match(decisionContractRuntimeSource, /export function prepareAgentDecisionToolInput/u);
@@ -772,12 +1047,17 @@ assert.match(traceEventsRuntimeSource, /from '\.\/agentToolResultCacheEvidence'/
 assert.match(decisionTraceRuntimeSource, /export function createAgentPermissionRoutedTraceSummary/u);
 assert.match(decisionTraceRuntimeSource, /export function createAgentApprovalRequiredTraceSummary/u);
 assert.match(replanSignalRuntimeSource, /from '\.\/agentPlanningSignalEvidence'/u);
-assert.match(sessionSource, /runAgentModelDecisionTurn<AgentSessionV2Decision>/u);
+const productionModelPlanningTurnSource = readModuleProjectFile('src/agent/productionSession/modelPlanningTurn.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/modelPlanningTurn'/u);
+assert.match(sessionSource, /const \{ executeModelPlanningTurn \} = createAgentProductionModelPlanningTurn\(\{/u);
+assert.match(sessionSource, /await executeModelPlanningTurn\(\{/u);
+assert.match(productionModelPlanningTurnSource, /runAgentModelDecisionTurn<AgentModelDecision>/u);
+assert.match(sessionSource, /runAgentModelDecisionTurn<AgentModelDecision>/u);
 assert.match(sessionSource, /parseDecision: parseAgentDecisionContract/u);
 assert.match(sessionSource, /prepareToolInput: prepareAgentDecisionToolInput/u);
 assert.match(sessionSource, /const planningContext = createAgentPlanningContext\(\{/u);
 assert.match(sessionSource, /const modelInput = createAgentModelInput\(\{/u);
-assert.match(sessionSource, /from '\.\/runtime\/agentWorkingMemoryBias'/u);
+assert.match(sessionSource, /from '\.\.\/runtime\/agentWorkingMemoryBias'/u);
 assert.match(sessionSource, /formatWorkingMemory: createAgentGuardedWorkingMemoryText/u);
 assert.match(sessionSource, /from '\.\/runtime\/agentWorkingMemoryConflict'/u);
 assert.match(sessionSource, /createMemoryConflictSignalText: createAgentWorkingMemoryConflictSignalText/u);
@@ -816,13 +1096,13 @@ assert.match(sessionSource, /createAgentApprovalRequiredToolReason\(/u);
 assert.match(sessionSource, /createAgentTargetSelectionApprovalReason\(/u);
 assert.match(sessionSource, /createAgentVisualActionApprovalReason\(/u);
 assert.match(sessionSource, /createAgentVisualInvokeApprovalReason\(/u);
-assert.match(sessionSource, /from '\.\/runtime\/agentExecutionProgressSignals'/u);
+assert.match(sessionSource, /from '\.\.\/runtime\/agentExecutionProgressSignals'/u);
 assert.match(sessionSource, /createAgentAutoRecoveryLoopContinuedHistoryLine\(/u);
 assert.match(sessionSource, /createAgentPostActionTerminalStoppedHistoryLine\(/u);
 assert.match(sessionSource, /from '\.\/runtime\/agentCommandEvidencePredicates'/u);
 assert.doesNotMatch(sessionSource, /from '\.\/agentSessionV2CommandEvidencePredicates'/u);
 assert.match(sessionSource, /from '\.\/runtime\/agentPendingApprovalAssembly'/u);
-assert.match(sessionSource, /from '\.\/runtime\/agentParallelToolPreparation'/u);
+assert.match(readModuleProjectFile('src/agent/productionSession/parallelPreparation.ts'), /from '\.\.\/runtime\/agentParallelToolPreparation'/u);
 assert.match(sessionSource, /from '\.\/runtime\/agentDeterministicSkillRoute'/u);
 assert.doesNotMatch(
   sessionSource,
@@ -833,7 +1113,7 @@ assert.match(sessionSource, /from '\.\/runtime\/agentDecisionRepairSignal'/u);
 assert.match(sessionSource, /createAgentInvalidModelOutputRepairText\(/u);
 assert.match(sessionSource, /from '\.\/runtime\/agentCompatibilityToolRejection'/u);
 assert.match(sessionSource, /rejectCompatibilityTool: createAgentCompatibilityToolRejection/u);
-assert.match(sessionSource, /from '\.\/runtime\/agentFinalAnswerRejectionSignals'/u);
+assert.match(sessionSource, /from '\.\.\/runtime\/agentFinalAnswerRejectionSignals'/u);
 assert.match(sessionSource, /createAgentIncompleteTaskProgressFinalRejection\(/u);
 assert.match(sessionSource, /createAgentReadonlyObservationFinalRejection\(/u);
 assert.doesNotMatch(
@@ -940,26 +1220,11 @@ assert.doesNotMatch(
   'The UI controller must not depend on versioned progress, trace, executor, or tool-result types.',
 );
 
-for (const relativePath of [
-  'src/agent/agentSessionV3ExperimentalChatRunner.ts',
-  'src/agent/agentSessionV3ExperimentalV2Adapters.ts',
-  'src/agent/agentSessionV3ExperimentalFeatureFlag.ts',
-]) {
-  const source = readFileSync(join(process.cwd(), relativePath), 'utf8');
-  const versionedRuntimeTypeImport = /import\s*\{[^}]*\btype AgentSessionV2(?:ContinuationState|ProgressHandler|Result|Status|Step|TimingEntry|TimingTrace|ToolExecutor|ToolResultEntry|TraceEvent)\b[^}]*\}\s*from\s*['"]\.\/agentSessionV2['"]/gsu;
-  assert.doesNotMatch(
-    source,
-    versionedRuntimeTypeImport,
-    `V3 must consume version-neutral runtime contracts: ${relativePath}`,
-  );
-}
-
 const transactionConsumers = [
   'src/agent/agentProductionSessionImplementation.ts',
-  'src/agent/agentSessionV3ExperimentalV2Adapters.ts',
 ];
 for (const relativePath of transactionConsumers) {
-  const source = readFileSync(join(process.cwd(), relativePath), 'utf8');
+  const source = readModuleProjectFile(relativePath);
   assert.doesNotMatch(
     source,
     /runAgentSessionV2(?:Parallel)?ToolExecutionTransaction/gu,
@@ -982,8 +1247,8 @@ const rawControllerExecutorCallCount = (
 ).length;
 assert.equal(
   rawControllerExecutorCallCount,
-  4,
-  'Raw UI executor calls are only allowed in its definition, the transaction adapter, and the two Session execute adapters.',
+  3,
+  'Raw UI executor calls are only allowed in its definition, the transaction adapter, and the shared guarded request adapter.',
 );
 assert.match(
   productionSessionSource,
@@ -996,10 +1261,6 @@ assert.match(
   'Controller must supply approved execution only through the consolidated production approval entry.',
 );
 
-const v3ChatRunnerSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'agentSessionV3ExperimentalChatRunner.ts'),
-  'utf8',
-);
 const postActionTerminalSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentPostActionTerminalEvaluator.ts'),
   'utf8',
@@ -1017,10 +1278,7 @@ const runtimeContractSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentRuntimeContract.ts'),
   'utf8',
 );
-const actionCoverageSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'runtime', 'agentActionCoverage.ts'),
-  'utf8',
-);
+const actionCoverageSource = readModuleProjectFile('src/agent/runtime/agentActionCoverage.ts');
 const chatCommandSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'agentChatCommand.ts'),
   'utf8',
@@ -1037,10 +1295,7 @@ const targetResolutionRuntimeSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentTargetResolutionRuntime.ts'),
   'utf8',
 );
-const targetResolutionContextSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'runtime', 'agentTargetResolutionContext.ts'),
-  'utf8',
-);
+const targetResolutionContextSource = readModuleProjectFile('src/agent/runtime/agentTargetResolutionContext.ts');
 const targetResolutionExecutionSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentTargetResolutionExecutionRuntime.ts'),
   'utf8',
@@ -1069,10 +1324,7 @@ const commandExecutionRuntimeSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentCommandExecutionRuntime.ts'),
   'utf8',
 );
-const taskRuntimeSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'runtime', 'agentTaskRuntime.ts'),
-  'utf8',
-);
+const taskRuntimeSource = readModuleProjectFile('src/agent/runtime/agentTaskRuntime.ts');
 const recoveryControllerSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'runtime', 'agentRecoveryController.ts'),
   'utf8',
@@ -1094,18 +1346,12 @@ const desktopRecoveryCapabilitySource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'capabilities', 'agentDesktopRecoveryCapabilityAdapter.ts'),
   'utf8',
 );
-const desktopRecoveryObservationSource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'capabilities', 'agentDesktopRecoveryObservationBuilder.ts'),
-  'utf8',
-);
+const desktopRecoveryObservationSource = readModuleProjectFile('src/agent/capabilities/agentDesktopRecoveryObservationBuilder.ts');
 const desktopRecoveryCommandSource = readFileSync(
   join(process.cwd(), 'src', 'agent', 'capabilities', 'agentDesktopRecoveryCommandBuilder.ts'),
   'utf8',
 );
-const visualRefinementCapabilitySource = readFileSync(
-  join(process.cwd(), 'src', 'agent', 'capabilities', 'agentVisualRefinementCapabilityAdapter.ts'),
-  'utf8',
-);
+const visualRefinementCapabilitySource = readModuleProjectFile('src/agent/capabilities/agentVisualRefinementCapabilityAdapter.ts');
 assert.match(publicRuntimeSource, /advanceAgentTaskRuntimeProgress\(/u);
 assert.match(chatCommandSource, /actionScope\?: AgentActionScope/u);
 assert.match(
@@ -1211,8 +1457,26 @@ assert.match(
   /target-resolution-started[\s\S]*target-resolution-collected/u,
   'Runtime target-resolution execution must own its lifecycle transition facts.',
 );
-const legacyTargetResolutionExecutionHelper = /const executeInAppTargetLocateObservation[\s\S]*?\n  \};\n  const executeFailedDesktopActionRecoveryObservation/u
-  .exec(sessionSource)?.[0] ?? '';
+assert.match(sessionSource, /from '\.\/productionSession\/visualObservationExecution'/u);
+assert.match(sessionSource, /createAgentProductionVisualObservationExecution\(\{/u);
+const visualObservationExecutionSource = ts.createSourceFile(
+  'visualObservationExecution.ts',
+  readFileSync(join(process.cwd(), 'src/agent/productionSession/visualObservationExecution.ts'), 'utf8'),
+  ts.ScriptTarget.Latest,
+  true,
+);
+let targetResolutionExecutionDeclaration;
+function findTargetResolutionExecutionDeclaration(node) {
+  if (ts.isVariableDeclaration(node)
+    && node.name.getText(visualObservationExecutionSource) === 'executeInAppTargetLocateObservation'
+    && node.initializer && ts.isArrowFunction(node.initializer)) {
+    targetResolutionExecutionDeclaration = node;
+  }
+  ts.forEachChild(node, findTargetResolutionExecutionDeclaration);
+}
+findTargetResolutionExecutionDeclaration(visualObservationExecutionSource);
+assert.ok(targetResolutionExecutionDeclaration, 'Production visual observation must retain its target-resolution adapter.');
+const legacyTargetResolutionExecutionHelper = targetResolutionExecutionDeclaration.getText(visualObservationExecutionSource);
 assert.match(
   legacyTargetResolutionExecutionHelper,
   /runAgentTargetResolutionExecution\(/u,
@@ -1238,6 +1502,8 @@ assert.match(
   /verification-started[\s\S]*verification-collected/u,
   'Verification Runtime must own verification lifecycle transition facts.',
 );
+assert.match(sessionSource, /from '\.\/productionSession\/postApprovalVerification'/u);
+assert.match(sessionSource, /createAgentProductionPostApprovalVerification\(\{/u);
 const legacyVerificationExecutionHelper = /const executePostApprovalVerification[\s\S]*?return \{ executed: true, finalResult: null \};[\s\S]{0,40}\};/u
   .exec(sessionSource)?.[0] ?? '';
 assert.match(
@@ -1267,7 +1533,7 @@ assert.match(
 );
 assert.match(
   legacyVerificationExecutionHelper,
-  /runAgentVerificationContinuation<AgentSessionV2Result>\(/u,
+  /runAgentVerificationContinuation<AgentRuntimeResult>\(/u,
   'Legacy Session must enter the combined Runtime verification transition-and-dispatch interface.',
 );
 assert.doesNotMatch(
@@ -1285,22 +1551,11 @@ assert.match(
   /runAgentCommandExecution[\s\S]*buildAgentPermissionRoute\(command\)[\s\S]*getBudgetStopReason\(1\)[\s\S]*runAgentToolTransaction/u,
   'Command Execution Runtime must own permission, budget, and Tool Transaction dispatch for normalized commands.',
 );
-const productionModelCommandExecutionCall = sessionSource.indexOf(
-  'const commandExecution = await runAgentCommandExecution({',
-);
-const productionModelCommandExecutionStart = sessionSource.lastIndexOf(
-  'const command = createAgentToolCommand({',
-  productionModelCommandExecutionCall,
-);
-const productionModelCommandExecutionEnd = sessionSource.indexOf(
-  'const { entry: executedEntry } = commandExecution.collected;',
-  productionModelCommandExecutionCall,
-);
-const productionModelCommandExecutionHelper = (
-  productionModelCommandExecutionStart >= 0 && productionModelCommandExecutionEnd >= 0
-)
-  ? sessionSource.slice(productionModelCommandExecutionStart, productionModelCommandExecutionEnd)
-  : '';
+const productionModelCommandExecutionHelper = readModuleProjectFile('src/agent/productionSession/singleToolExecution.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/singleToolExecution'/u);
+assert.match(sessionSource, /createAgentProductionSingleToolExecution\(\{/u);
+assert.match(sessionSource, /await executeSingleToolCommand\(\{/u);
+assert.match(sessionSource, /const command = createAgentToolCommand\(\{/u);
 assert.match(
   productionModelCommandExecutionHelper,
   /runAgentCommandExecution\(/u,
@@ -1313,7 +1568,7 @@ assert.doesNotMatch(
 );
 assert.match(
   legacyVerificationExecutionHelper,
-  /runAgentVerificationContinuation<AgentSessionV2Result>\(/u,
+  /runAgentVerificationContinuation<AgentRuntimeResult>\(/u,
   'Legacy Session verification must submit evidence and Adapters through the combined Runtime interface.',
 );
 assert.doesNotMatch(
@@ -1331,17 +1586,39 @@ assert.match(
   /transitionAgentApprovedActionOutcome[\s\S]*terminalEvaluation[\s\S]*options\.approval[\s\S]*stop-needs-user[\s\S]*failed-action[\s\S]*selectAgentTaskRuntimeNextTransition[\s\S]*kind: 'verification'/u,
   'Approved Action Outcome Runtime must own the single continuation priority after approved execution.',
 );
-const legacyApprovedResultStart = sessionSource.indexOf('if (approvedToolResult) {');
-const legacyApprovedResultEnd = sessionSource.indexOf(
-  'let modelOutputRepairRuns',
-  legacyApprovedResultStart,
-);
-const legacyApprovedResultHelper = legacyApprovedResultStart >= 0 && legacyApprovedResultEnd >= 0
-  ? sessionSource.slice(legacyApprovedResultStart, legacyApprovedResultEnd)
-  : '';
+const productionExecutionPreflightSource = readModuleProjectFile('src/agent/productionSession/executionPreflight.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/executionPreflight'/u);
+assert.match(sessionSource, /createAgentProductionExecutionPreflight\(\{/u);
+assert.match(sessionSource, /prepareExecutionPreflight\(\{/u);
+assert.match(productionExecutionPreflightSource, /resolveAgentWindowTargetBeforeDispatch\(\{/u);
+assert.match(productionExecutionPreflightSource, /createAgentVisibleClickActionablePreflightCommand\(\{/u);
+assert.doesNotMatch(productionExecutionPreflightSource, /runAgentCommandExecution|buildAgentPermissionRoute|let modelOutputRepairRuns/u);
+const productionSingleToolSelectionSource = readModuleProjectFile('src/agent/productionSession/singleToolSelection.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/singleToolSelection'/u);
+assert.match(sessionSource, /createAgentProductionSingleToolSelection\(\{/u);
+assert.match(sessionSource, /prepareSingleToolSelection\(decision, stepIndex\)/u);
+assert.match(productionSingleToolSelectionSource, /prepareAgentDecisionToolInput\(\{/u);
+assert.doesNotMatch(productionSingleToolSelectionSource, /runAgentCommandExecution|executeAgentSessionV2ToolCommandWithCache|let modelOutputRepairRuns/u);
+const productionParallelPreparationSource = readModuleProjectFile('src/agent/productionSession/parallelPreparation.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/parallelPreparation'/u);
+assert.match(sessionSource, /createAgentProductionParallelPreparation\(\{/u);
+assert.match(sessionSource, /prepareParallelSelection\(decision, stepIndex\)/u);
+assert.match(productionParallelPreparationSource, /prepareAgentParallelToolCommands\(\{/u);
+assert.doesNotMatch(productionParallelPreparationSource, /executeAgentSessionV2ToolCommandWithCache|runAgentParallelToolTransaction|let modelOutputRepairRuns/u);
+const productionParallelExecutionSource = readModuleProjectFile('src/agent/productionSession/parallelExecution.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/parallelExecution'/u);
+assert.match(sessionSource, /createAgentProductionParallelExecution\(\{/u);
+assert.match(sessionSource, /await executeParallelBatch\(\{/u);
+assert.match(productionParallelExecutionSource, /runAgentToolOutcomeContinuation<AgentRuntimeResult>\(/u);
+assert.match(productionParallelExecutionSource, /parallelContinuationDispatch\.loopDecision/u);
+assert.doesNotMatch(productionParallelExecutionSource, /transitionAgentToolOutcome\(|parallelContinuationDispatch\.(?:finalResult|executed|adapterKind)/u);
+const legacyApprovedResultHelper = readModuleProjectFile('src/agent/productionSession/approvedResultContinuation.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/approvedResultContinuation'/u);
+assert.match(sessionSource, /createAgentProductionApprovedResultContinuation\(\{/u);
+assert.match(sessionSource, /await executeApprovedResultContinuation\(approvedToolResult\)/u);
 assert.match(
   legacyApprovedResultHelper,
-  /runAgentApprovedActionContinuation<AgentSessionV2Result>\(/u,
+  /runAgentApprovedActionContinuation<AgentRuntimeResult>\(/u,
   'Legacy Session approved-result handling must enter the combined Runtime transition-and-dispatch interface.',
 );
 assert.doesNotMatch(
@@ -1371,9 +1648,11 @@ const legacyAutoRecoveryObservationHelper = (
 )
   ? sessionSource.slice(legacyAutoRecoveryObservationStart, legacyAutoRecoveryObservationEnd)
   : '';
+assert.match(sessionSource, /from '\.\/productionSession\/autoRecoveryExecution'/u);
+assert.match(sessionSource, /createAgentProductionAutoRecoveryExecution\(\{/u);
 assert.match(
   legacyAutoRecoveryObservationHelper,
-  /runAgentVerificationContinuation<AgentSessionV2Result>\(/u,
+  /runAgentVerificationContinuation<AgentRuntimeResult>\(/u,
   'Recovery-collected evidence must re-enter the combined Runtime verification continuation interface.',
 );
 assert.doesNotMatch(
@@ -1396,19 +1675,13 @@ assert.match(
   /'recoveryMode' in transition && transition\.recoveryMode === 'failed-action'/u,
   'Legacy Session recovery Adapter must execute the recovery mode selected by Tool Outcome Runtime.',
 );
-const legacySingleToolOutcomeStart = sessionSource.indexOf('const latestToolEntry =');
-const legacySingleToolOutcomeEnd = sessionSource.indexOf(
-  'if (\n      result.ok === false',
-  legacySingleToolOutcomeStart,
-);
-const legacySingleToolOutcomeHelper = (
-  legacySingleToolOutcomeStart >= 0 && legacySingleToolOutcomeEnd >= 0
-)
-  ? sessionSource.slice(legacySingleToolOutcomeStart, legacySingleToolOutcomeEnd)
-  : '';
+const legacySingleToolOutcomeHelper = readModuleProjectFile('src/agent/productionSession/singleToolResultContinuation.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/singleToolResultContinuation'/u);
+assert.match(sessionSource, /const \{ executeSingleToolResultContinuation \} = createAgentProductionSingleToolResultContinuation\(\{/u);
+assert.match(sessionSource, /await executeSingleToolResultContinuation\(\{/u);
 assert.match(
   legacySingleToolOutcomeHelper,
-  /runAgentToolOutcomeContinuation<AgentSessionV2Result>\(/u,
+  /runAgentToolOutcomeContinuation<AgentRuntimeResult>\(/u,
   'Single-tool results must enter the combined Runtime Tool Outcome transition-and-dispatch interface.',
 );
 assert.doesNotMatch(
@@ -1416,21 +1689,10 @@ assert.doesNotMatch(
   /immediateVisualApprovalResult|const visualRefinement = await|recoveryTrigger\.action\s*===|const visualActionApproval =/u,
   'Single-tool results must not restore duplicate approval, refinement, or recovery selection branches.',
 );
-const legacyParallelOutcomeStart = sessionSource.indexOf(
-  'for (const { command, result, timing } of allParallelResults)',
-);
-const legacyParallelOutcomeEnd = sessionSource.indexOf(
-  '\n      continue;\n    }',
-  legacyParallelOutcomeStart,
-);
-const legacyParallelOutcomeHelper = (
-  legacyParallelOutcomeStart >= 0 && legacyParallelOutcomeEnd >= 0
-)
-  ? sessionSource.slice(legacyParallelOutcomeStart, legacyParallelOutcomeEnd)
-  : '';
+const legacyParallelOutcomeHelper = productionParallelExecutionSource;
 assert.match(
   legacyParallelOutcomeHelper,
-  /runAgentToolOutcomeContinuation<AgentSessionV2Result>\([\s\S]*recoveryEnabled: false/u,
+  /runAgentToolOutcomeContinuation<AgentRuntimeResult>\([\s\S]*recoveryEnabled: false/u,
   'Parallel read-only results must use Tool Outcome Runtime without starting per-result recovery.',
 );
 assert.doesNotMatch(
@@ -1479,11 +1741,16 @@ assert.doesNotMatch(
   /(?:approvedContinuationDispatch|recoveryContinuationDispatch|continuationDispatch|parallelContinuationDispatch|toolContinuationDispatch)\.(?:finalResult|executed|adapterKind)/u,
   'Legacy Session must not derive loop control directly from Runtime continuation dispatch fields.',
 );
-assert.match(
-  sessionSource,
-  /recoveryContinuationDispatch\.loopDecision[\s\S]*continuationDispatch\.loopDecision[\s\S]*approvedContinuationDispatch\.loopDecision[\s\S]*parallelContinuationDispatch\.loopDecision[\s\S]*toolContinuationDispatch\.loopDecision/u,
-  'All migrated outcome paths must consume Task Runtime Loop Continuation Decisions.',
-);
+for (const outcomePath of [
+  'recoveryContinuationDispatch', 'continuationDispatch', 'approvedContinuationDispatch',
+  'parallelContinuationDispatch', 'toolContinuationDispatch',
+]) {
+  assert.match(
+    sessionSource,
+    new RegExp(`${outcomePath}\\.loopDecision`, 'u'),
+    `${outcomePath} must consume Task Runtime Loop Continuation Decisions.`,
+  );
+}
 assert.match(
   approvalContinuationRuntimeSource,
   /status: 'in_progress'[\s\S]*status: 'dispatched'[\s\S]*status: 'blocked'/u,
@@ -1573,6 +1840,11 @@ assert.doesNotMatch(
   'Session must not own the automatic recovery loop limit.',
 );
 assert.match(sessionSource, /transitionAgentRecoveryLoop\(/u);
+const productionActionOutcomeLifecycleSource = readModuleProjectFile('src/agent/productionSession/actionOutcomeLifecycle.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/actionOutcomeLifecycle'/u);
+assert.match(sessionSource, /createAgentProductionActionOutcomeLifecycle\(\{/u);
+assert.match(sessionSource, /recordActionRuntimeDecision, recordRecoveryTriggerDecision, decideRecoveryTrigger,[\s\S]*\} = createAgentProductionActionOutcomeLifecycle\(\{/u);
+assert.match(productionActionOutcomeLifecycleSource, /decideAgentRecoveryTrigger\(/u);
 assert.match(sessionSource, /decideAgentRecoveryTrigger\(/u);
 assert.doesNotMatch(
   sessionSource,
@@ -1642,10 +1914,13 @@ assert.doesNotMatch(
   /assessment\?\.status === ['"]completed['"]/u,
   'A tool-level ResultAssessment must not authorize task completion by itself.',
 );
+const productionFinalResponseSource = readModuleProjectFile('src/agent/productionSession/finalResponse.ts');
+assert.match(sessionSource, /from '\.\/productionSession\/finalResponse'/u);
+assert.match(sessionSource, /const \{ prepareFinalResponse \} = createAgentProductionFinalResponse\(\{/u);
+assert.match(sessionSource, /decision\.action === 'final_answer' \|\| decision\.action === 'ask_user'[\s\S]*prepareFinalResponse\(decision, stepIndex/u);
 for (const [label, source] of [
-  ['V2 final answer', sessionSource],
+  ['V2 final answer', productionFinalResponseSource],
   ['V2 post-action terminal', postActionTerminalSource],
-  ['V3 terminal evaluation', v3ChatRunnerSource],
 ]) {
   assert.match(
     source,
@@ -1654,7 +1929,7 @@ for (const [label, source] of [
   );
 }
 assert.match(
-  sessionSource,
+  productionFinalResponseSource,
   /rejected final answer without Evidence Engine authorization/gu,
   'Direct-action final answers must stop when the Evidence Engine rejects completion.',
 );

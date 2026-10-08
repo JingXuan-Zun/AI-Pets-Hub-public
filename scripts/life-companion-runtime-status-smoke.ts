@@ -77,7 +77,6 @@ const {
   overrideSource,
   runtimeSchedulerSource,
   rowSource,
-  progressSource,
 } = readProjectSources({
   hookSource: 'src/hooks/useLifeCompanionScheduler.ts',
   panelSource: 'src/components/settings/SettingsLifeCompanionPanel.tsx',
@@ -86,7 +85,6 @@ const {
   overrideSource: 'src/life-companion/lifeCompanionRuntimeOverride.ts',
   runtimeSchedulerSource: 'src/life-companion/lifeCompanionRuntimeScheduler.ts',
   rowSource: 'src/components/settings/SettingsLifeCompanionRuntimeStatusRow.tsx',
-  progressSource: 'PROJECT_FEATURE_PROGRESS.md',
 });
 
 assert.match(hookSource, /scheduleLifeCompanionRuntime/u);
@@ -106,8 +104,6 @@ assert.match(rowSource, /runtime/u);
 assert.match(rowSource, /llmTextPromptState/u);
 assert.match(rowSource, /textPromptState/u);
 assert.match(rowSource, /suspended/u);
-assert.match(progressSource, /runtime status row/u);
-assert.match(progressSource, /LLM failure retry timing, backoff runtime visibility/u);
 assert.ok(rowSource.split(/\r?\n/u).length <= 80);
 
 console.log('life companion runtime status smoke passed');

@@ -67,7 +67,8 @@ export function evaluateAgentActionLifecycle(result: AgentChatCommandResult | nu
     if (/(?:uipi|integrity|elevat|admin|permission|denied|access\s+is\s+denied|uac|\u7ba1\u7406\u5458|\u6743\u9650)/iu.test(text)) {
       return {
         reason: 'Action is blocked by permission, elevation, or integrity-boundary evidence.',
-        recommendedRecovery: 'Use matching elevation/UIAccess where allowed, or switch to a non-injected UIA/API path instead of retrying the same input.',
+        // The usual cause is a target running as administrator (e.g. WeGame): Windows blocks input from a normal process.
+        recommendedRecovery: 'Use matching elevation/UIAccess where allowed, or switch to a non-injected UIA/API path instead of retrying the same input. If the target window runs as administrator, do not retry; tell the user in Chinese: 目标窗口以管理员权限运行，系统阻止了桌宠的点击；请右键桌宠程序选择「以管理员身份运行」后再让我继续。',
         status: 'blocked_permission',
       };
     }

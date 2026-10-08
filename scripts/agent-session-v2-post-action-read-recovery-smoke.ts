@@ -122,7 +122,8 @@ async function runReadRecoveryCase(options: {
     userGoal: 'click launch button',
   });
 
-  assert.equal(result.status, 'completed');
+  // A verified blocker after bounded recovery hands control back to the user.
+  assert.equal(result.status, 'needs-user');
   assert.equal(modelCallCount, 1);
   assert.equal(executedCommands.length, 1);
   assert.match(result.continuation.historyLines.join('\n'), /automatic recovery observation/u);

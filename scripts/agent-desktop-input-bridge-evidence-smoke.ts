@@ -2,17 +2,30 @@ import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
 
 const {
-  desktopInputService: desktopInputServiceSource,
+  desktopInputService: desktopInputRootSource,
+  mousePreflightSource,
+  mousePositionSource,
+  mouseClickSource,
+  mouseTouchSource,
+  mouseResultSource,
+  nativeInterop: nativeInteropSource,
   desktopTools: desktopToolsSource,
   toolInputSchema: toolInputSchemaSource,
 } = readProjectSources({
   desktopInputService: 'electron/desktopInputService.cjs',
+  mousePreflightSource: 'electron/desktopInputMousePreflight.cjs',
+  mousePositionSource: 'electron/desktopInputMousePosition.cjs',
+  mouseClickSource: 'electron/desktopInputMouseClick.cjs',
+  mouseTouchSource: 'electron/desktopInputMouseTouch.cjs',
+  mouseResultSource: 'electron/desktopInputMouseResult.cjs',
+  nativeInterop: 'electron/desktopInputNativeInterop.cjs',
   desktopTools: 'src/agent/agentRuntimeDesktopTools.ts',
   toolInputSchema: 'src/agent/agentToolInputSchema.ts',
 });
+const desktopInputServiceSource = [desktopInputRootSource, mousePreflightSource, mousePositionSource, mouseClickSource, mouseTouchSource, mouseResultSource].join('\n');
 
 assert.match(
-  desktopInputServiceSource,
+  nativeInteropSource,
   /CreateAbsoluteMouseMove\(int x, int y\)/u,
   'desktop input should have a virtual absolute-coordinate movement primitive',
 );

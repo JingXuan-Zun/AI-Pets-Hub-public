@@ -1,4 +1,4 @@
-import { type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { getChatTargetOptions, resolveActiveChatPetId, resolveActiveChatSlot } from './chat/multiPetChat';
 import { type DesktopPetChatSendOptions, type DesktopPetGroupChatContinuationMode, type GroupUserAttention, type GroupUserAttentionDecision } from '../chatState';
@@ -7,12 +7,17 @@ import { Button } from '../../components/ui/button';
 import { type ChatMemorySaveHandler } from './chat/chatMemorySaveUtils';
 import type { StoryDefinition, StorySessionState } from './chat/story/storyTypes';
 import PetChatConversation from './chat/PetChatConversation';
+import { ChatSidebarToggleButton } from './chat/ChatSidebarToggleButton';
 import { StandaloneWindowResizeHandles } from './StandaloneWindowResizeHandles';
-import { WindowCompactHandle, WindowFrameControls } from './WindowFrameControls';
+import { WindowFrameControls } from './WindowFrameControls';
 import { useStandaloneWindowResize } from '../standaloneWindowResize';
 import { useStandaloneWindowDrag } from '../standaloneWindowDrag';
-import { useStandaloneWindowCompactFrame } from '../standaloneWindowCompactFrame';
-import { capturePetChatScrollPosition } from './chat/usePetChatConversationAutoScroll';
+import { useStandaloneWindowFrame } from '../standaloneWindowFrame';
+import {
+  buildChatBackgroundImageStyle,
+  buildChatBackgroundOverlayStyle,
+  resolveChatBackgroundImageUrl,
+} from './chat/chatAppearanceUtils';
 
 interface ChatWindowProps {
   activePetId: string;
@@ -55,9 +60,8 @@ interface ChatWindowProps {
 
 const VOICE_DISABLE_TITLE = '\u5173\u95ed\u8bed\u97f3\u64ad\u62a5';
 const VOICE_ENABLE_TITLE = '\u5f00\u542f\u8bed\u97f3\u64ad\u62a5';
-const CHAT_WINDOW_MINIMIZE_TITLE = '收纳聊天窗口';
+const CHAT_WINDOW_MINIMIZE_TITLE = '最小化';
 const CHAT_WINDOW_CLOSE_TITLE = '关闭聊天窗口';
-const CHAT_WINDOW_EXPAND_TITLE = '展开聊天窗口';
 
 export default function ChatWindow({
   activePetId,
@@ -102,14 +106,13 @@ export default function ChatWindow({
     minHeight: isInteractiveDialogue ? 240 : 480,
     minWidth: isInteractiveDialogue ? 620 : 360,
   });
-  const { isDragging, startWindowDrag } = useStandaloneWindowDrag({
+  const { isMaximized, minimizeWindow, toggleMaximizeWindow } = useStandaloneWindowFrame({
     enabled: !isInteractiveDialogue,
   });
-  const {
-    compactWindow,
-    isCompact: isWindowCompact,
-    restoreWindow,
-  } = useStandaloneWindowCompactFrame();
+  const { isDragging, startWindowDrag } = useStandaloneWindowDrag({
+    enabled: !isInteractiveDialogue,
+    isMaximized,
+  });
   const petOptions = getChatTargetOptions(config);
   const resolvedActivePetId = resolveActiveChatPetId(config, activePetId);
   const activePetSlot = resolveActiveChatSlot(config, resolvedActivePetId);
@@ -118,59 +121,58 @@ export default function ChatWindow({
   const activeGreeting = activePetSlot?.personality.greeting ?? config.personality.greeting;
   const typingPetName = petOptions.find((option) => option.id === typingPetId)?.name ?? activePetName;
   const chatScrollPositionKey = `standalone:${chatMode}`;
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const stopHeaderControlDrag = (event: ReactPointerEvent<HTMLElement>) => {
     event.stopPropagation();
   };
-  const handleMinimizeWindow = () => {
-    capturePetChatScrollPosition(chatScrollPositionKey);
-    compactWindow();
-  };
-
-  if (isWindowCompact) {
-    return (
-      <div
-        data-desktop-pet-interactive="true"
-        className="relative flex h-screen w-screen cursor-grab items-center justify-center overflow-hidden bg-transparent active:cursor-grabbing"
-        style={noDragRegionStyle}
-        onPointerDown={isInteractiveDialogue ? undefined : startWindowDrag}
-      >
-        <WindowCompactHandle
-          title={CHAT_WINDOW_EXPAND_TITLE}
-          onStartDrag={isInteractiveDialogue
-            ? undefined
-            : (event) => startWindowDrag(event, { allowControl: true })}
-          onExpand={restoreWindow}
-        />
-      </div>
-    );
-  }
+  const chatBackgroundImageUrl = resolveChatBackgroundImageUrl(config);
 
   return (
-    <div className={`relative flex h-screen w-screen min-h-0 flex-col overflow-hidden border border-border bg-card text-foreground ${
-      isResizing
-        ? 'select-none shadow-none'
-        : isDragging
-          ? 'select-none shadow-none'
-          : (isInteractiveDialogue
-              ? 'shadow-[0_22px_64px_rgba(15,23,42,0.12)]'
-              : 'shadow-[0_28px_80px_rgba(15,23,42,0.16)]')
+    <div className={`relative flex h-screen w-screen min-h-0 flex-col overflow-hidden ${isMaximized ? 'rounded-none' : 'rounded-[10px]'} border border-white/70 app-shell-canvas text-foreground ${
+      // No outer shadow: the frame fills the window, so a shadow could only
+      // show up in the transparent area outside the rounded corners.
+      isResizing || isDragging ? 'select-none' : ''
     }`}>
+      {chatBackgroundImageUrl && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+          <img
+            alt=""
+            src={chatBackgroundImageUrl}
+            className="h-full w-full rounded-[inherit] object-cover"
+            draggable={false}
+            style={buildChatBackgroundImageStyle(config)}
+          />
+          <div className="absolute inset-0 rounded-[inherit]" style={buildChatBackgroundOverlayStyle(config)} />
+        </div>
+      )}
       <div
-        className={`relative shrink-0 flex items-center justify-between border-b border-border bg-card ${
+        className={`relative z-10 shrink-0 flex items-center justify-between rounded-t-[inherit] border-b border-white/60 glass-bar ${
           isInteractiveDialogue
             ? 'px-5 py-3.5'
             : 'px-5 py-3.5'
         }`}
         style={noDragRegionStyle}
         onPointerDown={isInteractiveDialogue ? undefined : startWindowDrag}
+        onDoubleClick={(event) => {
+          if (!isInteractiveDialogue && !(event.target as HTMLElement).closest('button')) toggleMaximizeWindow();
+        }}
       >
         <div className="flex items-center gap-2">
           <div className="h-2.5 w-2.5 rounded-full bg-primary" />
-          <span className="text-xs font-semibold tracking-[0.18em] text-foreground">
+          <span className="text-sm font-semibold text-foreground">
             {chatMode === 'group'
-              ? '群聊 // COMMS'
-              : chatMode === 'story' ? '故事 // COMMS' : `${activePetName} // COMMS`}
+              ? '群聊'
+              : chatMode === 'story' ? '故事' : activePetName}
           </span>
+          {!isInteractiveDialogue ? (
+            <div className="ml-2" style={noDragRegionStyle} onPointerDown={stopHeaderControlDrag}>
+              <ChatSidebarToggleButton
+                isCollapsed={isSidebarCollapsed}
+                onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="relative"
+              />
+            </div>
+          ) : null}
         </div>
         <div className="flex items-center gap-1" style={noDragRegionStyle}>
           <Button
@@ -188,13 +190,16 @@ export default function ChatWindow({
             closeTitle={CHAT_WINDOW_CLOSE_TITLE}
             minimizeTitle={CHAT_WINDOW_MINIMIZE_TITLE}
             onClose={onClose}
-            onMinimize={handleMinimizeWindow}
+            onMinimize={minimizeWindow}
+            isMaximized={isMaximized}
+            onToggleMaximize={isInteractiveDialogue ? undefined : toggleMaximizeWindow}
           />
         </div>
       </div>
 
       <PetChatConversation
-        className="min-h-0 flex-1"
+        className="relative min-h-0 flex-1"
+        hoistBackground
         activePetId={resolvedActivePetId}
         chatBracketOuterTextColor={config.settings.chatBracketOuterTextColor}
         chatMode={chatMode}
@@ -231,6 +236,8 @@ export default function ChatWindow({
         typingPetName={typingPetName}
         voiceInputEnabled={config.settings.voiceInputEnabled}
         scrollPositionKey={chatScrollPositionKey}
+        sidebarCollapsed={isSidebarCollapsed}
+        onSidebarCollapsedChange={setIsSidebarCollapsed}
       />
       <StandaloneWindowResizeHandles onStartResize={startWindowResize} />
     </div>

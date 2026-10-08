@@ -1,3 +1,4 @@
+import { isAgentRuntimeCancellationRequested, createAgentRuntimeCancelledResult } from './agentRuntimeCancellation';
 import {
   type AgentChatCommandResult,
   type AgentToolCallCommand,
@@ -17,33 +18,6 @@ import {
   executeMoveWindowToDisplay,
   waitForDesktopActionWindowSettle,
 } from './agentRuntimeWindowTools';
-
-const AGENT_RUNTIME_CANCELLED_TEXT = '已终止当前 Agent 执行。';
-
-function isAgentRuntimeCancellationRequested(runtime: AgentRuntimeExecutorContext) {
-  return Boolean(runtime.signal?.aborted);
-}
-
-function createAgentRuntimeCancelledResult(target: AgentToolCallCommand | string): AgentChatCommandResult {
-  const toolName = typeof target === 'string' ? target : target.name;
-  return {
-    errorText: AGENT_RUNTIME_CANCELLED_TEXT,
-    ok: false,
-    receipt: {
-      evidenceLines: ['User cancelled the active Agent run before this tool could finish.'],
-      status: 'blocked',
-      summaryLines: [
-        `tool: ${toolName}`,
-        'result: cancelled by user',
-      ],
-      title: 'Agent run cancelled',
-      toolName,
-      verification: AGENT_RUNTIME_CANCELLED_TEXT,
-    },
-    responseText: AGENT_RUNTIME_CANCELLED_TEXT,
-    verification: AGENT_RUNTIME_CANCELLED_TEXT,
-  };
-}
 
 function getDesktopActionTargetInput(toolCall: AgentToolCallCommand) {
   return getToolStringInput(toolCall, [

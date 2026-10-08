@@ -16,23 +16,16 @@ import {
 import { readProjectSources } from './smokeTestHarness.ts';
 
 const {
-  roadmapSource,
   coreSource,
   plannerSource,
   indexSource,
   controllerSource,
 } = readProjectSources({
-  roadmapSource: 'PROJECT_AGENT_RUNTIME_CORE_ROADMAP.md',
   coreSource: 'src/agent/agentRuntimeCore.ts',
   plannerSource: 'src/agent/agentPlanner.ts',
   indexSource: 'src/agent/index.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
 });
-
-assert.match(roadmapSource, /Agent Runtime Core is the current P0 track/u);
-assert.match(roadmapSource, /Agent Runtime Core must not call avatar, Live2D, Three\.js/u);
-assert.match(roadmapSource, /open_web_or_search\/open_app_or_resource/u);
-assert.match(roadmapSource, /No WeGame, Chrome, Bilibili, or app-specific command chains/u);
 
 assert.match(coreSource, /export interface AgentRuntimeCoreTaskPlan/u);
 assert.match(coreSource, /export interface AgentRuntimeCoreContext/u);

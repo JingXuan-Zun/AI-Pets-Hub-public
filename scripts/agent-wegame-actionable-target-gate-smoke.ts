@@ -97,9 +97,13 @@ const actionableDecision = resolveAgentVisualExecutionStrategy({
 
 assert.equal(actionableDecision.kind, 'coordinate');
 assert.equal(actionableDecision.command?.toolCall?.name, 'execute_desktop_sequence');
-assert.match(String(actionableDecision.command?.toolCall?.input?.stepsJson), /"action":"click"/u);
-assert.match(String(actionableDecision.command?.toolCall?.input?.stepsJson), /"x":1180/u);
-assert.match(String(actionableDecision.command?.toolCall?.input?.stepsJson), /"y":740/u);
-assert.equal(actionableDecision.command?.toolCall?.input?.postVerifyRequired, true);
+assert.equal(actionableDecision.command?.toolCall?.input?.mode, 'visible_click');
+assert.equal(actionableDecision.command?.toolCall?.input?.sourceHwnd, 2690792);
+assert.equal(actionableDecision.command?.toolCall?.input?.targetX, 1180);
+assert.equal(actionableDecision.command?.toolCall?.input?.targetY, 740);
+assert.equal(actionableDecision.command?.toolCall?.input?.requireActionable, true);
+assert.equal(actionableDecision.command?.toolCall?.input?.requireSameHwnd, true);
+assert.equal(actionableDecision.command?.toolCall?.input?.postVerifyVisualQuery, '打开 WeGame 里的英雄联盟');
+assert.equal(actionableDecision.command?.toolCall?.input?.stepsJson, undefined);
 
 console.log('agent wegame actionable target gate smoke ok');

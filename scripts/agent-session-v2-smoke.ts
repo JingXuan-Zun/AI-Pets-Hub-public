@@ -63,9 +63,12 @@ const displayResult = await runAgentProductionSession({
   userGoal: 'check displays',
 });
 
+// The successful read-only observation satisfies the task, so the runtime
+// answers from the tool evidence without a second model turn.
 assert.equal(displayResult.status, 'completed');
-assert.equal(displayResult.finalAnswer, 'I can see 2 displays: primary 2560x1440, secondary 3440x1440.');
-assert.equal(displayModelInputs.length, 2);
+assert.equal(displayResult.finalAnswer, '2 displays: primary 2560x1440, secondary 3440x1440');
+assert.equal(displayModelInputs.length, 1);
+assert.match(displayResult.continuation.historyLines.join('\n'), /Runtime read-only terminal:/u);
 assert.equal(displayToolCommands.length, 1);
 assert.equal(displayToolCommands[0]?.toolCall?.name, 'execute_desktop_observation');
 assert.equal(displayToolCommands[0]?.toolCall?.input.action, 'get_display_info');

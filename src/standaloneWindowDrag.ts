@@ -13,14 +13,24 @@ type StandaloneWindowDragState = {
 
 interface UseStandaloneWindowDragOptions {
   enabled?: boolean;
+  /** A maximized window is restored to its normal size once the drag starts moving. */
+  isMaximized?: boolean;
 }
+
+// Movement before a maximized window restores, so a plain click or double-click does nothing.
+const MAXIMIZED_DRAG_RESTORE_THRESHOLD = 4;
 
 export function useStandaloneWindowDrag({
   enabled = true,
+  isMaximized = false,
 }: UseStandaloneWindowDragOptions = {}) {
   const [dragState, setDragState] = useState<StandaloneWindowDragState>(null);
   const frameRef = useRef<number | null>(null);
   const pendingPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const isMaximizedRef = useRef(isMaximized);
+  isMaximizedRef.current = isMaximized;
+  // 'pending' until the maximized window has been restored for this drag.
+  const maximizedRestoreRef = useRef<'none' | 'pending' | 'restoring'>('none');
 
   useEffect(() => {
     if (!dragState || !enabled) {
@@ -53,8 +63,40 @@ export function useStandaloneWindowDrag({
       frameRef.current = window.requestAnimationFrame(flushPendingPosition);
     };
 
+    const restoreMaximizedWindow = (event: PointerEvent) => {
+      maximizedRestoreRef.current = 'restoring';
+      const cursor = { x: event.screenX, y: event.screenY };
+      void desktopPetShellRuntime.restoreMaximizedWindowForDrag({
+        cursorX: cursor.x,
+        cursorY: cursor.y,
+        ratioX: (dragState.startScreenX - dragState.originX) / Math.max(1, dragState.width),
+        offsetY: dragState.startScreenY - dragState.originY,
+      }).then((bounds) => {
+        maximizedRestoreRef.current = 'none';
+        if (!bounds) return;
+        setDragState((current) => current && {
+          ...current,
+          startScreenX: cursor.x,
+          startScreenY: cursor.y,
+          originX: bounds.x,
+          originY: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        });
+      });
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerId !== dragState.pointerId) {
+        return;
+      }
+      if (maximizedRestoreRef.current === 'restoring') {
+        return;
+      }
+      if (maximizedRestoreRef.current === 'pending') {
+        if (Math.hypot(
+          event.screenX - dragState.startScreenX, event.screenY - dragState.startScreenY,
+        ) >= MAXIMIZED_DRAG_RESTORE_THRESHOLD) restoreMaximizedWindow(event);
         return;
       }
 
@@ -70,6 +112,7 @@ export function useStandaloneWindowDrag({
       }
 
       flushPendingPosition();
+      maximizedRestoreRef.current = 'none';
       setDragState(null);
     };
 
@@ -105,6 +148,7 @@ export function useStandaloneWindowDrag({
     event.stopPropagation();
     event.currentTarget.setPointerCapture?.(event.pointerId);
 
+    maximizedRestoreRef.current = isMaximizedRef.current ? 'pending' : 'none';
     const currentX = Number.isFinite(window.screenX) ? window.screenX : window.screenLeft;
     const currentY = Number.isFinite(window.screenY) ? window.screenY : window.screenTop;
 

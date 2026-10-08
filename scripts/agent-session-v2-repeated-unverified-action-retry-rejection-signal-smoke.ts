@@ -14,9 +14,11 @@ import {
 const {
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  retryEvidence: retryEvidenceSource,
 } = readProjectSources({
   runtimeSignal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  retryEvidence: 'src/agent/productionSession/retryEvidence.ts',
 });
 
 assertSourceMatches(
@@ -40,11 +42,10 @@ assertSourceDoesNotMatch(
   'AgentSessionV2 should not own repeated unverified action retry rejection signal implementation.',
 );
 assertSourceMatches(sessionSource, /createAgentRepeatedUnverifiedActionRetryRejection\(/u);
-assertSourceMatches(
-  sessionSource,
-  /function findAgentSessionV2RepeatedUnverifiedActionRetry/u,
-  'AgentSessionV2 should still own the repeated retry detection predicate for this slice.',
-);
+assertSourceMatches(retryEvidenceSource, /function findAgentProductionRetryRepeatedUnverifiedActionRetry/u, 'Repeated retry detection should remain in the production retry evidence module.');
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/retryEvidence'/u);
+assertSourceMatches(sessionSource, /createAgentProductionRetryEvidence\(\{/u);
+assertSourceMatches(sessionSource, /findAgentProductionRetryRepeatedUnverifiedActionRetry: findAgentSessionV2RepeatedUnverifiedActionRetry/u);
 
 function createDesktopInputCommand(x: number, y: number): AgentChatCommand {
   return {

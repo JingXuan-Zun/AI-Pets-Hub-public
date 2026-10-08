@@ -110,6 +110,22 @@ interface DesktopPetSystemInfoLike {
   uptimeSeconds?: number;
 }
 
+interface DesktopPetVideoLibraryInspection {
+  error?: string;
+  folders?: Array<{ folderPath: string; name: string; videoCount: number }>;
+  ok: boolean;
+  rootPath?: string;
+}
+
+interface DesktopPetWindowDragRestoreRequest {
+  cursorX: number;
+  cursorY: number;
+  /** Grab point as a fraction of the window width. */
+  ratioX: number;
+  /** Grab point distance from the window top, in pixels. */
+  offsetY: number;
+}
+
 type DesktopPetCaptureMode = 'screen' | 'window' | 'area';
 
 interface DesktopPetCaptureRectLike {
@@ -133,6 +149,35 @@ interface DesktopPetCaptureSourceLike {
   height?: number;
   thumbnail?: string;
   appIcon?: string;
+}
+
+interface DesktopPetScreenTextLineLike {
+  height: number;
+  text: string;
+  width: number;
+  x: number;
+  y: number;
+}
+
+interface DesktopPetScreenRegionTextRequestLike {
+  height: number;
+  includeImage?: boolean;
+  width: number;
+  x: number;
+  y: number;
+}
+
+interface DesktopPetScreenRegionTextResultLike extends DesktopPetScreenTextRecognitionResultLike {
+  height?: number;
+  imageDataUrl?: string | null;
+  width?: number;
+}
+
+interface DesktopPetScreenTextRecognitionResultLike {
+  language?: string;
+  lines: DesktopPetScreenTextLineLike[];
+  ok: boolean;
+  reason?: string;
 }
 
 interface DesktopPetCaptureSourceListRequestLike {
@@ -1070,6 +1115,11 @@ interface Window {
       messageCount?: number;
       ok: boolean;
     }>;
+    archiveChatHistory?: (messages: import('./types').ChatMessage[]) => Promise<{
+      archivedCount?: number;
+      error?: string;
+      ok: boolean;
+    }>;
     getAppRuntimeInfo?: () => Promise<{
       appVersion?: string;
       buildId?: string;
@@ -1369,6 +1419,16 @@ interface Window {
     setAgentDesktopExecutionActive?: (active: boolean) => Promise<{ active: boolean } | void>;
     setCurrentWindowBounds?: (bounds: { x: number; y: number; width: number; height: number }) => void;
     minimizeCurrentWindow?: () => void;
+    toggleMaximizeCurrentWindow?: () => Promise<boolean>;
+    isCurrentWindowMaximized?: () => Promise<boolean>;
+    /** Local Windows OCR; text line boxes are in the image's pixel coordinates. */
+    recognizeScreenText?: (request: { imageDataUrl: string }) => Promise<DesktopPetScreenTextRecognitionResultLike>;
+    captureRegionText?: (request: DesktopPetScreenRegionTextRequestLike) => Promise<DesktopPetScreenRegionTextResultLike>;
+    /** High-resolution still of one capture source, taken in the main process. */
+    captureSourceImage?: (request: { height?: number; maxSide?: number; sourceId: string; width?: number }) => Promise<{ height?: number; imageDataUrl?: string; ok: boolean; reason?: string; width?: number }>;
+    restoreMaximizedWindowForDrag?: (
+      request: DesktopPetWindowDragRestoreRequest,
+    ) => Promise<{ x: number; y: number; width: number; height: number } | null>;
     isChatWindowOpen?: () => Promise<boolean>;
     onChatWindowState?: (callback: (isOpen: boolean) => void) => () => void;
     setInteractiveRegions?: (
@@ -1695,6 +1755,15 @@ interface Window {
       videoCount?: number;
       videoUrl?: string;
     }>;
+    choose2DVideoLibrary?: () => Promise<DesktopPetVideoLibraryInspection & { cancelled?: boolean }>;
+    inspect2DVideoLibrary?: (request?: { rootPath?: string }) => Promise<DesktopPetVideoLibraryInspection>;
+    resolve2DVideoLibraryRoot?: (request?: { sourcePath?: string }) => Promise<DesktopPetVideoLibraryInspection>;
+    pick2DVideoFromLibrary?: (request?: { folderNames?: string[]; rootPath?: string }) => Promise<{
+      error?: string;
+      folderName?: string;
+      ok: boolean;
+      videoUrl?: string;
+    }>;
     stage2DVideo?: (request?: { sourcePath?: string; videoName?: string }) => Promise<{
       error?: string;
       ok: boolean;
@@ -1763,6 +1832,11 @@ interface Window {
     startBrowserTtsService?: (settings?: unknown) => Promise<unknown>;
     installBrowserTtsDependencies?: (settings?: unknown) => Promise<unknown>;
     listBrowserTtsSpeakers?: (settings?: unknown) => Promise<unknown>;
+    getGptSovitsHealth?: (settings?: unknown) => Promise<unknown>;
+    startGptSovitsService?: (settings?: unknown) => Promise<unknown>;
+    listGptSovitsModels?: () => Promise<unknown>;
+    installGptSovitsRuntime?: (settings?: unknown) => Promise<unknown>;
+    onGptSovitsInstallProgress?: (callback: (progress: unknown) => void) => () => void;
     pushRuntimeLog?: (scope?: string, message?: string, details?: unknown) => void;
     getRuntimeLogs?: () => Promise<string[]>;
     detectBrowserSearch?: (payload?: unknown) => Promise<unknown>;

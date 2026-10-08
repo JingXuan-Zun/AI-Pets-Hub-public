@@ -47,7 +47,8 @@ export function createPersonaGithub(env, fetchImpl, signal) {
   };
   const fileBytes = async (filePath, ref = 'main', maxBytes = PERSONA_MAX_CATALOG_BYTES) => {
     try {
-      const payload = await boundedJson(await call('/contents/' + filePath + '?ref=' + encodeURIComponent(ref)), maxBytes * 2);
+      const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+      const payload = await boundedJson(await call('/contents/' + encodedPath + '?ref=' + encodeURIComponent(ref)), maxBytes * 2);
       const bytes = decodeContent(payload);
       if (bytes.byteLength > maxBytes) throw new PersonaHttpError(502, 'github-content-too-large');
       return bytes;
@@ -101,7 +102,7 @@ function updatedCatalog(catalog, entry) {
 
 async function commitPersona(github, snapshot, entry, blobSha, content) {
   const tree = await github.json('/git/trees', 'POST', { base_tree: snapshot.tree, tree: [
-    { path: 'personas/' + entry.id + '.' + entry.format, mode: '100644', type: 'blob', sha: blobSha },
+    { path: 'personas/' + entry.storageFilename, mode: '100644', type: 'blob', sha: blobSha },
     { path: 'catalog/index.json', mode: '100644', type: 'blob', content },
   ] });
   const commit = await github.json('/git/commits', 'POST', { message: 'Share persona ' + entry.id.slice(0, 12), tree: tree.sha, parents: [snapshot.sha] });

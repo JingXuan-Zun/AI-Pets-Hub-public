@@ -24,6 +24,10 @@ const STREAM_TTS_STABLE_CATCHUP_SEGMENT_STRONG_BREAK_MIN_LENGTH = 72;
 const STREAM_TTS_STABLE_BACKLOG_SEGMENT_STRONG_BREAK_MIN_LENGTH = 64;
 const STREAM_TTS_VOICE_TONE_STABILITY_MAX = 100;
 
+// GPT-SoVITS drops or garbles very short fragments ("你回来啦！"). 10 keeps every segment >= 8 chars while
+// holding the first segment near ~22 chars; 15 already stretches some first segments to ~30 chars (slower first audio).
+export const STREAM_TTS_GPT_SOVITS_VOICE_TONE_STABILITY = 10;
+
 export const STREAM_TTS_CLOCKED_OVERLAP_MIN_MS = 10;
 export const STREAM_TTS_CLOCKED_OVERLAP_MAX_MS = 32;
 export const STREAM_TTS_CLOCKED_OVERLAP_DURATION_RATE = 0.03;

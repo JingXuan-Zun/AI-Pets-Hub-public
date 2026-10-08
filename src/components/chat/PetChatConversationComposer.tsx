@@ -352,7 +352,7 @@ export function PetChatConversationComposer({
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => onRemoveDraftAttachment(attachment.id)}
-                className="absolute right-1 top-1 h-5 w-5 rounded-full border border-white/80 bg-sky-950/78 text-white opacity-90 hover:bg-sky-900 hover:text-white"
+                className="absolute right-1 top-1 h-5 w-5 rounded-full border border-white/80 bg-primary/80 text-white opacity-90 hover:bg-primary hover:text-white"
                 title="移除图片"
               >
                 <X className="h-3 w-3" />
@@ -483,7 +483,7 @@ export function PetChatConversationComposer({
           agentMode: agentMode || undefined,
           browserSearchMode: browserSearchMode ?? undefined,
         } : undefined)}
-        className="h-9 w-9 shrink-0 rounded-full bg-sky-950 text-white hover:bg-sky-900"
+        className="h-9 w-9 shrink-0 rounded-full bg-primary text-white shadow-[0_4px_12px_rgba(212,81,142,0.35)] hover:bg-primary/90"
       >
         <Send className="h-3 w-3" />
       </Button>

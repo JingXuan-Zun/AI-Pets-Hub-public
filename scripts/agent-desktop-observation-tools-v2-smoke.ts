@@ -1,3 +1,4 @@
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
 import {
   AGENT_TOOL_INPUT_PARAM_SPECS,
@@ -12,7 +13,7 @@ import {
   type AgentToolCallName,
 } from '../src/agent/legacy/index.ts';
 import { type PetConfig } from '../src/types.ts';
-import { readProjectSources } from './smokeTestHarness.ts';
+
 
 const expectedTools: AgentToolCallName[] = [
   'get_active_window_info',

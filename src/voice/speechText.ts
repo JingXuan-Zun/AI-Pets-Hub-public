@@ -168,7 +168,7 @@ export function splitSpeechTextForPlaybackPauses(text: string, settings: VoiceSe
   return parts.length > 0 ? parts : [{ text: normalizedText, pauseAfterMs: 0 }];
 }
 
-export function prepareSpeechText(text: string, settings: VoiceSettings) {
+export function prepareSpeechText(text: string, settings: VoiceSettings, preserveParagraphs = false) {
   const rawText = String(text ?? '');
   const normalizedText = settings.speechSkipBracketContent
     ? removeSpeechBracketContent(rawText)
@@ -178,5 +178,7 @@ export function prepareSpeechText(text: string, settings: VoiceSettings) {
     ? applySpeechExpressivePunctuation(normalizedText)
     : normalizedText;
 
-  return normalizeSpeechText(expressiveText);
+  return preserveParagraphs
+    ? expressiveText.split(/\r?\n/u).map(normalizeSpeechText).filter(Boolean).join('\n')
+    : normalizeSpeechText(expressiveText);
 }

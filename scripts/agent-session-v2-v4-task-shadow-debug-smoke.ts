@@ -12,11 +12,16 @@ import {
 
 const {
   sessionSource,
+  resultContextSource,
   shadowAdapterSource,
 } = readProjectSources({
   sessionSource: 'src/agent/agentProductionSessionImplementation.ts',
+  resultContextSource: 'src/agent/productionSession/sessionResultContext.ts',
   shadowAdapterSource: 'src/agent/agentTaskRuntimeV4SessionV2ShadowAdapter.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/sessionResultContext'/u);
+assertSourceMatches(sessionSource, /const \{ createProgressSnapshot, createFinalResult, createBudgetExceededResult \} = createAgentProductionSessionResultContext\(\{/u);
 
 assertSourceMatches(
   sessionSource,
@@ -24,7 +29,7 @@ assertSourceMatches(
   'AgentSessionV2 debug info should expose V4 task shadow.',
 );
 assertSourceMatches(
-  sessionSource,
+  resultContextSource,
   /createAgentTaskRuntimeV4SessionV2Shadow\(/u,
   'AgentSessionV2 should create V4 task shadow debug info.',
 );

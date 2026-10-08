@@ -150,7 +150,7 @@ function ModelPresetPreview({
     }
 
     return (
-      <div className="pointer-events-none relative flex h-full w-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.16),transparent_58%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(15,23,42,0.42))] text-white/85">
+      <div className="pointer-events-none relative flex h-full w-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.16),transparent_58%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(158,84,140,0.42))] text-white/85">
         <Box className="h-8 w-8 stroke-[1.25]" />
         <div className="font-mono text-2xs uppercase tracking-[0.22em]">
           {formatLabel}

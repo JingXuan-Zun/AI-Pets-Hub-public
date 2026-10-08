@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { PetConfig } from '../../types';
+import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
 type SocialControlKey =
   | 'groupParallelRoleGenerationEnabled'
@@ -30,17 +31,17 @@ export function SettingsGroupSocialControls(props: {
       <div className="mt-4 space-y-3">
         {CONTROLS.map((control) => (
           <label key={control.key} className="flex items-start gap-3 rounded-sm border border-border/70 bg-background/30 p-3">
-            <input
-              aria-label={control.label}
-              checked={props.config.settings[control.key]}
-              onChange={(event) => update(control.key, event.target.checked)}
-              style={props.noDragRegionStyle}
-              type="checkbox"
-            />
-            <span>
+            <span className="flex-1">
               <span className="block text-xs text-foreground">{control.label}</span>
               <span className="mt-1 block text-2xs leading-4 text-muted-foreground">{control.description}</span>
             </span>
+            <SettingsToggleSwitch
+              checked={props.config.settings[control.key]}
+              hideLabel
+              label={control.label}
+              onChange={(checked) => update(control.key, checked)}
+              style={props.noDragRegionStyle}
+            />
           </label>
         ))}
       </div>

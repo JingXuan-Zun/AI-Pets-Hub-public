@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   type AgentChatCommandHandler,
 } from '../../agent';
@@ -12,6 +12,13 @@ import { usePetChatVoicePlayback } from './usePetChatVoicePlayback';
 import { usePetChatVoiceInputController } from './usePetChatVoiceInputController';
 import { usePetChatResponseTurn } from './usePetChatResponseTurn';
 import { useGroupTopicLifecycleScheduler } from './group/topic/useGroupTopicLifecycleScheduler';
+import {
+  useNeuralMemoryProposalCapture,
+  type NeuralMemoryReplyCompletedEvent,
+} from '../../neural-memory/useNeuralMemoryProposalCapture';
+import { useCharacterMemoryMaintenance } from '../../character-memory/useCharacterMemoryMaintenance';
+import { useVoiceWakeListener } from './useVoiceWakeListener';
+import { registerCompanionLineSpeaker } from '../../life-companion/companionLineSpeech';
 
 interface UsePetChatSessionOptions {
   config: PetConfig;
@@ -94,12 +101,19 @@ export function usePetChatSession({
     voiceInputSessionRef,
     voiceTranscriptRef,
   });
+  const captureNeuralMemoryProposals = useNeuralMemoryProposalCapture({ configRef, onUpdateConfig });
+  const maintainCharacterMemory = useCharacterMemoryMaintenance({ configRef, onUpdateConfig });
+  const onReplyCompleted = useCallback((event: NeuralMemoryReplyCompletedEvent) => {
+    captureNeuralMemoryProposals(event);
+    maintainCharacterMemory(event);
+  }, [captureNeuralMemoryProposals, maintainCharacterMemory]);
   const runPetResponseTurn = usePetChatResponseTurn({
     activeChatRequestTokenRef,
     configRef,
     enqueueReplyVoiceSegment,
     extractStreamingSpeech,
     onPetMessage,
+    onReplyCompleted,
   });
   const {
     resolveAgentApproval,
@@ -123,10 +137,14 @@ export function usePetChatSession({
     warmLocalReplyVoice,
   });
 
+  // Replays only pass the text across windows; the speaker is recovered from the history so the
+  // message is replayed in the voice of the character who said it.
   const playMessageVoice = useCallback(async (text: string) => {
+    const { activePetId, messages } = desktopPetChatStore.getState();
+    const author = [...messages].reverse().find((message) => message.role === 'model' && message.text === text);
     await playVoiceText(text, {
       force: true,
-      petId: desktopPetChatStore.getState().activePetId,
+      petId: author?.petId ?? activePetId,
       source: 'manual',
     });
   }, [playVoiceText]);
@@ -139,6 +157,24 @@ export function usePetChatSession({
     stopPetSpeech,
     voiceInputSessionRef,
     voiceTranscriptRef,
+  });
+  // Waking a character by its own phrase opens a private chat with it (desktop and chat window follow).
+  const onWakeCharacter = useCallback((petId: string) => {
+    setChatMode('single');
+    setActivePetId(petId);
+  }, [setActivePetId, setChatMode]);
+  // Lines the character posts on her own are spoken too; skipped while a reply has the floor.
+  useEffect(() => registerCompanionLineSpeaker((text, petId) => {
+    const { isTyping, isSpeaking } = desktopPetChatStore.getState();
+    if (!isTyping && !isSpeaking) void playVoiceText(text, { petId });
+  }), [playVoiceText]);
+  useVoiceWakeListener({
+    config,
+    conversationActive: voiceInputController.conversation.active,
+    onOpenChat,
+    onWakeCharacter,
+    publishStatusMessage,
+    startConversation: voiceInputController.conversation.startConversation,
   });
 
   return {

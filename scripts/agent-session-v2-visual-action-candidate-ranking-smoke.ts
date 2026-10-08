@@ -9,6 +9,12 @@ import { type PetConfig } from '../src/types.ts';
 
 const settings = {} as PetConfig['settings'];
 
+// Candidate bounds let the runtime's actionable-area gate (72b9745) accept
+// the ranked click point, so the deterministic ranking is what is tested.
+function candidateBounds(x: number, y: number) {
+  return { coordinateSpace: 'native-screen', height: 40, width: 120, x: x - 60, y: y - 20 };
+}
+
 function createSequenceCommand(): AgentChatCommand {
   return {
     capabilityId: 'app-launcher',
@@ -114,34 +120,31 @@ async function runCase(options: {
 }) {
   const recoveryCommands: AgentChatCommand[] = [];
   let modelCallCount = 0;
+  const startsFromLocate = !options.previousPoint;
 
   const result = await runAgentProductionSession({
-    approvedToolResult: {
-      command: options.previousPoint ? createSequenceCommand() : createLocateCommand(),
-      result: options.previousPoint
-        ? createBlockedSequenceResult()
-        : {
-            ok: true,
-            receipt: {
-              evidenceLines: ['Initial visual read needs action approval.'],
-              status: 'unverified',
-              summaryLines: ['Call: locate_screen_elements', 'Result: action candidate found'],
-              title: 'Visual read',
-              toolName: 'locate_screen_elements',
-              verification: 'Action candidate is visible.',
-            },
-            responseText: 'Action candidate is visible.',
-            stateSummary: {
-              observedState: ['Action candidate is visible.'],
-              structuredEvidence: options.evidence,
-              verificationEvidence: ['Action candidate is visible.'],
-            },
-            verification: 'Action candidate is visible.',
+    // With a previous click, ranking runs on the automatic recovery read after
+    // the approved click. Without one, the model issues the initial locate and
+    // the Runtime refines it before preparing the approval.
+    ...(startsFromLocate
+      ? {}
+      : {
+          approvedToolResult: {
+            command: createSequenceCommand(),
+            result: createBlockedSequenceResult(),
           },
-    },
-    maxSteps: 2,
+        }),
+    maxSteps: 3,
     modelCaller: async () => {
       modelCallCount += 1;
+      if (startsFromLocate && modelCallCount === 1) {
+        return JSON.stringify({
+          action: 'tool_call',
+          args: createLocateCommand().toolCall.input,
+          reason: 'Locate the visible primary action.',
+          tool: 'locate_screen_elements',
+        });
+      }
       throw new Error(`model should not be called for candidate ranking case ${options.label}`);
     },
     settings,
@@ -149,14 +152,16 @@ async function runCase(options: {
     toolExecutor: async (command) => {
       recoveryCommands.push(command);
       assert.equal(command.toolCall?.name, 'locate_screen_elements');
-      assert.equal(command.toolCall.input.action, 'describe_elements');
+      if (recoveryCommands.length === 1) {
+        assert.equal(command.toolCall.input.action, 'describe_elements');
+      }
       return createCandidateResult(options.evidence);
     },
     userGoal: 'start Example Game from launcher',
   });
 
-  assert.equal(modelCallCount, 0);
-  assert.equal(recoveryCommands.length, options.previousPoint ? 1 : 0);
+  assert.equal(modelCallCount, startsFromLocate ? 1 : 0);
+  assert.ok(recoveryCommands.length >= 1);
   assert.equal(result.status, 'needs-approval');
   assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
   assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), new RegExp(String(options.expectedX ?? 1510), 'u'));
@@ -174,6 +179,7 @@ await runCase({
   evidence: {
     actionCandidates: [
       {
+        bounds: candidateBounds(1440, 920),
         center: {
           coordinateSpace: 'native-screen',
           x: 1440,
@@ -184,6 +190,7 @@ await runCase({
         relation: 'Start control belongs to Example Game',
       },
       {
+        bounds: candidateBounds(1510, 940),
         center: {
           coordinateSpace: 'native-screen',
           x: 1510,
@@ -216,6 +223,7 @@ await runCase({
   evidence: {
     actionCandidates: [
       {
+        bounds: candidateBounds(1510, 940),
         center: {
           coordinateSpace: 'native-screen',
           x: 1510,
@@ -243,6 +251,7 @@ await runCase({
   evidence: {
     actionCandidates: [
       {
+        bounds: candidateBounds(1280, 821),
         center: {
           coordinateSpace: 'native-screen',
           x: 1280,
@@ -260,6 +269,9 @@ await runCase({
       x: 1280,
       y: 677,
     },
+    // Login clicks must come from a window-bound capture.
+    captureSourceType: 'window',
+    finalWindow: { hwnd: 4242, processName: 'LeagueClientUx.exe', title: 'League of Legends' },
     postActionState: 'login_required',
     primaryAction: 'Login',
     relation: 'Login button belongs to the League of Legends login window',

@@ -21,7 +21,7 @@ assertSourceMatches(
 );
 assertSourceMatches(
   sessionSource,
-  /runAgentVerificationContinuation<AgentSessionV2Result>\(/u,
+  /runAgentVerificationContinuation<AgentRuntimeResult>\(/u,
   'Legacy Session should enter the combined Runtime verification transition-and-dispatch interface.',
 );
 assertSourceMatches(
@@ -41,7 +41,7 @@ assertSourceMatches(
 );
 assertSourceMatches(
   sessionSource,
-  /runAgentVerificationContinuation<AgentSessionV2Result>\([\s\S]*recovery:[\s\S]*executeAutoRecoveryLoop[\s\S]*targetResolution:[\s\S]*executeInAppTargetLocateObservation/u,
+  /runAgentVerificationContinuation<AgentRuntimeResult>\([\s\S]*recovery:[\s\S]*executeAutoRecoveryLoop[\s\S]*targetResolution:[\s\S]*executeInAppTargetLocateObservation/u,
   'Legacy Session should provide target-resolution and recovery adapters to the combined Runtime verification interface.',
 );
 assertSourceMatches(
@@ -64,5 +64,9 @@ assertSourceDoesNotMatch(
   /const missingPostApprovalActionCoverage = findAgentSessionV2MissingRequestedActionCoverage/u,
   'Post-approval verification should not keep a separate missing coverage decision path.',
 );
+
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/postApprovalVerification'/u);
+assertSourceMatches(sessionSource, /createAgentProductionPostApprovalVerification\(\{/u);
 
 console.log('agent session v2 post approval action runtime coverage smoke ok');

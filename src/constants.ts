@@ -17,6 +17,7 @@ import {
 import { DEFAULT_LIFE_COMPANION_SETTINGS } from './life-companion/lifeCompanionSettings';
 import { EMPTY_DIRECTED_RELATIONSHIP_REPOSITORY } from './character-relationship';
 import { DEFAULT_SPEECH_PLAYBACK_RATE } from './voice/speechPlaybackRate';
+import { DEFAULT_GPT_SOVITS_API_URL } from './voice/gptSovitsDefaults';
 import {
   DEFAULT_COMPANION_PET_COUNT,
   MAX_COMPANION_PET_COUNT,
@@ -43,6 +44,7 @@ export const DEFAULT_BUILTIN_STATIC_PET_MODEL_URL = petCharacter26;
 export const DEFAULT_BUILTIN_TEST_SQUARE_MODEL_URL = testSquare200;
 export { DEFAULT_COMPANION_PET_COUNT, MAX_COMPANION_PET_COUNT, MAX_DESKTOP_PET_COUNT };
 export const DEFAULT_BROWSER_TTS_API_URL = 'http://127.0.0.1:9880';
+export { DEFAULT_GPT_SOVITS_API_URL };
 export const DEFAULT_BROWSER_TTS_VOICE = 'xiaoxiao';
 
 const builtInPet2WalkFrameUrlSet = new Set(PET2_WALK_SEQUENCE_FRAMES);
@@ -320,6 +322,7 @@ export const DEFAULT_CONFIG: PetConfig = {
     engineType: 'Three.js / GLTF',
     llmProvider: 'openai',
     agentRuntimeProvider: 'native',
+    agentDesktopLoopEnabled: true,
     deepseekHarnessPythonPath: '',
     deepseekHarnessWorkspace: '',
     deepseekHarnessHome: '',
@@ -367,6 +370,11 @@ export const DEFAULT_CONFIG: PetConfig = {
     timeAwarenessEnabled: true,
     voiceEnabled: true,
     voiceInputEnabled: true,
+    voiceInputMode: 'single',
+    voiceConversationIdleTimeoutSec: 60,
+    voiceWakeEnabled: false,
+    voiceWakeWords: '',
+    voiceConversationOpenChat: true,
     autoSpeakResponses: true,
     speechSkipBracketContent: true,
     speechExpressivePunctuationEnabled: true,
@@ -394,6 +402,9 @@ export const DEFAULT_CONFIG: PetConfig = {
     localVoiceReferenceId: '',
     localVoiceRuntimePath: '',
     localVoiceReferenceText: '',
+    gptSovitsModelId: '',
+    gptSovitsDevice: 'auto',
+    gptSovitsApiUrl: DEFAULT_GPT_SOVITS_API_URL,
     activityAreaLimitEnabled: true,
     desktopIconInteractionEnabled: true,
     desktopMouseInteractionEnabled: true,

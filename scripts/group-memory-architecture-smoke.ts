@@ -1,3 +1,4 @@
+import { readChatMessageSource } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -253,9 +254,7 @@ const candidateInboxSource = fs.readFileSync(
 assert.match(candidateInboxSource, /只有用户点击“批准写入”后/u);
 assert.match(candidateInboxSource, /候选写入目标组/u);
 assert.doesNotMatch(candidateInboxSource, /gemini|openai|generateContent|AgentRuntime/iu);
-const messageBubbleSource = fs.readFileSync(
-  'src/components/chat/PetChatConversationMessageBubble.tsx', 'utf8',
-);
+const messageBubbleSource = readChatMessageSource();
 assert.match(messageBubbleSource, /saveMessageToMemory\('groupMemoryCandidate'\)/u);
 assert.match(messageBubbleSource, /saveMessageToMemory\('groupMemory', groupId\)/u);
 const candidateFactorySource = fs.readFileSync(

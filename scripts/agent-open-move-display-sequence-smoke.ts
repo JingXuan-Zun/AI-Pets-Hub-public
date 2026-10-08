@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
-import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 
 const command = createAgentCommandFromPlannerDecision(
   '/agent 打开 Chrome 然后放到副屏上',
@@ -131,9 +131,12 @@ assert.deepEqual(searchWebAndMoveSteps[1]?.args?.queryCandidates, [
 ]);
 
 const desktopInputSource = readProjectFile('electron/desktopInputService.cjs');
-assert.doesNotMatch(desktopInputSource, /execFileSync/u, 'desktop input should not block Electron main process with execFileSync');
-assert.match(desktopInputSource, /async function executeDesktopInput/u);
-assert.match(desktopInputSource, /await runPowerShellScript/u);
+const desktopInputExecutionSource = readProjectFile('electron/desktopInputExecution.cjs');
+const desktopInputRunnerSource = readProjectFile('electron/desktopInputPowerShellRunner.cjs');
+assert.doesNotMatch([desktopInputSource, desktopInputExecutionSource, desktopInputRunnerSource].join('\n'), /execFileSync/u, 'desktop input should not block Electron main process with execFileSync');
+assert.match(desktopInputSource, /createDesktopInputExecutor\(\{[\s\S]*runPowerShellScript/u, 'desktop input service should wire the asynchronous executor');
+assert.match(desktopInputExecutionSource, /async function executeDesktopInput/u);
+assert.match(desktopInputExecutionSource, /await runPowerShellScript/u);
 
 const appLauncherSource = readProjectFile('electron/appLauncherService.cjs');
 const moveWindowSourceStart = appLauncherSource.indexOf('async function moveWindowToDisplay');

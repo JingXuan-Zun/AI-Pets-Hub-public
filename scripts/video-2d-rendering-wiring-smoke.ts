@@ -3,6 +3,7 @@ import { resolveVideo2DVisualBounds } from '../src/components/pet/video2dVisualB
 import { readProjectSources } from './smokeTestHarness.ts';
 
 const {
+  playbackQueueSource,
   importSource,
   ipcSource,
   rendererSource,
@@ -13,6 +14,7 @@ const {
   visualRendererSurfaceSource,
   normalizationSource,
 } = readProjectSources({
+  playbackQueueSource: 'src/pet-runtime/video2d/useVideo2DPlaybackQueue.ts',
   importSource: 'src/components/settings/useSettingsPanelModelAssetsState.ts',
   ipcSource: 'electron/ipcHandlers.cjs',
   rendererSource: 'src/components/pet/PetVideo2DRenderer.tsx',
@@ -37,7 +39,8 @@ assert.match(normalizationSource, /VIDEO_MODEL_URL_PATTERN/u);
 assert.match(normalizationSource, /VIDEO_MODEL_URL_PATTERN\.test\(normalizedUrl\)/u);
 assert.match(rendererSource, /<video/u);
 assert.match(visualRouterSource, /resolvedRenderKind/u);
-assert.match(rendererSource, /video pet playback failed/u);
+assert.match(playbackQueueSource, /video pet playback failed/u);
+assert.match(rendererSource, /useVideo2DPlaybackQueue/u);
 assert.match(visualRouterSource, /<img/u);
 assert.match(rendererSource, /muted/u);
 assert.match(rendererSource, /loop/u);

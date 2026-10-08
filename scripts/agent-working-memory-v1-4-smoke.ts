@@ -7,19 +7,18 @@ import {
 } from '../src/agent/index.ts';
 import { type ChatMessage } from '../src/types.ts';
 import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 
 const {
   contextSource,
   plannerSource,
   senderSource,
   sendExecutionSource,
-  controllerSource,
 } = readProjectSources({
   contextSource: 'src/agent/agentChatContext.ts',
   plannerSource: 'src/agent/agentPlanner.ts',
   senderSource: 'src/components/chat/usePetChatMessageSender.ts',
   sendExecutionSource: 'src/components/chat/petChatMessageSendExecution.ts',
-  controllerSource: 'src/components/chat/agentRunController.ts',
 });
 
 assert.match(
@@ -46,11 +45,19 @@ assert.match(
   'Chat sender should delegate Agent memory capture to the Agent run controller',
 );
 
-assert.match(
-  controllerSource,
-  /const workingMemory = createAgentWorkingMemorySnapshot\(preparedRequest\.promptHistoryMessages\)[\s\S]*workingMemory,[\s\S]*workingMemoryText: workingMemory\.summaryText/u,
-  'Chat controller should pass structured previous Agent memory into AgentSessionV2 planning',
-);
+const requestContext = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'createAgentRunRequestContext');
+const productionRun = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'runPreparedAgentProductionSession');
+const productionDispatch = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'runPreparedAgentRuntimeStage');
+assert.match(requestContext, /const workingMemory = createAgentWorkingMemorySnapshot\(preparedRequest\.promptHistoryMessages\)/u,
+  'request context should capture previous Agent memory from the prepared history');
+assert.match(requestContext, /return \{[^}]*workingMemory[^}]*\}/u,
+  'request context should return the captured working memory');
+assert.match(productionRun, /const \{[^}]*workingMemory[^}]*\} = createAgentRunRequestContext\(preparedRequest, targetSlot\)/u,
+  'controller should consume working memory from the request context');
+assert.match(productionRun, /runPreparedAgentRuntimeStage\(\{[\s\S]*workingMemory,/u,
+  'the production controller must pass its original working memory to the Runtime dispatch stage');
+assert.match(productionDispatch, /runAgentProductionRuntime\(\{[\s\S]*workingMemory,[\s\S]*workingMemoryText: workingMemory\.summaryText/u,
+  'controller should pass structured memory and its summary to the production Runtime');
 
 const desktopPreviewCommand: AgentChatCommand = {
   capabilityId: 'desktop-organization',

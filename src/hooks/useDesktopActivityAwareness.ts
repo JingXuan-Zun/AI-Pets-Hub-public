@@ -1,54 +1,65 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import { desktopPetChatStore } from '../chatStore';
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
+import { isLifeCompanionQuietHour } from '../life-companion/lifeCompanionScheduler';
+import {
+  classifyLifeCompanionActivity,
+  isDesktopPetForeground,
+  type LifeCompanionActivityKind,
+} from '../life-companion/screen-watch/lifeCompanionActivity';
+import { postCompanionLine, requestActivityLine } from '../life-companion/screen-watch/screenWatchComment';
+import { screenWatchStore } from '../life-companion/screen-watch/screenWatchStore';
 import type { PetConfig } from '../types';
-import { createChatMessageId } from '../components/chat/multiPetChat';
 
-type ActivityKind = 'browser' | 'office' | 'video';
+const POLL_INTERVAL_MS = 30_000;
+// The same activity must still be in front on the next poll, so a quick alt-tab is ignored.
+const STABLE_POLLS = 2;
+// After a "no", the character waits this long before asking to watch again.
+const ASK_AGAIN_AFTER_DECLINE_MS = 2 * 60 * 60 * 1000;
 
-function classifyProcess(processName: string, title: string): ActivityKind | null {
-  const value = `${processName} ${title}`.toLowerCase();
-  if (/(chrome|msedge|firefox|brave|opera|browser)/u.test(value)) return 'browser';
-  if (/(word|excel|powerpnt|outlook|libreoffice|wps|notion|写字板)/u.test(value)) return 'office';
-  if (/(vlc|potplayer|mpv|netflix|youtube|bilibili|视频|电影)/u.test(value)) return 'video';
-  return null;
-}
-
-const PROMPTS: Record<ActivityKind, string> = {
-  browser: '我注意到你正在用浏览器，像是在看点东西。今天在浏览什么内容？',
-  office: '看起来你正在处理工作，辛苦了。记得过一会儿喝水、起来活动一下。',
-  video: '你现在好像在看视频，最近在看什么有趣的内容？',
-};
-
+/**
+ * Rough awareness: notices from the foreground app what the user is roughly doing and
+ * opens a conversation in the character's voice. It reads only the app name and window
+ * title; looking at the screen is the separate, consent-based screen watch.
+ */
 export function useDesktopActivityAwareness(configRef: MutableRefObject<PetConfig>) {
-  const lastKindRef = useRef<ActivityKind | null>(null);
+  const lastKindRef = useRef<LifeCompanionActivityKind | null>(null);
   const stableCountRef = useRef(0);
-  const lastPromptAtRef = useRef(0);
+  const lastLineAtRef = useRef(0);
   useEffect(() => {
     let disposed = false;
+    let busy = false;
     const poll = async () => {
       const settings = configRef.current.settings.lifeCompanion;
-      if (!settings.desktopActivityAwarenessEnabled || !settings.proactiveEnabled) return;
+      // Watching already comments on what it sees; quiet hours mean no interruptions.
+      if (busy || !settings.desktopActivityAwarenessEnabled || settings.screenWatchConsented || isLifeCompanionQuietHour(settings)) return;
       const result = await desktopPetShellRuntime.listRunningApps({ includeWindows: true }) as {
         ok?: boolean;
         activeWindow?: { processName?: string; title?: string } | null;
       };
       if (disposed || !result.ok) return;
-      const active = result.activeWindow;
-      const kind = classifyProcess(active?.processName ?? '', active?.title ?? '');
-      if (!kind) { stableCountRef.current = 0; lastKindRef.current = null; return; }
-      if (lastKindRef.current === kind) stableCountRef.current += 1;
-      else { lastKindRef.current = kind; stableCountRef.current = 1; }
-      if (stableCountRef.current < 2 || Date.now() - lastPromptAtRef.current < 30 * 60 * 1000) return;
-      const state = desktopPetChatStore.getState();
-      if (state.isTyping || state.isSpeaking || state.chatMode !== 'single') return;
-      desktopPetChatStore.addMessage({
-        id: createChatMessageId('activity'), role: 'model', text: PROMPTS[kind],
-        chatMode: 'single', petId: state.activePetId, petName: configRef.current.personality.name,
-      });
-      lastPromptAtRef.current = Date.now();
+      const processName = result.activeWindow?.processName ?? '';
+      const title = result.activeWindow?.title ?? '';
+      const activity = isDesktopPetForeground(processName, title) ? null : classifyLifeCompanionActivity(processName, title);
+      if (!activity) { stableCountRef.current = 0; lastKindRef.current = null; return; }
+      if (lastKindRef.current === activity.kind) stableCountRef.current += 1;
+      else { lastKindRef.current = activity.kind; stableCountRef.current = 1; }
+      const cooldownMs = settings.desktopActivityAwarenessIntervalMinutes * 60 * 1000;
+      if (stableCountRef.current < STABLE_POLLS || Date.now() - lastLineAtRef.current < cooldownMs) return;
+      const chat = desktopPetChatStore.getState();
+      if (chat.isTyping || chat.isSpeaking || chat.chatMode !== 'single') return;
+      const watch = screenWatchStore.getState();
+      const askToWatch = !watch.asking && Date.now() - watch.declinedAt > ASK_AGAIN_AFTER_DECLINE_MS;
+      busy = true;
+      lastLineAtRef.current = Date.now();
+      try {
+        const line = await requestActivityLine(configRef.current, activity, askToWatch);
+        if (!disposed && postCompanionLine(configRef.current, line) && askToWatch) screenWatchStore.setState({ asking: true });
+      } finally {
+        busy = false;
+      }
     };
-    const timer = window.setInterval(() => { void poll(); }, 30_000);
+    const timer = window.setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
     void poll();
     return () => { disposed = true; window.clearInterval(timer); };
   }, [configRef]);

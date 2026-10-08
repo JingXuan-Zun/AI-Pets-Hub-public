@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { type FoodAppearance, type PetConfig, type PetModelPreset } from '../../types';
 import { Button } from '../../../components/ui/button';
+import { SettingsVideoLibraryPanel } from './SettingsVideoLibraryPanel';
 
 interface Props {
   appearances: FoodAppearance[];
@@ -99,6 +100,7 @@ export function SettingsVideoItemBindingsSection({
           {!canUploadMoreAppearances ? '，道具库已满' : ''}
         </span>
       </div>
+      <SettingsVideoLibraryPanel config={config} onApplyConfig={onApplyConfig} preset={preset} />
       <div className="mt-3 space-y-2">
         {appearances.map((appearance) => {
           const binding = preset.videoItemBindings?.find((item) => item.appearanceId === appearance.id);

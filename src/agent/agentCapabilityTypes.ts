@@ -113,7 +113,6 @@ export interface AgentToolActionRequest {
   reversible?: boolean;
   risk: AgentActionRisk;
   targetDescription?: string;
-  userInitiated?: boolean;
 }
 
 export interface AgentToolActionDecision {

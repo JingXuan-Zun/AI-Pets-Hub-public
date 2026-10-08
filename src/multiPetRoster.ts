@@ -133,6 +133,8 @@ function buildAddedCompanionPersonality(slotNumber: number): PetPersonality {
     greeting: '',
     knowledgeBase: '',
     dialogueCompletionPreset: '',
+    voicePackId: '',
+    wakeWords: '',
     neuralPersonaChatEnabled: false,
     neuralPersonaSourceText: '',
     name,

@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  createAgentCommandFromPlannerDecision,
-  resolveAgentChatCommand,
-} from '../src/agent/agentLegacy.ts';
+import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
 
 const badJsonFallback = createAgentCommandFromPlannerDecision(
   '翠竹小桃 看一下我现在电脑屏幕和配置',
@@ -96,9 +93,5 @@ assert.equal(
 );
 assert.equal(placementFallback?.toolCall?.input.anchorName, undefined);
 assert.equal(placementFallback?.toolCall?.input.direction, undefined);
-
-assert.equal(resolveAgentChatCommand('帮我打开浏览器'), null);
-assert.equal(resolveAgentChatCommand('帮我把回收站整理到控制面板下面放整齐'), null);
-assert.equal(resolveAgentChatCommand('小桃子帮我整理副屏图标到右下角'), null);
 
 console.log('agent planner v2 behavior smoke ok');

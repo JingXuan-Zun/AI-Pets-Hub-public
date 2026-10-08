@@ -151,18 +151,20 @@ const toolShadowResult = await runAgentProductionSession({
   },
 });
 
+// The successful read-only observation ends the run without another model
+// turn; the shadow should still reach a completed terminal from it.
 assert.equal(toolShadowResult.status, 'completed');
-assert.equal(toolShadowResult.finalAnswer, 'active window observed');
+assert.equal(toolShadowResult.finalAnswer, 'Active window result');
+assert.equal(toolModelCallCount, 1);
 assert.equal(toolShadowResult.debug?.v3PilotShadow?.status, 'observed');
 assert.equal(toolShadowResult.debug.v3PilotShadow.result?.status, 'terminal');
+assert.equal(toolShadowResult.debug.v3PilotShadow.result.state.terminal?.status, 'completed');
 assert.deepEqual(toolShadowResult.debug.v3PilotShadow.result.transitions.map((transition) => transition.event.type), [
   'start',
   'model-decision-accepted',
   'command-prepared',
   'transaction-finished',
-  'evaluation-needs-recovery',
-  'recovery-model-requested',
-  'model-decision-accepted',
+  'evaluation-completed',
 ]);
 assert.match(
   toolShadowResult.debug.v3PilotShadow.debugSummaryText ?? '',
@@ -170,7 +172,7 @@ assert.match(
 );
 assert.match(
   toolShadowResult.debug.v3PilotShadow.debugSummaryText ?? '',
-  /6\. recover --recovery-model-requested--> model_decision/u,
+  /5\. evaluate --evaluation-completed--> done/u,
 );
 assert.equal('debug' in toolShadowResult.continuation, false);
 assert.equal(

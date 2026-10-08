@@ -27,7 +27,10 @@ const interactions = fs.readFileSync(
   'src/components/settings/neuralPersonaGraphPixiInteractions.ts', 'utf8',
 );
 const canvas = fs.readFileSync('src/components/settings/NeuralPersonaGraphPixiCanvas.tsx', 'utf8');
-const scene = fs.readFileSync('src/components/settings/neuralPersonaGraphPixiScene.ts', 'utf8');
+const scene = [
+  'src/components/settings/neuralPersonaGraphPixiScene.ts',
+  'src/components/settings/neuralPersonaGraphPixiSceneRendering.ts',
+].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 const svgCanvas = fs.readFileSync('src/components/settings/NeuralPersonaGraphSvgCanvas.tsx', 'utf8');
 const svgController = fs.readFileSync(
   'src/components/settings/useNeuralPersonaGraphCanvasController.ts', 'utf8',
@@ -70,9 +73,11 @@ assert.match(application, /maxFPS = NEURAL_PERSONA_GRAPH_TARGET_FPS/u);
 assert.doesNotMatch(canvas, /h-\[440px\]/u);
 assert.match(toolbar, /编辑节点/u);
 assert.match(toolbar, /NeuralPersonaGraphPhysicsSettings/u);
-assert.match(settingsSection, /data-neural-graph-editor-panels/u);
-assert.match(settingsSection, /fixed inset-0/u);
-assert.match(editorMode, /setCurrentWindowBounds/u);
+const memoryWorkspace = fs.readFileSync('src/components/settings/memory-notes/NeuralMemoryWorkspace.tsx', 'utf8');
+assert.match(settingsSection, /<NeuralMemoryWorkspace[\s\S]*open=\{display\.fullscreen\}/u);
+assert.match(memoryWorkspace, /data-memory-workspace className="fixed inset-0/u);
+// The workspace maximizes the window for real so dragging its header restores it.
+assert.match(editorMode, /toggleMaximizeCurrentWindow/u);
 assert.doesNotMatch(editorMode, /requestFullscreen/u);
 assert.doesNotMatch(runtime, /clampNeuralPersonaGraphWorldPoint/u);
 assert.doesNotMatch(svgController, /clampNeuralPersonaGraphWorldPoint/u);

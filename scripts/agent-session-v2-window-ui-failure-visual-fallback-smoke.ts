@@ -53,8 +53,27 @@ let toolCallCount = 0;
 
 const sessionResult = await runAgentProductionSession({
   maxSteps: 4,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
+    if (modelCallCount === 2) {
+      // Vision fallback plus focused refinement verified the Start button;
+      // the model selects the click, which pauses for approval.
+      assert.match(userInput, /elementCenter=812,590/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: {
+          stepsJson: JSON.stringify([
+            {
+              args: { action: 'click', x: 812, y: 590 },
+              reason: 'Click the Start button found by the vision fallback.',
+              tool: 'execute_desktop_input',
+            },
+          ]),
+        },
+        reason: 'The vision fallback verified the Start button; request approval for the click.',
+        tool: 'execute_desktop_sequence',
+      });
+    }
     assert.equal(modelCallCount, 1);
     return JSON.stringify({
       action: 'tool_call',
@@ -137,12 +156,20 @@ const sessionResult = await runAgentProductionSession({
     }
 
     assert.equal(command.toolCall?.name, 'locate_screen_elements');
-    assert.equal(command.toolCall.input.action, 'describe_elements');
-    assert.equal(command.toolCall.input.forceRefresh, true);
-    assert.equal(command.toolCall.input.query, 'Launcher');
-    assert.equal(command.toolCall.input.targetText, 'Example Game');
-    assert.match(String(command.toolCall.input.question), /AgentSessionV2 auto recovery observation/u);
-    assert.match(String(command.toolCall.input.question), /UI Automation failed/u);
+    if (toolCallCount === 3) {
+      // Bounded focused refinement of the ready Start button.
+      assert.equal(command.toolCall.input.action, 'locate_element');
+      assert.match(String(command.toolCall.input.targetDescription), /; focused candidate: /u);
+    } else {
+      assert.equal(command.toolCall.input.action, 'describe_elements');
+      assert.equal(command.toolCall.input.forceRefresh, true);
+      assert.equal(command.toolCall.input.query, 'Launcher');
+      assert.equal(command.toolCall.input.targetText, 'Example Game');
+      // Before any action attempt, the UIA failure's structured recovery runs as
+      // the window UI visual fallback refinement with the recovery reason.
+      assert.match(String(command.toolCall.input.question), /AgentSessionV2 window UI visual fallback/u);
+      assert.match(String(command.toolCall.input.question), /UI Automation failed/u);
+    }
 
     return {
       observations: [
@@ -181,13 +208,13 @@ const sessionResult = await runAgentProductionSession({
   userGoal: 'start Example Game inside Launcher',
 });
 
-assert.equal(modelCallCount, 1);
-assert.equal(toolCallCount, 2);
+assert.equal(modelCallCount, 2);
+assert.equal(toolCallCount, 3);
 assert.equal(sessionResult.status, 'needs-approval');
 assert.equal(sessionResult.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(sessionResult.pendingApproval?.command.toolCall?.input.stepsJson), /812/u);
 assert.match(String(sessionResult.pendingApproval?.command.toolCall?.input.stepsJson), /590/u);
-assert.match(sessionResult.continuation.historyLines.join('\n'), /automatic recovery observation/u);
+assert.match(sessionResult.continuation.historyLines.join('\n'), /AgentSessionV2 window UI visual fallback/u);
 assert.match(sessionResult.continuation.historyLines.join('\n'), /locate_screen_elements/u);
 
 console.log('agent session v2 window UI failure visual fallback smoke ok');

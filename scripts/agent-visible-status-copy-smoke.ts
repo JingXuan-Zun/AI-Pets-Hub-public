@@ -1,5 +1,6 @@
+import { readMessageProjectFile as readProjectFile } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 const controllerSource = readProjectFile('src/components/chat/agentRunController.ts');
 const bubbleSource = readProjectFile('src/components/chat/PetChatConversationMessageBubble.tsx');

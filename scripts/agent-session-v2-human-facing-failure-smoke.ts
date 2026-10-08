@@ -1,28 +1,31 @@
 import assert from 'node:assert/strict';
+import ts from 'typescript';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { session: sessionSource } = readProjectSources({
+const { session: sessionSource, presentation: presentationSource } = readProjectSources({
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  presentation: 'src/agent/productionSession/sessionPresentation.ts',
 });
 
-function extractBetween(startNeedle: string, endNeedle: string) {
-  const start = sessionSource.indexOf(startNeedle);
-  assert.ok(start >= 0, `${startNeedle} should exist`);
-  const end = sessionSource.indexOf(endNeedle, start + startNeedle.length);
-  assert.ok(end > start, `${endNeedle} should exist after ${startNeedle}`);
-  return sessionSource.slice(start, end);
+function getFunctionSource(source: string, name: string) {
+  const parsed = ts.createSourceFile('source.ts', source, ts.ScriptTarget.Latest, true);
+  let result: string | null = null;
+  function visit(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === name) result = node.getText(parsed);
+    ts.forEachChild(node, visit);
+  }
+  visit(parsed);
+  assert.ok(result, name + ' should exist');
+  return result;
 }
 
-const maxStepsAnswer = sessionSource.match(
-  /function createAgentSessionV2MaxStepsAnswer\([\s\S]*?\n\}/u,
-)?.[0] ?? '';
-const finalResultFunction = extractBetween(
-  'function createAgentSessionV2FinalResult',
-  'function createAgentSessionV2ContinuationSnapshot',
-);
-const runLoopFailureArea = sessionSource.slice(
-  sessionSource.indexOf('export async function runAgentSessionV2'),
-);
+assert.match(sessionSource, /from '\.\/productionSession\/sessionPresentation'/u);
+assert.match(sessionSource, /createAgentProductionSessionPresentation\(\{/u);
+assert.match(sessionSource, /createAgentProductionPresentationFinalResult: createAgentSessionV2FinalResult/u);
+assert.match(sessionSource, /createAgentProductionPresentationMaxStepsAnswer: createAgentSessionV2MaxStepsAnswer/u);
+const maxStepsAnswer = getFunctionSource(presentationSource, 'createAgentProductionPresentationMaxStepsAnswer');
+const finalResultFunction = getFunctionSource(presentationSource, 'createAgentProductionPresentationFinalResult');
+const runLoopFailureArea = getFunctionSource(sessionSource, 'runAgentProductionSessionImplementation');
 
 assert.ok(maxStepsAnswer, 'Max steps answer helper should exist.');
 assert.ok(maxStepsAnswer.includes('Agent processed ${maxSteps} steps and stopped to avoid looping.'));

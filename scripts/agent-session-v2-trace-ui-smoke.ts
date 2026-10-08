@@ -1,7 +1,5 @@
-import {
-  assertSourceMatches,
-  readProjectSources,
-} from './smokeTestHarness.ts';
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
+import { assertSourceMatches } from './smokeTestHarness.ts';
 
 const { bubble: bubbleSource } = readProjectSources({
   bubble: 'src/components/chat/PetChatConversationMessageBubble.tsx',

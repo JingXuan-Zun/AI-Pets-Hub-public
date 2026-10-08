@@ -86,12 +86,14 @@ async function prepareQueuedReplyVoiceSegmentWithConcurrency({
   queuedVoicePreparationEpochRef,
   queuedVoicePreparationWaitersRef,
   segmentText,
+  targetPetId,
 }: Pick<
   EnqueueQueuedReplyVoiceSegmentOptions,
   'configRef'
   | 'queuedVoicePreparationActiveCountRef'
   | 'queuedVoicePreparationEpochRef'
   | 'queuedVoicePreparationWaitersRef'
+  | 'targetPetId'
 > & {
   segmentText: string;
 }) {
@@ -105,6 +107,7 @@ async function prepareQueuedReplyVoiceSegmentWithConcurrency({
     return await prepareQueuedReplyVoiceSegmentTask({
       configRef,
       segmentText,
+      targetPetId,
     });
   } finally {
     releaseSlot();
@@ -138,6 +141,7 @@ export function enqueueQueuedReplyVoiceSegment({
     queuedVoicePreparationEpochRef,
     queuedVoicePreparationWaitersRef,
     segmentText,
+    targetPetId,
   });
   void preparedPlaybackPromise.catch(() => undefined);
 

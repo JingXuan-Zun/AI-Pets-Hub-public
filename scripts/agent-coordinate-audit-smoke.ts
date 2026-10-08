@@ -1,9 +1,10 @@
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
 import {
   createAgentCoordinateAuditEvidence,
   formatAgentCoordinateAuditLine,
 } from '../src/agent/agentCoordinateAudit';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 const primary = {
   bounds: {

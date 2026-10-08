@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 
 const agentSource = readProjectFile('src/components/chat/agentRunController.ts');
 const chatStoreSource = readProjectFile('src/chatStore.ts');
 
 function extractBetween(startNeedle: string, endNeedle: string, source = agentSource) {
+  if (source === agentSource) return readModuleProjectFunction('src/components/chat/agentRunController.ts', startNeedle.split('function ')[1]);
   const start = source.indexOf(startNeedle);
   assert.ok(start >= 0, `${startNeedle} should exist`);
   const end = source.indexOf(endNeedle, start + startNeedle.length);
@@ -63,12 +65,8 @@ assert.equal(
   'style retry runner should do one initial reply and at most one rewrite retry',
 );
 
-const legacySpeaker = extractBetween(
-  'async function speakAgentResult',
-  '\n\nfunction formatAgentProductionSessionResultForPersonaPrompt',
-);
-assert.match(legacySpeaker, /runAgentPersonaResponseTurnWithStyleRetry/u);
-assert.doesNotMatch(legacySpeaker, /await runPetResponseTurn\(targetSlot,/u);
+assert.doesNotMatch(agentSource, /function speakAgentResult\(/u,
+  'unused legacy reply execution must not provide a second speaker path');
 
 const sessionSpeaker = extractBetween(
   'async function speakAgentProductionSessionResult',

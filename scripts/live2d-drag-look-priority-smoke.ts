@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolvePetPointerLookStrength } from '../src/pet-runtime/interactions/petPointerLookPriority';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const dragStrength = resolvePetPointerLookStrength({
   action: 'SLEEPING',
@@ -39,7 +40,7 @@ assert.equal(
   'ordinary movement without drag settling must retain reduced look strength',
 );
 
-const rendererSource = readFileSync('src/components/pet/PetLive2DRenderer.tsx', 'utf8');
+const rendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 assert.match(
   rendererSource,
   /resolvePetPointerLookStrength\(\{[\s\S]*isDragLookSettling:\s*shouldSettleLive2DLook\s*&&\s*Boolean\(dragSettledFocusTarget\)/,

@@ -6,7 +6,7 @@ import {
   listRegisteredAgentToolNamesOutsideModePolicies,
   type AgentChatCommand,
 } from '../src/agent/index.ts';
-import { createAgentCommandFromPlannerDecision } from '../src/agent/agentLegacy.ts';
+import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
 import { readProjectSources } from './smokeTestHarness.ts';
 
 const {

@@ -16,6 +16,7 @@ const isTransparentShell = isDesktopShell && (
   || panelMode === ''
   || panelMode === 'area-picker'
   || panelMode === 'settings'
+  || panelMode === 'chat'
 );
 
 if (isTransparentShell && typeof document !== 'undefined') {
@@ -35,11 +36,11 @@ function renderFatalError(error: unknown) {
   }
 
   rootElement.innerHTML = `
-    <div style="min-height:100vh;background:#F8FAFC;color:#0F172A;padding:24px;font-family:ui-monospace,Consolas,monospace;">
-      <div style="max-width:960px;margin:0 auto;border:1px solid #E4E7EB;background:#FFFFFF;padding:20px;border-radius:16px;box-shadow:0 4px 12px rgba(15,23,42,0.06);">
-        <div style="color:#1E3A5F;font-size:12px;letter-spacing:.2em;text-transform:uppercase;">Render Error</div>
-        <h1 style="margin:12px 0 16px;font-size:24px;font-family:system-ui,sans-serif;color:#0F172A;">页面没有正常挂载</h1>
-        <pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:16px;background:#F1F3F5;border-radius:12px;border:1px solid #E4E7EB;color:#475569;">${message}</pre>
+    <div style="min-height:100vh;background:#FBF5FA;color:#3A2A45;padding:24px;font-family:ui-monospace,Consolas,monospace;">
+      <div style="max-width:960px;margin:0 auto;border:1px solid #EEDDEA;background:#FFFFFF;padding:20px;border-radius:16px;box-shadow:0 4px 12px rgba(158,84,140,0.08);">
+        <div style="color:#D4518E;font-size:12px;letter-spacing:.2em;text-transform:uppercase;">Render Error</div>
+        <h1 style="margin:12px 0 16px;font-size:24px;font-family:system-ui,sans-serif;color:#3A2A45;">页面没有正常挂载</h1>
+        <pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:16px;background:#F7F0F6;border-radius:12px;border:1px solid #EEDDEA;color:#7A6585;">${message}</pre>
       </div>
     </div>
   `;
@@ -56,10 +57,10 @@ function renderLoadingShell() {
   }
 
   rootElement.innerHTML = `
-    <div style="min-height:100vh;background:#F8FAFC;color:#0F172A;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;">
-      <div style="display:flex;align-items:center;gap:12px;padding:18px 22px;border:1px solid #E4E7EB;background:#FFFFFF;border-radius:16px;box-shadow:0 4px 12px rgba(15,23,42,0.06);">
-        <div style="width:10px;height:10px;border-radius:9999px;background:#1E3A5F;box-shadow:0 0 12px rgba(30,58,95,0.35);"></div>
-        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#475569;">正在加载面板</div>
+    <div style="min-height:100vh;background:#FBF5FA;color:#3A2A45;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;gap:12px;padding:18px 22px;border:1px solid #EEDDEA;background:#FFFFFF;border-radius:16px;box-shadow:0 4px 12px rgba(158,84,140,0.08);">
+        <div style="width:10px;height:10px;border-radius:9999px;background:#D4518E;box-shadow:0 0 12px rgba(212,81,142,0.40);"></div>
+        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7A6585;">正在加载面板</div>
       </div>
     </div>
   `;

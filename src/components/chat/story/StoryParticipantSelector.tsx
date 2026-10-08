@@ -21,7 +21,7 @@ export function StoryParticipantSelector(props: {
             <label
               key={participant.id}
               onMouseDown={(event) => event.preventDefault()}
-              className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] ${selected ? 'border-sky-800 bg-sky-950 text-white' : 'border-sky-100 bg-white text-sky-800'}`}
+              className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] ${selected ? 'border-primary bg-primary text-white' : 'border-sky-100 bg-white text-sky-800'}`}
             >
               <input
                 type="checkbox"

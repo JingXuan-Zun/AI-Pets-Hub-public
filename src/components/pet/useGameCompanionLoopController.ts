@@ -9,6 +9,7 @@ import { desktopPetChatStore } from '../../chatStore';
 import { desktopPetShellRuntime } from '../../desktopShellRuntime';
 import { getDesktopPetSlot } from '../../multiPetRoster';
 import { analyzeAgentGameSnapshot, getPetResponseStrict } from '../../services/geminiService';
+import { grabCaptureSourceImageOrThumbnail } from '../../services/captureSourceFrameGrab';
 import { type PetConfig } from '../../types';
 import { createChatMessageId } from '../chat/multiPetChat';
 import {
@@ -17,6 +18,7 @@ import {
   MIN_GAME_COMPANION_OBSERVATION_INTERVAL_MS,
 } from '../../gameCompanionSettings';
 import { getGameCompanionObservationTrustIssue } from './gameCompanionObservationTrust';
+import { speakCompanionLine } from '../../life-companion/companionLineSpeech';
 
 const DEFAULT_GAME_COMPANION_INTERVAL_MS = DEFAULT_GAME_COMPANION_OBSERVATION_INTERVAL_MS;
 const DEFAULT_GAME_COMPANION_COMMENT_INTERVAL_MS = 18000;
@@ -705,6 +707,7 @@ export function useGameCompanionLoopController({
       role: 'model',
       text: trimmedText,
     });
+    speakCompanionLine(trimmedText, slot?.id ?? null);
   };
 
   const stopInternal = (reason?: string | null) => {
@@ -830,6 +833,11 @@ export function useGameCompanionLoopController({
         state.sourceCheckMessage = `正在确认第一帧：${state.lockedSourceLabel}`;
       }
       publishStatus();
+      // The list thumbnail is ~200px wide; recognition needs a frame where text is readable.
+      const imageDataUrl = await grabCaptureSourceImageOrThumbnail(selectedSource);
+      if (!isCurrentLoopState(state)) {
+        return;
+      }
       const rawAnalysis = await analyzeAgentGameSnapshot({
         focus: state.focus,
         gameHint: [
@@ -838,7 +846,7 @@ export function useGameCompanionLoopController({
           configRef.current.settings.gameCompanionGameDescription,
         ].filter((value) => value?.trim()).join('；'),
         gameIdentityMetadata: createGameIdentityMetadata({ activeWindow, source: selectedSource }),
-        imageDataUrl: selectedSource.thumbnail,
+        imageDataUrl,
         question: '低频观察当前游戏画面，判断是否有明显变化，并生成一句适合桌宠陪聊的短观察。',
         settings: configRef.current.settings,
         sourceLabel: state.lockedSourceLabel,

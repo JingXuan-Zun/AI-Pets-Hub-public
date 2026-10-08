@@ -138,15 +138,17 @@ const result = await runAgentProductionSession({
   modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
     assert.equal(modelCallCount, 1);
-    assert.match(userInput, /post-approval verification result/u);
+    // Older loop history is compacted out of the model input; the planning
+    // signals keep the post-approval verification evidence.
+    assert.match(userInput, /Example Game is still loading inside the launcher/u);
     assert.match(userInput, /automatic recovery observation result/u);
-    assert.match(userInput, /sourcePostActionState=unchanged/u);
+    assert.match(userInput, /postActionState=unchanged/u);
     assert.match(userInput, /The Start button is still visible/u);
     assert.doesNotMatch(userInput, /rejected unverified result final answer/u);
 
     return JSON.stringify({
       action: 'final_answer',
-      message: '我看了一轮，启动器页面没有推进，目标窗口也没有出现；现在先停在这里，避免重复点同一个按钮�?,
+      message: '我看了一轮，启动器页面没有推进，目标窗口也没有出现；现在先停在这里，避免重复点同一个按钮。',
       understanding: {
         blockedGoals: ['Example Game did not launch after click and wait'],
         completedGoals: ['clicked the Start button', 'waited and re-read the unchanged launcher state'],
@@ -192,7 +194,9 @@ const result = await runAgentProductionSession({
   userGoal: 'start Example Game from the launcher',
 });
 
-assert.equal(result.status, 'completed');
+// A verified blocker after bounded recovery hands control back to the user.
+assert.equal(result.status, 'needs-user');
+assert.match(result.finalAnswer ?? '', /启动器页面没有推进/u);
 assert.equal(modelCallCount, 1);
 assert.equal(toolCommands.length, 3);
 assert.match(result.continuation.historyLines.join('\n'), /postActionState=loading/u);

@@ -1,3 +1,5 @@
+import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
+
 /** Decode SSE across arbitrary UTF-8/network boundaries; never expose reasoning deltas. */
 export async function* readOpenAITextStream(response: Response): AsyncGenerator<string> {
   if (!response.ok) throw new Error(`聊天接口请求失败 (${response.status})：${await response.text()}`);
@@ -20,6 +22,7 @@ export async function* readOpenAITextStream(response: Response): AsyncGenerator<
   let hasText = false;
   let lastFinishReason = '';
   let sawReasoning = false;
+  let textLength = 0;
   function parseEvent() {
     const raw = data.join('\n'); data = [];
     if (!raw || raw === '[DONE]') return { done: raw === '[DONE]', text: '' };
@@ -41,15 +44,17 @@ export async function* readOpenAITextStream(response: Response): AsyncGenerator<
         else if (line.trim().startsWith('{')) data.push(line.trim());
         if (line !== '') continue;
         const event = parseEvent();
-        if (event.text) { hasText = true; yield event.text; }
+        if (event.text) { hasText = true; textLength += event.text.length; yield event.text; }
         if (event.done) {
           if (!hasText) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
+          logUnusualStreamEnd(lastFinishReason, textLength, true);
           return;
         }
       }
       if (done) break;
     }
     if (!hasText) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
+    logUnusualStreamEnd(lastFinishReason, textLength, false);
   } finally {
     await reader.cancel().catch(() => undefined);
     reader.releaseLock();
@@ -88,6 +93,17 @@ function hasReasoningContent(payload: any) {
   return candidates.some((value) => (
     typeof value === 'string' ? Boolean(value.trim()) : Array.isArray(value) ? value.length > 0 : Boolean(value)
   ));
+}
+
+// Replies that stop mid-sentence are otherwise indistinguishable from complete ones: record why the
+// provider ended the stream (length / content_filter / connection closed without [DONE]).
+function logUnusualStreamEnd(finishReason: string, textLength: number, sawDone: boolean) {
+  if (finishReason === 'stop' && sawDone) return;
+  pushFrontendRuntimeLog('chat', 'model stream ended unusually', {
+    finishReason: finishReason || null,
+    sawDone,
+    textLength,
+  });
 }
 
 function resolveFinishReason(payload: any) {

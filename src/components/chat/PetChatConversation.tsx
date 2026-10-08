@@ -4,6 +4,7 @@ import { desktopPetChatStore, useDesktopPetChatStore } from '../../chatStore';
 import { type ChatAgentApprovalDecision, type ChatMessage, type DesktopPetChatMode, type PetConfig, type PetConfigUpdateHandler } from '../../types';
 import { type ChatMemorySaveHandler } from './chatMemorySaveUtils';
 import { type ChatTargetOption } from './multiPetChat';
+import { isChatSidebarToggleShortcut } from './ChatSidebarToggleButton';
 import { PetChatAppearanceMenu } from './PetChatAppearanceMenu';
 import { PetChatConversationComposer } from './PetChatConversationComposer';
 import { PetChatConversationHeader } from './PetChatConversationHeader';
@@ -14,6 +15,9 @@ import { GroupUserAttentionPrompt } from './group/attention/GroupUserAttentionPr
 import { GroupTaskMemoryCandidatePrompt } from './group/memory/GroupTaskMemoryCandidatePrompt';
 import { useGroupTaskMemoryCandidateCapture } from './group/memory/useGroupTaskMemoryCandidateCapture';
 import { StoryModePanel } from './story/StoryModePanel';
+import { NeuralMemoryProposalPanel } from './memory/NeuralMemoryProposalPanel';
+import { useNeuralMemoryProposalActions } from './memory/useNeuralMemoryProposalActions';
+import { listNeuralMemoryProposals } from '../../neural-memory/neuralMemoryProposalConfig';
 import type { StoryDefinition, StorySessionState } from './story/storyTypes';
 
 interface PetChatConversationProps {
@@ -28,6 +32,7 @@ interface PetChatConversationProps {
   inputValue: string;
   isGroupChatRunning: boolean;
   isInteractiveDialogue?: boolean;
+  hoistBackground?: boolean;
   isListening: boolean;
   isSpeaking: boolean;
   isTyping: boolean;
@@ -60,6 +65,9 @@ interface PetChatConversationProps {
   scrollPositionKey?: string;
   composerProps?: HTMLAttributes<HTMLDivElement>;
   composerClassName?: string;
+  /** When provided, the host owns the sidebar state and renders the toggle in its own title bar. */
+  sidebarCollapsed?: boolean;
+  onSidebarCollapsedChange?: (isCollapsed: boolean) => void;
 }
 
 const APPEARANCE_MENU_SIZE = { width: 344, height: 568 };
@@ -83,6 +91,7 @@ export default function PetChatConversation({
   inputValue,
   isGroupChatRunning,
   isInteractiveDialogue = false,
+  hoistBackground = false,
   isListening,
   isSpeaking,
   isTyping,
@@ -112,6 +121,8 @@ export default function PetChatConversation({
   scrollPositionKey = chatMode,
   composerProps,
   composerClassName = '',
+  sidebarCollapsed,
+  onSidebarCollapsedChange,
 }: PetChatConversationProps) {
   const { scrollRegionRef } = usePetChatConversationAutoScroll({
     isTyping,
@@ -139,7 +150,10 @@ export default function PetChatConversation({
     onSendMessage,
   });
   const [appearanceMenuPosition, setAppearanceMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const [isTargetSelectorCollapsed, setIsTargetSelectorCollapsed] = useState(false);
+  const [localSidebarCollapsed, setLocalSidebarCollapsed] = useState(false);
+  const isSidebarControlled = sidebarCollapsed !== undefined && Boolean(onSidebarCollapsedChange);
+  const isTargetSelectorCollapsed = isSidebarControlled ? sidebarCollapsed : localSidebarCollapsed;
+  const setIsTargetSelectorCollapsed = isSidebarControlled ? onSidebarCollapsedChange! : setLocalSidebarCollapsed;
   const [isStorySetupOpen, setIsStorySetupOpen] = useState(false);
   const [storySetupDraft, setStorySetupDraft] = useState<StoryDefinition | null>(null);
   const localChatStore = useDesktopPetChatStore();
@@ -154,6 +168,12 @@ export default function PetChatConversation({
     [messages],
   );
   const rootStyle = useMemo(() => ({ WebkitAppRegion: 'no-drag' } as CSSProperties), []);
+  const memoryProposalActions = useNeuralMemoryProposalActions({ config, onUpdateConfig });
+  const pendingMemoryProposals = listNeuralMemoryProposals(config);
+  const pendingMemoryProposalCountByPetId = pendingMemoryProposals.reduce<Record<string, number>>(
+    (counts, proposal) => ({ ...counts, [proposal.roleId]: (counts[proposal.roleId] ?? 0) + 1 }),
+    {},
+  );
   const taskMemoryCandidate = useGroupTaskMemoryCandidateCapture({
     config,
     messages,
@@ -167,6 +187,17 @@ export default function PetChatConversation({
       setStorySetupDraft(null);
     }
   }, [chatMode]);
+
+  useEffect(() => {
+    if (isInteractiveDialogue) return undefined;
+    const toggleSidebarFromShortcut = (event: KeyboardEvent) => {
+      if (event.repeat || !isChatSidebarToggleShortcut(event)) return;
+      event.preventDefault();
+      setIsTargetSelectorCollapsed(!isTargetSelectorCollapsed);
+    };
+    window.addEventListener('keydown', toggleSidebarFromShortcut);
+    return () => window.removeEventListener('keydown', toggleSidebarFromShortcut);
+  }, [isInteractiveDialogue, isTargetSelectorCollapsed, setIsTargetSelectorCollapsed]);
 
   useEffect(() => {
     if (externalStorySession !== undefined || chatMode !== 'story' || storySession || !activeStoryDefinition) return;
@@ -207,7 +238,7 @@ export default function PetChatConversation({
   const mergedComposerClassName = [
     isInteractiveDialogue
       ? 'shrink-0 flex gap-2 border-t border-white/15 bg-black/25 px-5 py-3 text-white'
-      : 'shrink-0 flex gap-2 border-t border-sky-100/80 bg-[linear-gradient(180deg,rgba(248,252,255,0.82),rgba(236,244,252,0.78))] px-4 py-3 text-sky-900',
+      : 'mx-3 mb-3 shrink-0 flex gap-2 rounded-2xl border border-white/70 glass-bar px-4 py-3 text-sky-900 shadow-[0_10px_30px_rgba(158,84,140,0.12)]',
     composerClassName,
   ].filter(Boolean).join(' ');
 
@@ -254,6 +285,17 @@ export default function PetChatConversation({
                 setIsStorySetupOpen(true);
               }}
               petOptions={petOptions}
+              showSidebarToggle={!isSidebarControlled}
+              pendingMemoryProposalCountByPetId={pendingMemoryProposalCountByPetId}
+              memoryProposalPanel={onUpdateConfig ? (
+                <NeuralMemoryProposalPanel
+                  busyProposalId={memoryProposalActions.busyProposalId}
+                  message={memoryProposalActions.message}
+                  proposals={pendingMemoryProposals.filter((proposal) => proposal.roleId === activePetId)}
+                  onApprove={(proposal, content) => void memoryProposalActions.approve(proposal, content)}
+                  onDismiss={memoryProposalActions.dismiss}
+                />
+              ) : null}
             />
           </div>
         )}
@@ -287,6 +329,7 @@ export default function PetChatConversation({
             config={config}
             greeting={greeting}
             isInteractiveDialogue={isInteractiveDialogue}
+            hoistBackground={hoistBackground}
             isListening={isListening}
             isSpeaking={isSpeaking}
             isTyping={isTyping}

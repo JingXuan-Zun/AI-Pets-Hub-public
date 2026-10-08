@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { showcaseSource, desktopOrganizationToolsSource, sessionSource } = readProjectSources({
+const { showcaseSource, desktopOrganizationToolsSource, sessionSource, evidenceSource } = readProjectSources({
   showcaseSource: 'src/components/pet/useDesktopOrganizationShowcase.ts',
   desktopOrganizationToolsSource: 'src/agent/agentRuntimeDesktopOrganizationTools.ts',
   sessionSource: 'src/agent/agentProductionSessionImplementation.ts',
+  evidenceSource: 'src/agent/productionSession/desktopActionEvidence.ts',
 });
 
 assert.match(
@@ -99,14 +100,18 @@ assert.match(
 
 assert.match(
   sessionSource,
-  /function shouldRejectAgentSessionV2PrematureDesktopOrganizationFinal/u,
+  /shouldRejectAgentProductionPrematureDesktopOrganizationFinal: shouldRejectAgentSessionV2PrematureDesktopOrganizationFinal/u,
   'AgentSessionV2 should reject final answers that claim desktop organization after preview-only evidence.',
 );
 
 assert.match(
-  sessionSource,
-  /hasAgentSessionV2DesktopOrganizationPreview\(options\.toolResults\)[\s\S]*!hasAgentSessionV2DesktopOrganizationExecuteAttempt/u,
+  evidenceSource,
+  /hasAgentProductionDesktopOrganizationPreview\(options\.toolResults\)[\s\S]*!hasAgentProductionDesktopOrganizationExecuteAttempt/u,
   'desktop organization final rejection should require an execute attempt after preview.',
 );
+
+assert.match(sessionSource, /from '\.\/productionSession\/desktopActionEvidence'/u);
+assert.match(sessionSource, /createAgentProductionDesktopActionEvidence\(\{/u);
+assert.match(evidenceSource, /function shouldRejectAgentProductionPrematureDesktopOrganizationFinal/u);
 
 console.log('desktop organization verification smoke ok');

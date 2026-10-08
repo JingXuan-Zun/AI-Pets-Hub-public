@@ -162,6 +162,15 @@ const result = await runAgentProductionSession({
         structuredEvidence: {
           confidence: 'high',
           coordinateConfidence: 'high',
+          // Declared bounds let the actionable-area gate accept the verified point.
+          elementBounds: {
+            coordinateSpace: 'native-screen',
+            height: 44,
+            source: 'focused-crop-test',
+            width: 150,
+            x: 1385,
+            y: 908,
+          },
           elementCenter: {
             coordinateSpace: 'native-screen',
             source: 'focused-crop-test',

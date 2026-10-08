@@ -6,6 +6,7 @@ import {
 } from '../src/components/pet/usePetVisualBoundsMeasurement';
 import { reduceAvatarRuntimeEventSummaryByPetId } from '../src/pet-runtime/avatar-runtime/avatarRuntimeEventState';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const measuredBounds: PetVisualBounds = {
   bottom: 80,
@@ -100,7 +101,7 @@ assert.equal(
 
 const visualBoundsMeasurementSource = readProjectFile('src/components/pet/usePetVisualBoundsMeasurement.ts');
 const visualRendererSource = readProjectFile('src/components/pet/PetVisualRenderer.tsx');
-const live2DRendererSource = readProjectFile('src/components/pet/PetLive2DRenderer.tsx');
+const live2DRendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 
 assert.match(
   visualBoundsMeasurementSource,
@@ -122,25 +123,25 @@ assert.match(
 
 assert.match(
   live2DRendererSource,
-  /const dragSettledPointerLookTarget = resolveLive2DDragSettledPointerLookTarget\(\{[\s\S]*shouldSettle:\s*shouldSettleLive2DLook[\s\S]*const shouldUseDragSettleCenter = shouldUseLive2DDragSettleCenter\(shouldSettleLive2DLook, focusTarget\)[\s\S]*target:\s*dragSettledPointerLookTarget/,
+  /target:\s*dragSettledPointerLookTarget[\s\S]*const dragSettledPointerLookTarget = resolveLive2DDragSettledPointerLookTarget\(\{[\s\S]*shouldSettle:\s*shouldSettleLive2DLook[\s\S]*const shouldUseDragSettleCenter = shouldUseLive2DDragSettleCenter\(\s*shouldSettleLive2DLook,\s*dragSettledFocusTarget,?\s*\)/,
   'Live2D drag and post-drag settle should pause outer pointer-look visual transforms to avoid release-time jitter',
 );
 
 assert.match(
   live2DRendererSource,
-  /useEffect\(\(\) => \{[\s\S]*if \(isDragging\) \{[\s\S]*return;[\s\S]*\}[\s\S]*emitLive2DFallbackBounds\(\{[\s\S]*\}, \[[^\]]*isDragging[^\]]*\]\);/,
+  /emitLive2DFallbackBounds\(\{[\s\S]*useEffect\(\(\) => \{[\s\S]*if \(isDragging\) \{[\s\S]*return;[\s\S]*\}[\s\S]*emitFallbackBoundsWhenChanged\(state, values\);[\s\S]*\}, \[[^\]]*isDragging[^\]]*\]\);/,
   'Live2D drag should not emit fallback visual bounds because container bounds updates can resize or reclamp the shell mid-drag',
 );
 
 assert.match(
   live2DRendererSource,
-  /lastFallbackBoundsEmissionSignatureRef[\s\S]*createLive2DFallbackBoundsSignature[\s\S]*lastFallbackBoundsEmissionSignatureRef\.current === fallbackBoundsSignature[\s\S]*return;/,
+  /lastEmissionSignatureRef[\s\S]*createLive2DFallbackBoundsSignature[\s\S]*state\.lastEmissionSignatureRef\.current === fallbackBoundsSignature[\s\S]*return;/,
   'Live2D fallback visual bounds should only emit when the fallback bounds signature changes',
 );
 
 assert.match(
   live2DRendererSource,
-  /if \(isDragging\) \{[\s\S]*lastFallbackBoundsEmissionSignatureRef\.current = '';[\s\S]*return;/,
+  /state\.lastEmissionSignatureRef\.current = '';[\s\S]*if \(isDragging\) \{[\s\S]*resetFallbackBoundsWhileDragging\(state, values\);[\s\S]*return;/,
   'Live2D fallback visual bounds signature should reset during drag so release restores native shape once',
 );
 

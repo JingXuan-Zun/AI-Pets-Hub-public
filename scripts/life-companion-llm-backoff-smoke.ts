@@ -45,13 +45,11 @@ assert.equal(runtimeStatus.llmLastErrorMessage, 'network failed');
 
 const {
   controller: controllerSource,
-  progress: progressSource,
   row: rowSource,
   runner: runnerSource,
   runtimeScheduler: runtimeSchedulerSource,
 } = readProjectSources({
   controller: 'src/life-companion/lifeCompanionLlmPromptController.ts',
-  progress: 'PROJECT_FEATURE_PROGRESS.md',
   row: 'src/components/settings/SettingsLifeCompanionRuntimeStatusRow.tsx',
   runner: 'src/life-companion/lifeCompanionInteractionRunner.ts',
   runtimeScheduler: 'src/life-companion/lifeCompanionRuntimeScheduler.ts',
@@ -64,6 +62,5 @@ assert.match(runtimeSchedulerSource, /llmBackoffStateRef/u);
 assert.match(runnerSource, /llm-backoff/u);
 assert.match(rowSource, /llmBackoffRetryAfter/u);
 assert.match(rowSource, /llmLastErrorMessage/u);
-assert.match(progressSource, /LLM failure retry timing, backoff runtime visibility/u);
 
 console.log('life companion llm backoff smoke passed');

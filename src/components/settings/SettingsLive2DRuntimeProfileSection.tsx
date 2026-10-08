@@ -21,6 +21,7 @@ import {
   type Live2DRuntimeProfileCapability,
   type Live2DRuntimeProfileCapabilityMode,
 } from './settingsLive2DRuntimeProfile';
+import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
 const FIT_MODE_OPTIONS: Array<{ label: string; value: Live2DLayoutFitMode }> = [
   { label: '智能', value: 'visible-overflow' },
@@ -354,24 +355,18 @@ export function SettingsLive2DRuntimeProfileSection({
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-1.5 text-3xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 accent-primary"
-                        checked={parameter.enabled}
-                        onChange={(event) => commitParameter(option.key, { enabled: event.target.checked })}
-                      />
-                      启用
-                    </label>
-                    <label className="flex items-center gap-1.5 text-3xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 accent-primary"
-                        checked={parameter.invert}
-                        onChange={(event) => commitParameter(option.key, { invert: event.target.checked })}
-                      />
-                      反向
-                    </label>
+                    <SettingsToggleSwitch
+                      checked={parameter.enabled}
+                      className="text-3xs text-muted-foreground"
+                      label="启用"
+                      onChange={(checked) => commitParameter(option.key, { enabled: checked })}
+                    />
+                    <SettingsToggleSwitch
+                      checked={parameter.invert}
+                      className="text-3xs text-muted-foreground"
+                      label="反向"
+                      onChange={(checked) => commitParameter(option.key, { invert: checked })}
+                    />
                     <span className="font-mono text-3xs text-primary">
                       {Math.round(parameter.sensitivity * 100)}%
                     </span>

@@ -178,6 +178,12 @@ function validateAgentDecisionCompositeJsonInput(
   }
 
   const stepsJson = typeof input.stepsJson === 'string' ? input.stepsJson.trim() : '';
+  // visible_click mode describes the target instead of explicit steps; the
+  // sequence tool resolves and verifies it before any click.
+  const mode = typeof input.mode === 'string' ? input.mode.trim().toLowerCase() : '';
+  if (!stepsJson && (mode === 'visible_click' || mode === 'visibleclick')) {
+    return null;
+  }
   if (!stepsJson) {
     return 'execute_desktop_sequence needs stepsJson.';
   }

@@ -137,7 +137,7 @@ export function SettingsPanelStandaloneShell({
           </div>
           <div className="min-w-0 leading-tight">
             <div className="text-sm font-bold text-foreground">控制中心</div>
-            <div className="text-2xs tracking-[0.08em] text-muted-foreground">PET-ENGINE V3</div>
+            <div className="text-2xs text-muted-foreground">AI Pets Hub</div>
           </div>
         </div>
 

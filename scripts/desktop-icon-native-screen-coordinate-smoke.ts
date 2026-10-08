@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
-const { desktopIconServiceSource, showcaseSource, typeSource } = readProjectSources({
-  desktopIconServiceSource: 'electron/desktopIconService.cjs',
+const { showcaseSource, typeSource } = readProjectSources({
   showcaseSource: 'src/components/pet/useDesktopOrganizationShowcase.ts',
   typeSource: 'src/vite-env.d.ts',
 });
+
+const desktopIconServiceSource = readModuleProjectFile('electron/desktopIconService.cjs');
 
 assert.match(
   desktopIconServiceSource,
@@ -69,8 +71,14 @@ assert.match(
 
 assert.match(
   desktopIconServiceSource,
-  /try \{[\s\S]*stdout = await runPowerShellScript\(moveScript\);[\s\S]*catch \(error\) \{[\s\S]*desktop icon move PowerShell failed[\s\S]*ok: false/u,
+  /try \{[\s\S]*stdout = await runPowerShellScript\(moveScript\);[\s\S]*catch \(error\) \{[\s\S]*return reportDesktopIconMoveFailure\(error, icon, targetNativeScreenPoint\)/u,
   'desktop icon move should return a structured tool failure instead of throwing an IPC error',
+);
+
+assert.match(
+  desktopIconServiceSource,
+  /function reportDesktopIconMoveFailure\([\s\S]*invalidate\(\);[\s\S]*compactDesktopIconPowerShellError[\s\S]*desktop icon move PowerShell failed[\s\S]*ok: false/u,
+  'desktop icon move failure reporter should invalidate and preserve structured error evidence',
 );
 
 assert.match(

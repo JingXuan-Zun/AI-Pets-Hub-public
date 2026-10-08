@@ -3,7 +3,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { PublicPersonaEntry } from '../../persona-community/personaCommunityTypes';
 import { usePersonaCommunity } from './usePersonaCommunity';
 
-const DEFAULT_PERSONA_COMMUNITY_API_URL = 'https://persona-api.example.workers.dev';
+const DEFAULT_PERSONA_COMMUNITY_API_URL = '';
 const apiUrl = import.meta.env.VITE_PERSONA_COMMUNITY_API_URL?.trim() || DEFAULT_PERSONA_COMMUNITY_API_URL;
 const acceptedFileTypes = '.txt,.md,.json,text/plain,text/markdown,application/json';
 

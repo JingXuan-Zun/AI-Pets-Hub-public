@@ -83,16 +83,38 @@ const result = await runAgentProductionSession({
     assert.match(userInput, /nextStepRule=/u);
     assert.match(userInput, /approval-required execute_desktop_sequence/u);
 
-    throw new Error('model should not be called after recovery evidence is already approval-ready');
+    // The model gets the approval-ready recovery evidence and selects the
+    // retry click, which pauses for approval.
+    assert.equal(modelCallCount, 1);
+    return JSON.stringify({
+      action: 'tool_call',
+      args: {
+        stepsJson: JSON.stringify([
+          {
+            args: { action: 'click', x: 1440, y: 920 },
+            reason: 'Retry on the Start control found by recovery.',
+            tool: 'execute_desktop_input',
+          },
+        ]),
+      },
+      reason: 'Recovery found a clear Start control; request approval for the retry click.',
+      tool: 'execute_desktop_sequence',
+    });
   },
   settings,
   sourceText: '/agent start the visible app from the launcher',
   toolExecutor: async (command) => {
     executedRecoveryCommands.push(command);
     assert.equal(command.toolCall?.name, 'locate_screen_elements');
-    assert.equal(command.toolCall.input.action, 'describe_elements');
     assert.equal(command.toolCall.input.forceRefresh, true);
-    assert.match(String(command.toolCall.input.question), /AgentSessionV2 auto recovery observation/u);
+    if (executedRecoveryCommands.length === 1) {
+      assert.equal(command.toolCall.input.action, 'describe_elements');
+      assert.match(String(command.toolCall.input.question), /AgentSessionV2 auto recovery observation/u);
+    } else {
+      // Bounded read-only focused refinement of the ready Start control.
+      assert.equal(executedRecoveryCommands.length, 2);
+      assert.match(String(command.toolCall.input.targetDescription), /; focused candidate: /u);
+    }
 
     return {
       observations: [
@@ -141,14 +163,14 @@ const result = await runAgentProductionSession({
   userGoal: 'start the visible app from the launcher',
 });
 
-assert.equal(modelCallCount, 0);
-assert.equal(executedRecoveryCommands.length, 1);
+assert.equal(modelCallCount, 1);
+assert.equal(executedRecoveryCommands.length, 2);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /execute_desktop_input/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1440/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /920/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval after auto recovery/u);
+assert.match(result.continuation.historyLines.join('\n'), /selected approval-required tool:/u);
 assert.match(result.continuation.historyLines.join('\n'), /automatic recovery observation result/u);
 
 console.log('agent session v2 post-action replan smoke ok');

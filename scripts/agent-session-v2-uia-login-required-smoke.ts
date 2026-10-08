@@ -67,8 +67,27 @@ let toolCallCount = 0;
 
 const result = await runAgentProductionSession({
   maxSteps: 3,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
+    if (modelCallCount === 2) {
+      // With saved credentials already filled, the model selects the Sign in
+      // click, which must still pause for approval.
+      assert.match(userInput, /Sign in button is visible and credentials appear already filled/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: {
+          stepsJson: JSON.stringify([
+            {
+              args: { action: 'click', x: 500, y: 640 },
+              reason: 'Click Sign in with the already-filled saved credentials.',
+              tool: 'execute_desktop_input',
+            },
+          ]),
+        },
+        reason: 'Click Sign in to continue with the existing saved account.',
+        tool: 'execute_desktop_sequence',
+      });
+    }
     assert.equal(modelCallCount, 1);
     return JSON.stringify({
       action: 'tool_call',
@@ -93,7 +112,10 @@ const result = await runAgentProductionSession({
     }
 
     assert.equal(command.toolCall?.name, 'locate_screen_elements');
-    assert.equal(command.toolCall.input.action, 'describe_elements');
+    // The login read is followed by one bounded focused refinement of the
+    // ready continuation control.
+    assert.equal(command.toolCall.input.action, toolCallCount === 2 ? 'describe_elements' : 'locate_element');
+    assert.ok(toolCallCount <= 3);
     return {
       ok: true,
       responseText: 'Located Sign in button with saved credentials already filled.',
@@ -129,8 +151,9 @@ const result = await runAgentProductionSession({
 });
 
 assert.equal(result.status, 'needs-approval');
-assert.equal(modelCallCount, 1);
-assert.equal(toolCallCount, 2);
+assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
+assert.equal(modelCallCount, 2);
+assert.equal(toolCallCount, 3);
 assert.match(result.finalAnswer, /Sign in|approval|desktop/i);
 assert.match(result.continuation.historyLines.join('\n'), /postActionState=login_required/u);
 assert.match(result.continuation.historyLines.join('\n'), /(?:automatic recovery observation|visual refinement)/u);

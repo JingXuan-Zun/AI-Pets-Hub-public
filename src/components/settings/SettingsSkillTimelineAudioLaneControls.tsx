@@ -1,4 +1,5 @@
 import { Music2 } from 'lucide-react';
+import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
 interface SettingsSkillTimelineAudioLaneControlsProps {
   enabled: boolean;
@@ -11,15 +12,9 @@ export function SettingsSkillTimelineAudioLaneControls({
 }: SettingsSkillTimelineAudioLaneControlsProps) {
   return (
     <label className="flex items-center gap-2 rounded-sm border border-border/70 bg-background/20 p-2 text-2xs text-muted-foreground">
-      <input
-        type="checkbox"
-        className="h-4 w-4 accent-primary"
-        checked={enabled}
-        aria-label="Show audio metadata lane"
-        onChange={(event) => onEnabledChange(event.target.checked)}
-      />
       <Music2 className="h-3.5 w-3.5 text-primary" />
-      <span className="truncate">Audio metadata lane</span>
+      <span className="min-w-0 flex-1 truncate">Audio metadata lane</span>
+      <SettingsToggleSwitch checked={enabled} hideLabel label="Show audio metadata lane" onChange={onEnabledChange} />
     </label>
   );
 }

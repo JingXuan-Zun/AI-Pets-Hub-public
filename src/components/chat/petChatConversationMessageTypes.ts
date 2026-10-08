@@ -11,6 +11,8 @@ export interface PetChatConversationMessagesProps {
   chatMode: DesktopPetChatMode;
   chatBracketOuterTextColor: string;
   isInteractiveDialogue?: boolean;
+  /** The host window paints the chat background behind all chrome; skip it here. */
+  hoistBackground?: boolean;
   config: PetConfig;
   greeting: string;
   isListening: boolean;

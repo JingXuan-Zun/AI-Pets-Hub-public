@@ -12,10 +12,18 @@ import {
 const {
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  finalResponse: finalResponseSource,
+  guards: guardsSource,
 } = readProjectSources({
   runtimeSignal: 'src/agent/runtime/agentFinalAnswerRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  finalResponse: 'src/agent/productionSession/finalResponse.ts',
+  guards: 'src/agent/productionSession/finalEvidenceGuards.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalResponse'/u, 'The root must import the checked final response module.');
+assertSourceMatches(sessionSource, /const \{ prepareFinalResponse \} = createAgentProductionFinalResponse\(\{/u, 'The root must instantiate the checked final response module.');
+assertSourceMatches(sessionSource, /prepareFinalResponse\(decision, stepIndex/u, 'The root must dispatch responses through the checked module.');
 
 assertSourceMatches(
   runtimeSignalSource,
@@ -28,8 +36,8 @@ assertSourceMatches(
   'Unverified result final rejection signal should explicitly remain advisory and evidence-driven.',
 );
 assertSourceMatches(
-  sessionSource,
-  /from '\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
+  finalResponseSource,
+  /from '\.\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
   'AgentSessionV2 should consume Runtime final-answer rejection signals.',
 );
 assertSourceDoesNotMatch(
@@ -39,9 +47,13 @@ assertSourceDoesNotMatch(
 );
 assertSourceMatches(
   sessionSource,
-  /function shouldRejectAgentSessionV2UnverifiedResultFinal/u,
-  'AgentSessionV2 should still own the unverified final-answer predicate for this slice.',
+  /shouldRejectAgentProductionUnverifiedResultFinal: shouldRejectAgentSessionV2UnverifiedResultFinal/u,
+  'Production session should bind the existing evidence guard from its module.',
 );
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalEvidenceGuards'/u, 'The root must import the checked implementation.');
+assertSourceMatches(sessionSource, /createAgentProductionFinalEvidenceGuards\(\{/u, 'The root must instantiate the reachable evidence guard module.');
+assertSourceMatches(guardsSource, /function shouldRejectAgentProductionUnverifiedResultFinal/u, 'The predicate implementation must remain in the bound production module.');
 
 const decision: AgentSessionV2Decision = {
   action: 'final_answer',

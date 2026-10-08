@@ -73,7 +73,7 @@ export function EmbeddedPetChatPanelSurface({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 10 }}
       style={frameStyle}
-      className={`relative flex min-h-0 flex-col overflow-hidden border border-sky-100/85 bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(15,23,42,0.86))] shadow-[0_28px_80px_rgba(15,23,42,0.35)] backdrop-blur-2xl ${isInteractiveDialogue ? 'rounded-[18px] border-white/20' : 'rounded-[30px] bg-[linear-gradient(180deg,rgba(245,250,255,0.98),rgba(233,243,252,0.95))]'}`}
+      className={`relative flex min-h-0 flex-col overflow-hidden border border-sky-100/85 bg-[linear-gradient(180deg,rgba(158,84,140,0.72),rgba(158,84,140,0.86))] shadow-[0_28px_80px_rgba(158,84,140,0.35)] backdrop-blur-2xl ${isInteractiveDialogue ? 'rounded-[18px] border-white/20' : 'rounded-[30px] bg-[linear-gradient(180deg,rgba(245,250,255,0.98),rgba(233,243,252,0.95))]'}`}
       onPointerDown={(event) => event.stopPropagation()}
     >
       {!dragDisabled && !isMinimized && !isInteractiveDialogue ? (

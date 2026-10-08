@@ -6,6 +6,7 @@ import { type PetAutoSpeechTrigger, type PetConfig } from '../types';
 import { getVoiceErrorMessage, isVoiceCancellationError } from '../voice/errorMessages';
 import { resolvePetMessageExpressionAction } from '../pet-runtime/interactions/petMessageExpressionSignals';
 import { getStartupGreetingLlmResponse } from '../life-companion/startupGreetingLlm';
+import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
 
 interface UsePetRuntimeSpeechControllerOptions {
   addLog: (message: string) => void;
@@ -86,15 +87,14 @@ export function usePetRuntimeSpeechController({
     try {
       desktopPetChatStore.setSpeaking(true);
       desktopPetChatStore.setSpeakingPetId('primary');
-      desktopPetChatStore.setSpeechExpressionAction(
-        'primary',
-        resolvePetMessageExpressionAction(text),
-      );
+      const expressionAction = resolvePetMessageExpressionAction(text);
+      desktopPetChatStore.setSpeechExpressionAction('primary', expressionAction);
       pushFrontendRuntimeLog('语音', '开始主动播报', {
         provider: settings.ttsProvider,
         textLength: text.length,
       });
-      const playback = await speakText(text, settings);
+      const voiceSettings = resolvePetVoiceSettings({ ...configRef.current, settings }, 'primary');
+      const playback = await speakText(text, voiceSettings, undefined, { expressionAction });
       if (playbackToken !== autoSpeechTokenRef.current) {
         playback.stop();
         return;

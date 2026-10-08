@@ -20,7 +20,7 @@ export function StoryTurnContentCard(props: StoryTurnContentCardProps) {
   const { conversation, message, messageKey, session, showVoiceOutputStatus } = props;
   return (
     <>
-      <div style={resolveChatBubbleBackgroundStyle(conversation.config.settings.chatBubbleTransparency, 0.95)} className="story-turn-content-card mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur-sm">
+      <div style={resolveChatBubbleBackgroundStyle(conversation.config.settings.chatBubbleTransparency, 0.95)} className="story-turn-content-card mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-[0_12px_30px_rgba(158,84,140,0.12)] backdrop-blur-sm">
         <StoryTurnReview embedded session={session} />
         <PetChatConversationMessageBubble
           chatBracketOuterTextColor={conversation.chatBracketOuterTextColor}

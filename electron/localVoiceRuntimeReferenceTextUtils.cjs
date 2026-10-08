@@ -1,3 +1,41 @@
+function resolveCachedReferenceText({ referenceTextCache, readPersistedReferenceText, writeRuntimeLog },
+  referenceCacheKey, { requestId, purpose }) {
+  const cachedReferenceText = referenceCacheKey
+    ? String(referenceTextCache.get(referenceCacheKey) || '').trim()
+    : '';
+
+  if (cachedReferenceText) {
+    writeRuntimeLog('Reference text cache hit', {
+      requestId,
+      purpose,
+      textLength: cachedReferenceText.length,
+    });
+    return {
+      referenceText: cachedReferenceText,
+      source: 'cache',
+    };
+  }
+
+  const persistedReferenceText = readPersistedReferenceText(referenceCacheKey);
+  if (persistedReferenceText) {
+    if (referenceCacheKey) {
+      referenceTextCache.set(referenceCacheKey, persistedReferenceText);
+    }
+
+    writeRuntimeLog('Reference text persistent cache hit', {
+      requestId,
+      purpose,
+      textLength: persistedReferenceText.length,
+    });
+    return {
+      referenceText: persistedReferenceText,
+      source: 'persistent-cache',
+    };
+  }
+
+  return null;
+}
+
 function createLocalVoiceRuntimeReferenceTextUtils({
   buildReferenceTextCacheKey,
   getConfiguredReferenceText,
@@ -29,38 +67,10 @@ function createLocalVoiceRuntimeReferenceTextUtils({
       assetSelection.sttModel.path,
       languageCode,
     );
-    const cachedReferenceText = referenceCacheKey
-      ? String(referenceTextCache.get(referenceCacheKey) || '').trim()
-      : '';
-
-    if (cachedReferenceText) {
-      writeRuntimeLog('Reference text cache hit', {
-        requestId,
-        purpose,
-        textLength: cachedReferenceText.length,
-      });
-      return {
-        referenceText: cachedReferenceText,
-        source: 'cache',
-      };
-    }
-
-    const persistedReferenceText = readPersistedReferenceText(referenceCacheKey);
-    if (persistedReferenceText) {
-      if (referenceCacheKey) {
-        referenceTextCache.set(referenceCacheKey, persistedReferenceText);
-      }
-
-      writeRuntimeLog('Reference text persistent cache hit', {
-        requestId,
-        purpose,
-        textLength: persistedReferenceText.length,
-      });
-      return {
-        referenceText: persistedReferenceText,
-        source: 'persistent-cache',
-      };
-    }
+    const cachedResult = resolveCachedReferenceText({
+      referenceTextCache, readPersistedReferenceText, writeRuntimeLog,
+    }, referenceCacheKey, { requestId, purpose });
+    if (cachedResult) return cachedResult;
 
     writeRuntimeLog('Reference text missing; using speaker embedding only mode', {
       requestId,

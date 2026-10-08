@@ -114,7 +114,6 @@ const serviceSource = readProjectFile('electron/localFileSystemService.cjs');
 assert.match(registrySource, /capabilityId: 'local-file-system'/u);
 assert.match(sessionV2Source, /local path[\s\S]*get_path_info/u);
 assert.match(sessionV2Source, /read_text_file/u);
-assert.match(sessionV2Source, /verificationEvidence must cite concrete tool evidence/u);
 assert.match(runtimeSource, /from '.\/agentRuntimeLocalFileTools'/u);
 assert.match(localFileToolsSource, /export async function executeGetPathInfo/u);
 assert.match(localFileToolsSource, /export async function executeListDirectory/u);
@@ -180,6 +179,11 @@ const sessionResult = await runAgentProductionSession({
     assert.match(systemInstruction, /list_directory/u);
     assert.match(systemInstruction, /search_files/u);
     assert.match(systemInstruction, /read_text_file/u);
+    // The final_answer contract must still demand verified, tool-backed evidence.
+    assert.match(
+      systemInstruction,
+      /"action": "final_answer"[^\n]*"verificationStatus": "satisfied\|blocked", "verificationEvidence": \["concrete evidence from tool results"\]/u,
+    );
 
     if (modelCallCount === 1) {
       return JSON.stringify({
@@ -217,7 +221,7 @@ const sessionResult = await runAgentProductionSession({
     assert.equal(command.toolCall?.input.action, 'get_path_info');
     return {
       ok: true,
-      responseText: `路径存在�?{projectRoot}`,
+      responseText: `路径存在：${projectRoot}`,
       verification: 'smoke verified path metadata',
     };
   },

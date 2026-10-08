@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 import type { ChatMessage } from '../src/types';
 import { mergeAgentApprovalMessageIntoExistingMessage } from '../src/components/chat/agentApprovalMessageStore';
 
@@ -35,7 +36,7 @@ assert.equal(merged.agentApproval?.id, 'approval-1');
 assert.deepEqual(merged.groupTaskEvent, groupTaskEvent);
 assert.equal(merged.petId, 'alice');
 
-const controllerSource = fs.readFileSync('src/components/chat/agentRunController.ts', 'utf8');
+const controllerSource = readModuleProjectFile('src/components/chat/agentRunController.ts');
 const continuationSource = fs.readFileSync(
   'src/components/chat/agentApprovalContinuationExecution.ts',
   'utf8',

@@ -3,7 +3,7 @@ import { type PetConfig } from '../../types';
 import { stopQueuedReplyVoicePlayback } from './queuedReplyVoicePlaybackState';
 import { type QueuedReplyVoicePlaybackRefs } from './queuedReplyVoicePlaybackTypes';
 import { enqueueQueuedReplyVoiceSegment } from './queuedReplyVoiceSegmentQueue';
-import { extractQueuedReplyStreamingSpeech } from './queuedReplyStreamingSpeechUtils';
+import { extractQueuedReplyStreamingSpeech, resolveReplySpeechSegmentationProfile } from './queuedReplyStreamingSpeechUtils';
 
 interface UseQueuedReplyVoicePlaybackOptions extends QueuedReplyVoicePlaybackRefs {
   configRef: MutableRefObject<PetConfig>;
@@ -72,10 +72,7 @@ export function useQueuedReplyVoicePlayback({
   ]);
 
   const extractStreamingSpeech = useCallback((buffer: string, hasQueuedSpeechSegment: boolean) => {
-    const { settings } = configRef.current;
-    const profile = settings.ttsProvider === 'local'
-      ? { voiceToneStability: settings.localTtsVoiceToneStability }
-      : {};
+    const profile = resolveReplySpeechSegmentationProfile(configRef.current.settings);
 
     return extractQueuedReplyStreamingSpeech(
       buffer,

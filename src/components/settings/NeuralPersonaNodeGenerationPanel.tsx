@@ -10,6 +10,7 @@ import { NeuralPersonaNodeGenerationCandidateCard } from './NeuralPersonaNodeGen
 import { NeuralPersonaRelationshipCandidateCard } from './NeuralPersonaRelationshipCandidateCard';
 import { useNeuralPersonaNodeGeneration } from './useNeuralPersonaNodeGeneration';
 import type { useNeuralPersonaGraphSectionState } from './useNeuralPersonaGraphSectionState';
+import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
 type CommitAction = ReturnType<typeof useNeuralPersonaGraphSectionState>['commitGeneratedNodes'];
 type GenerationController = ReturnType<typeof useNeuralPersonaNodeGeneration>;
@@ -139,8 +140,8 @@ export function NeuralPersonaNodeGenerationPanel(props: PanelProps) {
       </div>
       <GenerationStatus controller={controller} consent={props.settings.neuralPersonaProviderDataEgressConsent} />
       <label className="flex items-start gap-2 rounded-sm border border-border/70 bg-background/30 p-2 text-3xs leading-4 text-muted-foreground">
-        <input type="checkbox" checked={props.settings.neuralPersonaProviderDataEgressConsent} onChange={(event) => props.onSettingsUpdate({ neuralPersonaProviderDataEgressConsent: event.target.checked })} className="mt-0.5" />
-        允许把本次人格文本发送给当前配置模型进行解析。关闭后不会发出请求。
+        <span className="flex-1">允许把本次人格文本发送给当前配置模型进行解析。关闭后不会发出请求。</span>
+        <SettingsToggleSwitch checked={props.settings.neuralPersonaProviderDataEgressConsent} hideLabel label="允许发送人格文本" onChange={(checked) => props.onSettingsUpdate({ neuralPersonaProviderDataEgressConsent: checked })} />
       </label>
       <CandidateList controller={controller} state={state} />
     </section>

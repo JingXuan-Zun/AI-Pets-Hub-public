@@ -140,7 +140,9 @@ const manyCandidateBatch = {
   candidates: Array.from({ length: 35 }, (_, index) => ({
     baseWeight: 0.7, candidateId: `many-${index + 1}`,
     confidence: 1, enabled: true, evidence: '',
-    influenceSummary: `第 ${index + 1} 个完整人格语义节点`,
+    influenceSummary: index === 0
+      ? '需要完整保存的长人格语义节点内容。'.repeat(40)
+      : `第 ${index + 1} 个完整人格语义节点`,
     origin: 'user' as const, tags: [], type: 'style-tendency' as const,
   })),
   personaName: '多节点测试主体', roleId: 'role-many',
@@ -194,6 +196,16 @@ assert.equal(firstTopicNode?.influenceSummary, '温和表达');
 assert.equal(firstGeneratedNode?.tags[0]?.status, 'active');
 assert.equal(firstGeneratedNode?.tags[0]?.reviewerId, 'local-user');
 assert.equal(firstGeneratedNode?.tags.length, 1);
+assert.equal(committed.record.graph.sources?.length, 1);
+assert.equal(committed.record.graph.sources?.[0]?.content, sourceText);
+assert.equal(firstGeneratedNode?.normalizedContent, '她说话温和克制');
+assert.equal(firstGeneratedNode?.retrievalSummary, '她说话温和克制');
+assert.equal(firstGeneratedNode?.sourceReferences?.length, 1);
+const firstSourceReference = firstGeneratedNode?.sourceReferences?.[0];
+assert.equal(firstSourceReference?.sourceId, committed.record.graph.sources?.[0]?.sourceId);
+assert.equal(sourceText.slice(
+  firstSourceReference?.startOffset, firstSourceReference?.endOffset,
+), firstSourceReference?.quote);
 
 const secondBatch = {
   ...generated.batch,
@@ -214,6 +226,8 @@ assert.equal(merged.record.revision, 1);
 assert.equal(merged.record.graph.nodes.length, 9);
 assert.equal(merged.record.graph.edges.length, 8);
 assert.equal(merged.record.recoverySnapshots.length, 1);
+assert.equal(merged.record.graph.sources?.length, 1,
+  'reimporting identical Persona Raw content should reuse one source document');
 
 const firstAnchorEdgeId = committed.receipt.generatedEdgeIds[0]!;
 const edgeRemoved = await repository.transact({
@@ -339,7 +353,9 @@ const hookSource = fs.readFileSync(
 const providerSource = fs.readFileSync(
   'src/services/neuralPersonaConfiguredNodeGenerationProvider.ts', 'utf8',
 );
-assert.match(sectionSource, /NeuralPersonaNodeGenerationPanel/u);
+// Persona splitting is retired from the settings flow: the Persona Anchor stays one complete persona.
+assert.doesNotMatch(sectionSource, /NeuralPersonaNodeGenerationPanel/u);
+assert.doesNotMatch(sectionSource, /跳过智能解析/u);
 assert.match(panelSource, /确认并生成完整认知图谱/u);
 assert.match(panelSource, /重新分析关系/u);
 assert.match(panelSource, /正在分析候选节点之间的语义关系/u);

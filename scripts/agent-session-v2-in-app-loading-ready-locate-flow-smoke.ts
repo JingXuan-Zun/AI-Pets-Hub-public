@@ -150,9 +150,26 @@ const result = await runAgentProductionSession({
     result: approvedOpenResult,
   },
   maxSteps: 5,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
-    throw new Error('model should not be called for loading -> ready -> locate in-app flow');
+    // The Runtime handles loading -> ready -> locate (plus a focused
+    // refinement) on its own; the model only selects the approval-gated click.
+    assert.equal(modelCallCount, 1);
+    assert.match(userInput, /elementCenter=1440,920/u);
+    return JSON.stringify({
+      action: 'tool_call',
+      args: {
+        stepsJson: JSON.stringify([
+          {
+            args: { action: 'click', x: 1440, y: 920 },
+            reason: 'Click the located Example Game Play button.',
+            tool: 'execute_desktop_input',
+          },
+        ]),
+      },
+      reason: 'The in-app Play button is located; request approval for the click.',
+      tool: 'execute_desktop_sequence',
+    });
   },
   settings,
   sourceText,
@@ -185,7 +202,7 @@ const result = await runAgentProductionSession({
   userGoal,
 });
 
-assert.equal(modelCallCount, 0);
+assert.equal(modelCallCount, 1);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /execute_desktop_input/u);
@@ -198,6 +215,7 @@ const history = result.continuation.historyLines.join('\n');
 assert.match(history, /ActionRuntime current action/u);
 assert.match(history, /postActionState=loading/u);
 assert.match(history, /automatic recovery observation result/u);
-assert.match(history, /prepared visual-action approval/u);
+assert.match(history, /visual refinement result:/u);
+assert.match(history, /selected approval-required tool:/u);
 
 console.log('agent session v2 in-app loading ready locate flow smoke ok');

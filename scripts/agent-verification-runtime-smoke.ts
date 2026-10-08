@@ -208,12 +208,13 @@ const verificationEntry: AgentRuntimeToolResultEntry = {
 
 function createOutcomeDependencies(options: {
   attemptedCoverage?: string[];
+  requestedCoverage?: string[];
   postActionState?: string;
   terminal?: ReturnType<AgentActionRuntimeDependencies['evaluateTerminal']>;
 } = {}): AgentActionRuntimeDependencies {
   return {
     createAttemptedActionCoverage: () => new Set(options.attemptedCoverage ?? ['desktop-input', 'in-app-action']),
-    createRequestedActionCoverage: () => new Set(['in-app-action']),
+    createRequestedActionCoverage: () => new Set(options.requestedCoverage ?? ['in-app-action']),
     evaluateTerminal: () => options.terminal ?? null,
     hasDirectActionIntent: () => true,
     isActionKindCovered: (kind, attemptedCoverage) => attemptedCoverage.has(kind),
@@ -276,7 +277,8 @@ const approvalTransition = transitionAgentVerificationOutcome({
 assert.equal(approvalTransition.kind, 'approval');
 assert.equal(approvalTransition.recoveryDecision, null);
 
-const targetResolutionTransition = transitionAgentVerificationOutcome({
+// A different attempted action must not turn an entirely unattempted request into recovery.
+const unattemptedRequestTransition = transitionAgentVerificationOutcome({
   actionRuntimeDependencies: createOutcomeDependencies({ attemptedCoverage: ['desktop-input'] }),
   latestEntry: verificationEntry,
   resolveVisualApproval: () => null,
@@ -284,11 +286,32 @@ const targetResolutionTransition = transitionAgentVerificationOutcome({
   toolResults: [clickEntry, verificationEntry],
   userGoal,
 });
+assert.equal(unattemptedRequestTransition.actionDecision.actionAttempted, false);
+assert.equal(unattemptedRequestTransition.actionDecision.status, 'uncertain');
+assert.equal(unattemptedRequestTransition.kind, 'refine');
+assert.equal(unattemptedRequestTransition.recoveryDecision?.action, 'no-recovery');
+
+const targetResolutionTransition = transitionAgentVerificationOutcome({
+  actionRuntimeDependencies: createOutcomeDependencies({
+    attemptedCoverage: ['desktop-input'],
+    requestedCoverage: ['desktop-input', 'in-app-action'],
+  }),
+  latestEntry: verificationEntry,
+  resolveVisualApproval: () => null,
+  sourceText,
+  toolResults: [clickEntry, verificationEntry],
+  userGoal,
+});
+assert.equal(targetResolutionTransition.actionDecision.actionAttempted, true);
+assert.equal(targetResolutionTransition.actionDecision.status, 'needs-recovery');
 assert.equal(targetResolutionTransition.kind, 'target-resolution');
 assert.equal(targetResolutionTransition.recoveryDecision?.action, 'automatic-observation');
 
 const unavailableTargetResolutionTransition = transitionAgentVerificationOutcome({
-  actionRuntimeDependencies: createOutcomeDependencies({ attemptedCoverage: ['desktop-input'] }),
+  actionRuntimeDependencies: createOutcomeDependencies({
+    attemptedCoverage: ['desktop-input'],
+    requestedCoverage: ['desktop-input', 'in-app-action'],
+  }),
   latestEntry: verificationEntry,
   resolveVisualApproval: () => null,
   sourceText,
@@ -301,7 +324,10 @@ assert.equal(unavailableTargetResolutionTransition.recoveryDecision?.action, 'au
 assert.match(unavailableTargetResolutionTransition.reason, /Target resolution is not eligible/u);
 
 const explicitRecoveryTransition = transitionAgentVerificationOutcome({
-  actionRuntimeDependencies: createOutcomeDependencies({ attemptedCoverage: ['desktop-input'] }),
+  actionRuntimeDependencies: createOutcomeDependencies({
+    attemptedCoverage: ['desktop-input'],
+    requestedCoverage: ['desktop-input', 'in-app-action'],
+  }),
   latestEntry: {
     ...verificationEntry,
     result: {
@@ -343,7 +369,10 @@ const createContinuationAdapter = (kind: string, finalResult: string | null = nu
   return { executed: true, finalResult };
 };
 const verificationContinuation = await runAgentVerificationContinuation({
-  actionRuntimeDependencies: createOutcomeDependencies({ attemptedCoverage: ['desktop-input'] }),
+  actionRuntimeDependencies: createOutcomeDependencies({
+    attemptedCoverage: ['desktop-input'],
+    requestedCoverage: ['desktop-input', 'in-app-action'],
+  }),
   adapters: {
     approval: createContinuationAdapter('approval'),
     planning: createContinuationAdapter('planning'),
@@ -362,6 +391,7 @@ const verificationContinuation = await runAgentVerificationContinuation({
 });
 assert.deepEqual(continuationAdapterCalls, ['targetResolution']);
 assert.equal(verificationContinuation.adapterKind, 'targetResolution');
+assert.equal(verificationContinuation.transition.actionDecision.actionAttempted, true);
 assert.equal(verificationContinuation.transition.kind, 'target-resolution');
 assert.equal(verificationContinuation.finalResult, 'target-resolution-ran');
 assert.equal(verificationContinuation.loopDecision.action, 'return-final');

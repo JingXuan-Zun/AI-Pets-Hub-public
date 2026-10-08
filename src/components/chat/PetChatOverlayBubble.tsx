@@ -66,7 +66,7 @@ export function PetChatOverlayBubble({
         >
           <div className="relative overflow-hidden rounded-2xl">
             <div
-              className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words border border-white/80 bg-white/90 px-3 py-2 font-semibold shadow-[0_8px_24px_rgba(15,23,42,0.24)] backdrop-blur-sm [scrollbar-width:thin]"
+              className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words border border-white/80 bg-white/90 px-3 py-2 font-semibold shadow-[0_8px_24px_rgba(158,84,140,0.24)] backdrop-blur-sm [scrollbar-width:thin]"
               style={{ color: chatBracketOuterTextColor }}
               onWheel={(event) => {
                 // The overlay sits above the transparent desktop-pet surface;

@@ -1,3 +1,5 @@
+import { isAgentRuntimeCancellationRequested } from './agentRuntimeCancellation';
+import { createDesktopObservationExecutor } from './executor/desktopObservationExecution';
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
 import { type PetConfig, type PetConfigUpdateHandler } from '../types';
 import {
@@ -25,9 +27,7 @@ import {
 } from './agentRuntimeDesktopLaunchTools';
 import {
   executeCloseWindow,
-  executeControlWindow,
   executeFocusWindow,
-  executeMoveWindowToDisplay,
 } from './agentRuntimeWindowTools';
 import {
   executeBrowserSearch,
@@ -37,15 +37,10 @@ import {
   executeGetActiveWindowInfo,
   executeGetCursorPosition,
   executeGetDefaultAppForUri,
-  executeInspectWindowUi,
   executeListRunningApps,
   executeObserveWindowsAndApps,
 } from './agentRuntimeDesktopObservationTools';
 import { executeDesktopSequence } from './agentRuntimeDesktopSequenceTools';
-import {
-  executeDiagnoseDesktopIcons,
-  executeListDesktopItems,
-} from './agentRuntimeDesktopItemTools';
 import {
   executeDesktopIconPlacement,
   executeDesktopIconPlacementToolCall,
@@ -67,12 +62,9 @@ import {
   enrichAgentRuntimeToolResult,
 } from './agentRuntimeToolResult';
 import {
-  annotateDesktopObservationResult,
   getToolBooleanInput,
   getToolNumberInput,
   getToolStringInput,
-  normalizeAgentRuntimeVisualLookupText,
-  normalizeExecuteDesktopObservationAction,
   prepareAgentRuntimeToolCall,
 } from './agentRuntimeToolPreparation';
 import {
@@ -157,10 +149,6 @@ type AgentRuntimeToolHandler = (
 
 const AGENT_RUNTIME_CANCELLED_TEXT = '已终止当前 Agent 执行。';
 
-function isAgentRuntimeCancellationRequested(runtime: AgentRuntimeExecutorContext) {
-  return Boolean(runtime.signal?.aborted);
-}
-
 function resolveAgentRuntimeCancellationToolName(target: AgentChatCommand | AgentToolCallCommand | string) {
   return typeof target === 'string'
     ? target
@@ -188,58 +176,6 @@ function createAgentRuntimeCancelledResult(target: AgentChatCommand | AgentToolC
     responseText: AGENT_RUNTIME_CANCELLED_TEXT,
     verification: AGENT_RUNTIME_CANCELLED_TEXT,
   });
-}
-
-async function runCancellableAgentRuntimeTask<T>(
-  runtime: AgentRuntimeExecutorContext,
-  target: AgentChatCommand | AgentToolCallCommand | string,
-  task: Promise<T> | (() => Promise<T>),
-): Promise<{ cancelled: true; result: AgentChatCommandResult } | { cancelled: false; value: T }> {
-  if (isAgentRuntimeCancellationRequested(runtime)) {
-    return {
-      cancelled: true,
-      result: createAgentRuntimeCancelledResult(target),
-    };
-  }
-
-  let removeAbortListener: (() => void) | null = null;
-  try {
-    const taskPromise = typeof task === 'function' ? task() : task;
-    const racedValue = await new Promise<T | symbol>((resolve, reject) => {
-      const cancelledMarker = Symbol('agent-runtime-cancelled');
-      const signal = runtime.signal;
-      const handleAbort = () => resolve(cancelledMarker);
-
-      if (signal) {
-        if (signal.aborted) {
-          resolve(cancelledMarker);
-          return;
-        }
-
-        signal.addEventListener('abort', handleAbort, { once: true });
-        removeAbortListener = () => signal.removeEventListener('abort', handleAbort);
-      }
-
-      taskPromise.then(resolve, reject);
-    });
-
-    removeAbortListener?.();
-    removeAbortListener = null;
-
-    if (typeof racedValue === 'symbol' || isAgentRuntimeCancellationRequested(runtime)) {
-      return {
-        cancelled: true,
-        result: createAgentRuntimeCancelledResult(target),
-      };
-    }
-
-    return {
-      cancelled: false,
-      value: racedValue,
-    };
-  } finally {
-    removeAbortListener?.();
-  }
 }
 
 const AGENT_HELP_TEXT = 'Agent 会先理解请求，再按需要规划、申请确认、调用本机工具并回执结果。当前工具包括：读取电脑/屏幕信息、观察当前活动窗口/捕获源/鼠标位置、只读查看本机路径/目录/文件名/文本片段、预览或执行桌面图标整理、打开或唤出本机应用、浏览器搜索、记住用户提供的应用路径、只读分析本机项目，以及执行分析出的候选动作。';
@@ -276,298 +212,10 @@ function createUnsupportedResult(message?: string): AgentChatCommandResult {
   };
 }
 
-function resolveDesktopObservationWaitMs(toolCall: AgentToolCallCommand) {
-  const waitMs = getToolNumberInput(toolCall, 'waitMs')
-    ?? getToolNumberInput(toolCall, 'delayMs')
-    ?? getToolNumberInput(toolCall, 'durationMs')
-    ?? 1500;
-
-  return Math.max(250, Math.min(15_000, Math.round(waitMs)));
-}
-
-async function waitForDesktopObservationDelay(
-  runtime: AgentRuntimeExecutorContext,
-  waitMs: number,
-) {
-  if (isAgentRuntimeCancellationRequested(runtime)) {
-    return false;
-  }
-
-  let removeAbortListener: (() => void) | null = null;
-  const completed = await new Promise<boolean>((resolve) => {
-    const timeoutId = globalThis.setTimeout(() => resolve(true), waitMs);
-    const handleAbort = () => {
-      globalThis.clearTimeout(timeoutId);
-      resolve(false);
-    };
-
-    if (runtime.signal) {
-      if (runtime.signal.aborted) {
-        globalThis.clearTimeout(timeoutId);
-        resolve(false);
-        return;
-      }
-
-      runtime.signal.addEventListener('abort', handleAbort, { once: true });
-      removeAbortListener = () => runtime.signal?.removeEventListener('abort', handleAbort);
-    }
-  });
-  removeAbortListener?.();
-
-  return completed && !isAgentRuntimeCancellationRequested(runtime);
-}
-
-function mergeDesktopObservationLines(
-  ...lists: Array<Array<string | null | undefined> | null | undefined>
-) {
-  const seen = new Set<string>();
-  const lines: string[] = [];
-  for (const list of lists) {
-    for (const item of list ?? []) {
-      const text = typeof item === 'string' ? item.trim() : '';
-      if (!text || seen.has(text)) {
-        continue;
-      }
-
-      seen.add(text);
-      lines.push(text);
-    }
-  }
-
-  return lines;
-}
-
-const AGENT_WAIT_OBSERVE_VISUAL_TIMEOUT_MS = 15_000;
-
-async function executeSupplementalWaitVisualObservation(
-  task: Promise<AgentChatCommandResult>,
-): Promise<AgentChatCommandResult> {
-  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      task,
-      new Promise<AgentChatCommandResult>((resolve) => {
-        timeoutId = globalThis.setTimeout(() => resolve({
-          errorText: `Supplemental visual observation timed out after ${AGENT_WAIT_OBSERVE_VISUAL_TIMEOUT_MS}ms.`,
-          ok: false,
-          responseText: 'Supplemental visual observation timed out; window/process evidence is still available.',
-        }), AGENT_WAIT_OBSERVE_VISUAL_TIMEOUT_MS);
-      }),
-    ]);
-  } finally {
-    if (timeoutId !== null) {
-      globalThis.clearTimeout(timeoutId);
-    }
-  }
-}
-
-async function executeWaitAndObserveDesktop(
-  runtime: AgentRuntimeExecutorContext,
-  toolCall: AgentToolCallCommand,
-  sourceText: string,
-): Promise<AgentChatCommandResult> {
-  const waitMs = resolveDesktopObservationWaitMs(toolCall);
-  const completedWait = await waitForDesktopObservationDelay(runtime, waitMs);
-  if (!completedWait) {
-    return createAgentRuntimeCancelledResult(toolCall);
-  }
-
-  const query = getToolStringInput(toolCall, ['query', 'target', 'sourceName', 'name', 'title', 'processName']);
-  const windowResult = await executeObserveWindowsAndApps({
-    goal: 'Wait briefly, then observe current desktop/window/app state',
-    input: {
-      forceRefresh: true,
-      includeActiveWindow: true,
-      includeDisplays: true,
-      includeRunningApps: true,
-      limit: getToolNumberInput(toolCall, 'limit') ?? 12,
-      ...(query ? { query } : {}),
-    },
-    name: 'observe_windows_and_apps',
-  });
-  const includeVisual = getToolBooleanInput(toolCall, 'includeVisual') === true;
-  const visualResult = includeVisual
-    ? await executeSupplementalWaitVisualObservation(executeSummarizeVisualSnapshot(runtime, {
-        ...toolCall,
-        goal: toolCall.goal || 'Wait briefly, then visually observe current UI state',
-        input: {
-          ...toolCall.input,
-          allowScreenFallback: true,
-          forceRefresh: true,
-          question: getToolStringInput(toolCall, ['question', 'goal', 'prompt'])
-            || 'After waiting, summarize the visible UI state and any loading, login, update, error, or unchanged cues.',
-        },
-        name: 'summarize_visual_snapshot',
-      }, sourceText))
-    : null;
-  const windowOk = windowResult.ok !== false;
-  const visualOk = !visualResult || visualResult.ok !== false;
-  const ok = windowOk;
-  const status = visualResult
-    ? windowOk && visualOk ? 'success' : windowOk ? 'unverified' : 'failed'
-    : windowResult.receipt?.status ?? (ok ? 'success' : 'failed');
-  const observedState = mergeDesktopObservationLines(
-    [`Waited ${waitMs}ms before observing.`],
-    windowResult.stateSummary?.observedState,
-    windowResult.observations,
-    visualResult?.stateSummary?.observedState,
-    visualResult?.observations,
-  );
-  const missingEvidence = mergeDesktopObservationLines(
-    windowResult.stateSummary?.missingEvidence,
-    visualResult?.stateSummary?.missingEvidence,
-    visualResult && !visualOk ? ['missing:supplemental-visual-observation'] : [],
-  );
-  const recommendedRecovery = mergeDesktopObservationLines(
-    windowResult.stateSummary?.recommendedRecovery,
-    visualResult?.stateSummary?.recommendedRecovery,
-    ok
-      ? []
-      : [
-          'Use this refreshed wait-and-observe evidence to decide whether to wait again, retry only the unclear primitive, or ask one short question.',
-        ],
-  );
-  const verificationEvidence = mergeDesktopObservationLines(
-    windowResult.stateSummary?.verificationEvidence,
-    visualResult?.stateSummary?.verificationEvidence,
-    [windowResult.verification, visualResult?.verification],
-  );
-
-  return createAgentRuntimeResult({
-    errorText: windowOk ? null : windowResult.errorText || visualResult?.errorText || null,
-    observations: observedState,
-    ok,
-    receipt: {
-      evidenceLines: [
-        `Waited ${waitMs}ms before observing.`,
-        ...(windowResult.receipt?.evidenceLines ?? windowResult.observations ?? []).slice(0, 20),
-        ...(visualResult?.receipt?.evidenceLines ?? visualResult?.observations ?? []).slice(0, 20),
-      ],
-      status,
-      stateSummary: {
-        missingEvidence,
-        observedState,
-        recommendedRecovery,
-        structuredEvidence: visualResult?.stateSummary?.structuredEvidence
-          ?? visualResult?.receipt?.stateSummary?.structuredEvidence
-          ?? windowResult.stateSummary?.structuredEvidence
-          ?? null,
-        verificationEvidence,
-      },
-      summaryLines: [
-        'Call: execute_desktop_observation wait_and_observe',
-        `Waited: ${waitMs}ms`,
-        `Window observation: ${windowResult.ok === false ? 'failed' : 'ok'}`,
-        visualResult ? `Visual observation: ${visualResult.ok === false ? 'failed' : 'ok'}` : 'Visual observation: skipped',
-      ],
-      title: 'Agent wait and observe',
-      toolName: 'execute_desktop_observation',
-      verification: [
-        `Waited ${waitMs}ms before observing current desktop state.`,
-        windowResult.verification,
-        visualResult?.verification,
-      ].filter(Boolean).join(' | '),
-    },
-    responseText: [
-      `Waited ${waitMs}ms, then observed current desktop state.`,
-      windowResult.responseText,
-      visualResult?.responseText,
-    ].filter(Boolean).join('\n'),
-    stateSummary: {
-      missingEvidence,
-      observedState,
-      recommendedRecovery,
-      structuredEvidence: visualResult?.stateSummary?.structuredEvidence
-        ?? visualResult?.receipt?.stateSummary?.structuredEvidence
-        ?? windowResult.stateSummary?.structuredEvidence
-        ?? null,
-      verificationEvidence,
-    },
-    verification: [
-      `Waited ${waitMs}ms before observing current desktop state.`,
-      windowResult.verification,
-      visualResult?.verification,
-    ].filter(Boolean).join(' | '),
-  });
-}
-
-async function executeDesktopObservation(
-  runtime: AgentRuntimeExecutorContext,
-  toolCall: AgentToolCallCommand,
-  sourceText: string,
-): Promise<AgentChatCommandResult> {
-  const rawAction = getToolStringInput(toolCall, ['action', 'observationAction', 'desktopObservation', 'operation']);
-  const action = normalizeExecuteDesktopObservationAction(rawAction);
-
-  if (!action) {
-    return {
-      errorText: 'Unsupported execute_desktop_observation action.',
-      observations: [
-        rawAction ? `Unsupported desktop observation: ${rawAction}` : 'Missing desktop observation action.',
-      ],
-      ok: false,
-      responseText: 'execute_desktop_observation needs a supported action such as get_display_info, list_desktop_items, diagnose_desktop_icons, get_system_info, get_active_window_info, inspect_window_ui, list_running_apps, list_capture_sources, summarize_visual_snapshot, wait_and_observe, or get_cursor_position.',
-    };
-  }
-
-  switch (action) {
-    case 'get_display_info':
-      return annotateDesktopObservationResult(action, await executeGetDisplayInfo());
-
-    case 'get_system_info':
-      return annotateDesktopObservationResult(
-        action,
-        await executeGetSystemInfo(getToolBooleanInput(toolCall, 'includeDisplays') !== false),
-      );
-
-    case 'get_active_window_info':
-      return annotateDesktopObservationResult(action, await executeGetActiveWindowInfo());
-
-    case 'inspect_window_ui':
-      return annotateDesktopObservationResult(action, await executeInspectWindowUi(toolCall));
-
-    case 'list_running_apps':
-      return annotateDesktopObservationResult(
-        action,
-        await executeListRunningApps(
-          getToolStringInput(toolCall, ['query', 'target', 'name', 'processName', 'title']),
-          getToolBooleanInput(toolCall, 'includeWindows'),
-        ),
-      );
-
-    case 'list_capture_sources':
-      return annotateDesktopObservationResult(action, await executeListCaptureSources(runtime, toolCall));
-
-    case 'summarize_visual_snapshot':
-      return annotateDesktopObservationResult(
-        action,
-        await executeSummarizeVisualSnapshot(runtime, toolCall, sourceText),
-      );
-
-    case 'wait_and_observe':
-      return annotateDesktopObservationResult(
-        action,
-        await executeWaitAndObserveDesktop(runtime, toolCall, sourceText),
-      );
-
-    case 'get_cursor_position':
-      return annotateDesktopObservationResult(action, await executeGetCursorPosition());
-
-    case 'list_desktop_items':
-      return annotateDesktopObservationResult(action, await executeListDesktopItems(toolCall));
-
-    case 'diagnose_desktop_icons':
-      return annotateDesktopObservationResult(action, await executeDiagnoseDesktopIcons());
-
-    default:
-      return {
-        errorText: 'Unsupported execute_desktop_observation action.',
-        observations: [`Unsupported desktop observation: ${rawAction}`],
-        ok: false,
-        responseText: `execute_desktop_observation does not support action "${rawAction}".`,
-      };
-  }
-}
+const executeDesktopObservation = createDesktopObservationExecutor({
+  isAgentRuntimeCancellationRequested,
+  createAgentRuntimeCancelledResult,
+});
 
 async function executeRememberLocalApp(
   context: AgentRuntimeExecutorContext,
@@ -796,23 +444,6 @@ assertAgentRuntimeToolCoverage();
 
 function getAgentRuntimeToolHandler(name: AgentToolCallName) {
   return AGENT_RUNTIME_TOOL_HANDLERS[name] ?? null;
-}
-
-async function executeRegisteredToolCall(
-  runtime: AgentRuntimeExecutorContext,
-  command: AgentChatCommand,
-  toolCall: AgentToolCallCommand,
-): Promise<AgentChatCommandResult> {
-  const handler = getAgentRuntimeToolHandler(toolCall.name);
-  if (!handler) {
-    return createUnsupportedResult(`未知 Agent 工具：${toolCall.name}。`);
-  }
-
-  return handler({
-    command,
-    runtime,
-    toolCall,
-  });
 }
 
 async function executePreparedRegisteredToolCall(

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 function readSource(relativeUrl: string) {
   return readFileSync(fileURLToPath(new URL(relativeUrl, import.meta.url)), 'utf8');
@@ -11,7 +12,7 @@ const normalizationSource = readSource('../src/petConfigNormalization.ts');
 const primaryLayerSource = readSource('../src/components/pet/PetAvatarLayer.tsx');
 const companionLayerSource = readSource('../src/components/pet/PetCompanionLayer.tsx');
 const visualRendererSource = readSource('../src/components/pet/PetVisualRenderer.tsx');
-const live2DRendererSource = readSource('../src/components/pet/PetLive2DRenderer.tsx');
+const live2DRendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 const live2DModelRuntimeSource = readSource('../src/components/pet/live2dModelRuntime.ts');
 
 assert.equal(
@@ -52,7 +53,7 @@ assert.match(
 );
 assert.match(
   live2DRendererSource,
-  /appliedRuntimeProfileSignatureRef\.current === runtimeProfileSignature[\s\S]*resolveLive2DRuntimeProfileForModel\([\s\S]*replaceLive2DRuntimeControllers\(\{[\s\S]*runtimeProfile,[\s\S]*live2d runtime profile hot updated/u,
+  /appliedRuntimeProfileSignatureRef\.current === options\.runtimeProfileSignature[\s\S]*resolveLive2DRuntimeProfileForModel\([\s\S]*replaceLive2DRuntimeControllers\(\{[\s\S]*runtimeProfile,[\s\S]*live2d runtime profile hot updated/u,
   'layout, pointer look, and performance should share one resolved runtime profile',
 );
 assert.match(

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 import type { AgentRuntimeProgressEvent } from '../src/agent';
 import type { ChatMessage } from '../src/types';
 import { projectAgentProgressMessage } from '../src/components/chat/agentProgressMessageProjection';
@@ -33,7 +33,7 @@ assert.equal(projectAgentProgressMessage({
   visibleText: 'Must not replace',
 }), completedMessage);
 
-const controllerSource = fs.readFileSync('src/components/chat/agentRunController.ts', 'utf8');
+const controllerSource = readModuleProjectFile('src/components/chat/agentRunController.ts');
 assert.doesNotMatch(controllerSource, /function isStoppableAgentRunStatus\(/);
 assert.match(controllerSource, /updateAgentProgressMessage\(/);
 

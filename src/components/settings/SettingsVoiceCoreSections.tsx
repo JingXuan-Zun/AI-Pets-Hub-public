@@ -149,6 +149,9 @@ export function SettingsVoiceSourcesSection({
   voiceNamePlaceholder: string;
   applySettings: SettingsUpdater;
 }) {
+  // Edge-TTS picks its voice in its own section and GPT-SoVITS uses model folders, so only API/local need a name.
+  const usesVoiceNameField = settings.ttsProvider === 'api' || settings.ttsProvider === 'local';
+
   return (
     <div className="space-y-4 rounded-sm border border-border bg-secondary/20 p-4">
       <div className="text-2xs font-bold uppercase tracking-widest text-primary">输入与播报来源</div>
@@ -157,13 +160,14 @@ export function SettingsVoiceSourcesSection({
         <Label className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">播报来源</Label>
         <select
           value={settings.ttsProvider}
-          onChange={(event) => applySettings({ ttsProvider: event.target.value as 'browser' | 'api' | 'local' })}
+          onChange={(event) => applySettings({ ttsProvider: event.target.value as PetConfig['settings']['ttsProvider'] })}
           className={selectClassName()}
           style={noDragRegionStyle}
         >
           <option value="browser">Edge-TTS 本地</option>
           <option value="api">API 语音</option>
           <option value="local">本地语音模型</option>
+          <option value="gpt-sovits">GPT-SoVITS 角色音色（需显卡）</option>
         </select>
       </div>
 
@@ -181,7 +185,7 @@ export function SettingsVoiceSourcesSection({
         </select>
       </div>
 
-      <div className={settings.ttsProvider === 'browser' ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+      <div className={usesVoiceNameField ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
         <Input
           className={inputClassName()}
           style={noDragRegionStyle}
@@ -189,7 +193,7 @@ export function SettingsVoiceSourcesSection({
           onChange={(event) => applySettings({ speechRecognitionLang: event.target.value })}
           placeholder="识别语言，例如 zh-CN"
         />
-        {settings.ttsProvider !== 'browser' && (
+        {usesVoiceNameField && (
           <Input
             className={inputClassName()}
             style={noDragRegionStyle}

@@ -4,6 +4,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { desktopPetShellRuntime } from '../../desktopShellRuntime';
 import { SettingsDeepSeekHarnessAgentWorkbench } from './SettingsDeepSeekHarnessAgentWorkbench';
+import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 import type { PetConfig } from '../../types';
 import {
   DEEPSEEK_HARNESS_CHAT_USAGE,
@@ -91,6 +92,22 @@ export function SettingsAgentRuntimeSection({ config, noDragRegionStyle, onApply
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
           运行时只决定 Agent 如何处理任务；角色、聊天记录与桌宠界面始终留在应用内。
         </p>
+      </div>
+
+      <div className="flex items-start justify-between gap-3 rounded-sm border border-border bg-background/60 px-3 py-2">
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-foreground">桌面操作使用新版 Agent 循环</div>
+          <p className="mt-0.5 text-2xs leading-5 text-muted-foreground">
+            打开应用、点击、登录、切换窗口等任务走新循环：先读窗口文字和控件，编号定位，开始时批准一次；输入、发送、删除、付款仍单独询问。
+          </p>
+        </div>
+        <SettingsToggleSwitch
+          checked={settings.agentDesktopLoopEnabled}
+          hideLabel
+          label="桌面操作使用新版 Agent 循环"
+          onChange={(checked) => apply({ agentDesktopLoopEnabled: checked })}
+          style={noDragRegionStyle}
+        />
       </div>
 
       <select

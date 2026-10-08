@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 let nowMs = 20;
 Object.defineProperty(globalThis, 'window', {
@@ -84,10 +85,7 @@ listeners.get('beforeModelUpdate')?.(nowMs);
 assert.equal(appliedSource, 'center', 'the model-load center hold should cover the initial physics settle');
 controller.destroy();
 
-const rendererSource = readFileSync(fileURLToPath(new URL(
-  '../src/components/pet/PetLive2DRenderer.tsx',
-  import.meta.url,
-)), 'utf8');
+const rendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 assert.match(
   rendererSource,
   /bootstrapMode:\s*'model-load'/u,

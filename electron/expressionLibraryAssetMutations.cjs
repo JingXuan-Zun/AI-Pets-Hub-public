@@ -39,6 +39,57 @@ function storeOperation(index, operation) {
   return summarize(operation);
 }
 
+async function executeBatchAsset(index, id, action, target, operation) {
+  const asset = index.assets.find((item) => item.id === id);
+  try {
+    if (!asset) throw new Error('图片记录不存在。');
+    if (asset.removedFromLibrary) throw new Error('该图片已永久从应用图库移除。');
+    const before = copy(asset);
+    let fingerprint;
+    if (action === 'remove') {
+      if (index.library.mode === 'external') {
+        Object.assign(asset, { classificationStatus: 'excluded', removedFromLibrary: true, removedAt: operation.at, lastOperationId: operation.id });
+      } else {
+        const filePath = await resolveSafeLibraryPath(index.library.rootPath, asset.relativePath, { allowMissing: true });
+        try { await fs.unlink(filePath); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+        index.assets = index.assets.filter((item) => item.id !== id);
+      }
+    } else {
+      const sourcePath = await assertReadable(index, asset);
+      fingerprint = signature(await fs.stat(sourcePath));
+      if (action === 'move') {
+        if (index.library.mode === 'managed' && asset.categoryId !== target.id) {
+          const targetDirectory = await resolveSafeLibraryPath(index.library.rootPath, target.folderRelativePath, { allowMissing: true });
+          await ensureDirectory(targetDirectory);
+          const fileName = await resolveAvailableFileName(targetDirectory, asset.fileName);
+          await fs.rename(sourcePath, path.join(targetDirectory, fileName));
+          asset.fileName = fileName;
+          asset.relativePath = normalizeRelativePath(path.join(target.folderRelativePath, fileName));
+        }
+        Object.assign(asset, {
+          categoryId: target.id, assignmentSemanticVersion: target.semanticVersion, classificationStatus: 'needs-review',
+          ...(index.library.mode === 'external' ? { categoryOverrideId: target.id } : {}),
+        });
+      } else {
+        const category = categoryFor(index, asset.categoryId);
+        if (action === 'accepted' && category.id === 'cat_unclassified') throw new Error('请先将图片移动到一个分类，再通过审核。');
+        asset.classificationStatus = action;
+        if (action === 'accepted') asset.assignmentSemanticVersion = category.semanticVersion;
+      }
+      asset.reviewedAt = action === 'accepted' ? operation.at : null;
+      asset.fileSignature = fingerprint;
+      asset.reviewedBy = action === 'accepted' ? operation.actor : null;
+      asset.reviewSource = operation.source;
+      asset.lastOperationId = operation.id;
+    }
+    operation.entries.push({ before, after: index.assets.find((item) => item.id === id) ? copy(asset) : null, fingerprint,
+      beforeCategoryVersion: index.categories.find((item) => item.id === before.categoryId)?.semanticVersion,
+      afterCategoryVersion: index.categories.find((item) => item.id === asset.categoryId)?.semanticVersion });
+  } catch (error) {
+    operation.failures.push({ assetId: id, fileName: asset?.fileName || id, reason: errorText(error) });
+  }
+}
+
 async function executeBatch(index, request, action) {
   const ids = [...new Set(Array.isArray(request?.assetIds) ? request.assetIds : [])];
   if (ids.some((id) => String(id).startsWith('system-'))) throw new Error('系统 Emoji 与颜文字目录为只读，不能修改。');
@@ -52,54 +103,7 @@ async function executeBatch(index, request, action) {
     entries: [], failures: [],
   };
   for (const id of ids) {
-    const asset = index.assets.find((item) => item.id === id);
-    try {
-      if (!asset) throw new Error('图片记录不存在。');
-      if (asset.removedFromLibrary) throw new Error('该图片已永久从应用图库移除。');
-      const before = copy(asset);
-      let fingerprint;
-      if (action === 'remove') {
-        if (index.library.mode === 'external') {
-          Object.assign(asset, { classificationStatus: 'excluded', removedFromLibrary: true, removedAt: operation.at, lastOperationId: operation.id });
-        } else {
-          const filePath = await resolveSafeLibraryPath(index.library.rootPath, asset.relativePath, { allowMissing: true });
-          try { await fs.unlink(filePath); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-          index.assets = index.assets.filter((item) => item.id !== id);
-        }
-      } else {
-        const sourcePath = await assertReadable(index, asset);
-        fingerprint = signature(await fs.stat(sourcePath));
-        if (action === 'move') {
-          if (index.library.mode === 'managed' && asset.categoryId !== target.id) {
-            const targetDirectory = await resolveSafeLibraryPath(index.library.rootPath, target.folderRelativePath, { allowMissing: true });
-            await ensureDirectory(targetDirectory);
-            const fileName = await resolveAvailableFileName(targetDirectory, asset.fileName);
-            await fs.rename(sourcePath, path.join(targetDirectory, fileName));
-            asset.fileName = fileName;
-            asset.relativePath = normalizeRelativePath(path.join(target.folderRelativePath, fileName));
-          }
-          Object.assign(asset, {
-            categoryId: target.id, assignmentSemanticVersion: target.semanticVersion, classificationStatus: 'needs-review',
-            ...(index.library.mode === 'external' ? { categoryOverrideId: target.id } : {}),
-          });
-        } else {
-          const category = categoryFor(index, asset.categoryId);
-          if (action === 'accepted' && category.id === 'cat_unclassified') throw new Error('请先将图片移动到一个分类，再通过审核。');
-          asset.classificationStatus = action;
-          if (action === 'accepted') asset.assignmentSemanticVersion = category.semanticVersion;
-        }
-        asset.reviewedAt = action === 'accepted' ? operation.at : null;
-        asset.fileSignature = fingerprint;
-        asset.reviewedBy = action === 'accepted' ? operation.actor : null;
-        asset.reviewSource = operation.source;
-        asset.lastOperationId = operation.id;
-      }
-      operation.entries.push({ before, after: index.assets.find((item) => item.id === id) ? copy(asset) : null, fingerprint,
-        beforeCategoryVersion: index.categories.find((item) => item.id === before.categoryId)?.semanticVersion,
-        afterCategoryVersion: index.categories.find((item) => item.id === asset.categoryId)?.semanticVersion });
-    } catch (error) {
-      operation.failures.push({ assetId: id, fileName: asset?.fileName || id, reason: errorText(error) });
-    }
+    await executeBatchAsset(index, id, action, target, operation);
   }
   if (action !== 'remove' && operation.entries.length) operation.undoExpiresAt = new Date(Date.now() + UNDO_MS).toISOString();
   return storeOperation(index, operation);

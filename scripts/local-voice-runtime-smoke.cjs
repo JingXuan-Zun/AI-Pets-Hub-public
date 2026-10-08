@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const sessionSource = fs.readFileSync(path.join(__dirname, '../electron/localVoiceRuntimeSessionAssembly.cjs'), 'utf8');
 const { createLocalVoiceRuntime } = require('../electron/localVoiceRuntime.cjs');
 
 const runtime = createLocalVoiceRuntime({
@@ -26,7 +27,15 @@ const runtimeSource = fs.readFileSync(
   require.resolve('../electron/localVoiceRuntime.cjs'),
   'utf8',
 );
-assert.match(runtimeSource, /stt-input-\$\{requestId\}\.wav/u);
+const stateSource = fs.readFileSync(require.resolve('../electron/localVoiceRuntimeState.cjs'), 'utf8');
+const transcriptionSource = fs.readFileSync(
+  require.resolve('../electron/localVoiceRuntimeTranscription.cjs'),
+  'utf8',
+);
+assert.match(runtimeSource, /createLocalVoiceSessionAssembly\(\{/u);
+  assert.match(sessionSource, /createLocalVoiceRuntimeState\(\)/u);
+assert.match(stateSource, /nextTranscriptionRequestId: \(\) => `stt-\$\{\+\+transcriptionSequence\}`/u);
+assert.match(transcriptionSource, /stt-input-\$\{requestId\}\.wav/u);
 
 runtime.dispose();
 console.log('localVoiceRuntime smoke ok');

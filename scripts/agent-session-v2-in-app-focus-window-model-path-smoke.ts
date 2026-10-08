@@ -116,7 +116,7 @@ const result = await runAgentProductionSession({
       assert.equal(command.toolCall.input.hwnd, 1576648);
       assert.equal(command.toolCall.input.targetText, '英雄联盟');
       assert.match(String(command.toolCall.input.question), /exact source HWND 1576648/u);
-      assert.match(String(command.toolCall.input.question), /in-app target locate/u);
+      assert.match(String(command.toolCall.input.question), /AgentRuntime target resolution/u);
       return {
         observations: ['Visual target matched: 英雄联盟', 'Visual primary action: 启动 button'],
         ok: true,
@@ -126,6 +126,15 @@ const result = await runAgentProductionSession({
           structuredEvidence: {
             confidence: 'high',
             coordinateConfidence: 'high',
+            // Declared bounds let the actionable-area gate accept the point.
+            elementBounds: {
+              coordinateSpace: 'native-screen',
+              height: 44,
+              source: 'test',
+              width: 150,
+              x: 45,
+              y: 338,
+            },
             elementCenter: {
               coordinateSpace: 'native-screen',
               source: 'test',

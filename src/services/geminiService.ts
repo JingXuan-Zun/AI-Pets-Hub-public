@@ -515,15 +515,31 @@ export async function* getConfiguredTextResponseStream(
   } finally { clearTimeout(timer); controller.abort(); }
 }
 
-export function getAgentPlannerResponse(
+// Bounded so a stalled decision cannot hold a desktop task for the 5-minute transport limit.
+const AGENT_PLANNER_TIMEOUT_MS = 120_000;
+const AGENT_PLANNER_RETRY_DELAY_MS = 800;
+
+/** One quiet retry: a dropped or truncated reply ("Unexpected end of JSON input") used to fail the whole task. */
+export async function getAgentPlannerResponse(
   userInput: string,
   systemInstruction: string,
   settings: PetConfig['settings'],
   signal?: AbortSignal | null,
 ) {
-  return getConfiguredCognitionResponse(userInput, systemInstruction, settings, {
-    signal, task: 'agent-decision',
+  const attempt = () => getConfiguredCognitionResponse(userInput, systemInstruction, settings, {
+    signal, task: 'agent-decision', timeoutMs: AGENT_PLANNER_TIMEOUT_MS,
   });
+  try {
+    return await attempt();
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    pushFrontendRuntimeLog('agent-run', 'agent decision call failed; retrying once', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    await new Promise((resolve) => { setTimeout(resolve, AGENT_PLANNER_RETRY_DELAY_MS); });
+    if (signal?.aborted) throw error;
+    return attempt();
+  }
 }
 
 async function requestPetResponseInternal(

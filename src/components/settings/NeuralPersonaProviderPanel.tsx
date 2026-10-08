@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useState } from 'react';
 import {
   DEFAULT_NEURAL_PERSONA_CONFIG,
   callNeuralPersonaSemanticProvider,
@@ -12,6 +12,7 @@ import {
   resolveNeuralPersonaConfiguredModelIssue,
 } from '../../services/neuralPersonaConfiguredModelProvider';
 import type { PetConfig } from '../../types';
+import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
 interface ProviderPanelProps {
   onUpdate: (updates: Partial<PetConfig['settings']>) => void;
@@ -21,15 +22,12 @@ interface ProviderPanelProps {
 
 function ProviderSwitches(props: ProviderPanelProps) {
   const { settings } = props;
-  const toggle = (key: keyof PetConfig['settings']) => (event: ChangeEvent<HTMLInputElement>) => {
-    props.onUpdate({ [key]: event.target.checked });
-  };
   return (
     <div className="grid gap-2 text-2xs md:grid-cols-2">
-      <label className="flex items-center gap-2"><input type="checkbox" checked={settings.neuralPersonaProviderDataEgressConsent} onChange={toggle('neuralPersonaProviderDataEgressConsent')} />允许向当前模型发送最小化认知摘要</label>
-      <label className="flex items-center gap-2"><input type="checkbox" checked={settings.neuralPersonaPrivateProviderDataConsent} disabled={!settings.neuralPersonaProviderDataEgressConsent} onChange={toggle('neuralPersonaPrivateProviderDataConsent')} />额外允许私人节点摘要出站</label>
-      <label className="flex items-center gap-2"><input type="checkbox" checked={settings.neuralPersonaSemanticRetrievalEnabled} onChange={toggle('neuralPersonaSemanticRetrievalEnabled')} />启用模型语义检索</label>
-      <label className="flex items-center gap-2"><input type="checkbox" checked={settings.neuralPersonaModelTagSuggestionsEnabled} onChange={toggle('neuralPersonaModelTagSuggestionsEnabled')} />启用模型标签建议</label>
+      <SettingsToggleSwitch checked={settings.neuralPersonaProviderDataEgressConsent} className="justify-between" label="允许向当前模型发送最小化认知摘要" onChange={(checked) => props.onUpdate({ neuralPersonaProviderDataEgressConsent: checked })} />
+      <SettingsToggleSwitch checked={settings.neuralPersonaPrivateProviderDataConsent} disabled={!settings.neuralPersonaProviderDataEgressConsent} className="justify-between" label="额外允许私人节点摘要出站" onChange={(checked) => props.onUpdate({ neuralPersonaPrivateProviderDataConsent: checked })} />
+      <SettingsToggleSwitch checked={settings.neuralPersonaSemanticRetrievalEnabled} className="justify-between" label="启用模型语义检索" onChange={(checked) => props.onUpdate({ neuralPersonaSemanticRetrievalEnabled: checked })} />
+      <SettingsToggleSwitch checked={settings.neuralPersonaModelTagSuggestionsEnabled} className="justify-between" label="启用模型标签建议" onChange={(checked) => props.onUpdate({ neuralPersonaModelTagSuggestionsEnabled: checked })} />
       <label className="grid gap-1 text-muted-foreground md:col-span-2">
         <span>Provider 超时（1000～30000 ms）</span>
         <input type="number" min={1_000} max={30_000} step={500} value={settings.neuralPersonaProviderTimeoutMs} onChange={(event) => props.onUpdate({ neuralPersonaProviderTimeoutMs: Number(event.target.value) })} className="h-8 rounded-sm border border-border bg-background px-2" />

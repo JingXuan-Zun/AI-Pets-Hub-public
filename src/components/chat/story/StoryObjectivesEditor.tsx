@@ -2,6 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { createStoryEntry } from './storyDefaults';
 import type { StoryDefinition, StoryEntry } from './storyTypes';
+import { SettingsToggleSwitch } from '../../settings/SettingsToggleSwitch';
 
 type SectionKey = 'goals' | 'tasks' | 'rules';
 
@@ -27,12 +28,7 @@ function StoryEntryRow(props: {
 }) {
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="checkbox"
-        checked={props.entry.enabled}
-        onChange={(event) => props.onUpdate({ enabled: event.target.checked })}
-        aria-label="启用此项"
-      />
+      <SettingsToggleSwitch checked={props.entry.enabled} hideLabel label="启用此项" onChange={(enabled) => props.onUpdate({ enabled })} />
       <input
         value={props.entry.text}
         onChange={(event) => props.onUpdate({ text: event.target.value })}
@@ -53,16 +49,12 @@ function StorySection(props: StoryObjectivesEditorProps & { section: SectionKey 
   return (
     <section className="space-y-2 rounded-xl border border-sky-100 bg-sky-50/40 p-3">
       <div className="flex items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-xs font-semibold text-sky-950">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => props.onChange({
-              sections: { ...props.draft.sections, [props.section]: event.target.checked },
-            })}
-          />
-          {SECTION_LABELS[props.section]}
-        </label>
+        <SettingsToggleSwitch
+          checked={enabled}
+          className="font-semibold text-sky-950"
+          label={SECTION_LABELS[props.section]}
+          onChange={(checked) => props.onChange({ sections: { ...props.draft.sections, [props.section]: checked } })}
+        />
         <Button type="button" size="sm" variant="outline" onClick={() => setEntries([...entries, createStoryEntry()])} className="h-7 border-sky-100 text-[10px]">
           <Plus className="mr-1 h-3 w-3" />添加
         </Button>

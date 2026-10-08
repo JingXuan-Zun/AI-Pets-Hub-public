@@ -14,10 +14,18 @@ import {
 const {
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  finalResponse: finalResponseSource,
+  retryEvidence: retryEvidenceSource,
 } = readProjectSources({
   runtimeSignal: 'src/agent/runtime/agentFinalAnswerRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  finalResponse: 'src/agent/productionSession/finalResponse.ts',
+  retryEvidence: 'src/agent/productionSession/retryEvidence.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalResponse'/u, 'The root must import the checked final response module.');
+assertSourceMatches(sessionSource, /const \{ prepareFinalResponse \} = createAgentProductionFinalResponse\(\{/u, 'The root must instantiate the checked final response module.');
+assertSourceMatches(sessionSource, /prepareFinalResponse\(decision, stepIndex/u, 'The root must dispatch responses through the checked module.');
 
 assertSourceMatches(
   runtimeSignalSource,
@@ -30,8 +38,8 @@ assertSourceMatches(
   'Recoverable unverified rejection signal should explicitly remain advisory and evidence-driven.',
 );
 assertSourceMatches(
-  sessionSource,
-  /from '\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
+  finalResponseSource,
+  /from '\.\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
   'AgentSessionV2 should consume Runtime-owned final answer rejection signals.',
 );
 assertSourceDoesNotMatch(
@@ -39,12 +47,11 @@ assertSourceDoesNotMatch(
   /createAgentSessionV2RecoverableUnverifiedRejection/u,
   'AgentSessionV2 should not own recoverable unverified rejection signal implementation.',
 );
-assertSourceMatches(sessionSource, /createAgentRecoverableUnverifiedRejection\(/u);
-assertSourceMatches(
-  sessionSource,
-  /function isAgentSessionV2RecoverableUnverifiedToolResult/u,
-  'AgentSessionV2 should still own the reject-or-continue predicate for this slice.',
-);
+assertSourceMatches(finalResponseSource, /createAgentRecoverableUnverifiedRejection\(/u);
+assertSourceMatches(retryEvidenceSource, /function isAgentProductionRetryRecoverableUnverifiedToolResult/u, 'Recoverable unverified detection should remain in the production retry evidence module.');
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/retryEvidence'/u);
+assertSourceMatches(sessionSource, /createAgentProductionRetryEvidence\(\{/u);
+assertSourceMatches(sessionSource, /isAgentProductionRetryRecoverableUnverifiedToolResult: isAgentSessionV2RecoverableUnverifiedToolResult/u);
 
 function createCommand(): AgentChatCommand {
   return {

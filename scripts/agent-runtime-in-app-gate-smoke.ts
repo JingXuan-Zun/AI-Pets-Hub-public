@@ -11,9 +11,34 @@ const executedTools: string[] = [];
 
 const result = await runAgentProductionSession({
   maxSteps: 4,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
-    assert.equal(modelCallCount, 1, 'the deterministic in-app gate should run before a second model plan');
+    if (modelCallCount > 1) {
+      // The deterministic in-app gate (locate plus focused refinement) must
+      // have run before the model plans the click.
+      assert.equal(modelCallCount, 2);
+      assert.match(userInput, /in-app target locate:|visual refinement:/u);
+      assert.match(userInput, /target=Game/u);
+      assert.match(userInput, /elementCenter=1200,700/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: {
+          stepsJson: JSON.stringify([
+            {
+              args: {
+                action: 'click',
+                x: 1200,
+                y: 700,
+              },
+              reason: 'Click the located Launch control for Game.',
+              tool: 'execute_desktop_input',
+            },
+          ]),
+        },
+        reason: 'The located target/action evidence is ready; request approval for the click.',
+        tool: 'execute_desktop_sequence',
+      });
+    }
     return JSON.stringify({
       action: 'tool_call',
       args: {
@@ -51,7 +76,10 @@ const result = await runAgentProductionSession({
 
     assert.equal(command.toolCall?.name, 'locate_screen_elements');
     assert.equal(command.toolCall?.input.sourceQuery, 'Launcher');
-    assert.equal(command.toolCall?.input.targetText, 'Game');
+    // The first locate targets the inner app target (not the outer window);
+    // the runtime may follow with a read-only focused refinement whose target
+    // description extends it with the focused candidate.
+    assert.match(String(command.toolCall?.input.targetDescription), /^Game(?:$|; focused candidate: )/u);
     return {
       ok: true,
       responseText: 'Game launch control is visible.',
@@ -91,9 +119,10 @@ const result = await runAgentProductionSession({
   userGoal: 'Open Game inside Launcher',
 });
 
-assert.equal(modelCallCount, 1);
-assert.deepEqual(executedTools, ['execute_desktop_observation', 'locate_screen_elements']);
+assert.equal(modelCallCount, 2);
+assert.deepEqual(executedTools, ['execute_desktop_observation', 'locate_screen_elements', 'locate_screen_elements']);
 assert.equal(result.status, 'needs-approval');
+assert.doesNotMatch(result.continuation.historyLines.join('\n'), /target-stale/u);
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /execute_desktop_input/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1200/u);

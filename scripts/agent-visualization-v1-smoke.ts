@@ -1,5 +1,6 @@
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+
 
 const {
   chatTypesSource,

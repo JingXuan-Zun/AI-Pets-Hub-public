@@ -14,7 +14,7 @@ import {
 } from '../src/agent/agentRuntimeDesktopSequenceTools.ts';
 import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 import { type PetConfig } from '../src/types.ts';
-import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 
 function createToolCommand(
   name: AgentToolCallName,
@@ -55,7 +55,6 @@ const desktopToolsSource = readProjectFile('src/agent/agentRuntimeDesktopTools.t
 const sequenceToolsSource = readProjectFile('src/agent/agentRuntimeDesktopSequenceTools.ts');
 const launcherServiceSource = readProjectFile('electron/appLauncherService.cjs');
 const sessionSource = readProjectFile('src/agent/agentProductionSessionImplementation.ts');
-const coreSource = readProjectFile('src/agent/agentCore.ts');
 const assessmentSource = readProjectFile('src/agent/agentResultAssessment.ts');
 const plannerSource = readProjectFile('src/agent/agentPlanner.ts');
 
@@ -80,7 +79,6 @@ assert.match(sequenceToolsSource, /stepActionEvidences\.push/u);
 assert.match(sequenceToolsSource, /actionOutcome=\$\{stepActionEvidence\.outcome\}/u);
 assert.match(sequenceToolsSource, /createAgentRuntimeDesktopSequenceActionEvidence/u);
 
-assert.match(coreSource, /actionEvidence: existing\.actionEvidence \?\? receiptState\.actionEvidence \?\? null/u);
 assert.match(assessmentSource, /actionEvidence: existing\.actionEvidence \?\? receiptState\.actionEvidence \?\? null/u);
 assert.match(plannerSource, /stateSummary\.actionEvidence \? `actionEvidence: \$\{JSON\.stringify\(stateSummary\.actionEvidence\)\}`/u);
 

@@ -3,6 +3,7 @@ import { desktopPetChatStore } from '../../chatStore';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type ChatMessageImageAttachment, type DesktopPetChatMode, type PetConfig } from '../../types';
 import { expressionLibraryBridge } from '../../expression/expressionLibraryBridge';
+import type { NeuralMemoryReplyCompletedEvent } from '../../neural-memory/useNeuralMemoryProposalCapture';
 import { resolveExpressionReplyWithSemantics } from '../../expression/reply/expressionReplySemantics';
 import { isPetModelExpressionBinding } from '../../pet-runtime/content/petModelMotionBindingKinds';
 import {
@@ -235,6 +236,7 @@ interface UsePetChatResponseTurnOptions {
     segments: string[];
   };
   onPetMessage?: (text: string) => void;
+  onReplyCompleted?: (event: NeuralMemoryReplyCompletedEvent) => void;
 }
 
 function resolveVisibleCharacterResponse(
@@ -260,6 +262,7 @@ export function usePetChatResponseTurn({
   enqueueReplyVoiceSegment,
   extractStreamingSpeech,
   onPetMessage,
+  onReplyCompleted,
 }: UsePetChatResponseTurnOptions) {
   const scopedRequestsRef = useRef(new ChatRequestScopeRegistry());
   return useCallback(async (
@@ -620,6 +623,13 @@ export function usePetChatResponseTurn({
         textLength: visibleFinalResponse.length,
         toolInvocationCount: toolInvocations.length,
       });
+      onReplyCompleted?.({
+        chatMode: currentChatMode,
+        neuralPersonaEnabled: targetSlot.personality.neuralPersonaChatEnabled === true,
+        roleId: targetSlot.id,
+        roleName: targetSlot.personality.name,
+        userText: promptText,
+      });
 
       return {
         cancelled: false,
@@ -640,5 +650,5 @@ export function usePetChatResponseTurn({
         desktopPetChatStore.setTypingPetId(null);
       }
     }
-  }, [activeChatRequestTokenRef, configRef, enqueueReplyVoiceSegment, extractStreamingSpeech, onPetMessage]);
+  }, [activeChatRequestTokenRef, configRef, enqueueReplyVoiceSegment, extractStreamingSpeech, onPetMessage, onReplyCompleted]);
 }

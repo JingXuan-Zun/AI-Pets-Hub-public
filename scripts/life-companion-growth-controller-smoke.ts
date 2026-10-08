@@ -88,7 +88,6 @@ const {
   tickerSource,
   panelSource,
   growthStatusRowSource,
-  progressSource,
 } = readProjectSources({
   controllerSource: 'src/life-companion/lifeCompanionGrowthController.ts',
   growthStatusSource: 'src/life-companion/lifeCompanionGrowthStatus.ts',
@@ -96,7 +95,6 @@ const {
   tickerSource: 'src/hooks/usePassivePetStatsTicker.ts',
   panelSource: 'src/components/settings/SettingsLifeCompanionPanel.tsx',
   growthStatusRowSource: 'src/components/settings/SettingsLifeCompanionGrowthStatusRow.tsx',
-  progressSource: 'PROJECT_FEATURE_PROGRESS.md',
 });
 
 assert.match(controllerSource, /LifeCompanionGrowthResult/u);
@@ -108,8 +106,6 @@ assert.match(mathSource, /applyLifeCompanionFoodConsumedGrowth/u);
 assert.match(tickerSource, /applyLifeCompanionPassiveGrowthTick/u);
 assert.match(panelSource, /SettingsLifeCompanionGrowthStatusRow/u);
 assert.match(growthStatusRowSource, /createLifeCompanionGrowthStatus/u);
-assert.match(progressSource, /lifeCompanionGrowthController/u);
-assert.match(progressSource, /SettingsLifeCompanionGrowthStatusRow/u);
 assert.ok(controllerSource.split(/\r?\n/u).length <= 140);
 assert.ok(growthStatusSource.split(/\r?\n/u).length <= 90);
 assert.ok(growthStatusRowSource.split(/\r?\n/u).length <= 80);

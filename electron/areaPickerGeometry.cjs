@@ -59,6 +59,34 @@ function getSelectedDisplaysForLogicalRect(context, selectionRect) {
   });
 }
 
+function getLogicalNativeIntersection(context, display, nativeVirtualBounds, nativeSelectionRect) {
+  const nativeDisplayRect = {
+    x: Math.round((display.nativeX ?? display.x) - nativeVirtualBounds.x),
+    y: Math.round((display.nativeY ?? display.y) - nativeVirtualBounds.y),
+    width: Math.max(1, Math.round(display.nativeWidth ?? display.width)),
+    height: Math.max(1, Math.round(display.nativeHeight ?? display.height)),
+  };
+  const nativeIntersection = getRectIntersection(nativeSelectionRect, nativeDisplayRect);
+  if (!nativeIntersection) {
+    return null;
+  }
+
+  const logicalDisplayRect = {
+    x: Math.round(display.x - context.virtualBounds.x),
+    y: Math.round(display.y - context.virtualBounds.y),
+    width: Math.max(1, Math.round(display.width)),
+    height: Math.max(1, Math.round(display.height)),
+  };
+  const scaleX = logicalDisplayRect.width / nativeDisplayRect.width;
+  const scaleY = logicalDisplayRect.height / nativeDisplayRect.height;
+  return {
+    x: logicalDisplayRect.x + Math.round((nativeIntersection.x - nativeDisplayRect.x) * scaleX),
+    y: logicalDisplayRect.y + Math.round((nativeIntersection.y - nativeDisplayRect.y) * scaleY),
+    width: Math.max(1, Math.round(nativeIntersection.width * scaleX)),
+    height: Math.max(1, Math.round(nativeIntersection.height * scaleY)),
+  };
+}
+
 function createLogicalSelectionFromNativeRect(context, rect) {
   const nativeVirtualBounds = context.nativeVirtualBounds || context.virtualBounds;
   const nativeSelectionRect = {
@@ -72,31 +100,10 @@ function createLogicalSelectionFromNativeRect(context, rect) {
   const logicalIntersections = [];
 
   context.displays.forEach((display) => {
-    const nativeDisplayRect = {
-      x: Math.round((display.nativeX ?? display.x) - nativeVirtualBounds.x),
-      y: Math.round((display.nativeY ?? display.y) - nativeVirtualBounds.y),
-      width: Math.max(1, Math.round(display.nativeWidth ?? display.width)),
-      height: Math.max(1, Math.round(display.nativeHeight ?? display.height)),
-    };
-    const nativeIntersection = getRectIntersection(nativeSelectionRect, nativeDisplayRect);
-    if (!nativeIntersection) {
+    const logicalIntersection = getLogicalNativeIntersection(context, display, nativeVirtualBounds, nativeSelectionRect);
+    if (!logicalIntersection) {
       return;
     }
-
-    const logicalDisplayRect = {
-      x: Math.round(display.x - context.virtualBounds.x),
-      y: Math.round(display.y - context.virtualBounds.y),
-      width: Math.max(1, Math.round(display.width)),
-      height: Math.max(1, Math.round(display.height)),
-    };
-    const scaleX = logicalDisplayRect.width / nativeDisplayRect.width;
-    const scaleY = logicalDisplayRect.height / nativeDisplayRect.height;
-    const logicalIntersection = {
-      x: logicalDisplayRect.x + Math.round((nativeIntersection.x - nativeDisplayRect.x) * scaleX),
-      y: logicalDisplayRect.y + Math.round((nativeIntersection.y - nativeDisplayRect.y) * scaleY),
-      width: Math.max(1, Math.round(nativeIntersection.width * scaleX)),
-      height: Math.max(1, Math.round(nativeIntersection.height * scaleY)),
-    };
 
     selectedDisplays.push(display);
     logicalIntersections.push(logicalIntersection);
@@ -122,32 +129,7 @@ function createLogicalSelectionFromNativeRect(context, rect) {
   };
 }
 
-function createAreaSelectionFromRect(context, rect) {
-  if (!context?.virtualBounds || !Array.isArray(context.displays) || !rect) {
-    return null;
-  }
-
-  const convertedSelection = rect.coordinateSpace === 'native' && context.nativeVirtualBounds
-    ? createLogicalSelectionFromNativeRect(context, rect)
-    : null;
-  const selectionRect = convertedSelection?.selectionRect ?? {
-    x: Math.max(0, Math.round(rect.x ?? 0)),
-    y: Math.max(0, Math.round(rect.y ?? 0)),
-    width: Math.max(1, Math.round(rect.width ?? 0)),
-    height: Math.max(1, Math.round(rect.height ?? 0)),
-  };
-
-  if (selectionRect.width < 8 || selectionRect.height < 8) {
-    return null;
-  }
-
-  const selectedDisplays = convertedSelection?.selectedDisplays
-    ?? getSelectedDisplaysForLogicalRect(context, selectionRect);
-
-  if (!selectedDisplays.length) {
-    return null;
-  }
-
+function createAreaSelectionResult(context, selectionRect, selectedDisplays) {
   const primaryDisplay = selectedDisplays[0];
   const isCrossDisplaySelection = selectedDisplays.length > 1;
   const displayLabel = isCrossDisplaySelection
@@ -180,6 +162,35 @@ function createAreaSelectionFromRect(context, rect) {
       height: Math.round(display.height),
     })),
   };
+}
+
+function createAreaSelectionFromRect(context, rect) {
+  if (!context?.virtualBounds || !Array.isArray(context.displays) || !rect) {
+    return null;
+  }
+
+  const convertedSelection = rect.coordinateSpace === 'native' && context.nativeVirtualBounds
+    ? createLogicalSelectionFromNativeRect(context, rect)
+    : null;
+  const selectionRect = convertedSelection?.selectionRect ?? {
+    x: Math.max(0, Math.round(rect.x ?? 0)),
+    y: Math.max(0, Math.round(rect.y ?? 0)),
+    width: Math.max(1, Math.round(rect.width ?? 0)),
+    height: Math.max(1, Math.round(rect.height ?? 0)),
+  };
+
+  if (selectionRect.width < 8 || selectionRect.height < 8) {
+    return null;
+  }
+
+  const selectedDisplays = convertedSelection?.selectedDisplays
+    ?? getSelectedDisplaysForLogicalRect(context, selectionRect);
+
+  if (!selectedDisplays.length) {
+    return null;
+  }
+
+  return createAreaSelectionResult(context, selectionRect, selectedDisplays);
 }
 
 module.exports = {

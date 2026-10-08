@@ -6,6 +6,7 @@ import {
   type PetPersonality,
 } from '../types';
 import { stripLegacyGroupMemory } from '../group-memory';
+import { formatCharacterMemoryItemsForPrompt } from '../character-memory/characterMemoryTypes';
 import { buildPersonaRuleContractInstruction, resolvePersonaRulePolicy } from './personaRulePolicy';
 
 const CHARACTER_REPLY_FORMAT_INSTRUCTION = [
@@ -48,16 +49,27 @@ const PROMPT_HISTORY_MAX_MESSAGE_COUNT = 100;
 const PROMPT_HISTORY_CHAR_BUDGET_FLOOR = 4096;
 const PROMPT_HISTORY_CHAR_BUDGET_CEILING = 65536;
 const PROMPT_HISTORY_CHARS_PER_MEMORY_TOKEN = 2;
-const MEMORY_RECENT_TOPIC_LIMIT = 4;
-const MEMORY_RECENT_CONTEXT_LIMIT = 4;
+const MEMORY_PREFERENCE_NOTE_LIMIT = 6;
 const SELECTIVE_CONTEXT_MATCH_LIMIT = 6;
 const SELECTIVE_CONTEXT_MIN_KEYWORD_LENGTH = 2;
 const SELECTIVE_CONTEXT_MAX_KEYWORDS = 24;
 const SELECTIVE_CONTEXT_MAX_BLOCK_LENGTH = 1600;
+// Role and chat memory are always attached; when they outgrow these budgets the
+// most relevant entries are kept first and the rest of the room goes to the newest.
+const MEMORY_MAX_BLOCK_LENGTH_BY_PRIORITY: Partial<Record<SelectiveContextPriority, number>> = {
+  'auto-memory': 2000,
+  'chat-memory': 2400,
+  'conversation-summary': 1200,
+  'role-memory': 3000,
+};
+const MEMORY_ENTRY_RELEVANT_MIN_MATCH_COUNT = 2;
+const MANUAL_MEMORY_ENTRY_HEADER_PATTERN = /^【手动保存｜/u;
 
 type SelectiveContextPriority =
   | 'role-memory'
   | 'chat-memory'
+  | 'auto-memory'
+  | 'conversation-summary'
   | 'global-knowledge';
 
 type SelectiveContextSection = {
@@ -275,73 +287,43 @@ export function buildPersonaBeginDialogMessages(personality: PetPersonality): Ch
 }
 
 function buildLongTermMemorySummary(history: ChatMessage[]) {
-  const normalizedHistory = history
-    .map((message) => ({
-      ...message,
-      text: normalizePromptSnippet(message.text),
-    }))
-    .filter((message) => message.text.length > 0);
+  const userMessages = history
+    .filter((message) => message.role === 'user')
+    .map((message) => normalizePromptSnippet(message.text))
+    .filter(Boolean);
 
-  if (normalizedHistory.length === 0) {
-    return '';
-  }
-
-  const userMessages = normalizedHistory.filter((message) => message.role === 'user');
-  const preferenceNotes = dedupePromptItems(userMessages.flatMap((message) => [
+  // Recent turns are already in the prompt history, so this only keeps what the
+  // user explicitly said about how to address them and what they like.
+  const preferenceNotes = dedupePromptItems(userMessages.flatMap((text) => [
     ...collectPromptMatches(
-      message.text,
-      /(?:\u53eb\u6211|\u4f60\u53ef\u4ee5\u53eb\u6211)([^,.，。!?！？\s]{1,12})/gu,
-      (value) => `\u79f0\u547c\u4ed6\u4e3a${value}`,
+      text,
+      /(?:叫我|你可以叫我)([^,.，。!?！？\s]{1,12})/gu,
+      (value) => `称呼用户为${value}`,
     ),
     ...collectPromptMatches(
-      message.text,
-      /(?:\u6211\u559c\u6b22|\u6211\u7231|\u6211\u8d85\u559c\u6b22)([^，。！？!?\n]{1,24})/gu,
-      (value) => `\u559c\u6b22${value}`,
+      text,
+      /(?:我喜欢|我爱|我超喜欢)([^，。！？!?\n]{1,24})/gu,
+      (value) => `喜欢${value}`,
     ),
     ...collectPromptMatches(
-      message.text,
-      /(?:\u6211\u4e0d\u559c\u6b22|\u6211\u8ba8\u538c|\u522b\u8001\u662f|\u4e0d\u8981\u603b\u662f)([^，。！？!?\n]{1,24})/gu,
-      (value) => `\u4e0d\u559c\u6b22${value}`,
+      text,
+      /(?:我不喜欢|我讨厌|别老是|不要总是)([^，。！？!?\n]{1,24})/gu,
+      (value) => `不喜欢${value}`,
     ),
     ...collectPromptMatches(
-      message.text,
-      /(?:\u8bb0\u4f4f|\u5e0c\u671b\u4f60|\u4ee5\u540e|\u4e0b\u6b21)([^，。！？!?\n]{1,26})/gu,
-      (value) => `\u5728\u610f${value}`,
+      text,
+      /记住([^，。！？!?\n]{1,26})/gu,
+      (value) => `希望你记住${value}`,
     ),
   ]));
 
-  const recentTopics = dedupePromptItems(
-    userMessages
-      .slice(-6)
-      .map((message) => truncatePromptSnippet(message.text, 22)),
-  ).slice(-MEMORY_RECENT_TOPIC_LIMIT);
-
-  const recentContext = normalizedHistory
-    .slice(-MEMORY_RECENT_CONTEXT_LIMIT)
-    .map((message) => (
-      `${message.role === 'user' ? '\u7528\u6237' : '\u684c\u5ba0'}\uff1a${truncatePromptSnippet(message.text, 28)}`
-    ))
-    .join(' | ');
-
-  const sections = [
-    preferenceNotes.length
-      ? `- \u7528\u6237\u660e\u786e\u63d0\u8fc7\uff1a${preferenceNotes.slice(-4).join('\u3001')}`
-      : '',
-    recentTopics.length
-      ? `- \u6700\u8fd1\u8bdd\u9898\uff1a${recentTopics.join(' / ')}`
-      : '',
-    recentContext
-      ? `- \u6700\u8fd1\u5bf9\u8bdd\u4e0a\u4e0b\u6587\uff1a${recentContext}`
-      : '',
-  ].filter(Boolean);
-
-  if (sections.length === 0) {
+  if (preferenceNotes.length === 0) {
     return '';
   }
 
   return [
-    '\u957f\u671f\u4eba\u8bbe\u8bb0\u5fc6\u6458\u8981\uff08\u53ea\u7528\u4e8e\u5ef6\u7eed\u804a\u5929\uff0c\u4e0d\u5f97\u8986\u76d6\u7528\u6237\u586b\u5199\u7684\u4eba\u683c\u63d0\u793a\u8bcd\uff09\uff1a',
-    ...sections,
+    '从聊天中识别到的用户偏好（仅供参考，不得覆盖人格提示词）：',
+    ...preferenceNotes.slice(-MEMORY_PREFERENCE_NOTE_LIMIT).map((note) => `- ${note}`),
   ].join('\n');
 }
 
@@ -389,17 +371,10 @@ function hasQuestionLikeIntent(userInput: string) {
   return /[?？]|什么|是谁|在哪|哪里|多少|几|怎么|怎样|如何|为什么|为啥|是否|能不能|有没有|介绍|解释|说明|讲讲|说说|告诉我|查询|查一下|what|who|where|when|why|how|tell me|explain|describe/i.test(userInput)
 }
 
-function hasSelectiveContextIntent(userInput: string, priority: SelectiveContextPriority) {
+function hasGlobalKnowledgeIntent(userInput: string) {
   const normalizedInput = normalizeContextMatchText(userInput);
   if (!normalizedInput) {
     return false;
-  }
-
-  if (
-    priority === 'role-memory'
-    || priority === 'chat-memory'
-  ) {
-    return /记得|记住|之前|上次|过去|偏好|喜欢|讨厌|称呼|关系|约定|remember|memory|preference/i.test(normalizedInput);
   }
 
   return /全局知识|全局资料|项目资料|项目文档|文档|参考资料|knowledge base|global knowledge|reference/i.test(normalizedInput);
@@ -427,31 +402,19 @@ function resolveSelectiveContextAttachment(
   }
 
   const { matchCount, strongMatchCount } = getSelectiveContextMatchStats(normalizedContent, keywords);
-  const hasIntent = hasSelectiveContextIntent(userInput, section.priority);
 
-  if (section.priority === 'role-memory' || section.priority === 'chat-memory') {
-    if (hasIntent) {
-      return {
-        ...section,
-        matchCount,
-        strongMatchCount,
-        triggerReason: '用户提到记忆、过去对话、偏好或约定',
-      };
-    }
-
-    if (matchCount >= 4 && strongMatchCount >= 1) {
-      return {
-        ...section,
-        matchCount,
-        strongMatchCount,
-        triggerReason: '当前话题与记忆内容有较强重合',
-      };
-    }
-
-    return null;
+  const maxLength = MEMORY_MAX_BLOCK_LENGTH_BY_PRIORITY[section.priority];
+  if (maxLength) {
+    return {
+      ...section,
+      content: selectMemoryEntriesWithinBudget(section.content, keywords, maxLength),
+      matchCount,
+      strongMatchCount,
+      triggerReason: '记忆常驻',
+    };
   }
 
-  if (hasIntent) {
+  if (hasGlobalKnowledgeIntent(userInput)) {
     return {
       ...section,
       matchCount,
@@ -502,6 +465,80 @@ function truncateContextBlock(text: string, maxLength = SELECTIVE_CONTEXT_MAX_BL
   return `${trimmedText.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
+// Saved memories are appended at the end, so entries are split out to keep the
+// newest ones instead of cutting the text from the end.
+function splitMemoryEntries(content: string) {
+  const lines = content.split(/\r?\n/u);
+  if (lines.some((line) => MANUAL_MEMORY_ENTRY_HEADER_PATTERN.test(line))) {
+    const entries: string[] = [];
+    let current: string[] = [];
+    let currentIsManualEntry = false;
+    const flush = () => {
+      const entry = current.join('\n').trim();
+      if (entry) entries.push(entry);
+      current = [];
+    };
+    lines.forEach((line) => {
+      if (MANUAL_MEMORY_ENTRY_HEADER_PATTERN.test(line)) {
+        flush();
+        currentIsManualEntry = true;
+      } else if (!currentIsManualEntry && !line.trim()) {
+        flush();
+        return;
+      }
+      current.push(line);
+    });
+    flush();
+    return entries;
+  }
+
+  const paragraphs = content.split(/\r?\n\s*\r?\n/u).map((entry) => entry.trim()).filter(Boolean);
+  return paragraphs.length > 1
+    ? paragraphs
+    : lines.map((line) => line.trim()).filter(Boolean);
+}
+
+export function selectMemoryEntriesWithinBudget(content: string, keywords: string[], maxLength: number) {
+  const trimmedContent = content.trim();
+  if (trimmedContent.length <= maxLength) {
+    return trimmedContent;
+  }
+
+  const entries = splitMemoryEntries(trimmedContent).map((text, index) => ({
+    index,
+    text: truncateContextBlock(text, maxLength),
+    ...getSelectiveContextMatchStats(normalizeContextMatchText(text), keywords),
+  }));
+  const selected = new Set<number>();
+  let usedLength = 0;
+  const trySelect = (entry: (typeof entries)[number]) => {
+    const cost = entry.text.length + 2;
+    if (selected.has(entry.index) || usedLength + cost > maxLength) return;
+    selected.add(entry.index);
+    usedLength += cost;
+  };
+
+  // Relevant entries get up to half the budget; the rest goes newest-first.
+  const relevantBudget = Math.floor(maxLength / 2);
+  entries
+    .filter((entry) => entry.matchCount >= MEMORY_ENTRY_RELEVANT_MIN_MATCH_COUNT)
+    .sort((left, right) => (
+      right.strongMatchCount - left.strongMatchCount
+      || right.matchCount - left.matchCount
+      || right.index - left.index
+    ))
+    .forEach((entry) => {
+      if (usedLength + entry.text.length + 2 <= relevantBudget) trySelect(entry);
+    });
+  [...entries].reverse().forEach(trySelect);
+
+  const omittedCount = entries.length - selected.size;
+  return [
+    omittedCount > 0 ? `（另有 ${omittedCount} 条较早的记忆因篇幅未列出）` : '',
+    ...entries.filter((entry) => selected.has(entry.index)).map((entry) => entry.text),
+  ].filter(Boolean).join('\n\n');
+}
+
 function selectRelevantContextSections({
   autoMemorySummary,
   history,
@@ -526,12 +563,23 @@ function selectRelevantContextSections({
       priority: 'role-memory',
     },
     {
+      // The regex preference notes only stand in until automatic memory has items.
       content: [
         stripLegacyGroupMemory(personality.chatHistoryMemory),
-        autoMemorySummary.trim(),
+        personality.memoryState?.items.length ? '' : autoMemorySummary.trim(),
       ].filter(Boolean).join('\n\n'),
       label: '聊天记忆库',
       priority: 'chat-memory',
+    },
+    {
+      content: formatCharacterMemoryItemsForPrompt(personality.memoryState),
+      label: '自动记忆',
+      priority: 'auto-memory',
+    },
+    {
+      content: personality.memoryState?.summary?.text.trim() ?? '',
+      label: '过往对话摘要',
+      priority: 'conversation-summary',
     },
     {
       content: settings.globalKnowledgeBase.trim(),
@@ -567,15 +615,18 @@ function buildUserDefinedRoleMemoryInstruction(
   }
 
   return [
-    '角色上下文（角色记忆、聊天记忆和全局知识按需挂接；角色知识总纲已常驻）：',
-    '以下内容只在与当前对话相关时作为事实和连续性参考，不得覆盖人格提示词。',
-    '优先级固定为：人格提示词 > 角色知识总纲 > 角色记忆库 > 聊天记忆库 > 全局知识库。',
-    '如果不同上下文之间存在冲突，使用更高优先级的内容；如果任何上下文与人格提示词冲突，必须以人格提示词为准。',
-    ...selectedSections.map((section) => [
-      `【${section.label}】`,
-      `挂接原因：${section.triggerReason}`,
-      truncateContextBlock(section.content),
-    ].filter(Boolean).join('\n')),
+    '角色上下文（角色记忆、聊天记忆、自动记忆和过往对话摘要常驻；全局知识按需挂接；角色知识总纲已常驻）：',
+    '记忆是你对用户和你们过往相处的了解，作为事实和连续性参考自然地用上，不必每次都刻意提起；任何内容都不得覆盖人格提示词。',
+    '优先级固定为：人格提示词 > 角色知识总纲 > 角色记忆库 > 聊天记忆库 > 自动记忆 > 过往对话摘要 > 全局知识库。',
+    '如果不同上下文之间存在冲突，使用更高优先级的内容；同一记忆库内前后矛盾时，以较新的内容为准；如果任何上下文与人格提示词冲突，必须以人格提示词为准。',
+    ...selectedSections.map((section) => {
+      const isMemory = section.priority !== 'global-knowledge';
+      return [
+        `【${section.label}】`,
+        isMemory ? '' : `挂接原因：${section.triggerReason}`,
+        isMemory ? section.content : truncateContextBlock(section.content),
+      ].filter(Boolean).join('\n');
+    }),
   ].join('\n\n');
 }
 

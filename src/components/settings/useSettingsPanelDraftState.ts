@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { keepLiveScreenWatchConsent } from '../../life-companion/screen-watch/screenWatchConsentMerge';
 import {
   PRIMARY_DESKTOP_PET_SLOT_ID,
   addDesktopPetSlot,
@@ -281,7 +282,7 @@ export function useSettingsPanelDraftState({
       },
     });
 
-    return normalizePetConfig(removeEmptyBeginDialogDrafts({
+    return keepLiveScreenWatchConsent(normalizePetConfig(removeEmptyBeginDialogDrafts({
       ...nextConfigWithTraits,
       settings: {
         ...nextConfigWithTraits.settings,
@@ -289,12 +290,12 @@ export function useSettingsPanelDraftState({
         customApiUrl: customApiDraft.apiUrl.trim(),
         customApiKey: customApiDraft.apiKey.trim(),
       },
-    }));
+    })), openedConfigSnapshotRef.current, committedConfigRef.current);
   };
 
   const handleCloseWithoutSaving = () => {
     if (hasUnsavedChangesRef.current) {
-      onUpdateConfig(openedConfigSnapshotRef.current);
+      onUpdateConfig(keepLiveScreenWatchConsent(openedConfigSnapshotRef.current, openedConfigSnapshotRef.current, committedConfigRef.current));
       hasUnsavedChangesRef.current = false;
     }
     onClose();

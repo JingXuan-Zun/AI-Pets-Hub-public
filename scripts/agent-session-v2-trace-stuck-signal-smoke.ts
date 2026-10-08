@@ -136,6 +136,16 @@ const noOpResultSession = await runAgentProductionSession({
     assert.match(userInput, /stuckSignalThresholdGuard=maxSignals=5/u);
     assert.match(userInput, /requiredReplan=The last action evidence does not prove user-level success/u);
     assert.match(userInput, /stuckSignalPolicy=This signal is advisory/u);
+    if (noOpModelCalls > 1) {
+      // A no-op click cannot be reported as a final answer; hand the blocker
+      // to the user instead.
+      assert.match(userInput, /rejected final answer without Evidence Engine authorization/u);
+      return JSON.stringify({
+        action: 'ask_user',
+        message: 'The click did not change the target button. Please check the target state.',
+        reason: 'The click produced no state change.',
+      });
+    }
     return JSON.stringify({
       action: 'final_answer',
       message: 'action did not produce enough evidence',
@@ -156,8 +166,8 @@ const noOpResultSession = await runAgentProductionSession({
   userGoal: 'click the target button',
 });
 
-assert.equal(noOpModelCalls, 1);
-assert.equal(noOpResultSession.status, 'completed');
+assert.equal(noOpModelCalls, 2);
+assert.equal(noOpResultSession.status, 'needs-user');
 
 let repeatedWindowModelCalls = 0;
 const repeatedWindowResultSession = await runAgentProductionSession({

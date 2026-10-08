@@ -22,6 +22,8 @@ async function copyRecursive(sourcePath, targetPath) {
     await mkdir(targetPath, { recursive: true });
     const entries = await readdir(sourcePath);
     for (const entry of entries) {
+      // Unity marks build-machine debug output (symbols with local paths) as *_DoNotShip.
+      if (entry.endsWith('_DoNotShip')) continue;
       await copyRecursive(path.join(sourcePath, entry), path.join(targetPath, entry));
     }
     return;

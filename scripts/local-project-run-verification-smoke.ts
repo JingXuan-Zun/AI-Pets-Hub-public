@@ -1,26 +1,33 @@
 import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { serviceSource, systemRuntimeSource, viteEnvSource } = readProjectSources({
+const { serviceSource, actionsSource, terminalSource, systemRuntimeSource, viteEnvSource } = readProjectSources({
   serviceSource: 'electron/localProjectInspectorService.cjs',
+  actionsSource: 'electron/localProjectInspectorActions.cjs',
+  terminalSource: 'electron/localProjectInspectorTerminal.cjs',
   systemRuntimeSource: 'src/agent/agentRuntimeSystemTools.ts',
   viteEnvSource: 'src/vite-env.d.ts',
 });
 
 assert.match(
-  serviceSource,
+  terminalSource,
   /verification: \{[\s\S]*confidence: 'started'[\s\S]*visible-terminal-window-created/u,
   'terminal command runs should report a started verification state',
 );
 
 assert.match(
-  serviceSource,
+  terminalSource,
   /summary: '已创建新的可见命令行窗口；当前没有读取 stdout\/stderr 或退出码。'/u,
   'terminal command verification should be explicit about not reading output or exit code',
 );
 
+assert.match(actionsSource, /const \{ runTerminalCommand \} = require\('\.\/localProjectInspectorTerminal\.cjs'\)/u);
+assert.match(actionsSource, /runTerminalCommand\(action, clock\)/u, 'action runner should call the extracted terminal implementation');
+assert.match(serviceSource, /const \{ createProjectActionRunner \} = require\('\.\/localProjectInspectorActions\.cjs'\)/u);
+assert.match(serviceSource, /createProjectActionRunner\(\{ inspectLocalProject, logMessage, clock: Date \}\)/u, 'service should assemble the action runner with instance dependencies');
+
 assert.match(
-  serviceSource,
+  actionsSource,
   /verification: runResult\.verification \?\? null/u,
   'local project run result should carry action verification',
 );

@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { runtimeSource, sessionSource } = readProjectSources({
+const { runtimeSource, sessionSource, lifecycleSource } = readProjectSources({
   runtimeSource: 'src/agent/agentActionRuntime.ts',
   sessionSource: 'src/agent/agentProductionSessionImplementation.ts',
+  lifecycleSource: 'src/agent/productionSession/actionOutcomeLifecycle.ts',
 });
+
+assert.match(sessionSource, /from '\.\/productionSession\/actionOutcomeLifecycle'/u);
+assert.match(sessionSource, /\} = createAgentProductionActionOutcomeLifecycle\(\{/u);
+assert.match(sessionSource, /recordActionRuntimeDecision, recordRecoveryTriggerDecision, decideRecoveryTrigger,[\s\S]*\} = createAgentProductionActionOutcomeLifecycle\(\{/u);
 
 assert.match(
   runtimeSource,
@@ -27,17 +32,17 @@ assert.doesNotMatch(
   'ActionQueue v0 should not grow into TaskRuntime, DAG, or graph execution yet.',
 );
 assert.match(
-  sessionSource,
+  lifecycleSource,
   /let actionRuntimeQueue: AgentActionRuntimeQueue = \{[\s\S]*currentAction: null/u,
   'AgentSessionV2 should keep a narrow per-session ActionRuntime queue.',
 );
 assert.match(
-  sessionSource,
+  lifecycleSource,
   /const recordActionRuntimeDecision = /u,
   'AgentSessionV2 should record ActionRuntime decisions through a single local adapter.',
 );
 assert.match(
-  sessionSource,
+  lifecycleSource,
   /ActionRuntime current action:[\s\S]*events=\$\{currentAction\.entries\.length\}/u,
   'ActionRuntime current action history should expose lifecycle progress for debugging.',
 );

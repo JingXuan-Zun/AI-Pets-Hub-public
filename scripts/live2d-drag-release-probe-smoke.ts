@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const probeSource = readProjectFile('src/components/pet/useLive2DDragReleaseProbe.ts');
 const probeReportSource = readProjectFile('src/components/pet/live2dDragReleaseProbeReport.ts');
@@ -7,8 +9,8 @@ const probeSampleSource = readProjectFile('src/components/pet/live2dDragReleaseP
 const probeFlagSource = readProjectFile('src/components/pet/live2dDragProbeFlag.ts');
 const avatarLayerSource = readProjectFile('src/components/pet/PetAvatarLayer.tsx');
 const companionLayerSource = readProjectFile('src/components/pet/PetCompanionLayer.tsx');
-const live2DRendererSource = readProjectFile('src/components/pet/PetLive2DRenderer.tsx');
-const shellEffectsSource = readProjectFile('src/components/pet/usePetContainerShellEffects.ts');
+const live2DRendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
+const shellEffectsSource = readModuleProjectFile('src/components/pet/usePetContainerShellEffects.ts');
 const electronMainSource = readProjectFile('electron/main.cjs');
 const electronWindowManagerSource = readProjectFile('electron/windowManager.cjs');
 
@@ -124,8 +126,32 @@ assert.match(
 
 assert.match(
   electronWindowManagerSource,
-  /DESKTOP_PET_LIVE2D_DRAG_PROBE === '1'[\s\S]*process\.argv\.includes\('--live2d-drag-probe'\)[\s\S]*live2dDragProbe: '1'[\s\S]*loadRenderer: live2d drag probe enabled/,
-  'main desktop window loadRenderer should forward the temporary Live2D drag probe query to the renderer',
+  /DESKTOP_PET_LIVE2D_DRAG_PROBE === '1'[\s\S]*process\.argv\.includes\('--live2d-drag-probe'\)/,
+  'main desktop window should retain both explicit Live2D drag probe switches',
+);
+
+assert.match(
+  readModuleProjectFunction('electron/windowManager/rendererNavigation.cjs', 'createWindowManagerRendererNavigation'),
+  /createRendererNavigation\(\{[\s\S]*queryOptions: \{[\s\S]*live2DDragProbeEnabled,/,
+  'window manager should pass its captured probe flag into renderer navigation',
+);
+
+const rendererNavigation = readModuleProjectFunction(
+  'electron/windowManager/rendererNavigation.cjs', 'createRendererNavigation',
+);
+assert.match(rendererNavigation, /const \{ live2DDragProbeEnabled \} = queryOptions/);
+assert.match(
+  rendererNavigation,
+  /const nextQuery = buildRendererQuery\(query, queryOptions\)[\s\S]*if \(live2DDragProbeEnabled\)[\s\S]*loadRenderer: live2d drag probe enabled/,
+  'navigation should construct the probe query and retain its diagnostic log',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/rendererQuery.cjs', 'buildRendererQuery'),
+  /live2DDragProbeEnabled \? \{ live2dDragProbe: '1' \} : \{\}/,
+  'query construction should forward the probe flag only when explicitly enabled',
 );
 
 console.log('live2d drag release probe smoke passed');
+
+assert.match(readModuleProjectFunction('electron/windowManager.cjs', 'createWindowManager'),
+  /createWindowManagerRendererNavigation\(\{[\s\S]*localTestQueryValues, pointerDiagnosticsEnabled, forceFullShapeOnDragEnabled, live2DDragProbeEnabled,/);

@@ -91,8 +91,8 @@ async function runTextOnlyChatModelScenario() {
           {
             message: {
               content: visionCallCount === 1
-                ? '图片里是一只鼻子离镜头很近的狗�?
-                : '图片里是一只坐在窗边的猫�?,
+                ? '图片里是一只鼻子离镜头很近的狗。'
+                : '图片里是一只坐在窗边的猫。',
             },
           },
         ],
@@ -106,15 +106,15 @@ async function runTextOnlyChatModelScenario() {
     const finalUserMessage = body.messages[body.messages.length - 1];
     assert.equal(finalUserMessage.role, 'user');
     assert.equal(typeof finalUserMessage.content, 'string');
-    assert.match(finalUserMessage.content, /图片 1（dog\.png）：\n图片里是一只鼻子离镜头很近的狗�?u);
-    assert.match(finalUserMessage.content, /图片 2（cat\.png）：\n图片里是一只坐在窗边的猫�?u);
+    assert.match(finalUserMessage.content, /图片 1（dog\.png）：\n图片里是一只鼻子离镜头很近的狗。/u);
+    assert.match(finalUserMessage.content, /图片 2（cat\.png）：\n图片里是一只坐在窗边的猫。/u);
     assert.doesNotMatch(JSON.stringify(body), /image_url/u);
 
     return new Response(JSON.stringify({
       choices: [
         {
           message: {
-            content: '看见了，第一张是狗，第二张是猫�?,
+            content: '看见了，第一张是狗，第二张是猫。',
           },
         },
       ],
@@ -138,7 +138,7 @@ async function runTextOnlyChatModelScenario() {
     imageAttachments,
   );
 
-  assert.equal(response, '看见了，第一张是狗，第二张是猫�?);
+  assert.equal(response, '看见了，第一张是狗，第二张是猫。');
   assert.equal(fetchCalls.length, 3);
   assert.equal(fetchCalls[0]?.url, 'https://vision.example.com/v1/chat/completions');
   assert.equal(fetchCalls[1]?.url, 'https://vision.example.com/v1/chat/completions');
@@ -161,8 +161,8 @@ async function runImageCapableChatModelScenario() {
           {
             message: {
               content: visionCallCount === 1
-                ? '图片里是一只狗�?
-                : '图片里是一只猫�?,
+                ? '图片里是一只狗。'
+                : '图片里是一只猫。',
             },
           },
         ],
@@ -181,14 +181,14 @@ async function runImageCapableChatModelScenario() {
     assert.equal(imageParts.length, 2);
     assert.equal(imageParts[0]?.image_url?.url, imageAttachments[0]?.dataUrl);
     assert.equal(imageParts[1]?.image_url?.url, imageAttachments[1]?.dataUrl);
-    assert.match(finalUserMessage.content[0]?.text, /图片 1（dog\.png）：\n图片里是一只狗�?u);
-    assert.match(finalUserMessage.content[0]?.text, /图片 2（cat\.png）：\n图片里是一只猫�?u);
+    assert.match(finalUserMessage.content[0]?.text, /图片 1（dog\.png）：\n图片里是一只狗。/u);
+    assert.match(finalUserMessage.content[0]?.text, /图片 2（cat\.png）：\n图片里是一只猫。/u);
 
     return new Response(JSON.stringify({
       choices: [
         {
           message: {
-            content: '两张原图都收到了�?,
+            content: '两张原图都收到了。',
           },
         },
       ],
@@ -212,7 +212,7 @@ async function runImageCapableChatModelScenario() {
     imageAttachments,
   );
 
-  assert.equal(response, '两张原图都收到了�?);
+  assert.equal(response, '两张原图都收到了。');
   assert.equal(fetchCalls.length, 3);
   assert.equal(fetchCalls[0]?.url, 'https://vision.example.com/v1/chat/completions');
   assert.equal(fetchCalls[1]?.url, 'https://vision.example.com/v1/chat/completions');

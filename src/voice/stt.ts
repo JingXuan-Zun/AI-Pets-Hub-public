@@ -77,7 +77,7 @@ function mergeAudioChunks(chunks: Float32Array[]) {
   return merged;
 }
 
-function resampleAudio(samples: Float32Array, sourceRate: number, targetRate: number) {
+export function resampleAudio(samples: Float32Array, sourceRate: number, targetRate: number) {
   if (sourceRate === targetRate) {
     return samples;
   }
@@ -97,7 +97,7 @@ function resampleAudio(samples: Float32Array, sourceRate: number, targetRate: nu
   return result;
 }
 
-function encodeWavBase64(samples: Float32Array, sampleRate: number) {
+export function encodeWavBase64(samples: Float32Array, sampleRate: number) {
   const bytesPerSample = 2;
   const blockAlign = bytesPerSample;
   const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);

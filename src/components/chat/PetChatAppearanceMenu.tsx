@@ -370,7 +370,7 @@ export function PetChatAppearanceMenu({
   const menuElement = (
     <div
       data-chat-appearance-menu="true"
-      className="fixed z-max rounded-[14px] border border-border bg-white shadow-[0_18px_42px_rgba(148,163,184,0.24)]"
+      className="fixed z-max rounded-[15px] border border-border bg-white shadow-[0_18px_42px_rgba(148,163,184,0.24)]"
       ref={menuRef}
       style={{
         left: menuCoordinates.x,

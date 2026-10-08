@@ -215,6 +215,8 @@ export interface AgentStructuredToolRectEvidence {
   coordinateSpace?: string | null;
   height?: number | null;
   source?: string | null;
+  /** Capture source the bounds came from (e.g. "window:<hwnd>:0"), kept through focus crops. */
+  sourceId?: string | null;
   width?: number | null;
   x?: number | null;
   y?: number | null;

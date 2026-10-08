@@ -1,3 +1,4 @@
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
 import {
   AGENT_TOOL_INPUT_PARAM_SPECS,
@@ -15,7 +16,7 @@ import {
 import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 import { summarizeAgentVisualSnapshot } from '../src/services/geminiService.ts';
 import { type PetConfig } from '../src/types.ts';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 const toolName = 'summarize_visual_snapshot' satisfies AgentToolCallName;
 const originalImage = (globalThis as any).Image;
@@ -148,6 +149,9 @@ assert.match(visualRuntimeSource, /includeCaptureThumbnails: true/u);
 assert.match(visualRuntimeSource, /formatCaptureSourceCandidateLines/u);
 assert.match(visualRuntimeSource, /Available capture source candidate/u);
 assert.match(visualRuntimeSource, /findBestVisualSnapshotSourceMatch/u);
+assert.match(visualRuntimeSource, /createActiveWindowCaptureRecoverySource/u);
+assert.match(visualRuntimeSource, /active window HWND\/bounds recovery/u);
+assert.match(visualRuntimeSource, /getActiveWindowInfo\(\)/u);
 assert.match(visualRuntimeSource, /createVisualSnapshotRecoveryStateSummary/u);
 assert.match(visualRuntimeSource, /recommendedRecovery/u);
 assert.match(sessionSource, /recommendedRecovery/u);

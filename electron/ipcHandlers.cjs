@@ -1,6 +1,7 @@
 ﻿const { summarizeRuntimeValue } = require('./runtimeLogger.cjs');
 const { registerMcpHistoryIpcHandlers } = require('./mcpHistoryIpcHandlers.cjs');
 const { registerModelRequestIpc } = require('./modelRequestIpc.cjs');
+const { createWindowMaximizeToggle } = require('./windowMaximizeToggle.cjs');
 
 const { BrowserWindow, dialog } = require('electron');
 
@@ -157,6 +158,15 @@ function registerDesktopPetIpcHandlers({
     persistedChatHistorySaveQueue = saveTask.then(() => undefined, () => undefined);
     return saveTask;
   }, { logArgs: false, summarizeResult: (result) => ({ ok: Boolean(result?.ok), messageCount: result?.messageCount ?? 0 }) });
+  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:archive-chat-history', async (_event, messages) => {
+    const archiveTask = persistedChatHistorySaveQueue.then(() => (
+      persistedChatHistoryStore?.archive?.(messages) ?? {
+        error: 'persisted chat history store unavailable', ok: false,
+      }
+    ));
+    persistedChatHistorySaveQueue = archiveTask.then(() => undefined, () => undefined);
+    return archiveTask;
+  }, { logArgs: false, summarizeResult: (result) => ({ ok: Boolean(result?.ok), archivedCount: result?.archivedCount ?? 0 }) });
   registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:read-neural-persona-record', async (_event, request) => {
     return neuralPersonaFileStore?.read?.(request?.roleId) ?? {
       error: 'neural-persona-file-store-unavailable',
@@ -475,13 +485,20 @@ function registerDesktopPetIpcHandlers({
     }, false);
   });
 
+  const windowMaximizeToggle = createWindowMaximizeToggle({ screen });
   ipcMain.on('desktop-pet:minimize-current-window', (event) => {
+    windowMaximizeToggle.minimize(BrowserWindow.fromWebContents(event.sender));
+  });
+  ipcMain.handle('desktop-pet:toggle-maximize-current-window', (event) => {
+    return windowMaximizeToggle.toggle(BrowserWindow.fromWebContents(event.sender));
+  });
+  ipcMain.handle('desktop-pet:restore-maximized-window-for-drag', (event, request) => {
+    return windowMaximizeToggle.restoreForDrag(BrowserWindow.fromWebContents(event.sender), request ?? {});
+  });
+  ipcMain.handle('desktop-pet:is-current-window-maximized', (event) => {
     const targetWindow = BrowserWindow.fromWebContents(event.sender);
-    if (!targetWindow || targetWindow.isDestroyed() || !targetWindow.isMinimizable()) {
-      return;
-    }
-
-    targetWindow.minimize();
+    return Boolean(targetWindow && !targetWindow.isDestroyed()
+      && windowMaximizeToggle.isMaximized(targetWindow));
   });
 
   registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:is-chat-window-open', () => {
@@ -962,6 +979,36 @@ function registerDesktopPetIpcHandlers({
   ), {
     logArgs: false,
     summarizeResult: (result) => ({ ok: Boolean(result?.ok), videoCount: result?.videoCount ?? 0 }),
+  });
+  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:choose-2d-video-library', async () => {
+    const selection = await dialog.showOpenDialog({ properties: ['openDirectory'], title: '选择角色视频根目录' });
+    if (selection.canceled || !selection.filePaths[0]) return { cancelled: true, ok: false };
+    return sequenceAssetStore?.inspect2DVideoLibrary?.({ rootPath: selection.filePaths[0] })
+      ?? { error: 'sequence-asset-store-unavailable', ok: false };
+  }, {
+    logArgs: false,
+    summarizeResult: (result) => ({ folderCount: result?.folders?.length ?? 0, ok: Boolean(result?.ok) }),
+  });
+  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:inspect-2d-video-library', async (_event, request) => (
+    sequenceAssetStore?.inspect2DVideoLibrary?.(request ?? {})
+      ?? { error: 'sequence-asset-store-unavailable', ok: false }
+  ), {
+    logArgs: false,
+    summarizeResult: (result) => ({ folderCount: result?.folders?.length ?? 0, ok: Boolean(result?.ok) }),
+  });
+  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:resolve-2d-video-library-root', async (_event, request) => (
+    sequenceAssetStore?.resolve2DVideoLibraryRootFromSource?.(request ?? {})
+      ?? { error: 'sequence-asset-store-unavailable', ok: false }
+  ), {
+    logArgs: false,
+    summarizeResult: (result) => ({ folderCount: result?.folders?.length ?? 0, ok: Boolean(result?.ok) }),
+  });
+  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:pick-2d-video-from-library', async (_event, request) => (
+    sequenceAssetStore?.pick2DVideoFromLibrary?.(request ?? {})
+      ?? { error: 'sequence-asset-store-unavailable', ok: false }
+  ), {
+    logArgs: false,
+    summarizeResult: (result) => ({ folderName: result?.folderName ?? '', ok: Boolean(result?.ok) }),
   });
   registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:stage-2d-video', async (_event, request) => (
     sequenceAssetStore?.stage2DVideo?.(request ?? {})

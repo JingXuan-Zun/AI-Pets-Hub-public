@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 
 const { source } = readProjectSources({
   source: 'electron/appLauncherService.cjs',

@@ -12,6 +12,7 @@ export function resolveTtsProvider(settings: VoiceSettings): TtsProvider {
   switch (settings.ttsProvider) {
     case 'api':
     case 'local':
+    case 'gpt-sovits':
       return settings.ttsProvider;
     case 'browser':
     default:
@@ -24,7 +25,8 @@ export function resolveTtsRequest(
   settings: VoiceSettings,
   options: VoicePlaybackOptions = {},
 ): ResolvedTtsRequest | null {
-  const preparedText = prepareSpeechText(text, settings);
+  const provider = resolveTtsProvider(settings);
+  const preparedText = prepareSpeechText(text, settings, provider === 'gpt-sovits');
 
   if (
     !preparedText.trim()
@@ -38,6 +40,6 @@ export function resolveTtsRequest(
 
   return {
     preparedText,
-    provider: resolveTtsProvider(settings),
+    provider,
   };
 }

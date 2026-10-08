@@ -36,6 +36,10 @@ function extractOpenAICompatibleText(payload: any): string | null {
   return null;
 }
 
+// A stalled vision request otherwise holds the agent until the 5-minute transport limit;
+// normal screen reads finish in 10-50s.
+const AGENT_VISION_REQUEST_TIMEOUT_MS = 90_000;
+
 export interface AgentVisualSnapshotSummaryOptions {
   focus?: string | null;
   gameHint?: string | null;
@@ -92,6 +96,7 @@ function buildAgentVisualSnapshotPrompt(options: AgentVisualSnapshotSummaryOptio
     'For UI location or in-app launch questions, identify the requested target item, the primary open/start/play button associated with that target, their approximate screen region, elementCenterRatio as {x,y} normalized from 0 to 1 within the captured source, optional elementCenter/elementBounds if known, and whether the relation is visually clear.',
     'When multiple similar targets, OCR snippets, or buttons are visible, return short targetCandidates/actionCandidates arrays. Each candidate may include label, description, confidence, region, centerRatio, center, bounds, and relation. Prefer candidate objects over prose when the Agent may need to crop, rank, or click later.',
     'For tiny text/buttons/icons, include approximate centerRatio or bounds for the relevant OCR snippet or button when visible. Do not mark a target/action ready when the text is unreadable, the action relation is unclear, or the coordinate is only a guess.',
+    'When judging whether a list/sidebar item is selected/current, the main content decides: if the detail page clearly belongs to the item (its title, logo, banners, or its own start/play button), treat it as selected even without a visible highlight, and report the start/play button as primaryAction.',
     'For post-action verification questions, set postActionState to exactly one of: launched, loading, login_required, updating, error, unchanged, blocked, unknown.',
     'Do not invent hidden content. If text is too small or unclear, say it is unclear.',
     options.sourceLabel ? `Source: ${options.sourceLabel}` : '',
@@ -133,6 +138,7 @@ async function requestOpenAICompatibleVisualSnapshotSummary(options: AgentVisual
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
+    signal: AbortSignal.timeout(AGENT_VISION_REQUEST_TIMEOUT_MS),
     body: JSON.stringify({
       ...requestParams,
       model: visionModelSettings.modelName.trim(),
@@ -174,6 +180,7 @@ async function requestGeminiVisualSnapshotSummary(options: AgentVisualSnapshotSu
     systemInstruction: getAgentVisualSnapshotSystemInstruction(options),
   };
   applyGeminiVisionModelRequestParams(config, options.settings);
+  config.abortSignal = AbortSignal.timeout(AGENT_VISION_REQUEST_TIMEOUT_MS);
 
   const result = await aiClient.models.generateContent({
     model: resolveGeminiVisionModelName(options.settings),

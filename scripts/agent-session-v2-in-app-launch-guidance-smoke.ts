@@ -1,3 +1,4 @@
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
 import {
   AGENT_TOOL_INPUT_PARAM_SPECS,
@@ -7,10 +8,7 @@ import {
 import { executeSummarizeVisualSnapshot } from '../src/agent/agentRuntimeVisualTools.ts';
 import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 import { type PetConfig } from '../src/types.ts';
-import {
-  assertSourceMatches,
-  readProjectSources,
-} from './smokeTestHarness.ts';
+import { assertSourceMatches } from './smokeTestHarness.ts';
 
 const {
   prematureActionConfirmationSignal: prematureActionConfirmationSignalSource,
@@ -53,7 +51,7 @@ assertSourceMatches(visualSnapshotServiceSource, /targetCandidates/u);
 assertSourceMatches(visualSnapshotServiceSource, /actionCandidates/u);
 assertSourceMatches(sessionSource, /prefer elementCenter coordinates over natural-language regions/u);
 assertSourceMatches(sessionSource, /focusCenterRatioX\/focusCenterRatioY/u);
-assertSourceMatches(sessionSource, /resolveAgentSessionV2RatioPointFromSourceBounds/u);
+assertSourceMatches(sessionSource, /resolveAgentVisualRatioPointFromSourceBounds/u);
 
 const locateSchema = AGENT_TOOL_INPUT_PARAM_SPECS.locate_screen_elements;
 assert.equal(locateSchema.some((spec) => spec.key === 'sourceQuery'), true);
@@ -159,6 +157,7 @@ const directLocateResult = await runAgentProductionSession({
           structuredEvidence: {
             confidence: 'high',
             coordinateConfidence: 'high',
+            elementBounds: { coordinateSpace: 'native-screen', x: 1690, y: 1030, width: 50, height: 40 },
             elementCenter: {
               coordinateSpace: 'native-screen',
               source: 'test',
@@ -472,6 +471,7 @@ const visualApprovalResult = await runAgentProductionSession({
           structuredEvidence: {
             confidence: 'high',
             coordinateConfidence: 'high',
+            elementBounds: { coordinateSpace: 'native-screen', x: 1690, y: 1030, width: 50, height: 40 },
             elementCenter: {
               coordinateSpace: 'native-screen',
               source: 'test',
@@ -578,6 +578,7 @@ const prematureAskResult = await runAgentProductionSession({
           structuredEvidence: {
             confidence: 'high',
             coordinateConfidence: 'high',
+            elementBounds: { coordinateSpace: 'native-screen', x: 1690, y: 1030, width: 50, height: 40 },
             elementCenterRatio: {
               coordinateSpace: 'source-ratio',
               source: 'test',
@@ -752,8 +753,9 @@ const focusedCandidateResult = await runAgentProductionSession({
                 centerRatio: {
                   coordinateSpace: 'source-ratio',
                   source: 'test',
-                  x: 0.82,
-                  y: 0.76,
+                  // Full-screen and refined crop must identify the same native point (880, 574).
+                  x: 0.6875,
+                  y: 574 / 720,
                 },
                 confidence: 'medium',
                 label: 'Launch',
@@ -761,6 +763,7 @@ const focusedCandidateResult = await runAgentProductionSession({
               },
             ],
             confidence: 'medium',
+            sourceBounds: { coordinateSpace: 'native-screen', x: 0, y: 0, width: 1280, height: 720 },
             primaryAction: null,
             status: 'unverified',
             targetMatched: 'Game',
@@ -771,8 +774,8 @@ const focusedCandidateResult = await runAgentProductionSession({
       };
     }
 
-    assert.equal(command.toolCall.input.focusCenterRatioX, 0.82);
-    assert.equal(command.toolCall.input.focusCenterRatioY, 0.76);
+    assert.equal(command.toolCall.input.focusCenterRatioX, 0.6875);
+    assert.equal(command.toolCall.input.focusCenterRatioY, 574 / 720);
     assert.equal(command.toolCall.input.forceRefresh, true);
     assert.match(String(command.toolCall.input.question), /AgentSessionV2 visual refinement/u);
     return {
@@ -795,6 +798,7 @@ const focusedCandidateResult = await runAgentProductionSession({
         structuredEvidence: {
           confidence: 'high',
           coordinateConfidence: 'high',
+          elementBounds: { coordinateSpace: 'native-screen', x: 860, y: 554, width: 40, height: 40 },
           elementCenterRatio: {
             coordinateSpace: 'source-ratio',
             source: 'focused-crop-test',

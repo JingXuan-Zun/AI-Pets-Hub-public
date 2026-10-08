@@ -12,11 +12,13 @@ const {
   index: indexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  evidence: evidenceSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtimeSignal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  evidence: 'src/agent/productionSession/desktopActionEvidence.ts',
   signal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
 });
 
@@ -42,9 +44,13 @@ assertSourceDoesNotMatch(
 );
 assertSourceMatches(
   sessionSource,
-  /function shouldRejectAgentSessionV2TransitionalDesktopAction/u,
-  'AgentSessionV2 should still own the transitional desktop action predicate for this slice.',
+  /shouldRejectAgentProductionTransitionalDesktopAction: shouldRejectAgentSessionV2TransitionalDesktopAction/u,
+  'Production session must bind the existing desktop action evidence predicate.',
 );
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/desktopActionEvidence'/u, 'The root must import the checked evidence module.');
+assertSourceMatches(sessionSource, /createAgentProductionDesktopActionEvidence\(\{/u, 'The root must instantiate the desktop evidence module.');
+assertSourceMatches(evidenceSource, /function shouldRejectAgentProductionTransitionalDesktopAction/u, 'The original predicate must remain in the bound evidence module.');
 
 const rejectionText = createAgentTransitionalDesktopActionRejection({
   action: 'open_or_focus_then_control_window',

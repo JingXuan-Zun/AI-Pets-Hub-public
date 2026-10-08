@@ -61,6 +61,52 @@ try {
   assert.deepEqual(store.load().messages, messages, 'A failed replacement must leave the primary readable.');
   assert.equal(fs.readdirSync(tempRoot).some((name) => name.endsWith('.tmp')), false);
 
+  // Shared-state sync pushes the same messages about once a second; identical
+  // saves must not rewrite the primary, rotate the backup, or log a save.
+  const dedupeRoot = path.join(tempRoot, 'dedupe');
+  const logLines = [];
+  const dedupeStore = createPersistedChatHistoryStore({
+    log: (message) => logLines.push(message),
+    userDataPath: dedupeRoot,
+  });
+  const dedupePaths = dedupeStore.getPaths();
+  assert.equal(dedupeStore.save(messages).ok, true);
+  assert.equal(dedupeStore.save(nextMessages).ok, true);
+  const savedCountAfterChanges = logLines.filter((line) => line === 'persisted chat history saved').length;
+  assert.equal(savedCountAfterChanges, 2);
+  const primaryMtime = fs.statSync(dedupePaths.primaryPath).mtimeMs;
+  const backupText = fs.readFileSync(dedupePaths.backupPath, 'utf8');
+  for (let index = 0; index < 50; index += 1) {
+    const repeated = dedupeStore.save(nextMessages.map((message) => ({ ...message })));
+    assert.equal(repeated.ok, true);
+    assert.equal(repeated.unchanged, true);
+    assert.equal(repeated.messageCount, nextMessages.length);
+  }
+  assert.equal(logLines.filter((line) => line === 'persisted chat history saved').length, savedCountAfterChanges,
+    'Identical saves must not be written or logged.');
+  assert.equal(fs.statSync(dedupePaths.primaryPath).mtimeMs, primaryMtime);
+  assert.equal(fs.readFileSync(dedupePaths.backupPath, 'utf8'), backupText,
+    'Identical saves must keep the backup at the previous distinct history.');
+  assert.deepEqual(JSON.parse(backupText).messages, messages);
+
+  const thirdMessages = [...nextMessages, { id: 'message-3', role: 'user', text: '继续。', createdAt: 3 }];
+  const changed = dedupeStore.save(thirdMessages);
+  assert.equal(changed.ok, true);
+  assert.notEqual(changed.unchanged, true);
+  assert.deepEqual(dedupeStore.load().messages, thirdMessages);
+  assert.deepEqual(JSON.parse(fs.readFileSync(dedupePaths.backupPath, 'utf8')).messages, nextMessages,
+    'A real change must still rotate the previous primary into the backup.');
+
+  fs.rmSync(dedupePaths.primaryPath);
+  const rewritten = dedupeStore.save(thirdMessages);
+  assert.notEqual(rewritten.unchanged, true, 'A missing primary must be rewritten even if content is unchanged.');
+  assert.deepEqual(dedupeStore.load().messages, thirdMessages);
+
+  const reopenedStore = createPersistedChatHistoryStore({ userDataPath: dedupeRoot });
+  assert.deepEqual(reopenedStore.load().messages, thirdMessages);
+  assert.equal(reopenedStore.save(thirdMessages).unchanged, true,
+    'Saving what was just loaded must not rewrite the file.');
+
   console.log('persisted chat history store smoke passed');
 } finally {
   fs.rmSync(tempRoot, { force: true, recursive: true });

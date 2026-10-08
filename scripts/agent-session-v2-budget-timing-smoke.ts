@@ -46,28 +46,41 @@ const timingResult = await runAgentProductionSession({
   userGoal: 'timing smoke',
 });
 
+// The single read-only observation completes the task without a second
+// model call.
 assert.equal(timingResult.status, 'completed');
 assert.ok(timingResult.timing);
-assert.equal(timingResult.timing?.modelCallCount, 2);
+assert.equal(timingResult.timing?.modelCallCount, 1);
 assert.equal(timingResult.timing?.toolCallCount, 1);
 assert.ok((timingResult.timing?.modelDurationMs ?? 0) >= 1);
 assert.ok((timingResult.timing?.toolDurationMs ?? 0) >= 1);
 assert.equal(timingResult.toolResults[0]?.timing?.kind, 'tool');
 assert.equal(timingResult.steps.some((step) => step.timing?.kind === 'model'), true);
 
+// The slow model turn exhausts the duration budget, so the requested tool
+// must not run. (Asserting on the pre-model check alone depended on how long
+// session setup happened to take.)
+let durationBudgetToolCalls = 0;
 const durationBudgetResult = await runAgentProductionSession({
   maxDurationMs: 1,
   modelCaller: async () => {
     await delay(5);
     return JSON.stringify({
-      action: 'final_answer',
-      message: 'too slow',
+      action: 'tool_call',
+      args: { action: 'get_display_info' },
+      reason: 'Need one observation.',
+      tool: 'execute_desktop_observation',
     });
   },
   settings,
   sourceText: '/agent duration budget smoke',
+  toolExecutor: async () => {
+    durationBudgetToolCalls += 1;
+    return { ok: true, responseText: 'too late' };
+  },
   userGoal: 'duration budget smoke',
 });
+assert.equal(durationBudgetToolCalls, 0);
 
 assert.equal(durationBudgetResult.status, 'budget-exceeded');
 assert.equal(durationBudgetResult.timing?.stopReason, 'max-duration');

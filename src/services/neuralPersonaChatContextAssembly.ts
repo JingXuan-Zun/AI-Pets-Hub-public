@@ -45,17 +45,17 @@ export function buildNeuralPersonaChatInstruction(
 export function createNeuralPersonaChatPersonality(
   personality: PetPersonality,
   contribution: NeuralContextContribution,
+  options: { isolateClassicMemory?: boolean } = {},
 ): PetPersonality {
-  return {
-    ...personality,
-    chatHistoryMemory: '',
-    knowledgeBase: '',
-    systemInstruction: [
-      personality.systemInstruction.trim(),
-      buildNeuralPersonaChatInstruction(personality.name, contribution),
-    ].filter(Boolean).join('\n\n'),
-    userMemory: '',
-  };
+  const systemInstruction = [
+    personality.systemInstruction.trim(),
+    buildNeuralPersonaChatInstruction(personality.name, contribution),
+  ].filter(Boolean).join('\n\n');
+  // Only A/B evaluation isolates classic memory so the neural arm is measured on its own;
+  // real chat keeps the knowledge base and memories alongside the neural influences.
+  return options.isolateClassicMemory
+    ? { ...personality, chatHistoryMemory: '', knowledgeBase: '', memoryState: undefined, systemInstruction, userMemory: '' }
+    : { ...personality, systemInstruction };
 }
 
 export function resolveChatInputPersonality(

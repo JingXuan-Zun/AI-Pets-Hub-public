@@ -37,6 +37,46 @@ function resolveReferenceAudioPath(referencePath) {
   return preferredAudioPath?.audioPath ?? null;
 }
 
+function parseWavAudioDurationMs(buffer) {
+  if (buffer.length < 44 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
+    return null;
+  }
+
+  let offset = 12;
+  let channelCount = 0;
+  let sampleRate = 0;
+  let bitsPerSample = 0;
+  let dataSize = 0;
+
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString('ascii', offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const chunkDataOffset = offset + 8;
+
+    if (chunkId === 'fmt ' && chunkDataOffset + 16 <= buffer.length) {
+      channelCount = buffer.readUInt16LE(chunkDataOffset + 2);
+      sampleRate = buffer.readUInt32LE(chunkDataOffset + 4);
+      bitsPerSample = buffer.readUInt16LE(chunkDataOffset + 14);
+    } else if (chunkId === 'data') {
+      dataSize = chunkSize;
+      break;
+    }
+
+    offset += 8 + chunkSize + (chunkSize % 2);
+  }
+
+  if (!channelCount || !sampleRate || !bitsPerSample || !dataSize) {
+    return null;
+  }
+
+  const bytesPerSecond = sampleRate * channelCount * (bitsPerSample / 8);
+  if (!bytesPerSecond) {
+    return null;
+  }
+
+  return Math.round((dataSize / bytesPerSecond) * 1000);
+}
+
 function getWavAudioDurationMs(audioPath) {
   if (!audioPath || path.extname(audioPath).toLowerCase() !== '.wav') {
     return null;
@@ -49,43 +89,7 @@ function getWavAudioDurationMs(audioPath) {
     const bytesRead = fs.readSync(fileHandle, headerBuffer, 0, headerBuffer.length, 0);
     const buffer = headerBuffer.subarray(0, bytesRead);
 
-    if (buffer.length < 44 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
-      return null;
-    }
-
-    let offset = 12;
-    let channelCount = 0;
-    let sampleRate = 0;
-    let bitsPerSample = 0;
-    let dataSize = 0;
-
-    while (offset + 8 <= buffer.length) {
-      const chunkId = buffer.toString('ascii', offset, offset + 4);
-      const chunkSize = buffer.readUInt32LE(offset + 4);
-      const chunkDataOffset = offset + 8;
-
-      if (chunkId === 'fmt ' && chunkDataOffset + 16 <= buffer.length) {
-        channelCount = buffer.readUInt16LE(chunkDataOffset + 2);
-        sampleRate = buffer.readUInt32LE(chunkDataOffset + 4);
-        bitsPerSample = buffer.readUInt16LE(chunkDataOffset + 14);
-      } else if (chunkId === 'data') {
-        dataSize = chunkSize;
-        break;
-      }
-
-      offset += 8 + chunkSize + (chunkSize % 2);
-    }
-
-    if (!channelCount || !sampleRate || !bitsPerSample || !dataSize) {
-      return null;
-    }
-
-    const bytesPerSecond = sampleRate * channelCount * (bitsPerSample / 8);
-    if (!bytesPerSecond) {
-      return null;
-    }
-
-    return Math.round((dataSize / bytesPerSecond) * 1000);
+    return parseWavAudioDurationMs(buffer);
   } catch {
     return null;
   } finally {

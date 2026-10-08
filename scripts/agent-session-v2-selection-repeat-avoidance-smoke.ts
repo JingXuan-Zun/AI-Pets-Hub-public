@@ -176,7 +176,7 @@ const result = await runAgentProductionSession({
 assert.equal(modelCallCount, 2);
 assert.equal(result.status, 'needs-user');
 assert.equal(result.pendingApproval, null);
-assert.match(result.finalAnswer ?? '', /换用键盘导航|滚动后再观察|第几�?u);
+assert.match(result.finalAnswer ?? '', /换用键盘导航|滚动后再观察|第几个/u);
 assert.match(result.continuation.historyLines.join('\n'), /rejected repeated unverified action retry/u);
 assert.doesNotMatch(result.continuation.historyLines.join('\n'), /prepared visual-action approval after auto recovery/u);
 

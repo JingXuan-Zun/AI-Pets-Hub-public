@@ -1,22 +1,30 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { arePetVisualBoundsEqual, type PetVisualBounds } from './petVisualBounds';
-import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
-import { subscribeVideoItemInteractions } from '../../pet-runtime/video2d/videoItemInteraction';
+import { type PetAction, type PetVideoEmotionFolderAliases } from '../../types';
+import { useVideo2DPlaybackQueue } from '../../pet-runtime/video2d/useVideo2DPlaybackQueue';
 import { resolveVideo2DVisualBounds } from './video2dVisualBounds';
 
 interface PetVideo2DRendererProps {
+  emotionAction?: PetAction | null;
   isDragging?: boolean;
   enableItemInteractions?: boolean;
   modelUrl: string;
+  randomVideoPlaybackEnabled?: boolean;
+  videoEmotionFolderAliases?: PetVideoEmotionFolderAliases | null;
+  videoLibraryRootPath?: string | null;
   onVisualBoundsChange?: (bounds: PetVisualBounds) => void;
   pointerLookTarget?: { x: number; y: number } | null;
   scale: number;
 }
 
 const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
+  emotionAction = null,
   isDragging = false,
   enableItemInteractions = false,
   modelUrl,
+  randomVideoPlaybackEnabled = false,
+  videoEmotionFolderAliases = null,
+  videoLibraryRootPath = null,
   onVisualBoundsChange,
   pointerLookTarget,
   scale,
@@ -24,37 +32,19 @@ const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const reportedBoundsRef = useRef<PetVisualBounds | null>(null);
-  const [activeVideo, setActiveVideo] = useState<{ url: string; requestId: number } | null>(null);
-  const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    setActiveVideo(null);
-    if (!enableItemInteractions) return undefined;
-    const unsubscribe = subscribeVideoItemInteractions((interaction) => {
-      if (interaction.modelUrl !== modelUrl) return;
-      const requestId = ++requestIdRef.current;
-      const pickVideo = window.desktopPetShell?.pick2DVideoFromFolder;
-      if (!pickVideo) return;
-      void pickVideo({ folderPath: interaction.folderPath }).then((result) => {
-        if (requestId !== requestIdRef.current) return;
-        if (!result.ok || !result.videoUrl) {
-          pushFrontendRuntimeLog('model', 'video item folder playback failed', {
-            error: result.error ?? 'No playable video',
-          });
-          return;
-        }
-        setActiveVideo({ url: result.videoUrl, requestId });
-      }).catch((error) => {
-        if (requestId === requestIdRef.current) {
-          pushFrontendRuntimeLog('model', 'video item folder playback failed', { error: String(error) });
-        }
-      });
-    });
-    return () => {
-      requestIdRef.current += 1;
-      unsubscribe();
-    };
-  }, [enableItemInteractions, modelUrl]);
+  const {
+    activeVideo,
+    handleEnded,
+    handlePlaybackFailure,
+    shouldLoopBase,
+  } = useVideo2DPlaybackQueue({
+    emotionAction,
+    emotionFolderAliases: videoEmotionFolderAliases,
+    enableItemInteractions,
+    libraryRootPath: videoLibraryRootPath,
+    modelUrl,
+    randomPlaybackEnabled: randomVideoPlaybackEnabled,
+  });
 
   useEffect(() => {
     reportedBoundsRef.current = null;
@@ -64,15 +54,11 @@ const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
     const video = videoRef.current;
     if (!video) return;
     void video.play().catch((error) => {
-      pushFrontendRuntimeLog('model', 'video pet playback failed', {
-        modelUrl: activeVideo?.url ?? modelUrl,
-        error: String(error),
-      });
-      if (activeVideo) setActiveVideo((current) => (
-        current?.requestId === activeVideo.requestId ? null : current
-      ));
+      // A clip swap remounts the element and aborts the old play() promise.
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      handlePlaybackFailure(String(error));
     });
-  }, [activeVideo, modelUrl]);
+  }, [activeVideo, handlePlaybackFailure, modelUrl]);
 
   const translateX = pointerLookTarget ? Math.max(-8, Math.min(8, pointerLookTarget.x * 0.04)) : 0;
   const translateY = pointerLookTarget ? Math.max(-5, Math.min(5, pointerLookTarget.y * 0.025)) : 0;
@@ -137,19 +123,10 @@ const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
           muted
           playsInline
           autoPlay
-          loop={!activeVideo}
+          loop={shouldLoopBase}
           preload="auto"
-          onEnded={() => {
-            if (activeVideo) setActiveVideo((current) => (
-              current?.requestId === activeVideo.requestId ? null : current
-            ));
-          }}
-          onError={() => {
-            pushFrontendRuntimeLog('model', 'video pet playback failed', { modelUrl: activeVideo?.url ?? modelUrl });
-            if (activeVideo) setActiveVideo((current) => (
-              current?.requestId === activeVideo.requestId ? null : current
-            ));
-          }}
+          onEnded={handleEnded}
+          onError={() => handlePlaybackFailure('media error')}
           aria-label="2D 视频桌宠"
         />
       </div>

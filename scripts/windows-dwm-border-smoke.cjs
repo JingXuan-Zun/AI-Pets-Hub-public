@@ -12,6 +12,7 @@ assert.equal(
 );
 
 async function main() {
+  const { readModuleProjectFunction } = await import('./projectModuleSource.mjs');
   const {
     createDisableDwmBorderPowerShell,
     disableDwmSystemBorderForWindow,
@@ -58,24 +59,63 @@ async function main() {
     path.join(projectRoot, 'src', 'components', 'SettingsPanel.tsx'),
     'utf8',
   );
-  assert.match(
-    windowManagerSource,
-    /postDragInputProxyWindow = new BrowserWindow\([\s\S]*const inputProxyWindow = postDragInputProxyWindow;[\s\S]*disableDwmSystemBorderForWindow\(inputProxyWindow\)/u,
-    'the shaped transparent input proxy should disable its DWM system border before it is shown',
+  const inputProxyLifecycleSource = readModuleProjectFunction(
+    'electron/windowManager/postDragInputProxyLifecycle.cjs', 'createPostDragInputProxyLifecycle',
   );
   assert.match(
-    windowManagerSource,
-    /settingsWindow = nextSettingsWindow;[\s\S]*disableDwmSystemBorderForWindow\(nextSettingsWindow\)/u,
+    inputProxyLifecycleSource,
+    /createInputProxyWindowCreator\(\{[\s\S]*disableDwmSystemBorderForWindow/u,
+    'input proxy assembly must forward the native DWM operation',
+  );
+  const proxyCreatorSource = readModuleProjectFunction(
+    'electron/windowManager/inputProxyWindowCreation.cjs', 'createInputProxyWindowCreator',
+  );
+  const proxyConfiguratorSource = readModuleProjectFunction(
+    'electron/windowManager/inputProxyWindowCreation.cjs', 'createInputProxyWindowConfigurator',
+  );
+  assert.match(proxyCreatorSource,
+    /proxyState\.setWindow\(new BrowserWindow\([\s\S]*const inputProxyWindow = proxyState\.getWindow\(\);\s*configurePostDragInputProxyWindow\(inputProxyWindow\);\s*attachPostDragInputProxyEvents\(inputProxyWindow\)/u,
+    'native proxy configuration must precede event registration and loading');
+  assert.match(
+    proxyConfiguratorSource,
+    /inputProxyWindow\.setOpacity\(0\.01\);\s*void disableDwmSystemBorderForWindow\(inputProxyWindow\)/u,
+    'the shaped transparent input proxy should disable its DWM system border before it is shown',
+  );
+  const settingsCreatorSource = readModuleProjectFunction(
+    'electron/windowManager/settingsWindowLifecycle.cjs', 'createSettingsWindowCreator',
+  );
+  const settingsAssemblySource = readModuleProjectFunction(
+    'electron/windowManager/settingsWindowControllers.cjs', 'createSettingsWindowControllers',
+  );
+  assert.match(windowManagerSource, /createSettingsWindowControllers\(\{[\s\S]*?setSettingsWindow: \(win\) => \{ settingsWindow = win; \}/u);
+  assert.match(settingsAssemblySource, /createSettingsWindowCreator\(\{[\s\S]*?getSettingsWindow, setSettingsWindow,[\s\S]*?disableDwmSystemBorderForWindow, logWindowEvent,/u);
+  assert.match(
+    settingsCreatorSource,
+    /setSettingsWindow\(nextSettingsWindow\);[\s\S]*disableDwmSystemBorderForWindow\(nextSettingsWindow\)/u,
     'the settings window should remove the native DWM border so every CSS edge has the same color',
   );
   assert.match(
     windowManagerSource,
-    /const nextSettingsWindow = new BrowserWindow\([\s\S]*?resizable: false/u,
+    /getBrowserWindowIconOptions, SETTINGS_PANEL_WINDOW_BOUNDS, path, baseDirectory: __dirname, sessionPartition,/u,
+    'settings options should receive the original dependencies and preload directory',
+  );
+  assert.match(settingsAssemblySource, /createSettingsWindowOptionsBuilder\(\{\s*getBrowserWindowIconOptions, SETTINGS_PANEL_WINDOW_BOUNDS, path, baseDirectory, sessionPartition,/u);
+  assert.match(
+    settingsCreatorSource,
+    /const nextSettingsWindow = new BrowserWindow\(buildSettingsWindowOptions\(initialBounds\)\)/u,
+    'settings window should consume the extracted options',
+  );
+  const settingsOptionsSource = readModuleProjectFunction(
+    'electron/windowManager/settingsWindowOptions.cjs', 'createSettingsWindowOptionsBuilder',
+  );
+  assert.match(
+    settingsOptionsSource,
+    /resizable: false/u,
     'the settings window should use custom resize handles without a competing native resize frame',
   );
   assert.match(
-    windowManagerSource,
-    /const nextSettingsWindow = new BrowserWindow\([\s\S]*?transparent: true[\s\S]*?backgroundColor: '#00000000'/u,
+    settingsOptionsSource,
+    /transparent: true[\s\S]*?backgroundColor: '#00000000'/u,
     'the settings window should use a transparent native surface so rounded CSS corners do not expose a square background',
   );
   assert.match(
@@ -85,12 +125,12 @@ async function main() {
   );
   assert.match(
     settingsPanelSource,
-    /aria-hidden="true"[\s\S]*absolute inset-0 z-max border border-\[#cbd5e1\]/u,
-    'the settings panel should use one explicit four-sided frame layer during resize',
+    /aria-hidden="true"[\s\S]*pointer-events-none absolute z-max border border-border[\s\S]*style=\{\{ inset: 1 \}\}/u,
+    'the settings panel frame should stay one pixel inside the transparent window edge during resize',
   );
   assert.doesNotMatch(
     settingsPanelSource,
-    /rounded-(?:2xl|lg) border border-\[#cbd5e1\]/u,
+    /rounded-(?:2xl|lg) border border-(?:\[#cbd5e1\]|border)/u,
     'the settings panel root should not keep a second competing border source',
   );
   assert.doesNotMatch(

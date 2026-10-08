@@ -1,6 +1,7 @@
+import { readMessageProjectFile as readProjectFile } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
 import { analyzeAgentCapturePixels } from '../src/agent/agentCaptureQuality';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 function createSolidFrame(width: number, height: number, color: [number, number, number, number]) {
   const data = new Uint8ClampedArray(width * height * 4);

@@ -1,5 +1,11 @@
 import { type CSSProperties } from 'react';
-import { type Avatar3DRuntimeBackend, type ModelType, type PetAction, type PetModelMotionBinding } from '../../types';
+import {
+  type Avatar3DRuntimeBackend,
+  type ModelType,
+  type PetAction,
+  type PetModelMotionBinding,
+  type PetVideoEmotionFolderAliases,
+} from '../../types';
 import { type PetContentManifest } from '../../pet-runtime/content/petContentManifest';
 import { type PetHoverState } from '../../pet-runtime/interactions/petHoverController';
 import { type Pet2DRenderAdapterState } from './pet2dRenderAdapterState';
@@ -242,6 +248,9 @@ type ResolvePetVisualRendererPropsOptions = {
   motionBindings?: PetModelMotionBinding[];
   modelUrl: string;
   renderKind?: 'video' | 'gif';
+  randomVideoPlaybackEnabled?: boolean;
+  videoEmotionFolderAliases?: PetVideoEmotionFolderAliases | null;
+  videoLibraryRootPath?: string | null;
   sequenceFrames?: string[];
   onRuntimeEvent?: AvatarRuntimeEventListener;
   onVisualBoundsChange?: ((bounds: PetVisualBounds) => void) | undefined;
@@ -277,6 +286,9 @@ export function resolvePetVisualRendererProps({
   motionBindings = [],
   modelUrl,
   renderKind,
+  randomVideoPlaybackEnabled = false,
+  videoEmotionFolderAliases = null,
+  videoLibraryRootPath = null,
   sequenceFrames = [],
   onRuntimeEvent,
   onVisualBoundsChange,
@@ -317,6 +329,9 @@ export function resolvePetVisualRendererProps({
     motionBindings,
     modelUrl,
     renderKind,
+    randomVideoPlaybackEnabled,
+    videoEmotionFolderAliases,
+    videoLibraryRootPath,
     sequenceFrames,
     onRuntimeEvent,
     onVisualBoundsChange,

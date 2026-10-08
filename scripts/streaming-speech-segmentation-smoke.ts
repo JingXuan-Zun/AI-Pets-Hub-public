@@ -46,9 +46,9 @@ assert.equal(
   spokenText,
   '哎呀…这笑声…主人又在打什么坏主意了？该不会是想趁我刚烤好派，就把人家拐到楼上去吧…？',
 );
-assert.equal(spokenText.includes('假装嗔�?), false);
+assert.equal(spokenText.includes('假装嗔怪'), false);
 
-const stabilitySample = '第一句先稳定住语气。第二句继续同一个语气，不要突然变成另一种情绪。第三句再补充一点内容，让流式播报有机会切成多段。第四句收尾�?;
+const stabilitySample = '第一句先稳定住语气。第二句继续同一个语气，不要突然变成另一种情绪。第三句再补充一点内容，让流式播报有机会切成多段。第四句收尾。';
 
 function collectStreamingSegments(voiceToneStability: number) {
   let buffer = '';

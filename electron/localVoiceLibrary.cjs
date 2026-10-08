@@ -146,4 +146,5 @@ function createLocalVoiceLibrary({ app, projectRoot }) {
 
 module.exports = {
   createLocalVoiceLibrary,
+  resolveVoiceRootPath,
 };

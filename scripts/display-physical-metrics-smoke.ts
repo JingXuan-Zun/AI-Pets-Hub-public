@@ -31,7 +31,7 @@ assert.match(
 
 assert.match(
   captureServiceSource,
-  /width: Math\.max\(1, Math\.round\(bounds\.width \* scaleFactor\)\)[\s\S]*nativeWidth: nativeBounds\?\.width \?\? fallbackNativeBounds\.width/u,
+  /nativeWidth: nativeBounds\?\.width \?\? fallbackNativeBounds\.width[\s\S]*width: Math\.max\(1, Math\.round\(bounds\.width \* scaleFactor\)\)/u,
   'display list should include physical pixel dimensions derived from scale factor',
 );
 

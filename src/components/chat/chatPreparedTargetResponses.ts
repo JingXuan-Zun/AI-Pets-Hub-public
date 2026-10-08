@@ -24,6 +24,7 @@ import {
 } from './group/topic/groupTopicPersistence';
 import { prepareStoryTurnRuntime, runStoryNarratorTurn } from './story/storyTurnRuntime';
 import type { StorySessionState } from './story/storyTypes';
+import { resolvePetVoiceSettings } from '../../voice/petVoiceSettings';
 
 type TargetResponseOptions = Pick<
   RunPreparedChatSendRequestOptions,
@@ -249,7 +250,8 @@ function finalizeTargetResponses(context: TargetResponseContext) {
 export async function runPreparedTargetResponses(options: TargetResponseOptions) {
   const context = createTargetResponseContext(options);
   if (!options.preparedRequest.isGroupMode) {
-    options.warmLocalReplyVoice(options.preparedRequest.currentConfig.settings);
+    const { currentConfig, targetSlots } = options.preparedRequest;
+    options.warmLocalReplyVoice(resolvePetVoiceSettings(currentConfig, targetSlots[0]?.id));
   }
   initializeGroupRuntime(context);
   const storyTurnRuntime = await prepareStoryTurnRuntime({

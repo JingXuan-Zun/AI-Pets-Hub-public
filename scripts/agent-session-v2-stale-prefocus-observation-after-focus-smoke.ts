@@ -112,6 +112,8 @@ const result = await runAgentProductionSession({
           confidence: 'high',
           coordinateAuditStatus: 'coordinate_ok',
           coordinateConfidence: 'high',
+          // Declared bounds let the actionable-area gate accept the point.
+          elementBounds: { coordinateSpace: 'native-screen', height: 44, width: 150, x: 1125, y: 678 },
           elementCenter: { coordinateSpace: 'native-screen', x: 1200, y: 700 },
           finalWindow: { hwnd: 3541984, processName: 'wegame', title: 'WeGame' },
           primaryAction: 'Start',

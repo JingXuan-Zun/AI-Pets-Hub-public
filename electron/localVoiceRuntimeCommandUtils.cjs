@@ -157,6 +157,41 @@ function createLineReporter(callback) {
   };
 }
 
+function emitInstallProgress(onProgress, state) {
+  if (typeof onProgress !== 'function') {
+    return;
+  }
+
+  onProgress({
+    stage: state.stage,
+    currentStep: state.currentStep,
+    executable: state.executable,
+    messages: [...state.messages],
+    error: state.error,
+    missingPackages: [...state.missingPackages],
+  });
+}
+
+function pushInstallMessage(state, onProgress, onMessage, message) {
+  const normalized = stripAnsiCodes(message).trim();
+  if (!normalized) {
+    return;
+  }
+
+  if (state.messages[state.messages.length - 1] !== normalized) {
+    state.messages.push(normalized);
+    if (state.messages.length > 80) {
+      state.messages = state.messages.slice(-80);
+    }
+  }
+
+  state.currentStep = normalized;
+  if (typeof onMessage === 'function') {
+    onMessage(normalized);
+  }
+  emitInstallProgress(onProgress, state);
+}
+
 function createInstallProgressReporter(onProgress, onMessage) {
   const state = {
     stage: 'starting',
@@ -167,60 +202,29 @@ function createInstallProgressReporter(onProgress, onMessage) {
     missingPackages: [],
   };
 
-  function emit() {
-    if (typeof onProgress !== 'function') {
-      return;
-    }
-
-    onProgress({
-      stage: state.stage,
-      currentStep: state.currentStep,
-      executable: state.executable,
-      messages: [...state.messages],
-      error: state.error,
-      missingPackages: [...state.missingPackages],
-    });
-  }
-
   return {
     getMessages() {
       return [...state.messages];
     },
     setStage(stage) {
       state.stage = stage;
-      emit();
+      emitInstallProgress(onProgress, state);
     },
     setExecutable(executable) {
       state.executable = executable || null;
-      emit();
+      emitInstallProgress(onProgress, state);
     },
     setError(error) {
       state.error = error ? String(error) : null;
-      emit();
+      emitInstallProgress(onProgress, state);
     },
     setMissingPackages(missingPackages) {
       state.missingPackages = uniqueStrings(Array.isArray(missingPackages) ? missingPackages : []);
-      emit();
+      emitInstallProgress(onProgress, state);
     },
     push(message) {
-      const normalized = stripAnsiCodes(message).trim();
-      if (!normalized) {
-        return;
-      }
-
-      if (state.messages[state.messages.length - 1] !== normalized) {
-        state.messages.push(normalized);
-        if (state.messages.length > 80) {
-          state.messages = state.messages.slice(-80);
-        }
-      }
-
-      state.currentStep = normalized;
-      if (typeof onMessage === 'function') {
-        onMessage(normalized);
-      }
-      emit();
-    },
+      pushInstallMessage(state, onProgress, onMessage, message);
+    }
   };
 }
 

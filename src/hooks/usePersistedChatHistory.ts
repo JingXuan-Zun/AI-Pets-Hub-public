@@ -15,11 +15,19 @@ export function usePersistedChatHistory() {
     let disposed = false;
     let saveTimer: number | null = null;
     let latestMessages = desktopPetChatStore.getState().messages;
+    let lastSavedSerialized: string | null = null;
     let unsubscribe = () => undefined;
 
+    // The chat store emits for every field (typing, speech, animation state…);
+    // only write when the persisted messages themselves changed.
     const saveLatestMessages = () => {
       saveTimer = null;
-      void persistChatHistory(latestMessages);
+      const serialized = JSON.stringify(latestMessages);
+      if (serialized === lastSavedSerialized) return;
+      lastSavedSerialized = serialized;
+      void persistChatHistory(latestMessages).then((saved) => {
+        if (!saved && lastSavedSerialized === serialized) lastSavedSerialized = null;
+      });
     };
     const scheduleSave = () => {
       if (saveTimer !== null) window.clearTimeout(saveTimer);
@@ -28,9 +36,8 @@ export function usePersistedChatHistory() {
     const onPageHide = () => {
       if (saveTimer !== null) {
         window.clearTimeout(saveTimer);
-        saveTimer = null;
       }
-      void persistChatHistory(latestMessages);
+      saveLatestMessages();
     };
 
     void loadPersistedChatHistory()
@@ -42,8 +49,11 @@ export function usePersistedChatHistory() {
       .finally(() => {
         if (disposed) return;
         latestMessages = desktopPetChatStore.getState().messages;
+        lastSavedSerialized = JSON.stringify(latestMessages);
         unsubscribe = desktopPetChatStore.subscribe(() => {
-          latestMessages = desktopPetChatStore.getState().messages;
+          const nextMessages = desktopPetChatStore.getState().messages;
+          if (nextMessages === latestMessages) return;
+          latestMessages = nextMessages;
           scheduleSave();
         });
         window.addEventListener('pagehide', onPageHide);

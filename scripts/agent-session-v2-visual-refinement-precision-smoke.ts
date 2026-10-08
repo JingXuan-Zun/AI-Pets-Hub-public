@@ -11,8 +11,27 @@ let toolCallCount = 0;
 
 const result = await runAgentProductionSession({
   maxSteps: 4,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
+    if (modelCallCount === 2) {
+      // The focused crop verified the small Start button; the model selects
+      // the click, which pauses for approval.
+      assert.match(userInput, /visual refinement result:/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: {
+          stepsJson: JSON.stringify([
+            {
+              args: { action: 'click', x: 1150, y: 790 },
+              reason: 'Click the verified small Start button.',
+              tool: 'execute_desktop_input',
+            },
+          ]),
+        },
+        reason: 'The focused crop verified the Start button; request approval for the click.',
+        tool: 'execute_desktop_sequence',
+      });
+    }
     assert.equal(modelCallCount, 1);
     return JSON.stringify({
       action: 'tool_call',
@@ -191,13 +210,13 @@ const result = await runAgentProductionSession({
   userGoal: 'start Example Game inside Launcher',
 });
 
-assert.equal(modelCallCount, 1);
+assert.equal(modelCallCount, 2);
 assert.equal(toolCallCount, 2);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1150/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /790/u);
 assert.match(result.continuation.historyLines.join('\n'), /visual refinement result/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval after visual refinement/u);
+assert.match(result.continuation.historyLines.join('\n'), /selected approval-required tool:/u);
 
 console.log('agent session v2 visual refinement precision smoke ok');

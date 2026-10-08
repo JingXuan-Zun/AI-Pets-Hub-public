@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 
 const require = createRequire(import.meta.url);
 const { createAppLauncherService } = require('../electron/appLauncherService.cjs') as {
@@ -30,9 +30,7 @@ const { createAppLauncherService } = require('../electron/appLauncherService.cjs
 
 const tempRoot = mkdtempSync(path.join(tmpdir(), 'ai-desktop-pet-browser-app-'));
 const launcherSource = readProjectFile('electron/appLauncherService.cjs');
-const diskFallbackFunctionSource = launcherSource.match(
-  /async function searchDiskFallbackApps[\s\S]*?\n  function resolveDirectAppPath/u,
-)?.[0] ?? '';
+const diskFallbackFunctionSource = readProjectFile('electron/appLauncher/diskFallbackIndex.cjs');
 const originalProgramFiles = process.env.ProgramFiles;
 const originalProgramFilesX86 = process.env['ProgramFiles(x86)'];
 const originalLocalAppData = process.env.LOCALAPPDATA;

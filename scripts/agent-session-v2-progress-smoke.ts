@@ -1,3 +1,4 @@
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
@@ -6,10 +7,8 @@ import {
   type AgentSessionV2ProgressEvent,
 } from '../src/agent/legacy/index.ts';
 import { type PetConfig } from '../src/types.ts';
-import {
-  assertSourceMatches,
-  readProjectSources,
-} from './smokeTestHarness.ts';
+import { assertSourceMatches } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 
 const settings = {} as PetConfig['settings'];
 
@@ -76,7 +75,9 @@ const result = await runAgentProductionSession({
 });
 
 assert.equal(result.status, 'completed');
-assert.equal(result.finalAnswer, 'progress smoke done');
+// Verified read-only observations can complete without another model iteration.
+assert.equal(result.finalAnswer, 'Display result');
+assert.equal(modelCallCount, 1);
 assert.deepEqual(
   events.map((event) => event.type),
   [
@@ -84,15 +85,13 @@ assert.deepEqual(
     'model-decision',
     'tools-running',
     'tool-result',
-    'model-thinking',
-    'model-decision',
   ],
 );
 assert.equal(events[0]?.continuation.steps.length, 0);
 assert.equal(events[1]?.continuation.steps.length, 1);
 assert.equal(events[2]?.continuation.steps.length, 1);
 assert.equal(events[3]?.continuation.toolResults.length, 1);
-assert.equal(events[5]?.continuation.steps[events[5].continuation.steps.length - 1]?.action, 'final_answer');
+assert.equal(result.continuation.toolResults.length, 1);
 
 const {
   controller: controllerSource,
@@ -106,16 +105,22 @@ assertSourceMatches(controllerSource, /function runAgentToolExecutorWithLiveProg
 assertSourceMatches(controllerSource, /phase: 'started'/u);
 assertSourceMatches(controllerSource, /正在调用工具/u);
 assertSourceMatches(controllerSource, /工具调用完成/u);
-assertSourceMatches(controllerSource, /runAgentToolExecutorWithLiveProgress\(\{[\s\S]*messageId: runMessageId/u);
-assertSourceMatches(controllerSource, /runAgentToolExecutorWithLiveProgress\(\{[\s\S]*messageId,/u);
+const preparedRun = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'runPreparedAgentProductionSession');
+const approvalRun = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'resolveAgentApprovalRequest');
+const guardedToolFactory = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'createAgentRunToolExecutor');
+assertSourceMatches(preparedRun, /createAgentRunToolExecutor\(\{\s*isCancelled,\s*executor: onAgentChatCommand,\s*messageId: runMessageId,\s*missingExecutorResult,\s*signal: abortController\.signal/u);
+assertSourceMatches(approvalRun, /createApprovedAgentRuntimeCallbacks\(\{\s*approval, canonicalEventJournal, signal: abortController\.signal, executor: onAgentChatCommand,\s*messageId, missingExecutorResult, isCancelled, configRef,/u);
+const approvedCallbackAssembly = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'createApprovedAgentRuntimeCallbacks');
+assertSourceMatches(approvedCallbackAssembly, /createAgentRunToolExecutor\(\{\s*isCancelled,\s*executor: executor,\s*messageId: messageId,\s*missingExecutorResult,\s*signal: signal,/u);
+assertSourceMatches(guardedToolFactory, /return runAgentToolExecutorWithLiveProgress\(\{ command, executor, messageId, signal \}\)/u);
 assertSourceMatches(controllerSource, /createAgentWorkStages\(plan/u);
 assertSourceMatches(controllerSource, /createAgentRunTrace\(plan/u);
 assertSourceMatches(messageBubbleSource, /const liveStages = \(process\.stages \?\? \[\]\)\.filter/u);
-assertSourceMatches(messageBubbleSource, /const sessionSteps = process\.agentSessionV2\?\.steps \?\? \[\]/u);
+assertSourceMatches(messageBubbleSource, /const sessionSteps = resolveChatAgentRuntimeContinuation\(process\)\?\.steps \?\? \[\]/u);
 assert.ok(
   messageBubbleSource.indexOf('const liveStages = (process.stages ?? []).filter')
-    < messageBubbleSource.indexOf('const sessionSteps = process.agentSessionV2?.steps ?? []'),
-  'compact Agent panel should surface live tool progress before older AgentSessionV2 steps',
+    < messageBubbleSource.indexOf('const sessionSteps = resolveChatAgentRuntimeContinuation(process)?.steps ?? []'),
+  'compact Agent panel should surface live tool progress before persisted Runtime steps',
 );
 
 console.log('agent session v2 progress smoke ok');

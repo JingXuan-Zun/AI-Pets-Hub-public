@@ -49,6 +49,7 @@ interface SimulationState {
   dragInfluences?: NeuralPersonaGraphDragInfluences;
   dragLinkMaximums?: ReadonlyMap<PhysicsLink, number>;
   extremeRecovery: boolean;
+  extremeRecoveryFrames: number;
   pinnedNodeId?: string;
   settleRemaining: number;
 }
@@ -173,9 +174,8 @@ function simulateStep(
   ));
   if (config.collisionStrength > 0 && !state.pinnedNodeId) resolveNeuralPersonaGraphCollisions(active.nodes, config.collisionDistance);
   if (state.extremeRecovery && !state.pinnedNodeId) {
-    recoverNeuralPersonaGraphExtremeStretch(
-      active.links, config.linkDistance, config.maxVelocity * 1.5, timeScale,
-    );
+    recoverNeuralPersonaGraphExtremeStretch(active.links, config.linkDistance,
+      config.maxVelocity * 1.5, timeScale, state.extremeRecoveryFrames += timeScale);
   }
   const decay = nodes.some((node) => node.pinnedX !== undefined) ? 0.985 : 0.94;
   state.alpha *= Math.pow(decay, timeScale);
@@ -261,7 +261,7 @@ function releasePhysicsNode(
   state.extremeRecovery = hasNeuralPersonaGraphExtremeStretch(
     links, config.linkDistance,
   );
-  state.bestLinkError = undefined;
+  state.bestLinkError = undefined; state.extremeRecoveryFrames = 0;
   state.settleRemaining = NEURAL_PERSONA_GRAPH_SETTLE_BUDGET;
   state.alpha = Math.max(state.alpha, 0.42);
 }
@@ -273,7 +273,7 @@ export function createNeuralPersonaGraphPhysics(layoutNodes: NeuralPersonaLayout
   const links = createLinks(nodes, edges);
   const state: SimulationState = {
     alpha: 0, center: neuralPersonaGraphCenter(nodeList),
-    extremeRecovery: false, settleRemaining: 0,
+    extremeRecovery: false, extremeRecoveryFrames: 0, settleRemaining: 0,
   };
   return {
     getPosition: (nodeId: string) => nodes.get(nodeId) ?? null,

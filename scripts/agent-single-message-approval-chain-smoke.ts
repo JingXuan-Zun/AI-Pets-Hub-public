@@ -1,5 +1,7 @@
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
+
 
 const {
   rawControllerSource,
@@ -13,6 +15,18 @@ const {
   messageBubbleSource: 'src/components/chat/PetChatConversationMessageBubble.tsx',
 });
 const controllerSource = `${rawControllerSource}\n${approvalStoreSource}`;
+const initialRun = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'runPreparedAgentProductionSession');
+const approvalRun = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'resolveAgentApprovalRequest');
+const initialAttachment = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'attachAgentRunPendingApproval');
+const approvalAttachment = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'attachAgentPendingApproval');
+const initialStage = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'presentAgentRunPendingApproval');
+const approvalStage = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'presentAgentPendingApproval');
+const creationStage = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'createPendingApprovalStageMessage');
+const initialReplyStage = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'speakInitialAgentResultReply');
+const approvalReplyStage = readModuleProjectFunction('src/components/chat/agentRunController.ts', 'speakApprovedAgentResultReply');
+assert.match(creationStage, /createAgentApprovalMessage\(\{[\s\S]*agentRuntime,[\s\S]*command: pendingApproval\.command,[\s\S]*plan: pendingApproval\.plan/u);
+assert.match(initialStage, /const approvalMessage = await createPendingApprovalStageMessage\(options\);[\s\S]*attachAgentRunPendingApproval\(messageId, approvalMessage\)/u);
+assert.match(approvalStage, /const approvalMessage = await createPendingApprovalStageMessage\(options\);[\s\S]*attachAgentPendingApproval\(messageId, approvalMessage\)/u);
 
 assert.match(
   controllerSource,
@@ -28,15 +42,16 @@ assert.match(
 
 assert.match(
   controllerSource,
-  /const approvalMessage = await createAgentApprovalMessage\(\{[\s\S]*agentRuntime: result\.continuation,[\s\S]*command: result\.pendingApproval\.command,[\s\S]*plan: result\.pendingApproval\.plan/u,
+  /await presentAgentRunPendingApproval\(\{[\s\S]*agentRuntime: result\.continuation, pendingApproval: result\.pendingApproval,[\s\S]*initial: true/u,
   'Initial Agent Runtime approval should create the approval card from the pending approval command',
 );
 
 assert.match(
-  controllerSource,
-  /updateAgentRunMessage\(runMessageId,[\s\S]*mergeAgentApprovalMessageIntoExistingMessage\(message, approvalMessage\)/u,
+  initialRun,
+  /await presentAgentRunPendingApproval\(\{[\s\S]*messageId: runMessageId/u,
   'Initial AgentSessionV2 approval should update the run message instead of appending a new chat bubble',
 );
+assert.match(initialAttachment, /if \(messageId\) \{[\s\S]*updateAgentRunMessage\(messageId,[\s\S]*mergeAgentApprovalMessageIntoExistingMessage\(message, approvalMessage\)[\s\S]*else \{[\s\S]*desktopPetChatStore\.addMessage\(approvalMessage\)/u);
 
 assert.match(
   controllerSource,
@@ -64,15 +79,17 @@ assert.match(
 
 assert.match(
   controllerSource,
-  /const approvalMessage = await createAgentApprovalMessage\(\{[\s\S]*agentRuntime: sessionResult\.continuation,[\s\S]*command: sessionResult\.pendingApproval\.command,[\s\S]*plan: sessionResult\.pendingApproval\.plan/u,
+  /return presentAgentPendingApproval\(\{[\s\S]*agentRuntime: sessionResult\.continuation, pendingApproval: sessionResult\.pendingApproval/u,
   'Follow-up approvals should create the approval card from the next pending approval command',
 );
 
 assert.match(
-  controllerSource,
-  /updateAgentApprovalMessage\(messageId,[\s\S]*mergeAgentApprovalMessageIntoExistingMessage\(message, approvalMessage\)/u,
+  approvalRun,
+  /dispatchApprovedPendingPresentation\(\{[\s\S]*preparedRequest, messageId \}\);\s*if \(pendingPresentation\) await pendingPresentation;/u,
   'Follow-up approvals should replace the same approval message instead of appending another one',
 );
+assert.match(approvalAttachment, /updateAgentApprovalMessage\(messageId,[\s\S]*mergeAgentApprovalMessageIntoExistingMessage\(message, approvalMessage\)/u);
+assert.doesNotMatch(approvalAttachment, /addMessage/u, 'approval continuation must reuse its message even when no update is possible');
 
 assert.match(
   controllerSource,
@@ -123,15 +140,17 @@ assert.match(
 );
 
 assert.match(
-  controllerSource,
-  /compactReplyIntoMessageId: runMessageId/u,
+  initialRun,
+  /speakInitialAgentResultReply\(\{[\s\S]*messageId: runMessageId/u,
   'Initial AgentSessionV2 final reply should compact into the run message',
 );
+assert.match(initialReplyStage, /return speakGroupTaskProductionResult\(\{[\s\S]*compactReplyIntoMessageId: messageId/u);
 
 assert.match(
-  controllerSource,
-  /compactReplyIntoMessageId: messageId/u,
+  approvalRun,
+  /speakApprovedAgentResultReply\(\{[\s\S]*preparedRequest, messageId,/u,
   'Approved AgentSessionV2 final reply should compact into the approval message',
 );
+assert.match(approvalReplyStage, /return speakGroupTaskProductionResult\(\{[\s\S]*compactReplyIntoMessageId: messageId/u);
 
 console.log('agent single message approval chain smoke ok');

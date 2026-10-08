@@ -7,12 +7,14 @@ const {
   approvedOutcome: approvedOutcomeSource,
   index: indexSource,
   runtime: runtimeSource,
-  session: sessionSource,
+  session: sessionEntrySource,
+  approvedResult: sessionSource,
 } = readProjectSources({
   approvedOutcome: 'src/agent/runtime/agentApprovedActionOutcomeRuntime.ts',
   index: 'src/agent/index.ts',
   runtime: 'src/agent/agentActionRuntime.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  approvedResult: 'src/agent/productionSession/approvedResultContinuation.ts',
 });
 
 assertSourceMatches(
@@ -60,5 +62,9 @@ assertSourceMatches(
   /export \* from '\.\/agentActionRuntime';/u,
   'ActionRuntime should be exported through the agent barrel.',
 );
+
+assertSourceMatches(sessionEntrySource, /from '\.\/productionSession\/approvedResultContinuation'/u);
+assertSourceMatches(sessionEntrySource, /createAgentProductionApprovedResultContinuation\(\{/u);
+assertSourceMatches(sessionEntrySource, /await executeApprovedResultContinuation\(approvedToolResult\)/u);
 
 console.log('agent session v2 approved action runtime seam smoke ok');

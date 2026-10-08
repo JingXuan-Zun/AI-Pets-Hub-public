@@ -37,6 +37,26 @@ function getAgentAutoRecoveryPostActionState(entry: AgentRuntimeToolResultEntry)
   return match?.[1]?.trim().toLowerCase() || 'unknown';
 }
 
+// A read-only refinement that follows a recovery read does not restate the
+// post-action state, so fall back to the latest recovery evidence collected
+// since the previous action attempt.
+function resolveAgentRecoverySourcePostActionState(
+  toolResults: AgentRuntimeToolResultEntry[],
+  previousAttempt: AgentRuntimeToolResultEntry,
+) {
+  for (let index = toolResults.length - 1; index >= 0; index -= 1) {
+    const entry = toolResults[index];
+    if (!entry || entry === previousAttempt) {
+      break;
+    }
+    const state = getAgentAutoRecoveryPostActionState(entry);
+    if (state !== 'unknown') {
+      return state;
+    }
+  }
+  return 'unknown';
+}
+
 function normalizeAgentRecoveryText(value: unknown) {
   return typeof value === 'string' ? value.replace(/\s+/gu, ' ').trim() : '';
 }
@@ -148,7 +168,7 @@ export function createAgentPostActionRecoveryFollowUpText(options: {
     ...(result.receipt?.evidenceLines ?? []).slice(0, 8),
     ...(result.observations ?? []).slice(0, 8),
   ];
-  const postActionState = getAgentAutoRecoveryPostActionState(latestEntry);
+  const postActionState = resolveAgentRecoverySourcePostActionState(toolResults, previousAttempt);
   const previousAttemptSignature = createAgentActionPrimitiveSignature(previousAttempt.command);
   const rankedRecoveryStrategies = createAgentRankedRecoveryStrategies({
     dependencies: dependencies.recoveryStrategyDependencies,

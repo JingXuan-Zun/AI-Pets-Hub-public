@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 
 const appLauncherSource = readProjectFile('electron/appLauncherService.cjs');
 const launchRuntimeSource = readProjectFile('src/agent/agentRuntimeDesktopLaunchTools.ts');

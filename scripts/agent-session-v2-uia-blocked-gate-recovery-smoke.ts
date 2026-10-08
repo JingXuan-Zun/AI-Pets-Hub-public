@@ -129,8 +129,20 @@ const executedCommands: AgentChatCommand[] = [];
 
 const result = await runAgentProductionSession({
   maxSteps: 3,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
+
+    if (modelCallCount === 2) {
+      // The read-only blocker read surfaces a manual administrator gate; the
+      // model hands it to the user instead of attempting any action.
+      assert.match(userInput, /Please confirm administrator permission before continuing/u);
+      assert.match(userInput, /postActionState=blocked/u);
+      return JSON.stringify({
+        action: 'ask_user',
+        message: 'Launcher needs you to confirm administrator permission before Example Game can start.',
+        reason: 'A manual administrator permission gate blocks the launch.',
+      });
+    }
 
     if (modelCallCount === 1) {
       return JSON.stringify({
@@ -146,7 +158,7 @@ const result = await runAgentProductionSession({
       });
     }
 
-    throw new Error('model should not be called after an automatic blocker read identifies a manual gate');
+    throw new Error('model should not be called again after the manual gate is reported');
   },
   settings,
   sourceText: '/agent start Example Game inside Launcher',
@@ -162,7 +174,9 @@ const result = await runAgentProductionSession({
     assert.equal(command.toolCall?.name, 'locate_screen_elements');
     assert.equal(command.toolCall.input.action, 'describe_elements');
     assert.equal(command.toolCall.input.forceRefresh, true);
-    assert.match(String(command.toolCall.input.question), /AgentSessionV2 auto recovery observation/u);
+    // Before any action attempt, the structured blocker-read proposal runs as
+    // a read-only refinement using the proposal's own args.
+    assert.match(String(command.toolCall.input.question), /Read visible blocker/u);
     assert.match(String(command.toolCall.input.question), /Do not click anything/u);
     return createVisibleBlockerReadResult();
   },
@@ -170,10 +184,10 @@ const result = await runAgentProductionSession({
 });
 
 assert.equal(result.status, 'needs-user');
-assert.equal(modelCallCount, 1);
+assert.equal(modelCallCount, 2);
 assert.equal(executedCommands.length, 2);
 assert.equal(executedCommands[1]?.toolCall?.name, 'locate_screen_elements');
-assert.match(result.continuation.historyLines.join('\n'), /automatic recovery observation/u);
+assert.match(result.continuation.historyLines.join('\n'), /visual refinement result/u);
 assert.match(result.continuation.historyLines.join('\n'), /postActionState=blocked/u);
 assert.match(result.finalAnswer, /administrator permission/u);
 

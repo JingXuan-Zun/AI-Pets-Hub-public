@@ -1,5 +1,6 @@
+import { readMessageProjectFile as readProjectFile } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 const chatTypesSource = readProjectFile('src/types.ts');
 const controllerSource = readProjectFile('src/components/chat/agentRunController.ts');

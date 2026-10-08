@@ -106,7 +106,7 @@ const bindings: PetModelMotionBinding[] = [
     kind: 'expression',
     motionKey: 'happy',
     name: '害羞',
-    semanticAliases: ['脸红', '不好意�?],
+    semanticAliases: ['脸红', '不好意思'],
     semanticDescription: 'Live2D expression for a shy blush reaction.',
     semanticTags: ['表情', '害羞'],
     sourceUrl: 'C:\\models\\live2d\\expressions\\害羞.exp3.json',
@@ -133,7 +133,7 @@ const bindings: PetModelMotionBinding[] = [
     id: 'binding-hover',
     motionKey: 'hover-head',
     name: '摸头',
-    semanticAliases: ['摸脑�?, '拍拍�?],
+    semanticAliases: ['摸脑袋', '拍拍头'],
     semanticDescription: 'A gentle head-touch interaction animation.',
     semanticTags: ['互动', '头部'],
     sourceUrl: '/motions/head.glb',
@@ -143,34 +143,34 @@ const bindings: PetModelMotionBinding[] = [
 assert.equal(normalizeCharacterAnimationLookupKey('peace-sign.vrma'), 'peacesign');
 assert.equal(normalizeCharacterAnimationLookupKey('C:\\motions\\peace sign.vrma'), 'peacesign');
 
-assert.deepEqual(extractCharacterAnimationToolIds('来了。【动�?peace_sign】�?D动画:挥手�?), [
+assert.deepEqual(extractCharacterAnimationToolIds('来了。【动画:peace_sign】【3D动画:挥手】'), [
   'peace_sign',
   '挥手',
 ]);
 
-assert.deepEqual(extractCharacterAnimationToolIds('兼容写法。【动作动�?peace_sign�?), [
+assert.deepEqual(extractCharacterAnimationToolIds('兼容写法。【动作动画:peace_sign】'), [
   'peace_sign',
 ]);
 
 assert.deepEqual(
-  extractCharacterToolInvocations('【动�?peace_sign】【动�?开心】【查�?天气�?).map((invocation) => invocation.kind),
+  extractCharacterToolInvocations('【动画:peace_sign】【动作:开心】【查询:天气】').map((invocation) => invocation.kind),
   ['animation', 'action', 'web-search'],
 );
 
 assert.deepEqual(
-  extractCharacterToolInvocations('【表�?害羞�?).map((invocation) => invocation.kind),
+  extractCharacterToolInvocations('【表情:害羞】').map((invocation) => invocation.kind),
   ['animation'],
 );
 
 assert.deepEqual(
-  extractCharacterToolInvocations('【Live2D表情:害羞�?).map((invocation) => invocation.kind),
+  extractCharacterToolInvocations('【Live2D表情:害羞】').map((invocation) => invocation.kind),
   ['animation'],
 );
 
-assert.equal(stripCharacterToolMarkers('害羞一点。【表�?害羞�?), '害羞一点�?);
-assert.equal(stripCharacterToolMarkers('害羞一点。【Live2D表情:害羞�?), '害羞一点�?);
+assert.equal(stripCharacterToolMarkers('害羞一点。【表情:害羞】'), '害羞一点。');
+assert.equal(stripCharacterToolMarkers('害羞一点。【Live2D表情:害羞】'), '害羞一点。');
 
-assert.equal(stripCharacterToolMarkers('先这样。【动�?peace_sign】好了�?), '先这样。好了�?);
+assert.equal(stripCharacterToolMarkers('先这样。【动画:peace_sign】好了。'), '先这样。好了。');
 
 const options = resolveCharacterAnimationToolOptions(bindings);
 assert.deepEqual(options.map((option) => option.id), [
@@ -195,8 +195,8 @@ assert.equal(
   '挥手',
 );
 assert.deepEqual(semanticIndex.entries.find((entry) => entry.id === '摸头')?.metadataTerms.slice(0, 4), [
-  '摸脑�?,
-  '拍拍�?,
+  '摸脑袋',
+  '拍拍头',
   '互动',
   '头部',
 ]);
@@ -206,14 +206,14 @@ assert.equal(resolveCharacterAnimationBinding('peace-sign', bindings)?.id, 'bind
 assert.equal(resolveCharacterAnimationBinding('peace_sign.vrma', bindings)?.id, 'binding-peace');
 assert.equal(resolveCharacterAnimationBinding('害羞.exp3.json', bindings)?.id, 'binding-live2d-shy-expression');
 assert.equal(resolveCharacterAnimationBinding('脸红', bindings)?.id, 'binding-live2d-shy-expression');
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('脸红一�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('脸红一下', bindings), [
   '害羞',
 ]);
 assert.equal(resolveCharacterAnimationBinding('sad_pose', bindings)?.id, 'binding-sad');
 assert.equal(resolveCharacterAnimationBinding('wave', bindings)?.id, 'binding-wave');
 assert.equal(resolveCharacterAnimationBinding('摸头', bindings)?.id, 'binding-hover');
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('请做一下挥手动�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('请做一下挥手动作', bindings), [
   '挥手',
 ]);
 
@@ -221,11 +221,11 @@ assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('please play peace si
   'peace_sign',
 ]);
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('做一个比耶动�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('做一个比耶动作', bindings), [
   'peace_sign',
 ]);
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('害羞一�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('害羞一下', bindings), [
   '害羞',
 ]);
 
@@ -234,11 +234,11 @@ assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('please play shy_blus
   '害羞',
 ]);
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('来一个生气动�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('来一个生气动作', bindings), [
   'angry_stomp',
 ]);
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('最后一次挠头给我看�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('最后一次挠头给我看看', bindings), [
   'scratch_head',
 ]);
 
@@ -250,7 +250,7 @@ assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('然后蹲下', bindi
   'squat',
 ]);
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('播放打招�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('播放打招呼', bindings), [
   'take001',
 ]);
 
@@ -258,7 +258,7 @@ assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('跟我打个招呼',
   '挥手',
 ]);
 
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('比个剪刀�?, bindings), [
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('比个剪刀手', bindings), [
   'peace_sign',
 ]);
 
@@ -272,16 +272,16 @@ assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('先挥手，然后 p
 ]);
 
 assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('你现在看起来有点 sad', bindings), []);
-assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('切到 happy 状�?, bindings), []);
+assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('切到 happy 状态', bindings), []);
 assert.deepEqual(resolveDirectCharacterAnimationTriggerIds('播放 hover clip', bindings), [
   '摸头',
 ]);
 assert.deepEqual(
-  resolveDirectCharacterAnimationTriggerMatches('请做一�?peace-sign', bindings).map((match) => match.matchedAlias),
+  resolveDirectCharacterAnimationTriggerMatches('请做一个 peace-sign', bindings).map((match) => match.matchedAlias),
   ['peace_sign'],
 );
 assert.deepEqual(
-  resolveDirectCharacterAnimationTriggerMatches('播放打招�?, bindings).map((match) => match.matchKind),
+  resolveDirectCharacterAnimationTriggerMatches('播放打招呼', bindings).map((match) => match.matchKind),
   ['path'],
 );
 assert.deepEqual(
@@ -394,9 +394,9 @@ assert.equal(
 );
 
 const promptInstruction = buildCharacterAnimationToolInstruction(bindings);
-assert.match(promptInstruction, /【动�?id�?u);
+assert.match(promptInstruction, /【动画:id】/u);
 assert.match(promptInstruction, /peace_sign/u);
-assert.match(promptInstruction, /比�?u);
+assert.match(promptInstruction, /比耶/u);
 assert.match(promptInstruction, /害羞/u);
 assert.match(promptInstruction, /摸头/u);
 
@@ -418,9 +418,9 @@ assert.match(semanticResolverInput, /Candidate focus from local semantic index/u
 assert.match(semanticResolverInput, /Full action semantic index/u);
 assert.match(semanticResolverInput, /quality=strong/u);
 assert.equal(shouldUseSemanticCharacterAnimationResolver('跟我打个招呼', bindings), true);
-assert.equal(shouldUseSemanticCharacterAnimationResolver('比个剪刀�?, bindings), true);
+assert.equal(shouldUseSemanticCharacterAnimationResolver('比个剪刀手', bindings), true);
 assert.equal(shouldUseSemanticCharacterAnimationResolver('摆个爱心', bindings), true);
-assert.equal(shouldUseSemanticCharacterAnimationResolver('在空中晃晃手回应�?, bindings), true);
+assert.equal(shouldUseSemanticCharacterAnimationResolver('在空中晃晃手回应你', bindings), true);
 
 const hoverMotionState = resolveAvatar3DMotionState({
   contentManifest: null,
@@ -461,7 +461,7 @@ const freeformSemanticDecision = await resolveSemanticCharacterAnimationTriggerD
   bindings,
   modelCaller: async ({ userInput }) => {
     freeformSemanticResolverCalled = true;
-    assert.match(userInput, /在空中晃晃手回应�?u);
+    assert.match(userInput, /在空中晃晃手回应你/u);
     assert.match(userInput, /Local animation intent hint: uncertain/u);
     return JSON.stringify({
       animationIds: ['挥手'],
@@ -470,7 +470,7 @@ const freeformSemanticDecision = await resolveSemanticCharacterAnimationTriggerD
     });
   },
   settings: {} as import('../src/types').PetConfig['settings'],
-  userInput: '在空中晃晃手回应�?,
+  userInput: '在空中晃晃手回应你',
 });
 assert.equal(freeformSemanticResolverCalled, true);
 assert.deepEqual(freeformSemanticDecision.animationIds, ['挥手']);
@@ -484,7 +484,7 @@ const lowConfidenceSemanticDecision = await resolveSemanticCharacterAnimationTri
     reason: 'weak guess',
   }),
   settings: {} as import('../src/types').PetConfig['settings'],
-  userInput: '随便动一�?,
+  userInput: '随便动一下',
 });
 assert.deepEqual(lowConfidenceSemanticDecision.animationIds, []);
 

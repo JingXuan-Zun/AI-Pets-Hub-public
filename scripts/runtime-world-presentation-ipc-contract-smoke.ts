@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 
@@ -12,7 +13,7 @@ const agentBridgeSource = readProjectFile('src/runtime-world/agentRuntimeWorldBr
 const petHookSource = readProjectFile('src/components/pet/useRuntimeWorldExpressionAction.ts');
 const preloadSource = readProjectFile('electron/preload.cjs');
 const ipcHandlerSource = readProjectFile('electron/ipcHandlers.cjs');
-const windowManagerSource = readProjectFile('electron/windowManager.cjs');
+const windowManagerSource = readModuleProjectFile('electron/windowManager.cjs');
 
 assert.match(agentBridgeSource, /publishRuntimeWorldPresentationIntent\(result\.presentationIntent\)/u);
 assert.match(petHookSource, /subscribeRuntimeWorldPresentationIntent\(setIntent\)/u);

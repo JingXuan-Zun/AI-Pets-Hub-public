@@ -15,11 +15,15 @@ const {
   index: indexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  preflight: preflightSource,
+  retryEvidence: retryEvidenceSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtimeSignal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  preflight: 'src/agent/productionSession/executionPreflight.ts',
+  retryEvidence: 'src/agent/productionSession/retryEvidence.ts',
   signal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
 });
 
@@ -43,12 +47,14 @@ assertSourceDoesNotMatch(
   /createAgentSessionV2RepeatedFailedToolCallRejection/u,
   'AgentSessionV2 should not own repeated failed tool call rejection signal implementation.',
 );
-assertSourceMatches(sessionSource, /createAgentRepeatedFailedToolCallRejection\(/u);
-assertSourceMatches(
-  sessionSource,
-  /function findLatestFailedAgentSessionV2ToolCall/u,
-  'AgentSessionV2 should still own the repeated failed call detection for this slice.',
-);
+assertSourceMatches(preflightSource, /createAgentRepeatedFailedToolCallRejection\(/u);
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/executionPreflight'/u);
+assertSourceMatches(sessionSource, /createAgentProductionExecutionPreflight\(\{/u);
+assertSourceMatches(sessionSource, /prepareExecutionPreflight\(\{/u);
+assertSourceMatches(retryEvidenceSource, /function findLatestFailedAgentProductionRetryToolCall/u, 'Repeated failed call detection should remain in the production retry evidence module.');
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/retryEvidence'/u);
+assertSourceMatches(sessionSource, /createAgentProductionRetryEvidence\(\{/u);
+assertSourceMatches(sessionSource, /findLatestFailedAgentProductionRetryToolCall: findLatestFailedAgentSessionV2ToolCall/u);
 
 function createCommand(): AgentChatCommand {
   return {

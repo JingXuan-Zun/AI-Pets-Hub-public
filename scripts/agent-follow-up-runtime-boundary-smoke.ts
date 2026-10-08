@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 
 const source = readProjectFile('src/components/chat/petChatMessageSendExecution.ts');
-const assessmentSource = readProjectFile('src/agent/agentResultAssessment.ts');
+const assessmentEntry = 'src/agent/agentResultAssessment.ts';
 
 assert.match(
   source,
@@ -25,8 +26,7 @@ assert.match(
   'The chat sender must route follow-up intent through the production Runtime session.',
 );
 
-const retryFunction = assessmentSource
-  .slice(assessmentSource.indexOf('function createAgentRetryCommand('), assessmentSource.indexOf('\nfunction createAgentReobserveCommand('));
+const retryFunction = readModuleProjectFunction(assessmentEntry, 'createAgentRetryCommand');
 assert.doesNotMatch(
   retryFunction,
   /闂傚倸鍊搁崐鎼|閸婃|鈧|�/u,
@@ -38,8 +38,9 @@ assert.match(
   'Retry instructions must preserve logical target semantics and require fresh evidence.',
 );
 
-const organizationRecovery = assessmentSource
-  .slice(assessmentSource.indexOf("if (command.kind === 'desktop-organization'"), assessmentSource.indexOf("if (command.kind === 'desktop-icon-placement'"));
+const reobserveFunction = readModuleProjectFunction(assessmentEntry, 'createAgentReobserveCommand');
+const organizationRecovery = reobserveFunction
+  .slice(reobserveFunction.indexOf("if (command.kind === 'desktop-organization'"), reobserveFunction.indexOf("if (command.kind === 'desktop-icon-placement'"));
 assert.doesNotMatch(
   organizationRecovery,
   /闂傚倸鍊搁崐鎼|閸婃|鈧|�/u,

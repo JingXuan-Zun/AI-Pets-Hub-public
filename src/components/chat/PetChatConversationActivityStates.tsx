@@ -24,7 +24,7 @@ export function PetChatConversationActivityStates({
           <div className="mb-1 font-mono text-[9px] uppercase tracking-tighter text-sky-700">
             {typingPetName?.trim() || activePetName}
           </div>
-          <div className="rounded-[18px] border border-sky-100/85 bg-[linear-gradient(180deg,rgba(252,254,255,0.94),rgba(239,247,253,0.9))] px-4 py-3">
+          <div className="rounded-[15px] border border-sky-100/85 bg-[linear-gradient(180deg,rgba(252,254,255,0.94),rgba(239,247,253,0.9))] px-4 py-3">
             <motion.div
               animate={{ opacity: [0.4, 1, 0.4] }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -40,7 +40,7 @@ export function PetChatConversationActivityStates({
       {isListening && (
         <div className="flex flex-col items-start">
           <div className="mb-1 font-mono text-[9px] uppercase tracking-tighter text-sky-700">VOICE_INPUT</div>
-          <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-600">
+          <div className="rounded-[15px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-600">
             正在听你说话...
           </div>
         </div>

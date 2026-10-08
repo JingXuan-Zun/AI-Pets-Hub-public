@@ -1,17 +1,23 @@
 import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 
 const {
   agentSource,
   senderSource,
+  senderTypesSource,
+  sendExecutionSource,
   sessionSource,
 } = readProjectSources({
   agentSource: 'src/components/chat/agentRunController.ts',
   senderSource: 'src/components/chat/usePetChatMessageSender.ts',
+  senderTypesSource: 'src/components/chat/petChatMessageSenderTypes.ts',
+  sendExecutionSource: 'src/components/chat/petChatMessageSendExecution.ts',
   sessionSource: 'src/components/chat/usePetChatSession.ts',
 });
 
 function extractBetween(source: string, startNeedle: string, endNeedle: string) {
+  if (source === agentSource) return readModuleProjectFunction('src/components/chat/agentRunController.ts', startNeedle.split('function ')[1]);
   const start = source.indexOf(startNeedle);
   assert.ok(start >= 0, `${startNeedle} should exist`);
   const end = source.indexOf(endNeedle, start + startNeedle.length);
@@ -57,9 +63,11 @@ assert.match(deferredVoiceHelper, /void playVoiceText\(voiceText,/u);
 assert.match(deferredVoiceHelper, /petId: targetSlot\.id/u);
 assert.match(deferredVoiceHelper, /source: 'reply'/u);
 
-assert.ok(senderSource.includes('playVoiceText: (text: string, options?: PlayVoiceTextOptions) => Promise<void>;'));
-assert.match(senderSource, /runPreparedAgentProductionSession\(\{[\s\S]*playVoiceText,[\s\S]*preparedRequest,/u);
-assert.match(senderSource, /resolveAgentApprovalRequest\(\{[\s\S]*playVoiceText,[\s\S]*runPetResponseTurn,/u);
+assert.ok(senderTypesSource.includes('playVoiceText: (text: string, options?: PlayVoiceTextOptions) => Promise<void>;'));
+assert.match(sendExecutionSource, /runPreparedAgentProductionSession\(\{[\s\S]*\.\.\.context,[\s\S]*preparedRequest,/u);
+assert.match(senderSource, /contextRef\.current = \{[\s\S]*\.\.\.options/u);
+assert.match(senderSource, /resolveAgentApprovalRequest\(\{[\s\S]*\.\.\.contextRef\.current/u);
+assert.match(sendExecutionSource, /resolveAgentApprovalRequest\(\{ \.\.\.context, decision, messageId:/u);
 assert.match(sessionSource, /usePetChatMessageSender\(\{[\s\S]*playVoiceText,[\s\S]*resetChatSession,/u);
 
 console.log('agent persona deferred voice smoke ok');

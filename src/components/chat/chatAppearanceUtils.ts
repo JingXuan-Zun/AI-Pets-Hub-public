@@ -106,6 +106,25 @@ export function buildChatBackgroundStyle(config: PetConfig): CSSProperties | und
   };
 }
 
+/**
+ * Window-shell backdrop (settings / control centre): the chat background art
+ * under a soft rose wash, so frosted cards on top have something to blur.
+ * Returns undefined when no art is configured; the gradient canvas shows instead.
+ */
+export function buildShellBackdropStyle(config: PetConfig): CSSProperties | undefined {
+  const backgroundImageUrl = resolveChatBackgroundImageUrl(config);
+  if (!backgroundImageUrl) {
+    return undefined;
+  }
+
+  return {
+    backgroundImage: `linear-gradient(135deg, rgba(253, 241, 247, 0.52), rgba(243, 236, 251, 0.46)), url("${escapeCssUrlValue(backgroundImageUrl)}")`,
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: 'cover',
+  };
+}
+
 export function buildChatBackgroundImageStyle(config: PetConfig): CSSProperties {
   const backgroundImageSize = clampChatBackgroundImageSize(
     config.settings.chatBackgroundImageSize,

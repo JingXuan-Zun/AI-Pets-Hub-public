@@ -69,7 +69,7 @@ export function createTestGithub() {
     if (method === 'GET' && path.startsWith('/contents/')) {
       const ref = url.searchParams.get('ref');
       const files = trees.get(commits.get(ref === 'main' ? head : ref).tree);
-      const filePath = path.slice('/contents/'.length);
+      const filePath = decodeURIComponent(path.slice('/contents/'.length));
       if (filePath === 'catalog/index.json' && controls.readCatalog !== null) return new Response(controls.readCatalog);
       if (filePath.startsWith('personas/') && controls.tamperDownload) return reply({ encoding: 'base64', content: Buffer.from('tampered').toString('base64') });
       if (!files.has(filePath)) return reply({}, 404);
@@ -85,7 +85,7 @@ export function createTestGithub() {
       assert.equal(body.tree.length, 2);
       for (const item of body.tree) {
         assert.equal(item.mode, '100644'); assert.equal(item.type, 'blob');
-        assert.ok(item.path === 'catalog/index.json' || /^personas\/[a-f0-9]{64}\.(txt|md|json)$/.test(item.path));
+        assert.ok(item.path === 'catalog/index.json' || /^personas\/(?:[^/\\]+--)?[a-f0-9]{64}\.(txt|md|json)$/.test(item.path));
         files.set(item.path, item.sha ? blobs.get(item.sha) : Buffer.from(item.content));
       }
       const sha = nextSha(); trees.set(sha, files); return reply({ sha });
@@ -101,7 +101,7 @@ export function createTestGithub() {
       if (controls.alwaysConflict || commit.parents[0] !== head) return reply({ message: 'not fast forward' }, 422);
       head = body.sha;
       const snapshot = currentFiles();
-      for (const item of currentCatalog().items) assert.ok(snapshot.has(`personas/${item.id}.${item.format}`));
+      for (const item of currentCatalog().items) assert.ok(snapshot.has(`personas/${item.storageFilename ?? `${item.id}.${item.format}`}`));
       events.push({ head, items: currentCatalog().items.length });
       return reply({ object: { sha: head } });
     }

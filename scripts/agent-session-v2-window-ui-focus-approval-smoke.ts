@@ -20,7 +20,7 @@ const result = await runAgentProductionSession({
     tool: 'execute_desktop_observation',
   }),
   settings,
-  sourceText: '/agent �?Launcher 里先聚焦 Search games 输入�?,
+  sourceText: '/agent 在 Launcher 里先聚焦 Search games 输入框',
   toolExecutor: async (command: AgentChatCommand) => {
     assert.equal(command.toolCall?.name, 'execute_desktop_observation');
     assert.equal(command.toolCall.input.action, 'inspect_window_ui');
@@ -76,7 +76,7 @@ const result = await runAgentProductionSession({
       verification: 'Window UI inspection returned a focusable search field.',
     };
   },
-  userGoal: '�?Launcher 里先聚焦 Search games 输入�?,
+  userGoal: '在 Launcher 里先聚焦 Search games 输入框',
 });
 
 assert.equal(result.status, 'needs-approval');

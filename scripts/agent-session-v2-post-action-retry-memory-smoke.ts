@@ -150,6 +150,16 @@ const result = await runAgentProductionSession({
         structuredEvidence: {
           confidence: 'high',
           coordinateConfidence: 'high',
+          // Declared bounds let the actionable-area gate accept the point, so the
+          // runtime proposes the same click and the repeat guard rejects it.
+          elementBounds: {
+            coordinateSpace: 'native-screen',
+            height: 44,
+            source: 'test',
+            width: 150,
+            x: 1365,
+            y: 898,
+          },
           elementCenter: {
             coordinateSpace: 'native-screen',
             source: 'test',
@@ -169,7 +179,9 @@ const result = await runAgentProductionSession({
   userGoal: 'start Example Game from launcher',
 });
 
-assert.equal(recoveryToolCount, 1);
+// Recovery read plus the read-only focused refinement before the repeated
+// click is rejected.
+assert.equal(recoveryToolCount, 2);
 assert.equal(modelCallCount, 1);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');

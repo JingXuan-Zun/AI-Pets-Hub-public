@@ -1,27 +1,11 @@
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
 
-const { controllerSource, coreSource, messageBubbleSource } = readProjectSources({
+
+const { controllerSource, messageBubbleSource } = readProjectSources({
   controllerSource: 'src/components/chat/agentRunController.ts',
-  coreSource: 'src/agent/agentCore.ts',
   messageBubbleSource: 'src/components/chat/PetChatConversationMessageBubble.tsx',
 });
-const appendRunLoopSummaryFunction = coreSource.match(
-  /function appendAgentRunLoopSummary\([\s\S]*?\n\}/u,
-)?.[0] ?? '';
-
-assert.match(
-  appendRunLoopSummaryFunction,
-  /return result;/u,
-  'Agent run loop rounds should stay in structured UI state instead of being appended to responseText',
-);
-
-assert.doesNotMatch(
-  appendRunLoopSummaryFunction,
-  /responseText|summary/u,
-  'Agent visible responseText should not be rebuilt by appending run-loop summaries',
-);
-
 assert.match(
   controllerSource,
   /stripAgentRunLoopSummaryFromText\(/u,
@@ -35,9 +19,10 @@ assert.ok(
 
 assert.match(
   controllerSource,
-  /text: createAgentFallbackVisibleReply\(result\)/u,
+  /const fallbackText = createAgentProductionSessionFallbackVisibleReply\(result\)/u,
   'Agent fallback model messages should use compact visible text',
 );
+assert.match(controllerSource, /text: fallbackText/u, 'production fallback messages must use the compact visible reply');
 
 assert.match(
   messageBubbleSource,

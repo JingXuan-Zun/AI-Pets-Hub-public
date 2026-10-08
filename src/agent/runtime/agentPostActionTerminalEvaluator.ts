@@ -3,6 +3,7 @@ import {
   type AgentRuntimeToolResultEntry,
 } from './agentRuntimeContract';
 import { hasAgentAuthenticationManualVerificationCue } from './agentAuthenticationGate';
+import { collectAgentRunWindowIdentities, hasAgentPendingPostLoginTarget } from './agentPostLoginFollowUp';
 import { hasAgentRuntimeCommittedInputDispatch } from './agentDispatchEvidence';
 import {
   evaluateAgentEvidenceTerminal,
@@ -229,6 +230,13 @@ function shouldCompleteAgentLaunchedPostAction(options: {
     entry.result.ok === false
     || !dependencies.hasDirectActionIntent(options.sourceText, options.userGoal)
   ) {
+    return false;
+  }
+  // "登录后启动 X": login or the launcher window alone is not the requested result.
+  if (hasAgentPendingPostLoginTarget({
+    goalText: `${options.userGoal} | ${options.sourceText}`,
+    windowIdentities: collectAgentRunWindowIdentities(options.toolResults ?? [entry]),
+  })) {
     return false;
   }
 

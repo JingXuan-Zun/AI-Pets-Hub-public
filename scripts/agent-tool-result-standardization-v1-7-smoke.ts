@@ -9,13 +9,11 @@ import { readProjectSources } from './smokeTestHarness.ts';
 
 const {
   commandSource,
-  coreSource,
   contextSource,
   typesSource,
   controllerSource,
 } = readProjectSources({
   commandSource: 'src/agent/agentChatCommand.ts',
-  coreSource: 'src/agent/agentCore.ts',
   contextSource: 'src/agent/agentChatContext.ts',
   typesSource: 'src/types.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
@@ -57,24 +55,6 @@ assert.match(
   commandSource,
   /stateSummary\?: AgentToolStateSummary \| null;/u,
   'agent command results should carry optional standardized state summaries',
-);
-
-assert.match(
-  coreSource,
-  /export function createAgentToolStateSummary\(/u,
-  'agent core should normalize tool results into state summaries',
-);
-
-assert.match(
-  coreSource,
-  /getAgentToolLifecycleMetadata\(toolName\)/u,
-  'state summary normalization should use lifecycle metadata',
-);
-
-assert.match(
-  coreSource,
-  /createAgentToolStateSummaryLines\(result\.stateSummary\)/u,
-  'core summaries should include standardized state summary lines',
 );
 
 assert.match(

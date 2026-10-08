@@ -413,6 +413,9 @@ function PetCompanionLayerComponent({
       modelUrl: slot.modelUrl,
       renderKind: matchedModelPreset?.renderKind
         ?? (/\.(?:webm|mp4|m4v|mov)(?:[?#].*)?$/iu.test(slot.modelUrl) ? 'video' : undefined),
+      randomVideoPlaybackEnabled: matchedModelPreset?.randomVideoPlaybackEnabled,
+      videoEmotionFolderAliases: matchedModelPreset?.videoEmotionFolderAliases ?? null,
+      videoLibraryRootPath: matchedModelPreset?.videoLibraryRootPath ?? null,
       sequenceFrames: matchedModelPreset?.sequenceFrames,
       onRuntimeEvent,
       onVisualBoundsChange: shouldEmitVisualBounds
@@ -451,6 +454,9 @@ function PetCompanionLayerComponent({
     presentationMode,
     matchedModelPreset?.sequenceFrames,
     matchedModelPreset?.renderKind,
+    matchedModelPreset?.randomVideoPlaybackEnabled,
+    matchedModelPreset?.videoEmotionFolderAliases,
+    matchedModelPreset?.videoLibraryRootPath,
     sequenceFrameDurationMultiplier,
     shouldEmitVisualBounds,
     slot.id,

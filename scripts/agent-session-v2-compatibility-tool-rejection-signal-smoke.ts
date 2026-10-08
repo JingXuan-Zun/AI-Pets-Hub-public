@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  createAgentCompatibilityToolRejection,
+  createAgentCompatibilityToolRejection as createLegacyCompatibilityToolRejection,
 } from '../src/agent/legacy/index.ts';
 import { createAgentCompatibilityToolRejection } from '../src/agent/runtime/agentCompatibilityToolRejection.ts';
 import {
@@ -11,11 +11,15 @@ import {
 
 const {
   index: indexSource,
+  legacyIndex: legacyIndexSource,
+  selection: selectionSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
   signal: signalSource,
 } = readProjectSources({
-  index: 'src/agent/legacy/index.ts',
+  index: 'src/agent/index.ts',
+  legacyIndex: 'src/agent/legacy/index.ts',
+  selection: 'src/agent/productionSession/singleToolSelection.ts',
   runtimeSignal: 'src/agent/runtime/agentCompatibilityToolRejection.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
   signal: 'src/agent/runtime/agentCompatibilityToolRejection.ts',
@@ -33,7 +37,7 @@ assertSourceMatches(
 );
 assert.match(
   indexSource,
-  /export \* from '\.\.\/agentSessionV2CompatibilityToolRejectionSignal'/u,
+  /export \* from '\.\/runtime\/agentCompatibilityToolRejection'/u,
   'Compatibility tool rejection signal module should be exported through the agent barrel.',
 );
 assertSourceMatches(
@@ -52,8 +56,15 @@ assert.match(
   'AgentSessionV2 should still own primary tool availability checks for this slice.',
 );
 
+assert.match(legacyIndexSource, /export \* from '\.\.\/index'/u);
+assert.doesNotMatch(indexSource, /agentSessionV2CompatibilityToolRejectionSignal/u);
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/singleToolSelection'/u);
+assertSourceMatches(sessionSource, /prepareSingleToolSelection\(decision, stepIndex\)/u);
+assertSourceMatches(selectionSource, /from '\.\.\/runtime\/agentCompatibilityToolRejection'/u);
+assertSourceMatches(selectionSource, /createAgentCompatibilityToolRejection\(effectiveToolName\)/u);
+
 const desktopText = createAgentCompatibilityToolRejection('launch_local_app');
-assert.equal(desktopText, createAgentCompatibilityToolRejection('launch_local_app'));
+assert.equal(desktopText, createLegacyCompatibilityToolRejection('launch_local_app'));
 assert.match(desktopText, /Compatibility-only tool "launch_local_app"/u);
 assert.match(desktopText, /observe_windows_and_apps/u);
 assert.match(desktopText, /execute_desktop_action/u);

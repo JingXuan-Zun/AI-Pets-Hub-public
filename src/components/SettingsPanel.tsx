@@ -1,7 +1,8 @@
-import { Suspense, lazy, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { type ReactNode } from 'react';
 import { SettingsTabErrorBoundary } from './settings/SettingsTabErrorBoundary';
 import { type CSSProperties } from 'react';
+import { buildShellBackdropStyle } from './chat/chatAppearanceUtils';
 import { normalizePetConfig } from '../petConfigNormalization';
 import {
   type PetAction,
@@ -46,7 +47,7 @@ import { useSettingsPanelDraftState } from './settings/useSettingsPanelDraftStat
 import { useSettingsPanelFrameState } from './settings/useSettingsPanelFrameState';
 import { useStandaloneWindowResize } from '../standaloneWindowResize';
 import { useStandaloneWindowDrag } from '../standaloneWindowDrag';
-import { useStandaloneWindowCompactFrame } from '../standaloneWindowCompactFrame';
+import { useStandaloneWindowFrame } from '../standaloneWindowFrame';
 import { animateContentIn, animatePanelEnter } from '../uiMotionPresets';
 import {
   discardExpressionCategoryDrafts,
@@ -241,30 +242,25 @@ export default function SettingsPanel({
     minHeight: 600,
     minWidth: 1180,
   });
+  const standaloneWindowFrame = useStandaloneWindowFrame({ enabled: standalone });
   const standaloneWindowDrag = useStandaloneWindowDrag({
     enabled: standalone,
-  });
-  const {
-    compactWindow: compactStandaloneWindow,
-    isCompact: isStandaloneCompact,
-    resetCompactWindow: resetStandaloneCompactWindow,
-    restoreWindow: restoreStandaloneWindow,
-  } = useStandaloneWindowCompactFrame({
-    enabled: standalone,
+    isMaximized: standaloneWindowFrame.isMaximized,
   });
   const isEmbeddedMinimized = !standalone && embeddedFrameMode === 'minimized';
+  const shellBackdropStyle = useMemo(() => buildShellBackdropStyle(config), [config]);
   const resolvedRootStyle = standalone
-    ? rootStyle
+    ? { ...rootStyle, ...shellBackdropStyle }
     : isEmbeddedMinimized
         ? ({
             ...rootStyle,
             height: EMBEDDED_SETTINGS_COMPACT_HEIGHT,
             width: EMBEDDED_SETTINGS_COMPACT_WIDTH,
           } as CSSProperties)
-        : rootStyle;
+        : { ...rootStyle, ...shellBackdropStyle };
   const handleMinimizeFrame = () => {
     if (standalone) {
-      compactStandaloneWindow();
+      standaloneWindowFrame.minimizeWindow();
       return;
     }
 
@@ -381,12 +377,11 @@ export default function SettingsPanel({
   useEffect(() => {
     if (!isOpen) {
       setEmbeddedFrameMode('normal');
-      resetStandaloneCompactWindow();
       return;
     }
 
     setEmbeddedFrameMode('normal');
-  }, [isOpen, resetStandaloneCompactWindow, resetToken, standalone]);
+  }, [isOpen, resetToken, standalone]);
 
   const handleUpdateModel = (url: string, type: ModelType) => {
     commitModelConfig((baseConfig) => applyDesktopPetModelSelection(baseConfig, selectedPetSlot.id, {
@@ -663,7 +658,7 @@ export default function SettingsPanel({
       : activeControlCenterPageId === 'advanced-game-companion'
         ? <SettingsGameCompanionTab config={localConfig} noDragRegionStyle={noDragRegionStyle} onApplyConfig={applyConfig} />
       : activeControlCenterPageId === 'advanced-desktop-awareness'
-        ? <SettingsDesktopActivityAwarenessTab config={localConfig} onApplyConfig={applyConfig} />
+        ? <SettingsDesktopActivityAwarenessTab config={localConfig} noDragRegionStyle={noDragRegionStyle} onApplyConfig={applyConfig} stats={selectedPetSlot.stats} />
       : activeControlCenterPageId === 'advanced-expression'
         ? (
           <Suspense fallback={<SettingsTabFallback />}>
@@ -707,24 +702,6 @@ export default function SettingsPanel({
     return null;
   }
 
-  if (standalone && isStandaloneCompact) {
-    return (
-      <div
-        data-desktop-pet-interactive="true"
-        className="relative flex h-full w-full cursor-grab items-center justify-center overflow-hidden bg-transparent active:cursor-grabbing"
-        style={noDragRegionStyle}
-        onPointerDown={standaloneWindowDrag.startWindowDrag}
-      >
-        <WindowCompactHandle
-          className={SETTINGS_COMPACT_HANDLE_CLASS}
-          title="展开控制中心"
-          onStartDrag={(event) => standaloneWindowDrag.startWindowDrag(event, { allowControl: true })}
-          onExpand={restoreStandaloneWindow}
-        />
-      </div>
-    );
-  }
-
   return (
     <div
       ref={panelRootRef}
@@ -734,11 +711,13 @@ export default function SettingsPanel({
         standalone ? 'relative h-full w-full' : 'absolute z-panel',
         standaloneWindowResize.isResizing ? 'select-none shadow-none' : '',
         standaloneWindowDrag.isDragging ? 'select-none shadow-none' : '',
-        isFrameInteracting ? 'select-none ring-1 ring-ring/40 shadow-[0_22px_64px_rgba(15,23,42,0.16)]' : '',
+        isFrameInteracting ? 'select-none ring-1 ring-ring/40 shadow-[0_22px_64px_rgba(158,84,140,0.18)]' : '',
         'pointer-events-auto flex flex-col overflow-hidden',
         isDockedPresentation
-          ? 'rounded-2xl border-0 bg-card shadow-[0_28px_80px_rgba(15,23,42,0.18)]'
-          : 'rounded-lg border-0 bg-card shadow-xl',
+          ? 'rounded-2xl border-0 app-shell-canvas shadow-[0_28px_80px_rgba(158,84,140,0.20)]'
+          // A standalone panel fills its window, so an outer shadow can only
+          // leak into the transparent area outside the rounded bottom corners.
+          : `${standalone && standaloneWindowFrame.isMaximized ? 'rounded-none' : 'rounded-[10px]'} border-0 app-shell-canvas ${standalone ? '' : 'shadow-xl'}`,
       ].join(' ')}
       style={resolvedRootStyle}
     >
@@ -752,7 +731,7 @@ export default function SettingsPanel({
         <>
       <div
         className={[
-          'relative touch-none select-none px-5 py-4 transition-colors',
+          'relative touch-none select-none rounded-t-[inherit] px-5 py-4 transition-colors',
           isDockedPresentation
             ? 'border-b border-border/80 bg-white/80'
             : 'border-b border-border bg-card',
@@ -762,6 +741,9 @@ export default function SettingsPanel({
         ].join(' ')}
         style={standalone ? noDragRegionStyle : undefined}
         onPointerDown={standalone ? standaloneWindowDrag.startWindowDrag : startPanelDrag}
+        onDoubleClick={standalone ? (event) => {
+          if (!(event.target as HTMLElement).closest('button')) standaloneWindowFrame.toggleMaximizeWindow();
+        } : undefined}
       >
         <div className="relative z-10 mb-1 flex items-center justify-between gap-3">
           <div className="pointer-events-none min-w-0 flex items-center gap-2">
@@ -776,15 +758,17 @@ export default function SettingsPanel({
             closeButtonClassName={SETTINGS_FRAME_CONTROL_CLOSE_BUTTON_CLASS}
             closeDangerHover={false}
             closeTitle="关闭控制中心"
-            minimizeTitle="收纳控制中心"
+            minimizeTitle={standalone ? '最小化' : '收纳控制中心'}
             style={noDragRegionStyle}
             onClose={closeSettingsWithoutSaving}
             onMinimize={handleMinimizeFrame}
+            isMaximized={standaloneWindowFrame.isMaximized}
+            onToggleMaximize={standalone ? standaloneWindowFrame.toggleMaximizeWindow : undefined}
           />
         </div>
         {!isEmbeddedMinimized && (
           <div className="pointer-events-none relative z-10 text-xs tracking-[0.08em] text-muted-foreground">
-            {isDockedPresentation ? '从角色右侧快速调整模型、人格、控制与系统配置' : 'PET-ENGINE // FULL-CONTROL-PANEL // DESKTOP-MODE'}
+            {isDockedPresentation ? '从角色右侧快速调整模型、人格、控制与系统配置' : '管理角色、模型、记忆与桌面互动'}
           </div>
         )}
         </div>
@@ -821,7 +805,7 @@ export default function SettingsPanel({
 
         {!isEmbeddedMinimized && (
         <div
-          className="flex justify-end gap-3 border-t border-border bg-muted/30 px-5 py-4"
+          className="flex justify-end gap-3 rounded-b-[inherit] border-t border-border bg-muted/30 px-5 py-4"
           style={noDragRegionStyle}
         >
           <Button variant="outline" onClick={closeSettingsWithoutSaving} className="h-9 rounded-md border-border text-xs text-muted-foreground hover:bg-muted">关闭</Button>
@@ -846,7 +830,7 @@ export default function SettingsPanel({
       )}
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute z-max border border-[#cbd5e1] ${isDockedPresentation ? 'rounded-2xl' : 'rounded-lg'}`}
+        className={`pointer-events-none absolute z-max border border-border ${isDockedPresentation ? 'rounded-2xl' : 'rounded-[10px]'}`}
         style={{ inset: 1 }}
       />
         </>

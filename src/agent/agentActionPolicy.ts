@@ -129,29 +129,6 @@ export function evaluateAgentToolAction(
   }
 
   if (
-    !request.userInitiated
-    && (
-      request.kind === 'capture-screen-context'
-      || request.kind === 'list-capture-sources'
-      || request.kind === 'observe-game-window'
-    )
-  ) {
-    return {
-      allowed: true,
-      mode: 'confirm',
-      reason: '视觉观察不是用户直接触发时必须确认。',
-    };
-  }
-
-  if (request.risk === 'read' && !request.userInitiated) {
-    return {
-      allowed: true,
-      mode: 'notify',
-      reason: '后台读取类动作需要提示用户。',
-    };
-  }
-
-  if (
     request.risk === 'reversible-write'
     && (!request.reversible || (request.estimatedItemCount ?? 0) > 100)
   ) {

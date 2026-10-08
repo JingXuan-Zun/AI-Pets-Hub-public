@@ -10,13 +10,18 @@ const {
   index: indexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  lifecycle: lifecycleSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtimeSignal: 'src/agent/runtime/agentExecutionProgressSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  lifecycle: 'src/agent/productionSession/actionOutcomeLifecycle.ts',
   signal: 'src/agent/runtime/agentExecutionProgressSignals.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/actionOutcomeLifecycle'/u);
+assertSourceMatches(sessionSource, /\} = createAgentProductionActionOutcomeLifecycle\(\{/u);
 
 assertSourceMatches(
   runtimeSignalSource,
@@ -24,8 +29,8 @@ assertSourceMatches(
   'Runtime should own post-action terminal history formatting.',
 );
 assertSourceMatches(
-  sessionSource,
-  /from '\.\/runtime\/agentExecutionProgressSignals'/u,
+  lifecycleSource,
+  /from '\.\.\/runtime\/agentExecutionProgressSignals'/u,
   'AgentSessionV2 should consume Runtime-owned execution progress signals.',
 );
 assertSourceDoesNotMatch(

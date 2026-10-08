@@ -3,6 +3,8 @@ import { Gamepad2, Monitor, StopCircle } from 'lucide-react';
 import { type DesktopPetChatSendOptions, type DesktopPetGroupChatContinuationMode } from '../../chatState';
 import { type ChatAgentApprovalDecision, type ChatMessage, type DesktopPetChatMode, type PetAction, type PetConfig, type PetConfigUpdateHandler, type PetModelMotionBinding, type PetVisualSize } from '../../types';
 import { type ChatMemorySaveHandler } from '../chat/chatMemorySaveUtils';
+import { LifeCompanionScreenWatchPill } from './LifeCompanionScreenWatchPill';
+import { VoiceMicStatusPill } from './VoiceMicStatusPill';
 import { type AvatarRuntimeEventSummaryByPetId } from '../../pet-runtime/avatar-runtime/avatarRuntimeEventState';
 import { resolveActiveChatSlot, type ChatTargetOption } from '../chat/multiPetChat';
 import {
@@ -120,7 +122,7 @@ interface PetPanelsLayerProps {
   onToggleChatSelector: () => void;
   onUpdateConfig: PetConfigUpdateHandler;
   petAnchorPosition: Position;
-  petVisualBounds: { bottom: number; top: number };
+  petVisualBounds: { bottom: number; left?: number; right?: number; top: number };
   selectedCustomMotionBindingId?: string | null;
   petVisualSize: PetVisualSize;
   screenCaptureOptions?: DesktopPetCaptureOptionsLike | null;
@@ -143,6 +145,7 @@ const SIDE_PANEL_MARGIN = 20;
 const GAME_COMPANION_BADGE_MAX_WIDTH = 240;
 const GAME_COMPANION_BADGE_ESTIMATED_HEIGHT = 78;
 const GAME_COMPANION_BADGE_GAP = 10;
+const WATCH_PILL_GAP = 44;
 
 function clampPanelCoordinate(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -308,6 +311,10 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
   voiceInputEnabled,
 }: PetPanelsLayerProps) {
   const activePetSlot = resolveActiveChatSlot(config, activePetId);
+  // Pills under slot 1 line up with its drawn model, below the game companion badge when shown.
+  const primaryPillCenterShift = ((petVisualBounds.right ?? 0) - (petVisualBounds.left ?? 0)) / 2;
+  const primaryPillOffsetBelowTop = petVisualBounds.bottom + WATCH_PILL_GAP
+    + (gameCompanionLoopStatus.running ? GAME_COMPANION_BADGE_ESTIMATED_HEIGHT + GAME_COMPANION_BADGE_GAP : 0);
   const activePetModelType = activePetSlot?.modelType ?? config.modelType;
   const activePetModelUrl = activePetSlot?.modelUrl ?? config.modelUrl;
   const activePetName = petOptions.find((option) => option.id === activePetId)?.name ?? config.personality.name;
@@ -409,12 +416,24 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
         onToggleChatSelector={onToggleChatSelector}
       />
 
+      {/* Under the model, below the game companion badge when both are shown. */}
+      <LifeCompanionScreenWatchPill
+        centerShift={primaryPillCenterShift}
+        offsetBelowTop={primaryPillOffsetBelowTop}
+        ownerId="primary"
+      />
+      <VoiceMicStatusPill
+        ownerId={activePetId}
+        centerShift={activePetId === 'primary' ? primaryPillCenterShift : undefined}
+        offsetBelowTop={activePetId === 'primary' ? primaryPillOffsetBelowTop : undefined}
+        onDisableWake={() => onUpdateConfig({ ...config, settings: { ...config.settings, voiceWakeEnabled: false } })}
+      />
       {gameCompanionLoopStatus.running && (
         <div
           data-desktop-pet-interactive="true"
           data-desktop-pet-window-shape="true"
           data-desktop-pet-native-scope="pet"
-          className={`absolute z-[72] flex w-[min(240px,calc(100vw-40px))] items-center gap-2 rounded-full border px-3 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.14)] backdrop-blur-md transition-colors ${
+          className={`absolute z-[72] flex w-[min(240px,calc(100vw-40px))] items-center gap-2 rounded-full border px-3 py-2 shadow-[0_10px_24px_rgba(158,84,140,0.14)] backdrop-blur-md transition-colors ${
             gameCompanionDetected ? 'border-white/55 bg-white/52' : 'border-violet-200 bg-white/94'
           }`}
           style={{

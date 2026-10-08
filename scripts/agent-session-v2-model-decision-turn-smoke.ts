@@ -15,13 +15,19 @@ const {
   index: indexSource,
   runtime: runtimeSource,
   session: sessionSource,
+  planning: planningSource,
   turn: turnSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtime: 'src/agent/runtime/agentModelDecisionRuntime.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  planning: 'src/agent/productionSession/modelPlanningTurn.ts',
   turn: 'src/agent/runtime/agentModelDecisionRuntime.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/modelPlanningTurn'/u);
+assertSourceMatches(sessionSource, /const \{ executeModelPlanningTurn \} = createAgentProductionModelPlanningTurn\(\{/u);
+assertSourceMatches(sessionSource, /await executeModelPlanningTurn\(\{/u);
 
 assertSourceMatches(
   runtimeSource,
@@ -29,8 +35,8 @@ assertSourceMatches(
   'Model Decision Runtime should own the model-call transaction.',
 );
 assertSourceMatches(
-  sessionSource,
-  /runAgentModelDecisionTurn<AgentSessionV2Decision>/u,
+  planningSource,
+  /runAgentModelDecisionTurn<AgentModelDecision>/u,
   'AgentSessionV2 should call Model Decision Runtime directly.',
 );
 assertSourceDoesNotMatch(

@@ -15,6 +15,8 @@ import type { Live2DRuntimeProfileConfigV1 } from './pet-runtime/live2d/live2dRu
 import type { GroupMemoryRepositoryData } from './group-memory';
 import type { GroupTopicRepositoryData } from './group-topic';
 import type { DirectedRelationshipRepositoryData } from './character-relationship';
+import type { NeuralMemoryProposal } from './neural-memory/neuralMemoryProposalTypes';
+import type { CharacterMemoryState } from './character-memory/characterMemoryTypes';
 import type { ExpressionReplySettings } from './expression/expressionSettings';
 
 export type ModelType = '2d' | '3d' | 'live2d';
@@ -26,6 +28,9 @@ export type WebSearchProvider = 'gemini' | 'browser' | 'tavily' | 'serper' | 'br
 export type WebSearchRequestMethod = 'get' | 'post';
 export type BrowserSearchEngine = 'auto' | 'baidu' | 'google' | 'bing' | 'sogou' | 'custom';
 export type VoiceProvider = 'browser' | 'api' | 'local';
+export type TtsProvider = VoiceProvider | 'gpt-sovits';
+export type GptSovitsDevice = 'auto' | 'cuda' | 'cpu';
+export type VoiceInputMode = 'single' | 'conversation';
 export type VoiceApiProtocol = 'openai' | 'gemini';
 export type ModelRequestParamValueType = 'string' | 'number' | 'boolean' | 'json';
 export type ActivityDisplayId = 'primary' | `${number}`;
@@ -65,9 +70,15 @@ export interface PetPersonality {
   customErrorMessage: string;
   userMemory: string;
   chatHistoryMemory: string;
+  /** Automatic memory items and the rolling summary of older private chats. */
+  memoryState?: CharacterMemoryState;
   knowledgeBase: string;
   webSearchEnabled: boolean;
   webLearningEnabled: boolean;
+  /** GPT-SoVITS voice pack this character speaks with; empty = the global voice setting. */
+  voicePackId?: string;
+  /** Comma-separated phrases that wake this character by voice; empty = the character's name. */
+  wakeWords?: string;
 }
 
 export type PetAction = 'IDLE' | 'EATING' | 'HAPPY' | 'SAD' | 'SLEEPING' | 'WALKING' | 'RUNNING' | 'SWIMMING';
@@ -172,6 +183,9 @@ export interface PetModelMotionBinding {
   sourceUrl: string;
 }
 
+export type PetVideoEmotionAction = Extract<PetAction, 'EATING' | 'HAPPY' | 'SAD' | 'SLEEPING'>;
+export type PetVideoEmotionFolderAliases = Partial<Record<PetVideoEmotionAction, string[]>>;
+
 export interface PetModelPreset {
   id: string;
   name: string;
@@ -183,8 +197,12 @@ export interface PetModelPreset {
   sequenceAssetFolder?: string;
   /** Optional direct video renderer for a 2D WebM asset. */
   renderKind?: 'video' | 'gif';
-  /** When enabled, idle playback may rotate through the bound video folders. */
+  /** When enabled, idle playback rotates through random subfolders of the video library. */
   randomVideoPlaybackEnabled?: boolean;
+  /** Character video library root; each direct subfolder is one clip group (待机/, 开心/ ...). */
+  videoLibraryRootPath?: string;
+  /** User overrides for which library subfolder names count as each chat emotion. */
+  videoEmotionFolderAliases?: PetVideoEmotionFolderAliases;
   /** One-shot videos played when a matching item is handed to this video pet. */
   videoItemBindings?: Array<{ appearanceId: string; folderPath: string }>;
   builtIn?: boolean;
@@ -263,6 +281,33 @@ export interface BrowserTtsHealth {
   started?: boolean;
 }
 
+/** full = fine-tuned weights; lite = reference clips on the shared base model. */
+export type GptSovitsVoicePackKind = 'full' | 'lite';
+
+export interface GptSovitsModelSummary {
+  id: string;
+  name: string;
+  kind: GptSovitsVoicePackKind;
+  description: string;
+  author: string;
+  ready: boolean;
+  emotions: string[];
+  problems: string[];
+}
+
+export interface GptSovitsHealth {
+  available: boolean;
+  status: 'idle' | 'ready' | 'stopped' | 'missing-runtime' | 'missing-dependencies' | 'missing-source'
+    | 'missing-model' | 'no-gpu' | 'error';
+  running: boolean;
+  error: string | null;
+  cudaAvailable: boolean;
+  device: GptSovitsDevice;
+  modelId: string | null;
+  models: GptSovitsModelSummary[];
+  started?: boolean;
+}
+
 export interface BrowserTtsInstallResult {
   ok: boolean;
   executable: string | null;
@@ -284,6 +329,8 @@ export interface PetConfig {
   directedRelationshipRepository: DirectedRelationshipRepositoryData;
   groupMemoryRepository: GroupMemoryRepositoryData;
   groupTopicRepository: GroupTopicRepositoryData;
+  /** Memories characters proposed from chat, waiting for the user's approval. */
+  neuralMemoryProposals?: NeuralMemoryProposal[];
   modelType: ModelType;
   modelUrl: string;
   customModelPresets: PetModelPreset[];
@@ -305,6 +352,8 @@ export interface PetConfig {
     engineType: string;
     llmProvider: LlmProvider;
     agentRuntimeProvider: AgentRuntimeProviderId;
+    /** Desktop operation tasks use the new observe→decide→act→verify loop (src/agent/loop). */
+    agentDesktopLoopEnabled: boolean;
     deepseekHarnessPythonPath: string;
     deepseekHarnessWorkspace: string;
     deepseekHarnessHome: string;
@@ -352,11 +401,19 @@ export interface PetConfig {
     timeAwarenessEnabled: boolean;
     voiceEnabled: boolean;
     voiceInputEnabled: boolean;
+    voiceInputMode: VoiceInputMode;
+    /** Hands-free conversation closes the mic after this many seconds without user speech. */
+    voiceConversationIdleTimeoutSec: number;
+    /** Opt-in background listening for a wake phrase that starts hands-free conversation. */
+    voiceWakeEnabled: boolean;
+    /** Comma-separated wake phrases; empty means the active pet's name. */
+    voiceWakeWords: string;
+    voiceConversationOpenChat: boolean;
     autoSpeakResponses: boolean;
     speechSkipBracketContent: boolean;
     speechExpressivePunctuationEnabled: boolean;
     speechPlaybackRate: number;
-    ttsProvider: VoiceProvider;
+    ttsProvider: TtsProvider;
     sttProvider: VoiceProvider;
     apiTtsProtocol: VoiceApiProtocol;
     apiSttProtocol: VoiceApiProtocol;
@@ -379,6 +436,9 @@ export interface PetConfig {
     localVoiceReferenceId: string;
     localVoiceRuntimePath: string;
     localVoiceReferenceText: string;
+    gptSovitsModelId: string;
+    gptSovitsDevice: GptSovitsDevice;
+    gptSovitsApiUrl: string;
     activityAreaLimitEnabled: boolean;
     desktopIconInteractionEnabled: boolean;
     desktopMouseInteractionEnabled: boolean;
@@ -592,6 +652,15 @@ export interface ChatAgentApproval {
   trace?: ChatAgentRunTraceItem[];
 }
 
+/** Desktop agent loop progress (src/agent/loop); steps are shown only in the panel's 详情. */
+export interface ChatAgentLoopRun {
+  durationMs?: number | null;
+  goal: string;
+  status: 'running' | 'done' | 'needs-user' | 'failed' | 'cancelled' | 'budget';
+  steps: Array<{ changed: boolean | null; index: number; result?: string | null; text: string }>;
+  summary?: string | null;
+}
+
 export interface ChatAgentRun {
   assessment?: AgentChatResultAssessment | null;
   agentRuntime?: AgentRuntimeContinuation | null;
@@ -670,6 +739,7 @@ export interface ChatMessage {
   content?: ChatMessageContentSegment[];
   agentApproval?: ChatAgentApproval | null;
   agentRun?: ChatAgentRun | null;
+  agentLoopRun?: ChatAgentLoopRun | null;
   chatMode?: DesktopPetChatMode;
   createdAt?: number;
   petId?: string | null;

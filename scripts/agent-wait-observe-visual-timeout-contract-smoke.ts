@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
-const source = readFileSync(
-  new URL('../src/agent/agentRuntimeExecutor.ts', import.meta.url),
-  'utf8',
-);
+const source = readModuleProjectFile('src/agent/agentRuntimeExecutor.ts');
 
 assert.match(source, /AGENT_WAIT_OBSERVE_VISUAL_TIMEOUT_MS = 15_000/u);
 assert.match(source, /executeSupplementalWaitVisualObservation[\s\S]*Promise\.race/u);

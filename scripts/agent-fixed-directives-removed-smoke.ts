@@ -1,20 +1,16 @@
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
 import {
   runAgentProductionSession,
 } from '../src/agent/legacy/index.ts';
-import {
-  createAgentCommandFromPlannerDecision,
-  resolveAgentChatCommand,
-} from '../src/agent/agentLegacy.ts';
+import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
 import { type PetConfig } from '../src/types.ts';
-import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 
 const chatCommandSource = readProjectFile('src/agent/agentChatCommand.ts');
-const legacyChatCommandSource = readProjectFile('src/agent/agentLegacyChatCommand.ts');
 const plannerSource = readProjectFile('src/agent/agentPlanner.ts');
 const plannerRelevanceSource = readProjectFile('src/agent/agentPlannerRelevance.ts');
 const agentIndexSource = readProjectFile('src/agent/index.ts');
-const agentLegacySource = readProjectFile('src/agent/agentLegacy.ts');
 const sessionSource = readProjectFile('src/agent/agentProductionSessionImplementation.ts');
 const runtimeSource = readProjectFile('src/agent/agentRuntimeExecutor.ts');
 const registrySource = readProjectFile('src/agent/agentToolRegistry.ts');
@@ -24,21 +20,6 @@ const agentRunControllerSource = readProjectFile('src/components/chat/agentRunCo
 const appLauncherSource = readProjectFile('electron/appLauncherService.cjs');
 const showcaseSource = readProjectFile('src/components/pet/useDesktopOrganizationShowcase.ts');
 
-assert.equal(
-  resolveAgentChatCommand('open browser naturally'),
-  null,
-  'natural app launch text should not become a deterministic app-launch command',
-);
-assert.equal(
-  resolveAgentChatCommand('甯垜鎶婂洖鏀剁珯鏁寸悊鍒版帶鍒堕潰鏉夸笅闈㈡斁鏁撮綈'),
-  null,
-  'single-icon placement text should not become a deterministic desktop-icon-placement command',
-);
-assert.equal(
-  resolveAgentChatCommand('organize secondary display icons naturally'),
-  null,
-  'desktop organization text should not bypass planner through fixed parsing',
-);
 
 const unsupportedApp = createAgentCommandFromPlannerDecision('open browser naturally', {
   intent: 'unsupported',
@@ -72,11 +53,6 @@ assert.doesNotMatch(
   /resolveAgentChatCommand|AGENT_COMMAND_PREFIXES|parseSlashCommandBody|kind: 'unsupported'/u,
   'shared AgentChatCommand types should not create legacy slash/unsupported commands',
 );
-assert.match(
-  legacyChatCommandSource,
-  /resolveAgentChatCommand[\s\S]*kind: 'unsupported'/u,
-  'legacy slash command resolver should stay behind the explicit legacy module',
-);
 assert.doesNotMatch(plannerSource, /inferAppQueryFromText|inferDesktopIconPlacementArgs|inferDesktopOrganizationPlacementAreaFromText/u);
 assert.doesNotMatch(
   plannerSource,
@@ -95,8 +71,18 @@ assert.match(
 );
 assert.match(
   plannerSource,
-  /agentPlannerRelevance[\s\S]*getAgentLegacyPlannerRelevanceKeywords[\s\S]*matchesAgentLegacyPlannerToolRelevance/u,
-  'legacy planner should be the only active code path using keyword relevance',
+  /from ['"](?:\.\/|\.\.\/)agentPlannerRelevance['"]/u,
+  'legacy planner should explicitly depend on its isolated relevance module',
+);
+assert.match(
+  readModuleProjectFunction('src/agent/agentPlanner.ts', 'scorePlannerToolDefinition'),
+  /getAgentLegacyPlannerRelevanceKeywords\(definition\.name\)/u,
+  'planner fallback scoring should use isolated legacy relevance keywords',
+);
+assert.match(
+  readModuleProjectFunction('src/agent/agentPlanner.ts', 'shouldUseAgentPlanner'),
+  /matchesAgentLegacyPlannerToolRelevance\(sourceText\)/u,
+  'planner relevance matching should remain in the planner entry decision',
 );
 assert.doesNotMatch(
   sessionSource,
@@ -112,11 +98,6 @@ assert.doesNotMatch(
   agentIndexSource,
   /agentCore|agentPlanner|agentFollowUpContinuation|agentLegacyChatCommand|resolveAgentChatCommand/u,
   'main agent barrel should not re-export the legacy Core/Planner/follow-up/slash command chain',
-);
-assert.match(
-  agentLegacySource,
-  /export \* from '.\/agentCore'[\s\S]*export \* from '.\/agentLegacyChatCommand'[\s\S]*export \* from '.\/agentPlanner'/u,
-  'legacy Core/Planner exports should stay behind an explicit legacy module',
 );
 assert.doesNotMatch(
   typesSource,
@@ -202,6 +183,7 @@ assertCompatibilityToolLineHidden('place_desktop_icon');
 
 let compatibilityModelCallCount = 0;
 let compatibilityToolExecutionCount = 0;
+let compatibilityObservationCount = 0;
 const compatibilityResult = await runAgentProductionSession({
   maxSteps: 3,
   modelCaller: async ({ userInput }) => {
@@ -217,15 +199,26 @@ const compatibilityResult = await runAgentProductionSession({
       });
     }
 
-    assert.match(userInput, /Compatibility-only tool "launch_local_app"/u);
-    assert.match(userInput, /desktop\/app\/window\/browser\/resource task/u);
-    assert.match(userInput, /choose the next primary tool from the available tool list/u);
-    assert.doesNotMatch(userInput, /Use execute_desktop_action action "launch_local_app"/u);
+    if (compatibilityModelCallCount === 2) {
+      assert.match(userInput, /Compatibility-only tool "launch_local_app"/u);
+      assert.match(userInput, /desktop\/app\/window\/browser\/resource task/u);
+      assert.match(userInput, /choose the next primary tool from the available tool list/u);
+      assert.doesNotMatch(userInput, /Use execute_desktop_action action "launch_local_app"/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: { action: 'list_running_apps', target: 'browser' },
+        reason: 'Observe the existing browser before choosing a window to focus.',
+        tool: 'execute_desktop_observation',
+      });
+    }
+    assert.match(userInput, /Chrome pid=42/u);
     return JSON.stringify({
       action: 'tool_call',
       args: {
         action: 'focus_window',
-        target: 'browser',
+        target: 'Chrome',
+        hwnd: 4200,
+        pid: 42,
       },
       reason: 'After the compatibility-only wrapper was rejected, use the primary desktop action tool instead.',
       tool: 'execute_desktop_action',
@@ -233,7 +226,23 @@ const compatibilityResult = await runAgentProductionSession({
   },
   settings: {} as PetConfig['settings'],
   sourceText: '/agent open browser',
-  toolExecutor: async () => {
+  toolExecutor: async (command) => {
+    if (command.toolCall?.name === 'execute_desktop_observation') {
+      assert.equal(command.toolCall.input.action, 'list_running_apps');
+      compatibilityObservationCount += 1;
+      return {
+        ok: true,
+        observations: ['Chrome pid=42 hwnd=4200 title="New Tab"'],
+        responseText: 'Chrome pid=42 hwnd=4200 title="New Tab"',
+        stateSummary: { structuredEvidence: {
+          observationCapturedAt: Date.now(), status: 'success',
+          targetCandidates: [{ confidence: 'high', label: 'Chrome - New Tab',
+            source: 'observe_windows_and_apps',
+            window: { hwnd: 4200, pid: 42, processName: 'Chrome', title: 'New Tab' } }],
+        } },
+        verification: 'listed running apps',
+      };
+    }
     compatibilityToolExecutionCount += 1;
     throw new Error('compatibility-only tool should not execute in AgentSessionV2');
   },
@@ -241,9 +250,12 @@ const compatibilityResult = await runAgentProductionSession({
 });
 
 assert.equal(compatibilityResult.status, 'needs-approval');
-assert.equal(compatibilityModelCallCount, 2);
+assert.equal(compatibilityModelCallCount, 3);
+assert.equal(compatibilityObservationCount, 1);
 assert.equal(compatibilityToolExecutionCount, 0);
 assert.equal(compatibilityResult.pendingApproval?.command.toolCall?.name, 'execute_desktop_action');
 assert.equal(compatibilityResult.pendingApproval?.command.toolCall?.input.action, 'focus_window');
+assert.equal(compatibilityResult.pendingApproval?.command.toolCall?.input.hwnd, 4200);
+assert.equal(compatibilityResult.pendingApproval?.command.toolCall?.input.pid, 42);
 
 console.log('agent fixed directives removed smoke ok');

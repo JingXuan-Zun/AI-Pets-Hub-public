@@ -6,31 +6,57 @@ import {
   createBrowserVoiceSession,
   createPreparedBrowserVoicePlayback,
 } from './ttsBrowserPlayback';
+import {
+  createGptSovitsVoiceSession,
+  prepareGptSovitsVoicePlayback,
+  stopGptSovitsVoicePlayback,
+} from './ttsGptSovitsPlayback';
 import { createLocalVoicePipelineSession, prepareLocalVoicePlayback } from './ttsLocalPlayback';
+import { resolveGptSovitsEmotion } from './gptSovitsEmotion';
 import { createSilentPreparedVoicePlayback } from './ttsPlaybackPrimitives';
 import { resolveTtsRequest, type TtsProvider } from './ttsRequest';
 import { type PreparedVoicePlayback, type VoicePlaybackOptions, type VoicePlaybackSession, type VoiceSettings } from './types';
 
-export { stopBrowserVoicePlayback } from './ttsBrowserPlayback';
+import { stopBrowserVoicePlayback } from './ttsBrowserPlayback';
 
-async function prepareTtsPlaybackForProvider(provider: TtsProvider, text: string, settings: VoiceSettings) {
+// Aborts in-flight HTTP synthesis for providers that run outside the renderer.
+export function stopProviderVoiceRequests() {
+  stopBrowserVoicePlayback();
+  stopGptSovitsVoicePlayback();
+}
+
+async function prepareTtsPlaybackForProvider(
+  provider: TtsProvider,
+  text: string,
+  settings: VoiceSettings,
+  options: VoicePlaybackOptions = {},
+) {
   switch (provider) {
     case 'api':
       return prepareApiVoicePlayback(text, settings);
     case 'local':
       return prepareLocalVoicePlayback(text, settings);
+    case 'gpt-sovits':
+      return prepareGptSovitsVoicePlayback(text, settings, resolveGptSovitsEmotion(options.expressionAction));
     case 'browser':
     default:
       return createPreparedBrowserVoicePlayback(text, settings);
   }
 }
 
-async function createTtsSessionForProvider(provider: TtsProvider, text: string, settings: VoiceSettings) {
+async function createTtsSessionForProvider(
+  provider: TtsProvider,
+  text: string,
+  settings: VoiceSettings,
+  options: VoicePlaybackOptions = {},
+) {
   switch (provider) {
     case 'api':
       return createApiVoiceSession(text, settings);
     case 'local':
       return createLocalVoicePipelineSession(text, settings);
+    case 'gpt-sovits':
+      return createGptSovitsVoiceSession(text, settings, resolveGptSovitsEmotion(options.expressionAction));
     case 'browser':
     default:
       return createBrowserVoiceSession(text, settings);
@@ -212,6 +238,11 @@ export async function prepareTtsPlayback(
     return createSilentPreparedVoicePlayback();
   }
 
+  if (request.provider === 'gpt-sovits') {
+    // Pause splitting would hand the model short fragments, which it drops or garbles.
+    return await prepareTtsPlaybackForProvider(request.provider, request.preparedText, settings, options);
+  }
+
   return await preparePausableTtsPlaybackForProvider(request.provider, request.preparedText, settings);
 }
 
@@ -226,8 +257,8 @@ export async function createTtsSession(
     return createSilentPlaybackSession();
   }
 
-  if (request.provider === 'local') {
-    return await createTtsSessionForProvider(request.provider, request.preparedText, settings);
+  if (request.provider === 'local' || request.provider === 'gpt-sovits') {
+    return await createTtsSessionForProvider(request.provider, request.preparedText, settings, options);
   }
 
   return await createPausableTtsSessionForProvider(request.provider, request.preparedText, settings);

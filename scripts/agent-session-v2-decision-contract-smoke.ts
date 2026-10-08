@@ -16,16 +16,22 @@ const {
   modelTurn: modelTurnSource,
   runtimeContract: runtimeContractSource,
   session: sessionSource,
+  planning: planningSource,
 } = readProjectSources({
   contract: 'src/agent/runtime/agentDecisionContract.ts',
   modelTurn: 'src/agent/runtime/agentModelDecisionRuntime.ts',
   runtimeContract: 'src/agent/runtime/agentDecisionContract.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  planning: 'src/agent/productionSession/modelPlanningTurn.ts',
 });
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/modelPlanningTurn'/u);
+assertSourceMatches(sessionSource, /const \{ executeModelPlanningTurn \} = createAgentProductionModelPlanningTurn\(\{/u);
+assertSourceMatches(sessionSource, /await executeModelPlanningTurn\(\{/u);
+
 assertSourceMatches(runtimeContractSource, /export function parseAgentDecisionContract/u);
 assertSourceMatches(runtimeContractSource, /export function prepareAgentDecisionToolInput/u);
 assertSourceMatches(runtimeContractSource, /prepareAgentToolInput/u);
-assertSourceMatches(sessionSource, /runAgentModelDecisionTurn<AgentSessionV2Decision>/u);
+assertSourceMatches(planningSource, /runAgentModelDecisionTurn<AgentModelDecision>/u);
 assertSourceMatches(sessionSource, /parseDecision: parseAgentDecisionContract/u);
 assertSourceMatches(sessionSource, /prepareToolInput: prepareAgentDecisionToolInput/u);
 assertSourceMatches(modelTurnSource, /options\.parseDecision\(modelResponse\)/u);

@@ -47,7 +47,7 @@ const result = await runAgentProductionSession({
       assert.match(userInput, /running=0/u);
       return JSON.stringify({
         action: 'final_answer',
-        message: '已经帮你打开 ExampleLauncher 里的 ExampleGame 了�?,
+        message: '已经帮你打开 ExampleLauncher 里的 ExampleGame 了。',
         understanding: {
           completedGoals: [
             'opened ExampleLauncher',

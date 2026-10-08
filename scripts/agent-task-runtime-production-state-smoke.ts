@@ -142,7 +142,8 @@ assert.equal(terminalRestartState.lastRejectedTransitionKind, 'observation-start
 assert.match(terminalRestartState.lastTransitionError ?? '', /requires an active task/u);
 
 let recoveryState = continued.taskState;
-for (let attempt = 1; attempt <= 3; attempt += 1) {
+// Default recovery budget is 5 attempts per stage (an approval starts a new stage).
+for (let attempt = 1; attempt <= 5; attempt += 1) {
   const authorization = authorizeAgentTaskRuntimeRecovery({
     now: 2000 + attempt,
     previous: recoveryState,
@@ -155,7 +156,7 @@ for (let attempt = 1; attempt <= 3; attempt += 1) {
   });
   assert.equal(authorization.decision.allowed, true);
   assert.equal(authorization.decision.attempt, attempt);
-  assert.equal(authorization.decision.limit, 3);
+  assert.equal(authorization.decision.limit, 5);
   assert.equal(authorization.taskState.recoveryAttemptCount, attempt);
   assert.equal(authorization.taskState.taskId, continued.taskState?.taskId);
   assert.equal(authorization.taskState.revision, (recoveryState?.revision ?? 0) + 1);
@@ -171,8 +172,8 @@ const rejectedRecovery = authorizeAgentTaskRuntimeRecovery({
   },
 });
 assert.equal(rejectedRecovery.decision.allowed, false);
-assert.equal(rejectedRecovery.decision.attempt, 4);
-assert.equal(rejectedRecovery.taskState.recoveryAttemptCount, 3);
+assert.equal(rejectedRecovery.decision.attempt, 6);
+assert.equal(rejectedRecovery.taskState.recoveryAttemptCount, 5);
 assert.equal(rejectedRecovery.taskState.state, 'blocked_needs_user');
 assert.equal(rejectedRecovery.taskState.taskId, continued.taskState?.taskId);
 assert.equal(rejectedRecovery.taskState.revision, (recoveryState?.revision ?? 0) + 1);
@@ -183,12 +184,12 @@ const routed = await runAgentRuntime({
     id: 'task-runtime-production-state-smoke',
     async run(context) {
       const continuation = result({ status: 'needs-user' }).continuation;
-      const recoveryDecisions = Array.from({ length: 4 }, () => context?.authorizeRecovery({
+      const recoveryDecisions = Array.from({ length: 6 }, () => context?.authorizeRecovery({
         kind: 'automatic-observation',
         sourceText: continuation.sourceText,
         userGoal: continuation.userGoal,
       }));
-      assert.deepEqual(recoveryDecisions.map((decision) => decision?.allowed), [true, true, true, false]);
+      assert.deepEqual(recoveryDecisions.map((decision) => decision?.allowed), [true, true, true, true, true, false]);
       context?.onProgress({
         continuation,
         message: 'Planning',
@@ -283,10 +284,10 @@ assert.deepEqual(
     'recovering',
   ],
 );
-assert.deepEqual(progressStates.map((state) => state.revision), [5, 6, 7, 8, 9, 10, 11, 12]);
+assert.deepEqual(progressStates.map((state) => state.revision), [7, 8, 9, 10, 11, 12, 13, 14]);
 assert.equal(progressStates[0]?.taskId, progressStates[1]?.taskId);
 assert.equal(routed.result?.taskState?.state, 'blocked_needs_user');
-assert.equal(routed.result?.taskState?.revision, 13);
+assert.equal(routed.result?.taskState?.revision, 15);
 assert.equal(routed.result?.taskState?.taskId, progressStates[0]?.taskId);
 assert.equal(routed.result?.continuation.taskState?.owner, 'task-runtime');
 
@@ -305,7 +306,7 @@ const resumedRecovery = await runAgentRuntime({
         userGoal: continuation.userGoal,
       });
       assert.equal(decision?.allowed, false);
-      assert.equal(decision?.attempt, 4);
+      assert.equal(decision?.attempt, 6);
       return {
         implementation: 'stable' as const,
         reason: 'recovery continuation smoke',
@@ -315,8 +316,34 @@ const resumedRecovery = await runAgentRuntime({
   },
 });
 assert.equal(resumedRecovery.result?.taskState?.taskId, routed.result?.taskState?.taskId);
-assert.equal(resumedRecovery.result?.taskState?.recoveryAttemptCount, 3);
+assert.equal(resumedRecovery.result?.taskState?.recoveryAttemptCount, 5);
 assert.equal(resumedRecovery.result?.taskState?.state, 'blocked_needs_user');
+
+// A task-scoped auto continuation resumes with an approve event outside waiting_approval.
+// The approved action already ran, so the next stage still gets a fresh recovery budget.
+const approvedContinuation = await runAgentRuntime({
+  adapter: {
+    id: 'task-runtime-approved-continuation-budget-smoke',
+    async run(context) {
+      const decision = context?.authorizeRecovery({
+        kind: 'automatic-observation',
+        sourceText: 'smoke',
+        taskState: routed.result?.taskState ?? null,
+        userGoal: 'smoke',
+      });
+      assert.equal(decision?.allowed, true, 'approved continuation resets the exhausted budget');
+      assert.equal(decision?.attempt, 1);
+      return {
+        implementation: 'stable' as const,
+        reason: 'approved continuation budget smoke',
+        result: result({ continuation: routed.result?.continuation, status: 'needs-user' }),
+      };
+    },
+  },
+  taskTransaction: { approval: null, lastError: null, phase: 'resuming', taskState: routed.result?.taskState ?? null } as never,
+  taskTransactionEvent: { approval: null, type: 'approve' } as never,
+});
+assert.equal(approvedContinuation.result?.taskState?.recoveryAttemptCount, 1);
 
 const productionProgressPhases: string[] = [];
 const productionRouted = await runAgentRuntime({

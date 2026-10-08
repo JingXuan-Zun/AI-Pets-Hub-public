@@ -1,5 +1,11 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { type Avatar3DRuntimeBackend, type ModelType, type PetAction, type PetModelMotionBinding } from '../../types';
+import {
+  type Avatar3DRuntimeBackend,
+  type ModelType,
+  type PetAction,
+  type PetModelMotionBinding,
+  type PetVideoEmotionFolderAliases,
+} from '../../types';
 import { DEFAULT_BUILTIN_STATIC_PET_MODEL_URL } from '../../constants';
 import Pet2DRenderer from './Pet2DRenderer';
 import Pet3DRenderer from './Pet3DRenderer';
@@ -48,6 +54,9 @@ export interface PetVisualRendererProps {
   live2dRuntimeProfile?: Live2DRuntimeProfileConfigV1 | null;
   modelType: ModelType;
   modelUrl: string;
+  randomVideoPlaybackEnabled?: boolean;
+  videoEmotionFolderAliases?: PetVideoEmotionFolderAliases | null;
+  videoLibraryRootPath?: string | null;
   sequenceFrames?: string[];
   renderKind?: 'video' | 'gif';
   contentManifestOverride?: PetContentManifest | null;
@@ -85,6 +94,9 @@ const PetVisualRenderer = memo(function PetVisualRenderer({
   live2dRuntimeProfile = null,
   modelType,
   modelUrl,
+  randomVideoPlaybackEnabled = false,
+  videoEmotionFolderAliases = null,
+  videoLibraryRootPath = null,
   sequenceFrames = [],
   renderKind,
   contentManifestOverride = null,
@@ -279,9 +291,13 @@ const PetVisualRenderer = memo(function PetVisualRenderer({
   if (resolvedRenderKind === 'video') {
     return (
       <PetVideo2DRenderer
+        emotionAction={expressionAction}
         isDragging={isDragging}
         enableItemInteractions={updatePriority === 'primary'}
         modelUrl={modelUrl}
+        randomVideoPlaybackEnabled={randomVideoPlaybackEnabled}
+        videoEmotionFolderAliases={videoEmotionFolderAliases}
+        videoLibraryRootPath={videoLibraryRootPath}
         onVisualBoundsChange={onVisualBoundsChange}
         pointerLookTarget={pointerLookTarget}
         scale={scale}

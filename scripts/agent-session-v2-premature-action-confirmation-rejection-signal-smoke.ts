@@ -15,11 +15,13 @@ const {
   index: indexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  guards: guardsSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtimeSignal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  guards: 'src/agent/productionSession/finalEvidenceGuards.ts',
   signal: 'src/agent/runtime/agentDecisionRejectionSignals.ts',
 });
 
@@ -45,8 +47,8 @@ assertSourceDoesNotMatch(
 );
 assertSourceMatches(
   sessionSource,
-  /function shouldRejectAgentSessionV2PrematureActionConfirmation/u,
-  'AgentSessionV2 should still own the premature action confirmation predicate for this slice.',
+  /shouldRejectAgentProductionPrematureActionConfirmation: shouldRejectAgentSessionV2PrematureActionConfirmation/u,
+  'Production session should bind the existing evidence guard from its module.',
 );
 
 const command: AgentChatCommand = {
@@ -107,6 +109,10 @@ const entry: AgentSessionV2ToolResultEntry = {
   command,
   result,
 };
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalEvidenceGuards'/u, 'The root must import the checked implementation.');
+assertSourceMatches(sessionSource, /createAgentProductionFinalEvidenceGuards\(\{/u, 'The root must instantiate the reachable evidence guard module.');
+assertSourceMatches(guardsSource, /function shouldRejectAgentProductionPrematureActionConfirmation/u, 'The predicate implementation must remain in the bound production module.');
 
 const rejectionText = createAgentPrematureActionConfirmationRejection(
   entry,

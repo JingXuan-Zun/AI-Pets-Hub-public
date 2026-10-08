@@ -8,7 +8,7 @@ import {
   type AgentChatCommand,
   type AgentChatCommandResult,
 } from '../src/agent/legacy/index.ts';
-import { createAgentCommandFromPlannerDecision } from '../src/agent/agentLegacy.ts';
+import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
 import { type PetConfig } from '../src/types.ts';
 
 const settings = {} as PetConfig['settings'];
@@ -85,7 +85,7 @@ assert.equal(
   resolveSafeDesktopOrganizationScope({
     displayTarget: 'secondary',
     requestedScope: 'all-icons',
-    sourceText: '帮我整理副屏桌面图标并排列整�?,
+    sourceText: '帮我整理副屏桌面图标并排列整齐',
   }),
   'display-icons',
   'secondary display requests should not move every desktop icon unless the user explicitly says all icons',
@@ -115,7 +115,7 @@ assert.equal(
   resolveSafeDesktopOrganizationScope({
     displayTarget: 'secondary',
     requestedScope: 'all-icons',
-    sourceText: '帮我整理副屏桌面图标并排列整�?,
+    sourceText: '帮我整理副屏桌面图标并排列整齐',
     structuredIntent: true,
   }),
   'all-icons',
@@ -133,16 +133,16 @@ assert.equal(
 );
 
 assert.equal(
-  hasExplicitAllDesktopIconsToDisplayIntent('帮我整理副屏桌面图标并排列整�?),
+  hasExplicitAllDesktopIconsToDisplayIntent('帮我整理副屏桌面图标并排列整齐'),
   false,
 );
 
 assert.equal(
-  hasExplicitDesktopOrganizationToDisplayIntent('帮我整理副屏桌面图标并排列整�?),
+  hasExplicitDesktopOrganizationToDisplayIntent('帮我整理副屏桌面图标并排列整齐'),
   false,
 );
 
-const plannerCommand = createAgentCommandFromPlannerDecision('帮我整理副屏桌面图标并排列整�?, {
+const plannerCommand = createAgentCommandFromPlannerDecision('帮我整理副屏桌面图标并排列整齐', {
   args: {
     displayTarget: 'secondary',
     mode: 'preview',
@@ -197,10 +197,18 @@ const structuredToolResult = await runAgentProductionSession({
     assert.match(systemInstruction, /targetDisplay/u);
     assert.match(systemInstruction, /sourceScope/u);
     if (modelCallCount > 1) {
+      // A preview alone does not complete an organization request; the
+      // actual arrangement must go through approval.
       assert.match(userInput, /preview ready/u);
       return JSON.stringify({
-        action: 'final_answer',
-        message: '整理预览已经准备好了�?,
+        action: 'tool_call',
+        args: {
+          mode: 'execute',
+          sourceScope: 'all-icons',
+          targetDisplay: 'secondary',
+        },
+        reason: 'The preview is ready; arrange the icons on the secondary display.',
+        tool: 'organize_desktop_icons',
       });
     }
 
@@ -225,11 +233,16 @@ const structuredToolResult = await runAgentProductionSession({
       verification: 'captured structured tool command',
     };
   },
+  userGoal: '整理一下桌面吧，整理好了放在副屏就好了',
 });
 
 assert.equal(modelCallCount, 2);
-assert.equal(structuredToolResult.status, 'completed');
+assert.equal(structuredToolResult.status, 'needs-approval');
+assert.equal(structuredToolResult.pendingApproval?.command.toolCall?.name, 'organize_desktop_icons');
+assert.equal(structuredToolResult.pendingApproval?.command.toolCall?.input.mode, 'execute');
+assert.equal(structuredToolResult.pendingApproval?.command.toolCall?.input.targetDisplay, 'secondary');
 assert.equal(structuredToolCommand?.toolCall?.name, 'organize_desktop_icons');
+assert.equal(structuredToolCommand?.toolCall?.input.mode, 'preview');
 assert.equal(structuredToolCommand?.toolCall?.input.targetDisplay, 'secondary');
 assert.equal(structuredToolCommand?.toolCall?.input.sourceScope, 'all-icons');
 

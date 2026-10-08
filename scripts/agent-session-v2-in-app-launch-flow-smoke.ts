@@ -7,6 +7,7 @@ import { type PetConfig } from '../src/types.ts';
 
 const settings = {} as PetConfig['settings'];
 let modelCallCount = 0;
+const executedTools: string[] = [];
 
 const result = await runAgentProductionSession({
   maxSteps: 4,
@@ -57,10 +58,16 @@ const result = await runAgentProductionSession({
   settings,
   sourceText: '/agent open Game inside Launcher',
   toolExecutor: async (command: AgentChatCommand) => {
+    executedTools.push(command.toolCall?.name ?? 'unknown');
     if (command.toolCall?.name === 'locate_screen_elements') {
       assert.equal(command.capabilityId, 'desktop-observation');
       assert.equal(command.toolCall.input.sourceQuery, 'Launcher');
-      assert.equal(command.toolCall.input.targetDescription, 'Game and its associated launch button');
+      // The runtime may follow up with one read-only focused refinement whose
+      // target description extends the original one with the focused candidate.
+      assert.match(
+        String(command.toolCall.input.targetDescription),
+        /^Game and its associated launch button/u,
+      );
       return {
         observations: [
           'Screen element locate action: locate_element',
@@ -103,15 +110,22 @@ const result = await runAgentProductionSession({
       };
     }
 
-    throw new Error('execute_desktop_sequence should pause for approval before running');
+    throw new Error(`unexpected tool execution before approval: ${command.toolCall?.name}`);
   },
   userGoal: 'open Game inside Launcher',
 });
 
-assert.equal(modelCallCount, 1);
+// One model turn to locate, one runtime-driven read-only focused refinement,
+// then one model turn selecting the click sequence, which must pause for
+// approval against the still-current target surface (not loop as stale).
+assert.equal(modelCallCount, 2);
+assert.deepEqual(executedTools, ['locate_screen_elements', 'locate_screen_elements']);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /execute_desktop_input/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval/u);
+assert.ok(result.pendingApproval?.surfaceId, 'approval should be bound to the observed surface');
+const history = result.continuation.historyLines.join('\n');
+assert.match(history, /selected approval-required tool:\ntool=execute_desktop_sequence/u);
+assert.doesNotMatch(history, /target-stale/u);
 
 console.log('agent session v2 in-app launch flow smoke ok');

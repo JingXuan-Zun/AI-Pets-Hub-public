@@ -11,6 +11,7 @@ import {
 } from '../src/components/pet/live2dPointerLookTarget';
 import { readProjectFile } from './smokeTestHarness.ts';
 import { LIVE2D_DRAG_LOOK_SETTLE_MS } from '../src/components/pet/useLive2DDragLookSettle';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 if (LIVE2D_DRAG_LOOK_SETTLE_MS !== 900) {
   throw new Error(`Expected Live2D drag direction to remain ahead of nearby pointer input for 900ms, got ${LIVE2D_DRAG_LOOK_SETTLE_MS}`);
@@ -206,7 +207,7 @@ if (resolveLive2DDragSettledPointerLookTarget({
   throw new Error('Expected pointer look to resume after drag release settling finishes');
 }
 
-const live2DRendererSource = readProjectFile('src/components/pet/PetLive2DRenderer.tsx');
+const live2DRendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 const dragLookSettleSource = readProjectFile('src/components/pet/useLive2DDragLookSettle.ts');
 
 if (!/if \(isDragging && !wasDraggingRef\.current\) \{\s*lastDragFocusTargetRef\.current = null;/u.test(dragLookSettleSource)) {
@@ -217,7 +218,7 @@ if (!/lastDragFocusTargetRef\.current = focusTarget \?\? lastDragFocusTargetRef\
   throw new Error('Expected the drag settle hook to retain the latest valid active-drag direction');
 }
 
-if (!/const pointerLookRuntimeController = pointerLookRuntimeControllerRef\.current[\s\S]*pointerLookRuntimeController\?\.updateInputTarget\(lookPosition\)[\s\S]*if \(model && !pointerLookRuntimeController\) \{[\s\S]*model\.focus\(lookPosition\.x, lookPosition\.y\)/u.test(live2DRendererSource)) {
+if (!/const pointerLookRuntimeController = refs\.pointerLookRuntimeControllerRef\.current[\s\S]*pointerLookRuntimeController\?\.updateInputTarget\(lookPosition\)[\s\S]*if \(model && !pointerLookRuntimeController\) \{[\s\S]*model\.focus\(lookPosition\.x, lookPosition\.y\)/u.test(live2DRendererSource)) {
   throw new Error('Expected Live2D built-in focus to be skipped while the timed pointer parameter controller is active');
 }
 

@@ -126,14 +126,14 @@ try {
     };
   };
 
-  assert.equal(shouldUseExternalWebSearch('随便聊两�?, 'allow'), false);
+  assert.equal(shouldUseExternalWebSearch('随便聊两句', 'allow'), false);
   assert.equal(shouldUseExternalWebSearch('今天天气不错', 'allow'), false);
   assert.equal(shouldUseExternalWebSearch('今天上海天气怎么样？', 'allow'), true);
-  assert.equal(shouldUseExternalWebSearch('帮我搜一�?AI Desktop Pet', 'allow'), true);
-  assert.equal(shouldUseExternalWebSearch('随便聊两�?, 'force'), true);
+  assert.equal(shouldUseExternalWebSearch('帮我搜一下 AI Desktop Pet', 'allow'), true);
+  assert.equal(shouldUseExternalWebSearch('随便聊两句', 'force'), true);
 
   const casualInstruction = await buildExternalWebSearchInstruction(
-    '随便聊两�?,
+    '随便聊两句',
     personality,
     settings,
   );
@@ -141,7 +141,7 @@ try {
   assert.equal(browserSearchCallCount, 0, 'casual chat should not open browser search');
 
   const forcedInstruction = await buildExternalWebSearchInstruction(
-    '随便聊两�?,
+    '随便聊两句',
     personality,
     settings,
     'force',
@@ -150,7 +150,7 @@ try {
   assert.equal(browserSearchCallCount, 1, 'force mode should open browser search');
 
   const blockedInstruction = await buildExternalWebSearchInstruction(
-    '帮我查一下今天上海天�?,
+    '帮我查一下今天上海天气',
     personality,
     settings,
     'block',

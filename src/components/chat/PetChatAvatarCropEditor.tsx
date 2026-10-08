@@ -301,7 +301,7 @@ export function PetChatAvatarCropEditor({
         <Button
           type="button"
           variant="secondary"
-          className="h-8 flex-1 rounded-full bg-sky-950 px-3 text-[10px] text-white hover:bg-sky-900"
+          className="h-8 flex-1 rounded-full bg-primary px-3 text-[10px] text-white hover:bg-primary/90"
           onClick={confirmCrop}
           disabled={isSaving}
         >

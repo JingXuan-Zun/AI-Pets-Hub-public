@@ -239,6 +239,26 @@ export const desktopPetShellBridge = {
   minimizeCurrentWindow: () => {
     window.desktopPetShell?.minimizeCurrentWindow?.();
   },
+  toggleMaximizeCurrentWindow: () => (
+    window.desktopPetShell?.toggleMaximizeCurrentWindow?.() ?? Promise.resolve(false)
+  ),
+  captureSourceImage: (request: { height?: number; maxSide?: number; sourceId: string; width?: number }) => (
+    window.desktopPetShell?.captureSourceImage?.(request) ?? Promise.resolve({ ok: false, reason: 'unavailable' })
+  ),
+  captureRegionText: (request: DesktopPetScreenRegionTextRequestLike) => (
+    window.desktopPetShell?.captureRegionText?.(request)
+      ?? Promise.resolve<DesktopPetScreenRegionTextResultLike>({ lines: [], ok: false, reason: 'unavailable' })
+  ),
+  recognizeScreenText: (request: { imageDataUrl: string }) => (
+    window.desktopPetShell?.recognizeScreenText?.(request)
+      ?? Promise.resolve<DesktopPetScreenTextRecognitionResultLike>({ lines: [], ok: false, reason: 'unavailable' })
+  ),
+  isCurrentWindowMaximized: () => (
+    window.desktopPetShell?.isCurrentWindowMaximized?.() ?? Promise.resolve(false)
+  ),
+  restoreMaximizedWindowForDrag: (request: DesktopPetWindowDragRestoreRequest) => (
+    window.desktopPetShell?.restoreMaximizedWindowForDrag?.(request) ?? Promise.resolve(null)
+  ),
   isChatWindowOpen: () => {
     pushRuntimeLog('IPC', '查询聊天窗口状态');
     return window.desktopPetShell?.isChatWindowOpen?.() ?? Promise.resolve(false);
@@ -1060,6 +1080,22 @@ export const desktopPetShellBridge = {
     pushRuntimeLog('IPC', '读取 Edge-TTS 音色列表', summarizeVoiceSettings(settings));
     return window.desktopPetShell?.listBrowserTtsSpeakers?.(settings) ?? Promise.resolve(null);
   },
+  getGptSovitsHealth: (settings?: unknown) => {
+    pushRuntimeLog('IPC', '检测 GPT-SoVITS 本地服务', summarizeVoiceSettings(settings));
+    return window.desktopPetShell?.getGptSovitsHealth?.(settings) ?? Promise.resolve(null);
+  },
+  startGptSovitsService: (settings?: unknown) => {
+    pushRuntimeLog('IPC', '启动 GPT-SoVITS 本地服务', summarizeVoiceSettings(settings));
+    return window.desktopPetShell?.startGptSovitsService?.(settings) ?? Promise.resolve(null);
+  },
+  listGptSovitsModels: () => window.desktopPetShell?.listGptSovitsModels?.() ?? Promise.resolve(null),
+  installGptSovitsRuntime: (settings?: unknown) => {
+    pushRuntimeLog('IPC', '安装 GPT-SoVITS 运行环境', summarizeVoiceSettings(settings));
+    return window.desktopPetShell?.installGptSovitsRuntime?.(settings) ?? Promise.resolve(null);
+  },
+  onGptSovitsInstallProgress: (callback: (progress: unknown) => void) => (
+    window.desktopPetShell?.onGptSovitsInstallProgress?.(callback) ?? (() => undefined)
+  ),
   getRuntimeLogs: () => window.desktopPetShell?.getRuntimeLogs?.() ?? Promise.resolve([]),
   detectBrowserSearch: (payload?: unknown) => {
     pushRuntimeLog('联网', '检测本机浏览器');

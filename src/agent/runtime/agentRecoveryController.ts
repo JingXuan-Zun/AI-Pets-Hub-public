@@ -62,6 +62,7 @@ export interface AgentRecoveryTriggerDecision {
     | 'action-waiting'
     | 'insufficient-evidence'
     | 'permission-blocked'
+    | 'post-action-state-unresolved'
     | 'permission-pending'
     | 'terminal-needs-user'
     | 'unverified-receipt'
@@ -73,6 +74,16 @@ const AGENT_RECOVERY_WAIT_STATES = new Set([
   'updating',
   'waiting_target',
   'waiting_window',
+]);
+
+// Post-action states that the desktop auto-recovery observation builder can
+// read back without side effects. login_required has its own gate handling.
+const AGENT_RECOVERY_STATE_READ_STATES = new Set([
+  'blocked',
+  'error',
+  'selection_mismatch',
+  'unchanged',
+  'visible_only',
 ]);
 
 export function decideAgentRecoveryTrigger(
@@ -112,6 +123,9 @@ export function decideAgentRecoveryTrigger(
   }
   if (request.actionStatus === 'needs-recovery' || request.coverage === 'missing') {
     return { action: 'automatic-observation', reason: 'action-needs-recovery' };
+  }
+  if (AGENT_RECOVERY_STATE_READ_STATES.has(request.postActionState.trim().toLowerCase())) {
+    return { action: 'automatic-observation', reason: 'post-action-state-unresolved' };
   }
   if (request.receiptStatus === 'unverified') {
     return { action: 'automatic-observation', reason: 'unverified-receipt' };

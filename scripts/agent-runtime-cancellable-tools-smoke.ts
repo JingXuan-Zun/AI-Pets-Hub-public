@@ -1,5 +1,6 @@
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+
 
 const {
   runtimeSource,
@@ -25,7 +26,7 @@ const {
   viteEnvSource: 'src/vite-env.d.ts',
 });
 
-assert.match(runtimeSource, /runCancellableAgentRuntimeTask/u);
+assert.match(runtimeSource, /import \{ isAgentRuntimeCancellationRequested \} from '\.\/agentRuntimeCancellation'/u);
 assert.match(systemRuntimeSource, /executeRunControlledCommand\(\s*runtime: AgentRuntimeExecutorContext/u);
 assert.match(systemRuntimeSource, /cancelControlledCommand\(\{ requestId \}\)/u);
 assert.match(systemRuntimeSource, /requestId,\s*\n\s*shell,/u);

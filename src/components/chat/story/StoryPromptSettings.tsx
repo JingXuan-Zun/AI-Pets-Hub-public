@@ -6,7 +6,7 @@ import type { StoryPromptInputMode } from './storyPromptPresetTypes';
 
 function StoryPromptToggle(props: { checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <button type="button" role="switch" aria-checked={props.checked} aria-label="启用自定义提示词" onClick={() => props.onChange(!props.checked)} className={`relative h-6 w-11 rounded-full transition-colors ${props.checked ? 'bg-sky-950' : 'bg-slate-300'}`}>
+    <button type="button" role="switch" aria-checked={props.checked} aria-label="启用自定义提示词" onClick={() => props.onChange(!props.checked)} className={`relative h-6 w-11 rounded-full transition-colors ${props.checked ? 'bg-primary' : 'bg-slate-300'}`}>
       <span className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${props.checked ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
   );
@@ -20,7 +20,7 @@ function PromptModeButton(props: {
 }) {
   const Icon = props.icon;
   return (
-    <button type="button" onClick={props.onClick} className={`inline-flex h-8 items-center rounded-lg border px-3 text-[10px] font-medium ${props.active ? 'border-sky-700 bg-sky-950 text-white' : 'border-sky-200 bg-white text-sky-800 hover:bg-sky-50'}`}>
+    <button type="button" onClick={props.onClick} className={`inline-flex h-8 items-center rounded-lg border px-3 text-[10px] font-medium ${props.active ? 'border-primary bg-primary text-white' : 'border-sky-200 bg-white text-sky-800 hover:bg-sky-50'}`}>
       <Icon className="mr-1 h-3.5 w-3.5" />{props.label}
     </button>
   );

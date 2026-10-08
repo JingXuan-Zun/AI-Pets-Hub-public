@@ -111,15 +111,21 @@ assert.equal(
 const headerSource = readProjectFile('src/components/chat/PetChatConversationHeader.tsx');
 const collapsedHeaderBranch = headerSource.match(/if \(isTargetSelectorCollapsed\) \{[\s\S]*?\n  \}/)?.[0] ?? '';
 
+const modeSelectorSource = readProjectFile('src/components/chat/ChatModeSelector.tsx');
 assert.match(
   headerSource,
-  /私聊[\s\S]*群聊/,
-  'left chat target rail should label single chat mode as private chat',
+  /<ChatModeSelector chatMode=\{chatMode\}/,
+  'left chat target rail should render the shared chat mode selector',
+);
+assert.match(
+  modeSelectorSource,
+  /label: '私聊'[\s\S]*label: '群聊'/,
+  'chat mode selector should label single chat mode as private chat',
 );
 assert.doesNotMatch(
-  headerSource,
-  />单聊</,
-  'left chat target rail should not show the old single chat label',
+  modeSelectorSource,
+  /单聊/,
+  'chat mode selector should not show the old single chat label',
 );
 assert.match(
   headerSource,
@@ -148,7 +154,7 @@ assert.match(
 );
 assert.match(
   collapsedHeaderBranch,
-  /isTargetSelectorCollapsed[\s\S]*absolute left-0 top-3/,
+  /isTargetSelectorCollapsed[\s\S]*ChatSidebarToggleButton[\s\S]*absolute left-3 top-3/,
   'collapsed left chat target rail should be pinned to the left edge without taking layout width',
 );
 assert.doesNotMatch(
@@ -195,7 +201,7 @@ for (const sourcePath of controlCenterSources) {
   const source = readProjectFile(sourcePath);
   assert.doesNotMatch(
     source,
-    /一轮群聊|无限群聊|groupChatContinuationMode/,
+    /一轮群聊|无限群聊(?!生成速度)|groupChatContinuationMode/,
     `${sourcePath} should not contain group chat continuation controls`,
   );
 }

@@ -13,6 +13,7 @@ const chatCommandSource = readProjectFile('src/agent/agentChatCommand.ts');
 const contextSource = readProjectFile('src/agent/agentChatContext.ts');
 const contextQuerySource = readProjectFile('src/agent/agentContextQuery.ts');
 const senderSource = readProjectFile('src/components/chat/usePetChatMessageSender.ts');
+const senderExecutionSource = readProjectFile('src/components/chat/petChatMessageSendExecution.ts');
 const runtimeSource = readProjectFile('src/agent/agentRuntimeExecutor.ts');
 const orchestratorSource = readProjectFile('src/agent/agentOrchestrator.ts');
 
@@ -34,8 +35,10 @@ assert.match(
   'context query resolver should answer from the latest desktop observation context',
 );
 
+assert.match(senderSource, /await executePetChatMessageSend\(contextRef\.current, textOverride, sendOptions\)/u, 'chat sender should delegate to the message execution module');
+
 assert.match(
-  senderSource,
+  senderExecutionSource,
   /resolveAgentChatEntryRoute\([\s\S]*historyMessages: preparedRequest\.promptHistoryMessages/u,
   'chat sender should route ambiguous Agent entry through the chat entry router with current chat history',
 );

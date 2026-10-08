@@ -84,6 +84,24 @@ export interface NeuralPersonaLearningApplicationMarker {
   targetGraphRevision: number;
 }
 
+export interface NeuralPersonaSourceDocument {
+  content: string;
+  contentFingerprint: string;
+  createdAt: number;
+  ownerRoleId: string;
+  sourceId: string;
+  title: string;
+  type: 'persona-import';
+}
+
+export interface NeuralPersonaSourceReference {
+  blockId: string;
+  endOffset: number;
+  quote: string;
+  sourceId: string;
+  startOffset: number;
+}
+
 export interface NeuralPersonaNode {
   activationCount: number;
   baseWeight: number;
@@ -98,13 +116,16 @@ export interface NeuralPersonaNode {
   lastActivatedAt?: number;
   learningApplication?: NeuralPersonaLearningApplicationMarker;
   nodeId: string;
+  normalizedContent?: string;
   ownerRoleId: string;
   parentNodeId?: string;
   plasticity: number;
   protected: boolean;
   schemaVersion: typeof NEURAL_PERSONA_SCHEMA_VERSION;
   scope: NeuralPersonaScope;
+  retrievalSummary?: string;
   sourceRef?: string;
+  sourceReferences?: NeuralPersonaSourceReference[];
   stability: number;
   status: NeuralPersonaNodeStatus;
   subgroupId?: string;
@@ -114,6 +135,8 @@ export interface NeuralPersonaNode {
 }
 
 export interface NeuralPersonaEdge {
+  /** Text in the source node's content that the user linked to the target node. */
+  anchorText?: string;
   confidence: number;
   createdAt: number;
   edgeId: string;
@@ -134,6 +157,7 @@ export interface NeuralPersonaGraphSnapshot {
   nodes: NeuralPersonaNode[];
   roleId: string;
   schemaVersion: typeof NEURAL_PERSONA_SCHEMA_VERSION;
+  sources?: NeuralPersonaSourceDocument[];
 }
 
 export interface NeuralPersonaContextInput {

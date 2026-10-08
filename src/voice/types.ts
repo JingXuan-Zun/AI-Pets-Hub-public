@@ -36,6 +36,8 @@ export interface PreparedVoicePlayback {
 
 export interface VoicePlaybackOptions {
   force?: boolean;
+  /** Per-sentence expression action from the chat layer; providers with emotion references map it. */
+  expressionAction?: string | null;
 }
 
 export interface VoiceInputSession {

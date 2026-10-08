@@ -45,6 +45,7 @@ import {
   hasExceededPetDragActivationThreshold,
 } from '../src/pet-runtime/interactions/petDragController';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile, readModuleProjectFunction } from './projectModuleSource.mjs';
 
 function extractTagsWithAttribute(source: string, attribute: string) {
   const tags: string[] = [];
@@ -909,7 +910,10 @@ assert.equal(
   'quick action menu center should stay on the anchor when the visual bounds are vertically balanced',
 );
 
-const windowManagerSource = readProjectFile('electron/windowManager.cjs');
+const windowManagerSource = readModuleProjectFile('electron/windowManager.cjs');
+const windowStackTopmostSource = readProjectFile('electron/windowManager/windowStackTopmost.cjs');
+const mainWindowLoadEventsSource = readProjectFile('electron/windowManager/mainWindowLoadEvents.cjs');
+const mainWindowPresentationEventsSource = readProjectFile('electron/windowManager/mainWindowPresentationEvents.cjs');
 const postDragInputProxyPreloadSource = readProjectFile('electron/postDragInputProxyPreload.cjs');
 const ipcHandlersSource = readProjectFile('electron/ipcHandlers.cjs');
 const preloadSource = readProjectFile('electron/preload.cjs');
@@ -919,7 +923,7 @@ const unityRuntimeBuilderSource = readProjectFile('scripts/unity-runtime-builder
 const unityRuntimeProcessServiceSource = readProjectFile('electron/unityRuntimeProcessService.cjs');
 const petAvatarLayerSource = readProjectFile('src/components/pet/PetAvatarLayer.tsx');
 const petCompanionLayerSource = readProjectFile('src/components/pet/PetCompanionLayer.tsx');
-const petContainerShellEffectsSource = readProjectFile('src/components/pet/usePetContainerShellEffects.ts');
+const petContainerShellEffectsSource = readModuleProjectFile('src/components/pet/usePetContainerShellEffects.ts');
 const petContainerSource = readProjectFile('src/components/PetContainer.tsx');
 const petContainerNativeDragInteropSource = readProjectFile('src/components/pet/usePetContainerNativeDragInterop.ts');
 const petContainerNativeDragPreviewSource = readProjectFile('src/components/pet/petContainerNativeDragPreview.ts');
@@ -959,20 +963,26 @@ assert.equal(
 );
 
 assert.match(
-  windowManagerSource,
-  /const hasPetDragPassthrough = isPetDragFullWindowShapeRetained\(\);[\s\S]*const nextForward = hasPetDragPassthrough;[\s\S]*setIgnoreMouseEvents\(nextIgnore,\s*\{\s*forward:\s*nextForward\s*\}\s*\)/,
+  readModuleProjectFunction('electron/windowManager/nativePointerPassthrough.cjs', 'createLegacyPointerPassthroughApplier'),
+  /const hasPetDragPassthrough = isPetDragFullWindowShapeRetained\(\);[\s\S]*const nextForward = hasPetDragPassthrough;[\s\S]*setPointerPassthroughState\(nextIgnore, nextForward\)/,
   'main transparent window should keep forwarding through the post-drag full-window shape lease',
 );
 
 assert.match(
   windowManagerSource,
-  /keepWindowOnTop\(mainWindow,\s*MAIN_TOPMOST_RELATIVE_LEVEL,\s*\{\s*bringToFront:\s*true\s*\}\s*\)/,
+  /getMainWindow: \(\) => mainWindow, getInputProxyWindow: \(\) => postDragInputProxyWindow/,
+  'window stack should read the current root-owned main and input windows',
+);
+
+assert.match(
+  windowStackTopmostSource,
+  /keepWindowOnTop\(getMainWindow\(\),\s*MAIN_TOPMOST_RELATIVE_LEVEL,\s*\{\s*bringToFront:\s*true\s*\}\s*\)/,
   'main transparent input window should be raised above the native Unity overlay during the topmost guard',
 );
 
 assert.match(
-  windowManagerSource,
-  /scheduleKeepWindowOnTop\(mainWindow,\s*MAIN_TOPMOST_RELATIVE_LEVEL,\s*\{\s*bringToFront:\s*true\s*\}\s*\)/,
+  windowStackTopmostSource,
+  /scheduleKeepWindowOnTop\(getMainWindow\(\),\s*MAIN_TOPMOST_RELATIVE_LEVEL,\s*\{\s*bringToFront:\s*true\s*\}\s*\)/,
   'scheduled topmost refreshes should also raise the main transparent input window above Unity',
 );
 
@@ -984,7 +994,7 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /mainWindow\.setShape\(interactiveWindowShapeRegions\)/,
+  /getMainWindow\(\)\.setShape\(nativeShapeState\.getRegions\(\)\)/,
   'main transparent input window should apply native shape regions for Unity hit testing',
 );
 
@@ -996,13 +1006,13 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /mainWindow\.setShape\(\[MAIN_INTERACTIVE_LAYER_WARMUP_REGION\]\)/,
+  /getMainWindow\(\)\.setShape\(\[MAIN_INTERACTIVE_LAYER_WARMUP_REGION\]\)/,
   'optional interactive-layer warmup should initialize the shaped transparent input path without a large region',
 );
 
 assert.match(
   windowManagerSource,
-  /mainWindow\.setIgnoreMouseEvents\(false,\s*\{\s*forward:\s*false\s*\}\)/,
+  /getMainWindow\(\)\.setIgnoreMouseEvents\(false,\s*\{\s*forward:\s*false\s*\}\)/,
   'optional interactive-layer warmup should prewarm the first non-ignored transparent-window state when explicitly enabled',
 );
 
@@ -1038,25 +1048,31 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /mainWindow\.once\('ready-to-show'[\s\S]*mainWindowCanShow = true;[\s\S]*showMainWindowWhenReady\('ready-to-show'\)/,
+  /markMainWindowCanShow: \(\) => \{ mainWindowCanShow = true; \}/,
+  'main window readiness should update the root-owned Electron readiness flag',
+);
+
+assert.match(
+  mainWindowLoadEventsSource,
+  /getMainWindow\(\)\.once\('ready-to-show'[\s\S]*markMainWindowCanShow\(\);[\s\S]*showMainWindowWhenReady\('ready-to-show'\)/,
   'ready-to-show should unlock Electron readiness without directly showing the transparent window',
 );
 
 assert.doesNotMatch(
-  windowManagerSource,
-  /mainWindow\.once\('ready-to-show'[\s\S]*showMainWindow\(\);[\s\S]*mainWindow\.webContents\.setWindowOpenHandler/,
+  mainWindowLoadEventsSource,
+  /getMainWindow\(\)\.once\('ready-to-show'[\s\S]*showMainWindow\(\);[\s\S]*getMainWindow\(\)\.webContents\.setWindowOpenHandler/,
   'ready-to-show should not bypass the renderer/avatar ready gate',
 );
 
 assert.match(
-  windowManagerSource,
-  /mainWindow\.webContents\.once\('did-finish-load'[\s\S]*mainWindowCanShow = true;[\s\S]*showMainWindowWhenReady\('did-finish-load'\)/,
+  mainWindowLoadEventsSource,
+  /getMainWindow\(\)\.webContents\.once\('did-finish-load'[\s\S]*markMainWindowCanShow\(\);[\s\S]*showMainWindowWhenReady\('did-finish-load'\)/,
   'did-finish-load should unlock Electron readiness without directly showing the transparent window',
 );
 
 assert.match(
   windowManagerSource,
-  /const hasFullWindowShape = isFullWindowInteractiveShape\(interactiveWindowShapeRegions\);[\s\S]*const hasPetDragPassthrough = isPetDragFullWindowShapeRetained\(\);[\s\S]*: hasPetDragPassthrough\s*\?\s*true\s*:/,
+  /const hasFullWindowShape = isFullWindowInteractiveShape\(nativeShapeState\.getRegions\(\)\);[\s\S]*const hasPetDragPassthrough = isPetDragFullWindowShapeRetained\(\);[\s\S]*: hasPetDragPassthrough\s*\?\s*true\s*:/,
   'active pet drag and its full-window shape lease should keep the transparent overlay out of browser video',
 );
 
@@ -1092,7 +1108,7 @@ assert.doesNotMatch(
 
 assert.match(
   windowManagerSource,
-  /function setWindowPointerPassthrough\(ignore\) \{[\s\S]*requestedPointerPassthrough = Boolean\(ignore\);[\s\S]*applyPointerPassthroughState\(\);[\s\S]*\}/,
+  /function setWindowPointerPassthrough\(ignore\) \{[\s\S]*setRequestedPointerPassthrough\(Boolean\(ignore\)\);[\s\S]*applyPointerPassthroughState\(\);[\s\S]*\}/,
   'renderer pointer passthrough requests should use the old-package immediate main-process apply path',
 );
 
@@ -1104,25 +1120,35 @@ assert.doesNotMatch(
 
 assert.match(
   windowManagerSource,
-  /nextInteractiveWindowShapeRegions\.length === 0[\s\S]*!requestedPointerPassthrough[\s\S]*retained interactive shape during active pointer interaction/,
+  /nextRegions\.length === 0[\s\S]*!shapeState\.getRequestedPointerPassthrough\(\)[\s\S]*retained interactive shape during active pointer interaction/,
   'main process should not clear native shape to an empty full-window interaction state during active pointer sessions',
 );
 
 assert.match(
   windowManagerSource,
-  /PET_DRAG_FULL_WINDOW_SHAPE_HOLD_MS = 720[\s\S]*petDragFullWindowShapeHoldUntil[\s\S]*discarded deferred interactive shape after pet drag hold; requesting fresh shape[\s\S]*scheduleNativeShapeRefreshAfterPetDragHold\('post-drag-hold-expired'\)/,
+  /PET_DRAG_FULL_WINDOW_SHAPE_HOLD_MS = 720[\s\S]*shapeState\.getHoldUntil\(\)[\s\S]*discarded deferred interactive shape after pet drag hold; requesting fresh shape[\s\S]*scheduleNativeShapeRefreshAfterPetDragHold\('post-drag-hold-expired'\)/,
   'main process should discard deferred local shape after the pet drag hold and request a fresh DOM shape snapshot',
 );
 
 assert.match(
   windowManagerSource,
-  /let petDragNativeShapeActive = false[\s\S]*function setPetDragNativeShapeActive\(active\)[\s\S]*ensurePetDragFullWindowInteractiveShape\('active-session-start'\)[\s\S]*ensurePetDragFullWindowInteractiveShape\('active-session-end-hold'\)/,
+  /let petDragNativeShapeActive = false/,
   'main process should keep an explicit pet-drag native shape session active until renderer drag lifecycle ends',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/petDragNativeSessionActions.cjs', 'createPetDragNativeSessionStarter'),
+  /clearPetDragFullWindowShapeHoldTimer\(\);\s*ensurePetDragFullWindowInteractiveShape\('active-session-start'\)/,
+  'session start must clear the previous hold timer before applying the stable full-window shape',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/petDragNativeSessionActions.cjs', 'createPetDragNativeSessionEnder'),
+  /ensurePetDragFullWindowInteractiveShape\('active-session-end-hold'\);\s*schedulePetDragFullWindowShapeHoldExpiry\(\)/,
+  'session end must retain the full-window shape before scheduling hold expiry',
 );
 
 assert.match(
   windowManagerSource,
-  /function isPetDragFullWindowShapeRetained\(\)[\s\S]*return petDragNativeShapeActive \|\| Date\.now\(\) < petDragFullWindowShapeHoldUntil/,
+  /function isPetDragFullWindowShapeRetained\(\)[\s\S]*return shapeState\.getPetDragNativeShapeActive\(\) \|\| getCurrentTime\(\) < shapeState\.getHoldUntil\(\)/,
   'main process should retain full-window drag shape for active drag sessions, not only a short time lease',
 );
 
@@ -1133,14 +1159,19 @@ assert.match(
 );
 
 assert.match(
-  windowManagerSource,
-  /ignored stale deferred interactive shape after pet drag hold[\s\S]*scheduleNativeShapeRefreshAfterPetDragHold\('stale-deferred-shape'\)[\s\S]*desktop-pet:refresh-native-interactive-regions/,
+  readModuleProjectFunction('electron/windowManager/petDragShapeRefresh.cjs', 'createPetDragFreshShapeRequester'),
+  /ignored stale deferred interactive shape after pet drag hold[\s\S]*scheduleNativeShapeRefreshAfterPetDragHold\('stale-deferred-shape'\)/,
   'main process should reject stale post-drag local shapes and ask the renderer for a fresh native region snapshot',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/petDragShapeRefresh.cjs', 'createPetDragNativeShapeRefreshScheduler'),
+  /setTimeout\([\s\S]*getMainWindow\(\)\.webContents\.send\('desktop-pet:refresh-native-interactive-regions', \{\s*reason,\s*\}\);[\s\S]*\}, 0\)/,
+  'fresh shape requests must read the live main window in the zero-delay callback',
 );
 
 assert.match(
   windowManagerSource,
-  /setInteractiveRegions\(regions, options = null\)[\s\S]*normalizeInteractiveRegionSource\(options\)[\s\S]*interactiveRegionSource === 'pet-drag' && nextIsFullWindowShape/,
+  /interactiveRegionSource === 'pet-drag' && nextIsFullWindowShape[\s\S]*setInteractiveRegions\(regions, options = null\)[\s\S]*normalizeInteractiveRegionSource\(options\)/,
   'main process should only arm the full-window shape hold for renderer-marked pet drag regions',
 );
 
@@ -1268,7 +1299,7 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /interactiveWindowShapeRegions = nextInteractiveWindowShapeRegions;[\s\S]*if \(interactiveRegionSource === 'pet-drag'\) \{[\s\S]*setPostDragInputProxyRegions\(nextInteractiveWindowShapeRegions\);[\s\S]*\}[\s\S]*applyPointerPassthroughState\(\);[\s\S]*return;/,
+  /shapeState\.setRegions\(nextRegions\);[\s\S]*if \(interactiveRegionSource === 'pet-drag'\) \{[\s\S]*setPostDragInputProxyRegions\(nextRegions\);[\s\S]*\}[\s\S]*applyPointerPassthroughState\(\);[\s\S]*return;/,
   'ordinary visual regions must not replace the real input proxy regions on Windows',
 );
 
@@ -1292,25 +1323,36 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /postDragInputProxyWindow = new BrowserWindow\([\s\S]*postDragInputProxyPreload\.cjs/,
+  /proxyState\.setWindow\(new BrowserWindow\([\s\S]*postDragInputProxyPreload\.cjs/,
   'post-drag input proxy should be a separate transparent window',
 );
 
 assert.match(
-  windowManagerSource,
-  /postDragInputProxyWindow = new BrowserWindow\([\s\S]*?opacity: 0\.01,[\s\S]*?inputProxyWindow\.setOpacity\(0\.01\)/,
+  readModuleProjectFunction('electron/windowManager/inputProxyWindowCreation.cjs', 'createInputProxyWindowCreator'),
+  /proxyState\.setWindow\(new BrowserWindow\([\s\S]*?opacity: 0\.01,[\s\S]*?configurePostDragInputProxyWindow\(inputProxyWindow\)/,
   'the input-only proxy should use a visually negligible opacity that remains non-zero after Windows 8-bit alpha quantization',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/inputProxyWindowCreation.cjs', 'createInputProxyWindowConfigurator'),
+  /inputProxyWindow\.setOpacity\(0\.01\)/,
+  'native proxy configuration must retain its non-zero opacity',
 );
 
 assert.match(
-  windowManagerSource,
-  /function applyPostDragInputProxyRegions\(\)[\s\S]*!mainWindow\.isVisible\(\)[\s\S]*return;[\s\S]*postDragInputProxyWindow\.setShape/,
+  readModuleProjectFunction('electron/windowManager/inputProxyRegionApplication.cjs', 'createInputProxyRegionApplier'),
+  /function applyPostDragInputProxyRegions\(\)[\s\S]*!getMainWindow\(\)\.isVisible\(\)[\s\S]*return;[\s\S]*syncPostDragInputProxyGeometry\(\)/,
   'the input proxy must remain hidden until the render window is visible',
 );
 
 assert.match(
   windowManagerSource,
-  /mainWindow\.on\('show', \(\) => \{[\s\S]*applyPostDragInputProxyRegions\(\);[\s\S]*scheduleWindowStackOnTop\(\)/,
+  /hideMainWindow, logWindowEvent, applyPostDragInputProxyRegions, scheduleWindowStackOnTop/,
+  'main window presentation events should retain the root input-proxy and topmost dependencies',
+);
+
+assert.match(
+  mainWindowPresentationEventsSource,
+  /getMainWindow\(\)\.on\('show', \(\) => \{[\s\S]*applyPostDragInputProxyRegions\(\);[\s\S]*scheduleWindowStackOnTop\(\)/,
   'showing the render window should activate the already prepared invisible input proxy',
 );
 
@@ -1321,9 +1363,14 @@ assert.match(
 );
 
 assert.match(
-  windowManagerSource,
-  /if \(USE_SEPARATE_RENDER_AND_INPUT_WINDOWS\) \{[\s\S]*const nextIgnore = true;[\s\S]*const nextForward = false;[\s\S]*mainWindow\.setIgnoreMouseEvents\(nextIgnore, \{ forward: nextForward \}\)/,
+  readModuleProjectFunction('electron/windowManager/nativePointerPassthrough.cjs', 'createNativePointerPassthroughApplier'),
+  /if \(USE_SEPARATE_RENDER_AND_INPUT_WINDOWS\) \{[\s\S]*const nextIgnore = true;[\s\S]*const nextForward = false;[\s\S]*setPointerPassthroughState\(nextIgnore, nextForward\)/,
   'the render window should remain permanently click-through in the separated Windows path',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/nativePointerPassthrough.cjs', 'createNativePointerPassthroughSetter'),
+  /getMainWindow\(\)\.setIgnoreMouseEvents\(nextIgnore, \{ forward: nextForward \}\)/,
+  'the native transition must apply both passthrough and forwarding flags',
 );
 
 assert.match(
@@ -1334,49 +1381,54 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /POST_DRAG_INPUT_PROXY_IDLE_DESTROY_MS = 5_000[\s\S]*schedulePostDragInputProxyIdleDestroy[\s\S]*postDragInputProxyWindow\.destroy\(\)/,
+  /POST_DRAG_INPUT_PROXY_IDLE_DESTROY_MS = 5_000[\s\S]*schedulePostDragInputProxyIdleDestroy[\s\S]*proxyState\.getWindow\(\)\.destroy\(\)/,
   'post-drag input proxy should release its renderer process after a short idle period',
 );
 
 assert.match(
-  windowManagerSource,
-  /function applyPostDragInputProxyRegions\([\s\S]*postDragInputProxyWindow\.setShape\(postDragInputProxyRegions\)/,
+  readModuleProjectFunction('electron/windowManager/inputProxyRegionApplication.cjs', 'createInputProxyGeometrySynchronizer'),
+  /function syncPostDragInputProxyGeometry\([\s\S]*proxyState\.getWindow\(\)\.setShape\(proxyState\.getRegions\(\)\)/,
   'post-drag input proxy should use pet-local native shape regions',
 );
 
 assert.match(
   windowManagerSource,
-  /function setPostDragInputProxyRegions\(regions\)[\s\S]*if \(postDragInputProxyPointerActive \|\| petDragNativeShapeActive\) \{[\s\S]*postDragInputProxyPendingRegions = nextRegions;[\s\S]*return;[\s\S]*postDragInputProxyRegions = nextRegions;[\s\S]*applyPostDragInputProxyRegions\(\)/,
+  /function setPostDragInputProxyRegions\(regions\)[\s\S]*if \(proxyState\.getPointerActive\(\) \|\| getPetDragNativeShapeActive\(\)\) \{[\s\S]*proxyState\.setPendingRegions\(nextRegions\);[\s\S]*return;[\s\S]*proxyState\.setRegions\(nextRegions\);[\s\S]*applyPostDragInputProxyRegions\(\)/,
   'captured pointer movement should cache the latest input regions instead of rebuilding the native proxy shape',
 );
 
 assert.match(
   windowManagerSource,
-  /const nextShapeSignature = createInteractiveRegionsSignature\(postDragInputProxyRegions\);[\s\S]*if \(postDragInputProxyShapeSignature !== nextShapeSignature\) \{[\s\S]*setShape\(postDragInputProxyRegions\);[\s\S]*postDragInputProxyShapeSignature = nextShapeSignature;/,
+  /const nextShapeSignature = createInteractiveRegionsSignature\(proxyState\.getRegions\(\)\);[\s\S]*if \(proxyState\.getShapeSignature\(\) !== nextShapeSignature\) \{[\s\S]*setShape\(proxyState\.getRegions\(\)\);[\s\S]*proxyState\.setShapeSignature\(nextShapeSignature\);/,
   'the input proxy should skip native setShape calls when its region signature has not changed',
 );
 
 assert.match(
   windowManagerSource,
-  /if \(!postDragInputProxyWindow\.isVisible\(\)\) \{[\s\S]*showInactive[\s\S]*keepWindowOnTop/,
+  /if \(!proxyState\.getWindow\(\)\.isVisible\(\)\) \{[\s\S]*showInactive[\s\S]*keepWindowOnTop/,
   'an already visible input proxy should not be repeatedly shown or raised during region synchronization',
 );
 
 assert.match(
   windowManagerSource,
-  /if \(type === 'mouseUp'\) \{[\s\S]*postDragInputProxyPointerActive = false;[\s\S]*flushPostDragInputProxyPendingRegions\('pointer-finished'\);[\s\S]*requestPostDragInputProxyRegions\('input-proxy-pointer-finished'\)/,
+  /if \(type === 'mouseUp'\) \{[\s\S]*proxyState\.setPointerActive\(false\);[\s\S]*flushPostDragInputProxyPendingRegions\('pointer-finished'\);[\s\S]*requestPostDragInputProxyRegions\('input-proxy-pointer-finished'\)/,
   'pointer release should flush the last deferred proxy shape and request a final renderer measurement',
 );
 
 assert.match(
-  windowManagerSource,
-  /if \(USE_SEPARATE_RENDER_AND_INPUT_WINDOWS\) \{[\s\S]*petDragNativeShapeActive = nextActive;[\s\S]*if \(nextActive\)[\s\S]*else \{[\s\S]*flushPostDragInputProxyPendingRegions\('drag-session-ended'\);[\s\S]*requestPostDragInputProxyRegions\('input-proxy-drag-ended'\)/,
+  readModuleProjectFunction('electron/windowManager/petDragNativeSessionActions.cjs', 'createSeparateWindowPetDragSession'),
+  /shapeState\.setPetDragNativeShapeActive\(nextActive\);[\s\S]*if \(nextActive\)[\s\S]*else \{[\s\S]*flushPostDragInputProxyPendingRegions\('drag-session-ended'\);[\s\S]*requestPostDragInputProxyRegions\('input-proxy-drag-ended'\)/,
   'drag end should clear the active guard before flushing the final deferred input regions',
+);
+assert.match(
+  readModuleProjectFunction('electron/windowManager/petDragNativeShapeSession.cjs', 'createPetDragNativeShapeSession'),
+  /if \(USE_SEPARATE_RENDER_AND_INPUT_WINDOWS\) \{\s*setSeparateWindowPetDragActive\(nextActive\);\s*return;/,
+  'separated windows must dispatch the session through the proxy capture action',
 );
 
 assert.match(
   windowManagerSource,
-  /forwardPostDragInputProxyEvent[\s\S]*mainWindow\.webContents\.sendInputEvent\(forwardedEvent\)/,
+  /forwardPostDragInputProxyEvent[\s\S]*getMainWindow\(\)\.webContents\.sendInputEvent\(forwardedEvent\)/,
   'post-drag input proxy should forward captured input directly to the main renderer',
 );
 
@@ -1520,7 +1572,7 @@ assert.match(
 
 assert.match(
   petContainerShellEffectsSource,
-  /nativeInteractiveRegionSyncDirtyWhilePending = true;[\s\S]*if \(nativeInteractiveRegionSyncDirtyWhilePending\) \{[\s\S]*scheduleNativeInteractiveRegionsSync\([^)]*\);/,
+  /nativeInteractiveRegionSyncDirtyWhilePending = true;[\s\S]*if \(session\.nativeInteractiveRegionSyncDirtyWhilePending\) \{[\s\S]*scheduleNativeInteractiveRegionsSync\([^)]*\);/,
   'native shape scheduler should remember dirty drag frames that arrive while a previous RAF sync is pending',
 );
 
@@ -2068,7 +2120,7 @@ assert.match(
 
 assert.match(
   petContainerShellEffectsSource,
-  /onRefreshNativeInteractiveRegions\(\(payload\) => \{[\s\S]*clearScheduledNativeInteractiveRegionSync\(\);[\s\S]*collectNativeInteractiveRegionEntries\([\s\S]*nativeInteractiveRegionBaseRegionsRef\.current = regions[\s\S]*setInteractiveRegions\(regions,\s*\{[\s\S]*force:\s*true,[\s\S]*source:\s*'fresh-shape'/,
+  /onRefreshNativeInteractiveRegions\([\s\S]*handleRefreshNativeInteractiveRegions[\s\S]*handleRefreshNativeInteractiveRegions = \(payload: unknown\) => \{[\s\S]*clearScheduledNativeInteractiveRegionSync\(\);[\s\S]*collectNativeInteractiveRegionEntries\([\s\S]*nativeInteractiveRegionBaseRegionsRef\.current = regions[\s\S]*setInteractiveRegions\(regions,\s*\{[\s\S]*force:\s*true,[\s\S]*source:\s*'fresh-shape'/,
   'renderer shell effect should force-send a fresh current DOM native shape when the main process rejects or expires a post-drag shape',
 );
 

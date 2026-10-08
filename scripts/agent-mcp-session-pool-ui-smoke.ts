@@ -57,6 +57,7 @@ const bridgeSource = readProjectFile('src/desktopShellBridge.ts');
 const runtimeSource = readProjectFile('src/desktopShellRuntime.ts');
 const panelSource = readProjectFile('src/components/settings/SettingsMcpSessionPoolPanel.tsx');
 const sectionSource = readProjectFile('src/components/settings/SettingsMcpSection.tsx');
+const advancedWorkspaceSource = readProjectFile('src/components/settings/SettingsMcpAdvancedWorkspace.tsx');
 const operationalPanelsSource = readProjectFile('src/components/settings/SettingsMcpOperationalPanels.tsx');
 
 assert.match(ipcSource, /desktop-pet:get-mcp-session-status/u);
@@ -69,7 +70,8 @@ assert.match(panelSource, /Reset all MCP sessions/u);
 assert.match(panelSource, /last close/u);
 assert.match(panelSource, /restartStatus/u);
 assert.match(panelSource, /onShowHistory/u);
-assert.match(sectionSource, /SettingsMcpOperationalPanels/u);
+assert.match(sectionSource, /<SettingsMcpAdvancedWorkspace\b/u);
+assert.match(advancedWorkspaceSource, /<SettingsMcpOperationalPanels\b/u);
 assert.match(operationalPanelsSource, /SettingsMcpSessionPoolPanel/u);
 assert.match(operationalPanelsSource, /selectHistoryServer/u);
 

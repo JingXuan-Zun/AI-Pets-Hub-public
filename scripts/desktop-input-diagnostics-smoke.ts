@@ -1,19 +1,27 @@
 import { strict as assert } from 'node:assert';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { desktopInputSource, desktopSequenceSource, desktopToolSource } = readProjectSources({
-  desktopInputSource: 'electron/desktopInputService.cjs',
+const { desktopInputRootSource, mousePreflightSource, mousePositionSource, mouseClickSource, mouseTouchSource, mouseResultSource, mousePreparationSource, nativeInteropSource, desktopSequenceSource, desktopToolSource } = readProjectSources({
+  desktopInputRootSource: 'electron/desktopInputService.cjs',
+  mousePreflightSource: 'electron/desktopInputMousePreflight.cjs',
+  mousePositionSource: 'electron/desktopInputMousePosition.cjs',
+  mouseClickSource: 'electron/desktopInputMouseClick.cjs',
+  mouseTouchSource: 'electron/desktopInputMouseTouch.cjs',
+  mouseResultSource: 'electron/desktopInputMouseResult.cjs',
+  mousePreparationSource: 'electron/desktopInputMousePreparation.cjs',
+  nativeInteropSource: 'electron/desktopInputNativeInterop.cjs',
   desktopSequenceSource: 'src/agent/agentRuntimeDesktopSequenceTools.ts',
   desktopToolSource: 'src/agent/agentRuntimeDesktopTools.ts',
 });
+const desktopInputSource = [desktopInputRootSource, mousePreflightSource, mousePositionSource, mouseClickSource, mouseTouchSource, mouseResultSource].join('\n');
 
 assert.match(
-  desktopInputSource,
+  mousePreparationSource,
   /forceTouchInjectionFallback = !isRight && !isMiddle && Boolean\(options\.forceTouchInjectionFallback\)/u,
   'mouse_event and touch injection diagnostics must be independently selectable.',
 );
 assert.doesNotMatch(
-  desktopInputSource,
+  mousePreparationSource,
   /forceTouchInjectionFallback \?\? options\.forceMouseEventFallback/u,
   'forcing mouse_event must not silently mix in touch injection.',
 );
@@ -44,7 +52,7 @@ assert.match(
   'desktop input bridge should record cursor position after input.',
 );
 assert.match(
-  desktopInputSource,
+  nativeInteropSource,
   /CreateMouseInput\(uint flags\)/u,
   'desktop input bridge should construct mouse INPUT values in the C# helper so nested value-type fields are preserved.',
 );

@@ -64,10 +64,12 @@ assert.equal(
   true,
   'Chinese "open B inside A" requests should be classified as in-app actions',
 );
+// Opening the outer app is tracked as its own requested step; the in-app
+// action stays required alongside it (see focusOnlyCoverage below).
 assert.equal(
   chineseInAppCoverage.has('open-or-launch'),
-  false,
-  'Chinese in-app requests should not be reduced to only opening the outer app',
+  true,
+  'Chinese in-app requests should also track opening the outer app',
 );
 
 const chineseSequentialInAppCoverage = createAgentRequestedActionCoverage({
@@ -322,19 +324,28 @@ const result = await runAgentProductionSession({
   modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
 
-    assert.match(userInput, /rejected incomplete action coverage final answer/u);
-    assert.match(userInput, /missingActionGoals=.*in-app-action/u);
-    assert.match(userInput, /attemptedActionCoverage=.*open-or-launch/u);
+    // The Runtime has already located the in-app control (plus a read-only
+    // focused refinement); the model only selects the approval-gated click.
+    assert.match(userInput, /in-app target locate result:/u);
+    assert.match(userInput, /target=League of Legends/u);
+    assert.match(userInput, /elementCenter=1440,920/u);
     return JSON.stringify({
       action: 'tool_call',
       args: {
-        action: 'locate_element',
-        sourceQuery: 'Riot Client',
-        sourceType: 'window',
-        targetDescription: 'League of Legends and its primary launch/play/start button',
+        stepsJson: JSON.stringify([
+          {
+            args: {
+              action: 'click',
+              x: 1440,
+              y: 920,
+            },
+            reason: 'Click the located League of Legends Play button.',
+            tool: 'execute_desktop_input',
+          },
+        ]),
       },
-      reason: 'Opening the launcher alone did not satisfy the in-app action; locate the internal launch control.',
-      tool: 'locate_screen_elements',
+      reason: 'Opening the launcher alone did not satisfy the in-app action; click the located launch control.',
+      tool: 'execute_desktop_sequence',
       understanding: {
         completedGoals: [
           'open Riot Client',
@@ -419,22 +430,23 @@ const result = await runAgentProductionSession({
   userGoal,
 });
 
-assert.ok(
-  modelCallCount <= 2,
-  `expected automatic recovery or bounded model replanning, got ${modelCallCount} model calls`,
-);
 assert.equal(
   modelCallCount,
-  0,
-  'approved outer-app launch with missing in-app coverage should continue through ActionRuntime without another model turn',
+  1,
+  'approved outer-app launch with missing in-app coverage should locate through ActionRuntime before the model selects the click',
 );
-assert.ok(toolCommands.length >= 1, `expected at least one in-app locate command, got ${toolCommands.length}`);
+assert.deepEqual(toolCommands.map((command) => command.toolCall?.name), [
+  'locate_screen_elements',
+  'locate_screen_elements',
+]);
+assert.match(String(toolCommands[1]?.toolCall?.input.targetDescription), /; focused candidate: /u);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /execute_desktop_input/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1440/u);
 assert.match(result.continuation.historyLines.join('\n'), /Approved tool lifecycle decision:[\s\S]*status=needs-recovery[\s\S]*reason=missing-requested-coverage/u);
 assert.match(result.continuation.historyLines.join('\n'), /in-app target locate/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval/u);
+assert.match(result.continuation.historyLines.join('\n'), /selected approval-required tool:\ntool=execute_desktop_sequence/u);
+assert.doesNotMatch(result.continuation.historyLines.join('\n'), /target-stale/u);
 
 console.log('agent session v2 continuous action coverage smoke ok');

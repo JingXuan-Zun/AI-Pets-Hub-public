@@ -33,7 +33,6 @@ import {
 } from './components/chat/story/storyLibrary';
 
 type Listener = () => void;
-const CHAT_MESSAGE_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 
 function normalizeChatImageAttachment(attachment: ChatMessageImageAttachment): ChatMessageImageAttachment | null {
   if (
@@ -102,17 +101,10 @@ function normalizeChatMessage(message: ChatMessage, fallbackTimestamp = Date.now
   };
 }
 
-function pruneExpiredChatMessages(messages: ChatMessage[], now = Date.now()) {
-  const minCreatedAt = now - CHAT_MESSAGE_RETENTION_MS;
-
-  return messages.filter((message) => message.createdAt >= minCreatedAt);
-}
-
-function normalizeAndPruneChatMessages(messages: ChatMessage[], now = Date.now()) {
-  return pruneExpiredChatMessages(
-    messages.map((message) => normalizeChatMessage(message, now)),
-    now,
-  );
+// Old messages are never dropped by age; they move to the chat archive once the
+// role's conversation summary covers them (see src/character-memory).
+function normalizeChatMessages(messages: ChatMessage[], now = Date.now()) {
+  return messages.map((message) => normalizeChatMessage(message, now));
 }
 
 function resolveModelMessagePetId(message: ChatMessage) {
@@ -625,7 +617,7 @@ function createDesktopPetChatStore() {
         const now = Date.now();
         const normalizedMessage = normalizeChatMessage(message, now);
         const nextMessages = [
-          ...normalizeAndPruneChatMessages(currentState.messages, now),
+          ...normalizeChatMessages(currentState.messages, now),
           normalizedMessage,
         ];
         const nextLatestPetMessages = deriveLatestPetMessages(nextMessages);
@@ -752,7 +744,7 @@ function createDesktopPetChatStore() {
     },
     replaceMessages(messages: ChatMessage[]) {
       const nextMessages = Array.isArray(messages)
-        ? normalizeAndPruneChatMessages(messages)
+        ? normalizeChatMessages(messages)
         : [];
       const nextLatestPetMessages = deriveLatestPetMessages(nextMessages);
 

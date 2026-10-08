@@ -5,19 +5,35 @@ import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 const originalOpenResource = desktopPetShellRuntime.openResource;
 const originalMoveWindowToDisplay = desktopPetShellRuntime.moveWindowToDisplay;
 const originalControlWindow = desktopPetShellRuntime.controlWindow;
+const originalObserveWindowsAndApps = desktopPetShellRuntime.observeWindowsAndApps;
+const observedWindowQueries: string[] = [];
+const bridgeOrder: string[] = [];
 let moveAttempts = 0;
 let latestMoveRequest: Record<string, unknown> | null = null;
 let latestControlRequest: Record<string, unknown> | null = null;
 
 try {
-  desktopPetShellRuntime.openResource = async () => ({
-    action: 'opened',
-    ok: true,
-    resourceType: 'url',
-    status: 'launched-unverified',
-    url: 'https://www.bilibili.com',
-  });
+  desktopPetShellRuntime.observeWindowsAndApps = async (request) => {
+    const input = request as Record<string, unknown>;
+    bridgeOrder.push('observe');
+    assert.equal(input.forceRefresh, true);
+    assert.equal(input.includeRunningApps, true);
+    observedWindowQueries.push(String(input.query ?? ''));
+    const window = { hwnd: 12345, pid: 456, processName: 'chrome', title: 'bilibili https://www.bilibili.com' };
+    return { ok: true, activeWindow: window, runningApps: [window], runningCount: 1, query: input.query };
+  };
+  desktopPetShellRuntime.openResource = async () => {
+    bridgeOrder.push('open');
+    return {
+      action: 'opened',
+      ok: true,
+      resourceType: 'url',
+      status: 'launched-unverified',
+      url: 'https://www.bilibili.com',
+    };
+  };
   desktopPetShellRuntime.moveWindowToDisplay = async (request) => {
+    bridgeOrder.push('move');
     latestMoveRequest = request as Record<string, unknown>;
     moveAttempts += 1;
     if (moveAttempts < 3) {
@@ -64,13 +80,11 @@ try {
 
   assert.equal(result.ok, true);
   assert.equal(moveAttempts, 3);
-  assert.equal(latestMoveRequest?.query, 'https://www.bilibili.com');
-  assert.equal(latestMoveRequest?.fallbackToActiveWindow, true);
-  assert.deepEqual(latestMoveRequest?.queryCandidates, [
-    'https://www.bilibili.com',
-    'browser',
-    'web browser',
-  ]);
+  assert.equal(observedWindowQueries[0], 'https://www.bilibili.com');
+  assert.equal(latestMoveRequest?.hwnd, 12345);
+  assert.equal(latestMoveRequest?.pid, 456);
+  assert.equal(latestMoveRequest?.fallbackToActiveWindow, false);
+  assert.deepEqual(bridgeOrder, ['open', 'observe', 'move', 'move', 'move']);
   assert.match(result.observations?.join('\n') ?? '', /windowReadyRetries=2/u);
   assert.match(result.responseText, /2\/2/u);
 
@@ -96,12 +110,9 @@ try {
 
   assert.equal(explicitPageTargetResult.ok, true);
   assert.equal(latestMoveRequest?.query, 'bilibili');
-  assert.deepEqual(latestMoveRequest?.queryCandidates, [
-    'bilibili',
-    'https://www.bilibili.com',
-    'browser',
-    'web browser',
-  ]);
+  assert.equal(observedWindowQueries[1], 'bilibili');
+  assert.equal(latestMoveRequest?.hwnd, 12345);
+  assert.equal(latestMoveRequest?.fallbackToActiveWindow, false);
 
   moveAttempts = 2;
   latestControlRequest = null;
@@ -134,6 +145,7 @@ try {
   desktopPetShellRuntime.openResource = originalOpenResource;
   desktopPetShellRuntime.moveWindowToDisplay = originalMoveWindowToDisplay;
   desktopPetShellRuntime.controlWindow = originalControlWindow;
+  desktopPetShellRuntime.observeWindowsAndApps = originalObserveWindowsAndApps;
 }
 
 console.log('agent sequence window ready move retry smoke ok');

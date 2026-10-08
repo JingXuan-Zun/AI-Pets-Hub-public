@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+
 const flows = [
   ['readonly-observation-with-negated-side-effects', 'agent-readonly-negated-side-effect-scope-smoke.ts'],
   ['runtime-core-open-move-v0-2', 'agent-runtime-core-v0-2-smoke.ts'],
@@ -31,10 +33,30 @@ const flows = [
   ['approval-batched-sequence-ux', 'agent-approval-batching-ux-smoke.ts'],
   ['observation-not-completion', 'agent-session-v2-open-app-observation-final-rejection-smoke.ts'],
   ['unverified-not-completion', 'agent-session-v2-unverified-result-final-rejection-signal-smoke.ts'],
+  ['explicit-display-role-binding', 'agent-session-v2-explicit-display-role-binding-smoke.ts'],
+  ['stale-outer-target-evidence-continuation', 'agent-stale-outer-target-evidence-continuation-smoke.ts'],
+  ['window-only-launch-recovery', 'agent-session-v2-window-only-launch-recovery-smoke.ts'],
+  ['pre-dispatch-wait-observation-launch', 'agent-session-v2-pre-dispatch-wait-observation-launch-smoke.ts'],
 ];
 
-for (const [flow, script] of flows) {
-  console.log(`${flow}: scripts/${script}`);
+if (!process.argv.includes('--run')) {
+  for (const [flow, script] of flows) {
+    console.log(`${flow}: scripts/${script}`);
+  }
+  console.log(`agent real user flow matrix manifest ok (${flows.length} flows)`);
+} else {
+  let failed = 0;
+  for (const [flow, script] of flows) {
+    const result = spawnSync(process.execPath, ['--import', 'tsx', `scripts/${script}`], {
+      encoding: 'utf8', windowsHide: true, timeout: 120_000,
+    });
+    const passed = result.status === 0 && !result.error;
+    console.log(`${passed ? 'PASS' : 'FAIL'} ${flow}: scripts/${script}`);
+    if (!passed) {
+      failed += 1;
+      console.error(result.error ?? [result.stdout, result.stderr].filter(Boolean).join('\n'));
+    }
+  }
+  console.log(`Agent user-flow regressions: ${flows.length - failed}/${flows.length} passed`);
+  process.exitCode = failed ? 1 : 0;
 }
-
-console.log(`agent real user flow matrix manifest ok (${flows.length} flows)`);

@@ -11,6 +11,10 @@
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const { execFile } = require('child_process');
+const { createCapturePowerShellRunner } = require('./capture/powerShellRunner.cjs');
+const { registerScreenTextRecognitionIpc } = require('./screenTextRecognition.cjs');
+const { registerCaptureSourceImageIpc } = require('./captureSourceImage.cjs');
 const { createAppLauncherService } = require('./appLauncherService.cjs');
 const { createAppUsageMetricsService } = require('./appUsageMetricsService.cjs');
 const { createBrowserTtsService } = require('./browserTtsService.cjs');
@@ -22,6 +26,8 @@ const { createDesktopIconService } = require('./desktopIconService.cjs');
 const { createDesktopInputService } = require('./desktopInputService.cjs');
 const { createExpressionLibraryService } = require('./expressionLibraryService.cjs');
 const { registerExpressionLibraryIpcHandlers } = require('./expressionLibraryIpcHandlers.cjs');
+const { createGptSovitsService } = require('./gptSovitsService.cjs');
+const { registerGptSovitsIpcHandlers } = require('./gptSovitsIpcHandlers.cjs');
 const { createSystemExpressionCatalogService } = require('./systemExpressionCatalog.cjs');
 const { createExternalSkillSandboxSupervisorService } = require('./externalSkillSandboxSupervisorService.cjs');
 const { createExternalSkillCapabilityGateway } = require('./externalSkillCapabilityGateway.cjs');
@@ -57,6 +63,7 @@ const {
   runExternalSkillPackagedAdmissionProbe,
 } = require('./externalSkillPackagedAdmissionProbe.cjs');
 const { registerDesktopPetIpcHandlers } = require('./ipcHandlers.cjs');
+const { createTrustedIpcMain, installNavigationGuards } = require('./ipcSenderGuard.cjs');
 const { createSkillPackageArtifactStore } = require('./skillPackageArtifactStore.cjs');
 const { createSkillPackageSignedInstallCoordinator } = require('./skillPackageSignedInstallCoordinator.cjs');
 const { createLocalFileSystemService } = require('./localFileSystemService.cjs');
@@ -329,6 +336,9 @@ installPackagedQuitTrace({
   isLocalTest,
   log: (message, details) => runtimeLogger.log('backend', 'main-process', message, details),
 });
+const logSecurity = (message, details) => runtimeLogger.log('backend', 'security', message, details);
+installNavigationGuards({ app, shell, log: logSecurity });
+const trustedIpcMain = createTrustedIpcMain({ ipcMain, app, log: logSecurity });
 const persistedConfigStore = createPersistedConfigStore({
   safeStorage,
   assetRootPath: importedModelAssetRoot,
@@ -432,6 +442,11 @@ const browserTtsService = createBrowserTtsService({
   log: (message, details) => runtimeLogger.log('backend', 'browser-tts', message, details),
   projectRoot: path.join(__dirname, '..'),
 });
+const gptSovitsService = createGptSovitsService({
+  app,
+  log: (message, details) => runtimeLogger.log('backend', 'gpt-sovits', message, details),
+  projectRoot: path.join(__dirname, '..'),
+});
 const appLauncherService = createAppLauncherService({
   app,
   log: (message, details) => runtimeLogger.log('backend', 'app-launcher', message, details),
@@ -528,6 +543,8 @@ const appUsageMetricsService = createAppUsageMetricsService({
 });
 const localFileSystemService = createLocalFileSystemService({
   log: (message, details) => runtimeLogger.log('backend', 'local-files', message, details),
+  // Config, chat history and persona data stay out of reach of agent file tools.
+  protectedRoots: [app.getPath('userData')],
 });
 const sequenceAssetStore = createSequenceAssetStore({
   assetRootPath: importedModelAssetRoot,
@@ -653,7 +670,7 @@ registerDesktopPetIpcHandlers({
   externalSkillPackageArchiveInstallerService,
   externalSkillPackageLifecycleService,
   externalSkillSandboxSupervisorService,
-  ipcMain,
+  ipcMain: trustedIpcMain,
   localFileSystemService,
   localProjectInspectorService,
   shell,
@@ -682,10 +699,25 @@ registerDesktopPetIpcHandlers({
 registerExpressionLibraryIpcHandlers({
   dialog,
   expressionLibraryService,
-  ipcMain,
+  ipcMain: trustedIpcMain,
   shell,
   systemExpressionCatalogService,
 });
+registerGptSovitsIpcHandlers({
+  gptSovitsService,
+  ipcMain: trustedIpcMain,
+  log: (message, details) => runtimeLogger.log('backend', 'gpt-sovits', message, details),
+});
+// Local OCR, used to snap agent clicks onto the exact text the vision model located roughly.
+registerScreenTextRecognitionIpc({
+  app,
+  fs,
+  ipcMain: trustedIpcMain,
+  path,
+  runPowerShellScript: createCapturePowerShellRunner({ app, execFile, fs, path }),
+});
+// High-resolution source stills; the renderer's getUserMedia grab fails while running as administrator.
+registerCaptureSourceImageIpc({ desktopCapturer, ipcMain: trustedIpcMain });
 
 app.on('before-quit', () => {
   appUsageMetricsService.persist();
@@ -1120,6 +1152,7 @@ app.on('before-quit', () => {
     localVoiceRuntime.dispose();
   }
   browserTtsService.dispose();
+  gptSovitsService.dispose();
   externalSkillSandboxSupervisorService.dispose();
   mcpStdioClientService.dispose('app-quit');
   browserSearchService.dispose();

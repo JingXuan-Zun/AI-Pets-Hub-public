@@ -9,7 +9,7 @@ import {
   type AgentChatCommand,
   type AgentToolCallName,
 } from '../src/agent/index.ts';
-import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 
 const toolName = 'close_window' satisfies AgentToolCallName;
 

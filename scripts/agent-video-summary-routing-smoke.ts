@@ -5,7 +5,7 @@ import {
   type AgentChatCommand,
   type AgentSessionV2ModelCaller,
 } from '../src/agent/legacy/index.ts';
-import { createAgentCommandFromPlannerDecision } from '../src/agent/agentLegacy.ts';
+import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
 import { type PetConfig } from '../src/types.ts';
 import { readProjectSources } from './smokeTestHarness.ts';
 

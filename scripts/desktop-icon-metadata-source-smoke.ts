@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
-const serviceSource = readProjectFile('electron/desktopIconService.cjs');
+const serviceSource = readModuleProjectFile('electron/desktopIconService.cjs');
 const typeSource = readProjectFile('src/vite-env.d.ts');
 
 for (const pattern of [

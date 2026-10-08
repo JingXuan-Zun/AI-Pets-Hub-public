@@ -134,7 +134,7 @@ export const SETTINGS_CONTROL_CENTER_MODULES: SettingsControlCenterModule[] = [
     ],
     pages: [
       { id: 'advanced-multi-agent', label: '多人系统', description: '群体记忆、关系与群聊', runtimeTab: 'personality', personalityWorkspacePage: 'multi-agent', workspaceTitle: '多人关系工作区' },
-      { id: 'advanced-desktop-awareness', label: '桌面感知', description: '识别前台应用类别并主动互动', runtimeTab: 'system', workspaceTitle: '桌面活动感知' },
+      { id: 'advanced-desktop-awareness', label: '生活陪伴', description: '大致感知你在做什么、主动聊天、看屏幕陪伴', runtimeTab: 'system', workspaceTitle: '生活陪伴' },
       { id: 'advanced-game-companion', label: '陪玩', description: '游戏观察频率与角色回应', runtimeTab: 'system', workspaceTitle: '游戏陪玩工作区' },
       { id: 'advanced-expression', label: '表情包', description: '回复比例、分类语义与图片库', runtimeTab: 'system', workspaceTitle: '表情包工作区' },
     ],

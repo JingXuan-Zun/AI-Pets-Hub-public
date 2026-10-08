@@ -70,13 +70,13 @@ const fillResult = await runAgentProductionSession({
     tool: 'execute_desktop_observation',
   }),
   settings,
-  sourceText: '/agent �?Launcher 的搜索框输入 "Example Game"',
+  sourceText: '/agent 在 Launcher 的搜索框输入 "Example Game"',
   toolExecutor: async (command: AgentChatCommand) => {
     assert.equal(command.toolCall?.name, 'execute_desktop_observation');
     assert.equal(command.toolCall.input.action, 'inspect_window_ui');
     return createInputFieldResult();
   },
-  userGoal: '�?Launcher 的搜索框输入 "Example Game"',
+  userGoal: '在 Launcher 的搜索框输入 "Example Game"',
 });
 
 assert.equal(fillResult.status, 'needs-approval');
@@ -124,12 +124,12 @@ const missingValueResult = await runAgentProductionSession({
     });
   },
   settings,
-  sourceText: '/agent �?Launcher 的搜索框输入',
+  sourceText: '/agent 在 Launcher 的搜索框输入',
   toolExecutor: async () => {
     missingValueToolCalls += 1;
     return createInputFieldResult();
   },
-  userGoal: '�?Launcher 的搜索框输入',
+  userGoal: '在 Launcher 的搜索框输入',
 });
 
 assert.equal(missingValueToolCalls, 1);
@@ -175,13 +175,13 @@ const dualActionFillResult = await runAgentProductionSession({
     tool: 'execute_desktop_observation',
   }),
   settings,
-  sourceText: '/agent �?Launcher 的搜索框输入 "Another Game"',
+  sourceText: '/agent 在 Launcher 的搜索框输入 "Another Game"',
   toolExecutor: async (command: AgentChatCommand) => {
     assert.equal(command.toolCall?.name, 'execute_desktop_observation');
     assert.equal(command.toolCall.input.action, 'inspect_window_ui');
     return createDualActionInputFieldResult();
   },
-  userGoal: '�?Launcher 的搜索框输入 "Another Game"',
+  userGoal: '在 Launcher 的搜索框输入 "Another Game"',
 });
 
 assert.equal(dualActionFillResult.status, 'needs-approval');

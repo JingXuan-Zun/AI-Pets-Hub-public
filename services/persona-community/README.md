@@ -7,6 +7,7 @@
 - 目标仓库：`example-owner/ai-desktop-pet-personas`，固定分支 `main`。
 - 目标 Worker：`ai-desktop-pet-persona-api`。
 - 服务地址：`https://persona-api.example.workers.dev`。
+- 以上仓库和地址都是占位值：部署前把 `github.mjs`、`worker.bundle.mjs` 中的 `REPOSITORY` 改成你自己的仓库，并把客户端 `VITE_PERSONA_COMMUNITY_API_URL` 设为实际 Worker 地址。客户端未设置地址时显示“人格分享暂未开放”。
 - 本地实现和模拟服务验证已完成；尚未替换线上 Hello World，也未配置线上数据库或凭据。
 - 本地浏览器访问此 workers.dev 地址返回 `ERR_BLOCKED_BY_CLIENT`，不能据此断言你的浏览器或其他地区不可访问。正式接入需要分别验证国内、海外网络。
 

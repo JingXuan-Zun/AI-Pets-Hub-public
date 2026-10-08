@@ -36,16 +36,6 @@ function inspectSource(relativePath: string) {
 
 sourceFiles.forEach(inspectSource);
 
-const edgeEditorSource = fs.readFileSync(
-  path.resolve('src/components/settings/NeuralPersonaEdgeEditor.tsx'), 'utf8',
-);
-const edgeSelectorSource = fs.readFileSync(
-  path.resolve('src/components/settings/NeuralPersonaEdgeExistingSelector.tsx'), 'utf8',
-);
-assert.match(edgeEditorSource, /解除关系/u);
-assert.match(edgeEditorSource, /再次导入节点时会自动恢复/u);
-assert.match(edgeSelectorSource, /现有关系/u);
-assert.match(edgeSelectorSource, /选择后可编辑或解除/u);
 
 function memoryStorage(): NeuralPersonaAtomicStorage {
   const records = new Map<string, string>();

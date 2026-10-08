@@ -128,8 +128,14 @@ const result = await runAgentProductionSession({
       };
     }
 
-    assert.equal(command.toolCall.input.focusCenterRatioX, 0.72);
-    assert.equal(command.toolCall.input.focusCenterRatioY, 0.64);
+    if (toolCallCount === 2) {
+      assert.equal(command.toolCall.input.focusCenterRatioX, 0.72);
+      assert.equal(command.toolCall.input.focusCenterRatioY, 0.64);
+    } else {
+      // Bounded second refinement re-checks the ready Start point.
+      assert.equal(toolCallCount, 3);
+      assert.equal(command.toolCall.input.focusCoordinateSpace, 'native-screen');
+    }
     return {
       observations: [
         'Visual target matched: Example Game',
@@ -155,6 +161,15 @@ const result = await runAgentProductionSession({
         structuredEvidence: {
           confidence: 'high',
           coordinateConfidence: 'high',
+          // Declared bounds let the actionable-area gate accept the point.
+          elementBounds: {
+            coordinateSpace: 'native-screen',
+            height: 44,
+            source: 'test',
+            width: 150,
+            x: 1385,
+            y: 908,
+          },
           elementCenter: {
             coordinateSpace: 'native-screen',
             source: 'test',
@@ -176,7 +191,7 @@ const result = await runAgentProductionSession({
 });
 
 assert.equal(modelCallCount, 0);
-assert.equal(toolCallCount, 2);
+assert.equal(toolCallCount, 3);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1460/u);

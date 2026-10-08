@@ -2,6 +2,7 @@ import type { NeuralPersonaPersistedRecord, NeuralPersonaWriteResult } from './n
 import type { NeuralPersonaEdge, NeuralPersonaEdgeType } from './neuralPersonaTypes';
 
 export interface NeuralPersonaEdgeDraft {
+  anchorText?: string;
   confidence: number;
   edgeId: string;
   relationType: NeuralPersonaEdgeType;

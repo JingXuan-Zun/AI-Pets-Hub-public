@@ -1,3 +1,4 @@
+import { readChatMessageSource } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
@@ -48,7 +49,7 @@ function inspectSourceBudget(relativePath: string) {
 
 budgetFiles.forEach(inspectSourceBudget);
 
-const bubbleSource = readFileSync('src/components/chat/PetChatConversationMessageBubble.tsx', 'utf8');
+const bubbleSource = readChatMessageSource();
 const conversationSource = readFileSync('src/components/chat/PetChatConversation.tsx', 'utf8');
 const conversationHeaderSource = readFileSync('src/components/chat/PetChatConversationHeader.tsx', 'utf8');
 const storySidebarSource = readFileSync('src/components/chat/story/StoryConversationSidebarPanel.tsx', 'utf8');
@@ -93,9 +94,9 @@ assert.match(reviewSource, /思考 \/ 剧情分析与输出计划（公开）/);
 assert.match(reviewSource, /open/);
 assert.match(stateOverviewSource, /<details/);
 assert.match(stateOverviewSource, /角色当前心理/);
-assert.match(storyButtonStylesSource, /!bg-sky-950/);
+assert.match(storyButtonStylesSource, /!bg-primary/);
 assert.match(storyButtonStylesSource, /!text-white/);
-assert.match(storyButtonStylesSource, /hover:!bg-sky-900/);
+assert.match(storyButtonStylesSource, /hover:!bg-primary\/90/);
 assert.match(storyActionChoicesSource, /STORY_PRIMARY_BUTTON_CLASS/);
 assert.match(storyLibraryPanelSource, /STORY_PRIMARY_BUTTON_CLASS/);
 assert.match(storyModePanelSource, /STORY_PRIMARY_BUTTON_CLASS/);
@@ -124,7 +125,7 @@ assert.match(storyToolbarSource, /当前故事/);
 assert.match(storyToolbarSource, /w-full/);
 assert.match(librarySource, /故事设定、进度和聊天记录将一并删除/);
 assert.match(librarySource, /onDelete/);
-assert.match(windowSource, /'故事 \/\/ COMMS'/);
+assert.match(windowSource, /'故事'/);
 assert.doesNotMatch(windowSource, /\\\\u6545\\\\u4e8b/);
 
 console.log('story presentation smoke: PASS');

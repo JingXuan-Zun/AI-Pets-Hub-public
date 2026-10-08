@@ -7,6 +7,8 @@ import {
   inspectAgentRuntimeLegacyRetirementStaticCoverage,
 } from './agentRuntimeLegacyRetirementGateCore.mjs';
 
+import { createAgentRuntimeSourceRevision } from './agentRuntimeSourceRevisionCore.mjs';
+
 const args = process.argv.slice(2);
 const json = args.includes('--json');
 const reportOnly = args.includes('--report-only');
@@ -25,7 +27,9 @@ if (evidencePath) {
   }
 }
 
+const { revision: currentSourceRevision } = createAgentRuntimeSourceRevision(process.cwd());
 const result = evaluateAgentRuntimeLegacyRetirementGate({
+  currentSourceRevision,
   observationManifest,
   staticChecks: inspectAgentRuntimeLegacyRetirementStaticCoverage(process.cwd()),
 });

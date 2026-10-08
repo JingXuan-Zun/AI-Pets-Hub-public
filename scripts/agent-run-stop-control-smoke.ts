@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 import type { AgentProductionSessionResult } from '../src/agent';
 import type { ChatMessage } from '../src/types';
 import { abortAgentRunController, registerAgentRunAbortController } from '../src/components/chat/agentRunAbortRegistry';
@@ -60,7 +60,7 @@ assert.equal(activeGroupRef.get(), groupRuntime);
 assert.equal(groupRuntime.controller.getSnapshot().status, 'planning');
 unregisterSecond();
 
-const controllerSource = fs.readFileSync('src/components/chat/agentRunController.ts', 'utf8');
+const controllerSource = readModuleProjectFile('src/components/chat/agentRunController.ts');
 assert.doesNotMatch(controllerSource, /const activeAgentRunAbortControllers/);
 assert.doesNotMatch(controllerSource, /function getAgentTaskRuntimeRunStatus\(/);
 assert.match(controllerSource, /resolveAgentStopTarget\(messages, messageId\)/);

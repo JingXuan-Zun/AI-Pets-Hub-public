@@ -12,7 +12,7 @@ import {
   type AgentToolCallName,
 } from '../src/agent/legacy/index.ts';
 import { type PetConfig } from '../src/types.ts';
-import { readProjectSources } from './smokeTestHarness.ts';
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 
 const toolName = 'execute_desktop_action' satisfies AgentToolCallName;
 const desktopInputToolName = 'execute_desktop_input' satisfies AgentToolCallName;

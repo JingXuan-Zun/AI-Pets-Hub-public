@@ -44,7 +44,7 @@ const icons: DesktopPetDesktopIconLike[] = [
   createIcon('unknown', 'Loose item', 5, 500, 20),
 ];
 
-assert.equal(classifyDesktopItem(createIcon('system', '回收�?, 6, 20, 120)).kind, 'system-icon');
+assert.equal(classifyDesktopItem(createIcon('system', '回收站', 6, 20, 120)).kind, 'system-icon');
 assert.equal(classifyDesktopItem(createIcon('image', 'photo.png', 7, 20, 120)).category, 'image');
 assert.equal(classifyDesktopItem(createIcon('folder-meta', 'Folder', 8, 20, 120, { isDirectory: true })).category, 'folder');
 

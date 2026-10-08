@@ -1,8 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const controllerSource = readFileSync('src/components/pet/useGameCompanionLoopController.ts', 'utf8');
-const captureServiceSource = readFileSync('electron/captureService.cjs', 'utf8');
+const captureServiceSource = readModuleProjectFile('electron/captureService.cjs');
 const captureScriptSource = readFileSync('electron/capturePowerShellScripts.cjs', 'utf8');
 
 assert.match(controllerSource, /sourceId: state\.lockedSourceId \?\? state\.sourceId/u);

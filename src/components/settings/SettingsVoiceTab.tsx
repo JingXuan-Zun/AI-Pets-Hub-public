@@ -12,6 +12,10 @@ import {
   SettingsVoiceSourcesSection,
 } from './SettingsVoiceCoreSections';
 import { SettingsApiSttSection, SettingsApiTtsSection } from './SettingsVoiceApiSections';
+import { SettingsVoiceConversationSection } from './SettingsVoiceConversationSection';
+import { SettingsVoiceWakeSection } from './SettingsVoiceWakeSection';
+import { SettingsVoiceCharacterSection } from './SettingsVoiceCharacterSection';
+import { SettingsVoiceGptSovitsSection } from './SettingsVoiceGptSovitsSection';
 import { SettingsLocalSttSection, SettingsLocalTtsSection } from './SettingsVoiceLocalModelSections';
 import {
   buildRandomLocalTtsSeed,
@@ -166,6 +170,26 @@ export function SettingsVoiceTab({
         onInstallBrowserTtsDependencies={onInstallBrowserTtsDependencies}
         onRefreshBrowserTtsHealth={onRefreshBrowserTtsHealth}
         onStartBrowserTtsService={onStartBrowserTtsService}
+        applySettings={applySettings}
+      />
+      <SettingsVoiceConversationSection
+        settings={settings}
+        noDragRegionStyle={noDragRegionStyle}
+        applySettings={applySettings}
+      />
+      <SettingsVoiceWakeSection
+        settings={settings}
+        noDragRegionStyle={noDragRegionStyle}
+        applySettings={applySettings}
+      />
+      <SettingsVoiceCharacterSection
+        config={localConfig}
+        noDragRegionStyle={noDragRegionStyle}
+        onApplyConfig={onApplyConfig}
+      />
+      <SettingsVoiceGptSovitsSection
+        settings={settings}
+        noDragRegionStyle={noDragRegionStyle}
         applySettings={applySettings}
       />
       <SettingsLocalVoiceEnvironmentSection

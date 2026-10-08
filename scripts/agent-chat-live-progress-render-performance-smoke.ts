@@ -1,11 +1,12 @@
+import { readMessageProjectFile as readProjectFile } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 const source = readProjectFile('src/components/chat/PetChatConversationMessageBubble.tsx');
 
 assert.match(
   source,
-  /import \{ Fragment, memo, useEffect, useRef, useState \} from 'react'/u,
+  /import \{[^}]*\bmemo\b[^}]*\} from 'react'/u,
   'chat message bubbles should use React memoization during frequent Agent progress updates',
 );
 assert.match(

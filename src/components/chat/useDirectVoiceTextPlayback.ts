@@ -9,6 +9,7 @@ import {
   buildVoicePlaybackFailedMessage,
 } from './chatVoiceControlUtils';
 import { type PlayVoiceTextOptions } from './chatVoicePlaybackTypes';
+import { resolvePetVoiceSettings } from '../../voice/petVoiceSettings';
 import { resolvePetMessageExpressionAction } from '../../pet-runtime/interactions/petMessageExpressionSignals';
 import { registerReplyMouthPlayback } from '../../pet-runtime/performance/replyMouthSignalRuntime';
 
@@ -49,7 +50,8 @@ export function useDirectVoiceTextPlayback({
       return;
     }
 
-    const currentSettings = configRef.current.settings;
+    const targetPetId = options?.petId ?? desktopPetChatStore.getState().activePetId;
+    const currentSettings = resolvePetVoiceSettings(configRef.current, targetPetId);
     const force = Boolean(options?.force);
     const source = options?.source ?? 'reply';
 
@@ -58,23 +60,20 @@ export function useDirectVoiceTextPlayback({
     }
 
     const playbackToken = ++voicePlaybackTokenRef.current;
-    const targetPetId = options?.petId ?? desktopPetChatStore.getState().activePetId;
     resetVoicePlaybackState(null);
     let unregisterMouthPlayback = () => undefined;
 
     try {
+      const expressionAction = resolvePetMessageExpressionAction(nextText);
       desktopPetChatStore.setSpeaking(true);
       desktopPetChatStore.setSpeakingPetId(targetPetId);
-      desktopPetChatStore.setSpeechExpressionAction(
-        targetPetId,
-        resolvePetMessageExpressionAction(nextText),
-      );
+      desktopPetChatStore.setSpeechExpressionAction(targetPetId, expressionAction);
       pushFrontendRuntimeLog('voice', source === 'manual' ? 'manual voice playback started' : 'reply voice playback started', {
         provider: currentSettings.ttsProvider,
         textLength: nextText.length,
         force,
       });
-      const playback = await speakText(nextText, currentSettings, undefined, { force });
+      const playback = await speakText(nextText, currentSettings, undefined, { force, expressionAction });
       unregisterMouthPlayback = registerReplyMouthPlayback({
         petId: targetPetId,
         playback,

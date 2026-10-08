@@ -102,7 +102,9 @@ const dedupeResult = await runAgentProductionSession({
 });
 
 assert.equal(dedupeResult.status, 'completed');
-assert.equal(dedupeResult.finalAnswer, 'Aggregate observation result');
+// The read-only terminal answers from every executed batch result, leaving
+// out the dedupe placeholders.
+assert.equal(dedupeResult.finalAnswer, 'Aggregate observation result\nMemory recall result');
 assert.equal(dedupeModelCallCount, 1);
 assert.deepEqual(
   dedupeExecutedCommands.map((command) => command.toolCall?.name),

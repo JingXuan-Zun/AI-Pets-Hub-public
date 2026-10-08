@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { MODEL_ASSET_DIRECTORY_NAME } = require('./modelAssetRoot.cjs');
 const { spawn } = require('child_process');
+const { createVideoLibraryFolders } = require('./videoLibraryFolders.cjs');
 
 const IMAGE_EXTENSIONS = new Set(['.avif', '.bmp', '.gif', '.jpeg', '.jpg', '.png', '.webp']);
 const MAX_SEQUENCE_FRAME_COUNT = 300;
@@ -86,6 +87,9 @@ function collectSequenceSourcePaths(sourcePaths) {
 function createSequenceAssetStore({ assetRootPath, log } = {}) {
   const sequenceRootPath = path.join(path.resolve(assetRootPath || process.cwd()), MODEL_ASSET_DIRECTORY_NAME);
   const videoRootPath = path.join(sequenceRootPath, 'video');
+  // Random library playback stages a clip on every pick; skip re-hashing
+  // unchanged source files (up to 256MB each) after the first staging.
+  const stagedVideoBySourceKey = new Map();
   const logMessage = (message, details) => {
     if (typeof log === 'function') log(message, details);
   };
@@ -202,6 +206,11 @@ function createSequenceAssetStore({ assetRootPath, log } = {}) {
     try { stats = fs.statSync(sourcePath); } catch { return { error: '找不到要导入的 WebM 文件。', ok: false }; }
     if (!stats.isFile()) return { error: 'WebM 路径不是文件。', ok: false };
     if (stats.size > MAX_VIDEO_BYTES) return { error: 'WebM 文件大小不能超过 256MB。', ok: false };
+    const sourceKey = `${sourcePath}|${stats.size}|${stats.mtimeMs}`;
+    const cachedTargetPath = stagedVideoBySourceKey.get(sourceKey);
+    if (cachedTargetPath && fs.existsSync(cachedTargetPath)) {
+      return { ok: true, videoUrl: toLocalAssetUrl(cachedTargetPath), converted: extension !== '.webm' };
+    }
 
     try {
       fs.mkdirSync(videoRootPath, { recursive: true });
@@ -216,6 +225,7 @@ function createSequenceAssetStore({ assetRootPath, log } = {}) {
           if (!conversion.ok) return conversion;
         }
       }
+      stagedVideoBySourceKey.set(sourceKey, targetPath);
       return { ok: true, videoUrl: toLocalAssetUrl(targetPath), converted: extension !== '.webm' };
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error), ok: false };
@@ -252,7 +262,16 @@ function createSequenceAssetStore({ assetRootPath, log } = {}) {
     return { error: '文件夹中的视频均无法播放，请检查文件格式。', ok: false };
   }
 
-  return { getRootPath: () => sequenceRootPath, inspect2DVideoFolder, pick2DVideoFromFolder, stage2DSequence, stage2DVideo };
+  const videoLibrary = createVideoLibraryFolders({ inspect2DVideoFolder, pick2DVideoFromFolder });
+
+  return {
+    getRootPath: () => sequenceRootPath,
+    inspect2DVideoFolder,
+    pick2DVideoFromFolder,
+    ...videoLibrary,
+    stage2DSequence,
+    stage2DVideo,
+  };
 }
 
 module.exports = { createSequenceAssetStore };

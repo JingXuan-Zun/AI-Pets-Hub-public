@@ -15,6 +15,8 @@ import {
 import { normalizePetAudioAssets } from './petAudioAssets';
 import { normalizeGroupTopicRepository } from './group-topic';
 import { normalizeDirectedRelationshipRepository } from './character-relationship';
+import { normalizeNeuralMemoryProposals } from './neural-memory/neuralMemoryProposalTypes';
+import { normalizeCharacterMemoryState } from './character-memory/characterMemoryTypes';
 import {
   clampChatAvatarDisplaySize,
   clampChatBackgroundImageSize,
@@ -44,6 +46,7 @@ import { normalizeGroupChatSpeedDelay } from './components/chat/group/groupChatS
 import { migrateLegacyAgentRuntimeSettings } from './legacyPetConfigMigration';
 import { clampSpeechPlaybackRate } from './voice/speechPlaybackRate';
 import { normalizeLive2DRuntimeProfileConfig } from './pet-runtime/live2d/live2dRuntimeProfile';
+import { normalizeVideoEmotionFolderAliases } from './pet-runtime/video2d/videoLibraryEmotionFolders';
 import { normalizeExpressionReplySettings } from './expression/expressionSettings';
 import {
   normalizeGroupMemoryRepository,
@@ -297,6 +300,8 @@ function normalizePersonality(
     chatHistoryMemory: typeof input?.chatHistoryMemory === 'string'
       ? input.chatHistoryMemory
       : fallback.chatHistoryMemory,
+    // Never inherited from the fallback: memories belong to one character.
+    memoryState: normalizeCharacterMemoryState(input?.memoryState),
     knowledgeBase: typeof input?.knowledgeBase === 'string' ? input.knowledgeBase : fallback.knowledgeBase,
     webSearchEnabled: typeof input?.webSearchEnabled === 'boolean'
       ? input.webSearchEnabled
@@ -304,6 +309,9 @@ function normalizePersonality(
     webLearningEnabled: typeof input?.webLearningEnabled === 'boolean'
       ? input.webLearningEnabled
       : fallback.webLearningEnabled,
+    // Never inherited from the fallback: a new slot must not silently share another character's voice.
+    voicePackId: typeof input?.voicePackId === 'string' ? input.voicePackId.trim() : '',
+    wakeWords: typeof input?.wakeWords === 'string' ? input.wakeWords : '',
   };
 }
 
@@ -450,6 +458,10 @@ function normalizeCustomModelPresets(input: PetModelPreset[] | undefined | null)
           ? 'gif'
           : VIDEO_MODEL_URL_PATTERN.test(normalizedUrl) || preset.renderKind === 'video' ? 'video' : undefined,
         randomVideoPlaybackEnabled: preset.randomVideoPlaybackEnabled === true,
+        videoLibraryRootPath: typeof preset.videoLibraryRootPath === 'string' && preset.videoLibraryRootPath.trim()
+          ? preset.videoLibraryRootPath.trim()
+          : undefined,
+        videoEmotionFolderAliases: normalizeVideoEmotionFolderAliases(preset.videoEmotionFolderAliases),
         builtIn: false,
         videoItemBindings: Array.isArray(preset.videoItemBindings)
           ? preset.videoItemBindings.filter((binding) => (
@@ -585,6 +597,7 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
     directedRelationshipRepository,
     groupMemoryRepository,
     groupTopicRepository,
+    neuralMemoryProposals: normalizeNeuralMemoryProposals(nextConfig.neuralMemoryProposals),
     personality: {
       ...normalizedPersonality,
       chatHistoryMemory: stripLegacyGroupMemory(normalizedPersonality.chatHistoryMemory),
@@ -621,6 +634,9 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       agentRuntimeProvider: rawSettings.agentRuntimeProvider === 'deepseek-harness'
         ? 'deepseek-harness'
         : 'native',
+      agentDesktopLoopEnabled: typeof rawSettings.agentDesktopLoopEnabled === 'boolean'
+        ? rawSettings.agentDesktopLoopEnabled
+        : DEFAULT_CONFIG.settings.agentDesktopLoopEnabled,
       deepseekHarnessPythonPath: normalizeTrimmedSettingString(rawSettings.deepseekHarnessPythonPath, ''),
       deepseekHarnessWorkspace: normalizeTrimmedSettingString(rawSettings.deepseekHarnessWorkspace, ''),
       deepseekHarnessHome: normalizeTrimmedSettingString(rawSettings.deepseekHarnessHome, ''),
@@ -770,6 +786,18 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       speechPlaybackRate: clampSpeechPlaybackRate(rawSettings.speechPlaybackRate),
       ttsProvider: rawSettings.ttsProvider ?? legacyVoiceProvider ?? DEFAULT_CONFIG.settings.ttsProvider,
       sttProvider: rawSettings.sttProvider ?? DEFAULT_CONFIG.settings.sttProvider,
+      voiceInputMode: rawSettings.voiceInputMode === 'conversation' ? 'conversation' : 'single',
+      voiceConversationIdleTimeoutSec: Number.isFinite(Number(rawSettings.voiceConversationIdleTimeoutSec))
+        ? Math.min(600, Math.max(10, Math.round(Number(rawSettings.voiceConversationIdleTimeoutSec))))
+        : DEFAULT_CONFIG.settings.voiceConversationIdleTimeoutSec,
+      voiceWakeEnabled: rawSettings.voiceWakeEnabled === true,
+      voiceWakeWords: normalizeTrimmedSettingString(rawSettings.voiceWakeWords, ''),
+      voiceConversationOpenChat: rawSettings.voiceConversationOpenChat !== false,
+      gptSovitsModelId: normalizeTrimmedSettingString(rawSettings.gptSovitsModelId, ''),
+      gptSovitsDevice: rawSettings.gptSovitsDevice === 'cuda' || rawSettings.gptSovitsDevice === 'cpu'
+        ? rawSettings.gptSovitsDevice
+        : DEFAULT_CONFIG.settings.gptSovitsDevice,
+      gptSovitsApiUrl: normalizeTrimmedSettingString(rawSettings.gptSovitsApiUrl, '') || DEFAULT_CONFIG.settings.gptSovitsApiUrl,
       apiTtsProtocol: rawSettings.apiTtsProtocol === 'gemini' ? 'gemini' : DEFAULT_CONFIG.settings.apiTtsProtocol,
       apiSttProtocol: rawSettings.apiSttProtocol === 'gemini' ? 'gemini' : DEFAULT_CONFIG.settings.apiSttProtocol,
       browserTtsApiUrl: typeof rawSettings.browserTtsApiUrl === 'string'

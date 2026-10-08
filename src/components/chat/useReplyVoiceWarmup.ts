@@ -2,6 +2,7 @@ import { useCallback, type MutableRefObject } from 'react';
 import { pushFrontendRuntimeError, pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type PetConfig } from '../../types';
 import { warmupLocalVoice } from '../../voice/runtime';
+import { warmupGptSovitsVoice } from '../../voice/ttsGptSovitsPlayback';
 
 interface UseReplyVoiceWarmupOptions {
   replyVoiceWarmupActiveKeyRef: MutableRefObject<string>;
@@ -16,7 +17,21 @@ function buildReplyVoiceWarmupKey(settings: PetConfig['settings']) {
     settings.localVoiceRuntimePath,
     settings.customVoiceModel,
     settings.voiceName,
+    settings.gptSovitsModelId,
+    settings.gptSovitsDevice,
+    settings.gptSovitsApiUrl,
   ].join('::');
+}
+
+// Logs the fields that identify what was warmed for each provider.
+function describeWarmupTarget(settings: PetConfig['settings']) {
+  return settings.ttsProvider === 'gpt-sovits'
+    ? { modelId: settings.gptSovitsModelId || null, device: settings.gptSovitsDevice, provider: settings.ttsProvider }
+    : { modelId: settings.localTtsModelId || null, provider: settings.ttsProvider, referenceId: settings.localVoiceReferenceId || null };
+}
+
+function runReplyVoiceWarmup(settings: PetConfig['settings']) {
+  return settings.ttsProvider === 'gpt-sovits' ? warmupGptSovitsVoice(settings) : warmupLocalVoice(settings);
 }
 
 export function useReplyVoiceWarmup({
@@ -29,7 +44,8 @@ export function useReplyVoiceWarmup({
   }, [replyVoiceWarmupActiveKeyRef, replyVoiceWarmupReadyKeyRef]);
 
   const warmLocalReplyVoice = useCallback((settings: PetConfig['settings']) => {
-    if (!settings.voiceEnabled || !settings.autoSpeakResponses || settings.ttsProvider !== 'local') {
+    const warmable = settings.ttsProvider === 'local' || settings.ttsProvider === 'gpt-sovits';
+    if (!settings.voiceEnabled || !settings.autoSpeakResponses || !warmable) {
       clearReplyVoiceWarmup();
       return;
     }
@@ -44,7 +60,7 @@ export function useReplyVoiceWarmup({
 
     replyVoiceWarmupActiveKeyRef.current = warmupKey;
 
-    void warmupLocalVoice(settings)
+    void runReplyVoiceWarmup(settings)
       .then(() => {
         if (replyVoiceWarmupActiveKeyRef.current !== warmupKey) {
           return;
@@ -52,9 +68,7 @@ export function useReplyVoiceWarmup({
 
         replyVoiceWarmupReadyKeyRef.current = warmupKey;
         pushFrontendRuntimeLog('voice', 'local reply voice warmup ready', {
-          provider: settings.ttsProvider,
-          modelId: settings.localTtsModelId || null,
-          referenceId: settings.localVoiceReferenceId || null,
+          ...describeWarmupTarget(settings),
         });
       })
       .catch((error) => {
@@ -63,9 +77,7 @@ export function useReplyVoiceWarmup({
         }
 
         pushFrontendRuntimeError('voice', 'local reply voice warmup failed', error, {
-          provider: settings.ttsProvider,
-          modelId: settings.localTtsModelId || null,
-          referenceId: settings.localVoiceReferenceId || null,
+          ...describeWarmupTarget(settings),
         });
       })
       .finally(() => {

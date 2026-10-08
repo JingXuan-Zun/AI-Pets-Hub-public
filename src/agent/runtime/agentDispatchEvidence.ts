@@ -127,13 +127,17 @@ function hasInAppStep(
 
 function hasExplicitInAppTarget(command: AgentRuntimeDispatchCommand) {
   const input = command.toolCall?.input ?? {};
+  // A sequence that names the target it will verify afterwards (postVerify*)
+  // is aimed at that target even when its click steps only carry coordinates.
   return Boolean(
     command.toolCall?.actionScope?.targetRef?.trim()
       || input.sourceQuery
       || input.sourceWindowTitle
       || input.windowQuery
       || input.targetText
-      || input.targetDescription,
+      || input.targetDescription
+      || input.postVerifyQuery
+      || input.postVerifyVisualQuery,
   );
 }
 

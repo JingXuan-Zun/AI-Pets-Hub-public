@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+import ts from 'typescript';
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 
-const { serviceSource, bridgeSource, viteEnvSource, runtimeSource } = readProjectSources({
+const { serviceSource, bridgeSource, viteEnvSource, runtimeSource, resultSource, localLaunchSource } = readProjectSources({
   serviceSource: 'electron/appLauncherService.cjs',
   bridgeSource: 'src/desktopShellBridge.ts',
   viteEnvSource: 'src/vite-env.d.ts',
   runtimeSource: 'src/agent/agentRuntimeDesktopLaunchTools.ts',
+  resultSource: 'electron/appLauncher/launchResult.cjs',
+  localLaunchSource: 'electron/appLauncher/localAppLauncher.cjs',
 });
 const focusScriptEndIndex = serviceSource.search(/`;\r?\n\r?\n    try/u);
-const createLaunchResultIndex = serviceSource.indexOf('function createLaunchResult(');
-const launchLocalAppIndex = serviceSource.indexOf('async function launchLocalApp(');
+const parsedResult = ts.createSourceFile('launchResult.cjs', resultSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+const parsedLaunch = ts.createSourceFile('localAppLauncher.cjs', localLaunchSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
 
 assert.match(
   serviceSource,
@@ -24,11 +27,18 @@ assert.match(
 );
 
 assert.ok(focusScriptEndIndex >= 0, 'app launcher focus PowerShell script boundary should be detectable');
-assert.ok(createLaunchResultIndex > focusScriptEndIndex, 'createLaunchResult should be defined outside the PowerShell focus script');
+assert.ok(parsedResult.statements.some(node => ts.isFunctionDeclaration(node) && node.name?.text === 'createLaunchResult'),
+  'createLaunchResult must be a top-level JavaScript function, outside any PowerShell template');
+const resultImport = parsedLaunch.statements.find(node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration =>
+  ts.isObjectBindingPattern(declaration.name) && declaration.name.elements.some(element => element.name.getText(parsedLaunch) === 'createLaunchResult')
+  && declaration.initializer && ts.isCallExpression(declaration.initializer) && declaration.initializer.expression.getText(parsedLaunch) === 'require'
+  && declaration.initializer.arguments[0]?.getText(parsedLaunch) === "'./launchResult.cjs'"));
+const launchFactory = parsedLaunch.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'createLocalAppLauncher');
 assert.ok(
-  createLaunchResultIndex > 0 && createLaunchResultIndex < launchLocalAppIndex,
-  'createLaunchResult should be in JavaScript scope before launchLocalApp uses it',
+  resultImport && launchFactory && resultImport.getStart(parsedLaunch) < launchFactory.getStart(parsedLaunch),
+  'the launcher must import the real result module in JavaScript scope before assembling launchLocalApp',
 );
+assert.match(resultSource, /module\.exports = \{ createLaunchResult \}/u, 'the result function must be exported to the launcher');
 
 assert.match(
   serviceSource,

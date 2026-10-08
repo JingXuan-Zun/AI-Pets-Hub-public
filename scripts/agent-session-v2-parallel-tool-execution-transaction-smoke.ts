@@ -18,14 +18,20 @@ import {
 const {
   index: indexSource,
   legacyTransaction: legacyTransactionSource,
-  session: sessionSource,
+  session: sessionEntrySource,
+  parallelExecution: sessionSource,
   transaction: transactionSource,
 } = readProjectSources({
   index: 'src/agent/index.ts',
   legacyTransaction: 'src/agent/runtime/agentParallelToolTransactionExecutor.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  parallelExecution: 'src/agent/productionSession/parallelExecution.ts',
   transaction: 'src/agent/runtime/agentParallelToolTransactionExecutor.ts',
 });
+
+assertSourceMatches(sessionEntrySource, /from '\.\/productionSession\/parallelExecution'/u);
+assertSourceMatches(sessionEntrySource, /createAgentProductionParallelExecution\(\{/u);
+assertSourceMatches(sessionEntrySource, /await executeParallelBatch\(\{/u);
 
 assertSourceMatches(
   transactionSource,

@@ -28,9 +28,9 @@ export function ExpressionReplyWeights({ imageCandidateCount, settings, onChange
   };
   const sliderStyle = (value: number, min = 0, max = 100) => {
     const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min || 1)) * 100));
-    return { background: `linear-gradient(to right, #00BFFF 0%, #00BFFF ${percentage}%, #BAE6FD ${percentage}%, #BAE6FD 100%)` };
+    return { background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, #F7CCE2 ${percentage}%, #F7CCE2 100%)` };
   };
-  const sliderClassName = "mt-1 h-1.5 w-full appearance-none rounded-full disabled:opacity-45 [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[-4px] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#00BFFF] [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#00BFFF]";
+  const sliderClassName = "mt-1 h-1.5 w-full appearance-none rounded-full disabled:opacity-45 [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[-4px] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-primary";
 
   return (
     <section className="rounded-lg border border-border bg-card p-3 shadow-sm">

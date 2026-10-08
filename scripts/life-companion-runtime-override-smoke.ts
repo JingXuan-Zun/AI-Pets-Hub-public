@@ -77,10 +77,9 @@ try {
   (globalThis as typeof globalThis & { window: unknown }).window = originalWindow;
 }
 
-const { hookSource, controlsSource, progressSource } = readProjectSources({
+const { hookSource, controlsSource } = readProjectSources({
   hookSource: 'src/hooks/useLifeCompanionScheduler.ts',
   controlsSource: 'src/components/settings/SettingsLifeCompanionRuntimeControls.tsx',
-  progressSource: 'PROJECT_FEATURE_PROGRESS.md',
 });
 
 assert.match(hookSource, /useLifeCompanionRuntimeOverride/u);
@@ -88,6 +87,5 @@ assert.match(hookSource, /override\.manualSuspended/u);
 assert.match(controlsSource, /setManualSuspended/u);
 assert.match(controlsSource, /Pause/u);
 assert.match(controlsSource, /Resume/u);
-assert.match(progressSource, /manual pause\/resume/u);
 
 console.log('life companion runtime override smoke passed');

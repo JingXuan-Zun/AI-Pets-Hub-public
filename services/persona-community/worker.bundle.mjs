@@ -36,16 +36,28 @@ function validatePersonaBytes(bytes, filename) {
   }
   return { filename: safeName, format, title: safeName.slice(0, -(format.length + 1)) };
 }
+function personaStorageFilename(filename, id) {
+  if (!PERSONA_ID_PATTERN.test(id)) throw new Error("catalog-invalid");
+  const safeName = personaFilename(filename);
+  const format = safeName.split(".").pop();
+  let stem = safeName.slice(0, -(format.length + 1));
+  while (new TextEncoder().encode(stem).length > 160) stem = Array.from(stem).slice(0, -1).join("");
+  return `${stem}--${id}.${format}`;
+}
 function parsePublicPersona(value) {
   if (!value || typeof value !== "object") throw new Error("catalog-invalid");
   const item = value;
   if (typeof item.id !== "string" || !PERSONA_ID_PATTERN.test(item.id) || typeof item.title !== "string" || !item.title.trim() || item.title.length > 200 || !PERSONA_FORMATS.some((format) => format === item.format) || typeof item.filename !== "string" || personaFilename(item.filename) !== item.filename || !item.filename.endsWith(`.${item.format}`) || typeof item.sizeBytes !== "number" || !Number.isInteger(item.sizeBytes) || item.sizeBytes < 1 || item.sizeBytes > PERSONA_MAX_FILE_BYTES || typeof item.sha256 !== "string" || !PERSONA_ID_PATTERN.test(item.sha256) || typeof item.createdAt !== "string" || !Number.isFinite(Date.parse(item.createdAt))) {
     throw new Error("catalog-invalid");
   }
+  if (item.storageFilename !== void 0 && item.storageFilename !== personaStorageFilename(item.filename, item.id)) {
+    throw new Error("catalog-invalid");
+  }
   return {
     id: item.id,
     title: item.title,
     filename: item.filename,
+    ...item.storageFilename === void 0 ? {} : { storageFilename: item.storageFilename },
     format: item.format,
     sizeBytes: item.sizeBytes,
     createdAt: item.createdAt,
@@ -192,7 +204,8 @@ function createPersonaGithub(env, fetchImpl, signal) {
   };
   const fileBytes = async (filePath, ref = "main", maxBytes = PERSONA_MAX_CATALOG_BYTES) => {
     try {
-      const payload = await boundedJson(await call("/contents/" + filePath + "?ref=" + encodeURIComponent(ref)), maxBytes * 2);
+      const encodedPath = filePath.split("/").map(encodeURIComponent).join("/");
+      const payload = await boundedJson(await call("/contents/" + encodedPath + "?ref=" + encodeURIComponent(ref)), maxBytes * 2);
       const bytes = decodeContent(payload);
       if (bytes.byteLength > maxBytes) throw new PersonaHttpError(502, "github-content-too-large");
       return bytes;
@@ -249,7 +262,7 @@ function updatedCatalog(catalog, entry) {
 }
 async function commitPersona(github, snapshot, entry, blobSha, content) {
   const tree = await github.json("/git/trees", "POST", { base_tree: snapshot.tree, tree: [
-    { path: "personas/" + entry.id + "." + entry.format, mode: "100644", type: "blob", sha: blobSha },
+    { path: "personas/" + entry.storageFilename, mode: "100644", type: "blob", sha: blobSha },
     { path: "catalog/index.json", mode: "100644", type: "blob", content }
   ] });
   const commit = await github.json("/git/commits", "POST", { message: "Share persona " + entry.id.slice(0, 12), tree: tree.sha, parents: [snapshot.sha] });
@@ -305,14 +318,15 @@ async function readPersonaUpload(request, now) {
   const id = await personaSha256(new TextEncoder().encode(`${metadata.format}:${sha256}`));
   return {
     bytes,
-    entry: { ...metadata, id, sha256, sizeBytes: bytes.length, createdAt: new Date(now).toISOString() }
+    entry: { ...metadata, id, storageFilename: personaStorageFilename(metadata.filename, id), sha256, sizeBytes: bytes.length, createdAt: new Date(now).toISOString() }
   };
 }
 async function downloadPersona(github, id) {
   const { items } = await github.catalog();
   const entry = items.find((item) => item.id === id);
   if (!entry) throw new PersonaHttpError(404, "persona-not-found");
-  const bytes = await github.fileBytes("personas/" + entry.id + "." + entry.format, "main", PERSONA_MAX_FILE_BYTES);
+  const storedName = entry.storageFilename ?? `${entry.id}.${entry.format}`;
+  const bytes = await github.fileBytes("personas/" + storedName, "main", PERSONA_MAX_FILE_BYTES);
   if (bytes.length !== entry.sizeBytes || await personaSha256(bytes) !== entry.sha256) {
     throw new PersonaHttpError(502, "download-invalid");
   }

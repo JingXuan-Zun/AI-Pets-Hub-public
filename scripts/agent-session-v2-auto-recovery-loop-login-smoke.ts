@@ -144,7 +144,8 @@ assert.equal(modelCallCount, 0);
 assert.equal(executedCommands.length, 2);
 assert.match(result.finalAnswer, /登录|验证|确认/u);
 assert.match(result.continuation.historyLines.join('\n'), /postActionState=login_required/u);
-assert.match(result.continuation.historyLines.join('\n'), /status=needs-user/u);
+// The blocked login gate stops the recovery loop before any further action.
+assert.match(result.continuation.historyLines.join('\n'), /Recovery Controller trigger decision:\naction=stop-needs-user/u);
 
 let deniedRecoveryToolCalls = 0;
 let recoveryAuthorizationCalls = 0;

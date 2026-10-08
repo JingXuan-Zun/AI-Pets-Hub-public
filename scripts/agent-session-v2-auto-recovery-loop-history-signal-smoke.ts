@@ -7,11 +7,13 @@ import { readProjectSources } from './smokeTestHarness.ts';
 
 const {
   index: indexSource,
+  publicIndex: publicIndexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
+  publicIndex: 'src/agent/index.ts',
   runtimeSignal: 'src/agent/runtime/agentExecutionProgressSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
   signal: 'src/agent/runtime/agentExecutionProgressSignals.ts',
@@ -29,14 +31,21 @@ assert.match(
 );
 assert.match(
   indexSource,
-  /export \* from '\.\.\/agentSessionV2AutoRecoveryLoopHistorySignal'/u,
-  'Auto-recovery loop history signal module should be exported through the agent barrel.',
+  /export \* from '\.\.\/index'/u,
+  'Legacy entry should delegate public exports to the current Agent entry.',
+);
+assert.match(
+  publicIndexSource,
+  /export \* from '\.\/runtime\/agentExecutionProgressSignals'/u,
+  'Current Agent entry should export Runtime-owned recovery history signals.',
 );
 assert.match(
   sessionSource,
-  /from '\.\/runtime\/agentExecutionProgressSignals'/u,
+  /from '\.\.\/runtime\/agentExecutionProgressSignals'/u,
   'AgentSessionV2 should consume Runtime-owned execution progress signals.',
 );
+assert.match(sessionSource, /from '\.\/productionSession\/autoRecoveryExecution'/u);
+assert.match(sessionSource, /createAgentProductionAutoRecoveryExecution\(/u);
 assert.doesNotMatch(
   runtimeSignalSource,
   /buildAgentPermissionRoute|createAgentSessionV2AutoRecoveryObservationCommand|executeAutoRecoveryObservation|executeAgentSessionV2ToolCommandWithCache|resolveAgentSessionV2RecoveryPostActionState/u,

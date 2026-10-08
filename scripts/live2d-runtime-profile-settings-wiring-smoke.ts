@@ -38,7 +38,7 @@ assert.match(
 );
 assert.match(
   profileSectionSource,
-  /placeholder=\{automaticParameterId[\s\S]*enabled: event\.target\.checked[\s\S]*invert: event\.target\.checked[\s\S]*sensitivity:/u,
+  /placeholder=\{automaticParameterId[\s\S]*enabled: checked[\s\S]*invert: checked[\s\S]*sensitivity:/u,
   'each semantic parameter should expose ID override, enable, invert, and sensitivity controls',
 );
 assert.match(

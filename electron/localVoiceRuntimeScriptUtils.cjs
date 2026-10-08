@@ -40,7 +40,18 @@ function ensureSyncedTextFile({ sourcePath, targetPath }) {
   return targetPath;
 }
 
+function createRunnerScriptResolver({ sourcePath, runtimeRoot }) {
+  function ensureRunnerScriptPath() {
+    return ensureSyncedTextFile({
+      sourcePath,
+      targetPath: path.join(runtimeRoot, 'local_voice_runner.py'),
+    });
+  }
+  return ensureRunnerScriptPath;
+}
+
 module.exports = {
+  createRunnerScriptResolver,
   createTemporaryPythonScriptPath,
   ensureSyncedTextFile,
   withTemporaryPythonScript,

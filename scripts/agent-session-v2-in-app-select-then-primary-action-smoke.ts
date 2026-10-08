@@ -71,6 +71,15 @@ function createReadyPrimaryActionLocateResult(): AgentChatCommandResult {
         confidence: 'high',
         coordinateConfidence: 'high',
         currentSelection: 'Example Game',
+        // Declared bounds let the actionable-area gate accept the point.
+        elementBounds: {
+          coordinateSpace: 'native-screen',
+          height: 44,
+          source: 'visual',
+          width: 150,
+          x: 1365,
+          y: 898,
+        },
         elementCenter: {
           coordinateSpace: 'native-screen',
           source: 'visual',

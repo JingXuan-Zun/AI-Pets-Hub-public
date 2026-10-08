@@ -114,14 +114,37 @@ const result = await runAgentProductionSession({
     result: createApprovedSequenceResult(),
   },
   maxSteps: 4,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
-    throw new Error('model should not be called after post-approval verification finds a ready visual action');
+    // Post-approval verification found the ready Start control; after the
+    // focused refinement the model selects the retry click for approval.
+    assert.equal(modelCallCount, 1);
+    assert.match(userInput, /elementCenter=1440,920/u);
+    return JSON.stringify({
+      action: 'tool_call',
+      args: {
+        stepsJson: JSON.stringify([
+          {
+            args: { action: 'click', x: 1440, y: 920 },
+            reason: 'Click the verified Example Game Start control.',
+            tool: 'execute_desktop_input',
+          },
+        ]),
+      },
+      reason: 'Post-approval verification found the Start control; request approval for the click.',
+      tool: 'execute_desktop_sequence',
+    });
   },
   settings,
   sourceText: '/agent start Example Game from launcher',
   toolExecutor: async (command) => {
     executedCommands.push(command);
+    if (executedCommands.length === 2) {
+      // Bounded read-only focused refinement of the ready Start control.
+      assert.equal(command.toolCall?.name, 'locate_screen_elements');
+      assert.match(String(command.toolCall?.input.targetDescription), /; focused candidate: /u);
+      return createReadyVisualVerificationResult();
+    }
     assert.equal(command.toolCall?.name, 'execute_desktop_observation');
     assert.equal(command.toolCall?.input.action, 'summarize_visual_snapshot');
     assert.equal(command.toolCall?.input.query, 'Example Game');
@@ -132,14 +155,14 @@ const result = await runAgentProductionSession({
   userGoal: 'start Example Game from launcher',
 });
 
-assert.equal(modelCallCount, 0);
-assert.equal(executedCommands.length, 1);
+assert.equal(modelCallCount, 1);
+assert.equal(executedCommands.length, 2);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /execute_desktop_input/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1440/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /920/u);
 assert.match(result.continuation.historyLines.join('\n'), /post-approval verification result/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval after post-approval verification/u);
+assert.match(result.continuation.historyLines.join('\n'), /selected approval-required tool:/u);
 
 console.log('agent session v2 post approval ready approval smoke ok');

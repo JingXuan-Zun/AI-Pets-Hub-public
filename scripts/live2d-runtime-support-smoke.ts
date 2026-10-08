@@ -32,6 +32,7 @@ import {
 } from '../src/components/pet/live2dSharedRenderer.ts';
 import { type PetModelMotionBinding } from '../src/types.ts';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 assert.equal(canModelTypeUseMotionBindings('3d'), true);
 assert.equal(canModelTypeUseMotionBindings('live2d'), true);
@@ -225,7 +226,7 @@ const declaredExpressionAssets = resolveLive2DExpressionAssetsFromModelJsonText(
   FileReferences: {
     Expressions: [
       { Name: '害羞', File: 'expressions/害羞.exp3.json' },
-      { File: '�?exp3.json' },
+      { File: '哭.exp3.json' },
     ],
   },
 }), 'C:/models/live2d/test/test.model3.json');
@@ -287,12 +288,12 @@ const typeSource = readProjectFile('src/types.ts');
 const visualRendererSource = readProjectFile('src/components/pet/PetVisualRenderer.tsx');
 const modelImportSource = readProjectFile('src/components/settings/settingsModelImportUtils.ts');
 const modelAssetsStateSource = readProjectFile('src/components/settings/useSettingsPanelModelAssetsState.ts');
-const controlsTabSource = readProjectFile('src/components/settings/SettingsControlsTab.tsx');
+const controlsTabSource = readProjectFile('src/components/settings/SettingsMotionExpressionTab.tsx');
 const cardsSource = readProjectFile('src/components/settings/SettingsModelCards.tsx');
 const customMotionSelectionSource = readProjectFile('src/components/pet/usePetContainerCustomMotionSelection.ts');
 const motionBindingsSource = readProjectFile('src/pet-runtime/content/petModelMotionBindings.ts');
 const motionBindingKindsSource = readProjectFile('src/pet-runtime/content/petModelMotionBindingKinds.ts');
-const live2dRendererSource = readProjectFile('src/components/pet/PetLive2DRenderer.tsx');
+const live2dRendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 const live2dModelRuntimeSource = readProjectFile('src/components/pet/live2dModelRuntime.ts');
 const live2dMotionExpressionSyncSource = readProjectFile('src/components/pet/useLive2DMotionExpressionSync.ts');
 const live2dCoreLoaderSource = readProjectFile('src/pet-runtime/live2d/live2dCubismCoreLoader.ts');
@@ -377,7 +378,7 @@ assert.match(
 );
 assert.match(
   live2dRendererSource,
-  /useEffect\(\(\) => \{[\s\S]*Live2DModel\.from\(modelRuntimeUrl,[\s\S]*model\.destroy\(\{\s*baseTexture:\s*false,\s*children:\s*true,\s*texture:\s*false\s*\}\);[\s\S]*\}, \[modelRuntimeUrl\]\);/u,
+  /Live2DModel\.from\(options\.modelRuntimeUrl,[\s\S]*model\.destroy\(\{\s*baseTexture:\s*false,\s*children:\s*true,\s*texture:\s*false\s*\}\);[\s\S]*useEffect\(\(\) => \{[\s\S]*\}, \[options\.modelRuntimeUrl\]\);/u,
   'only a Live2D model URL change may replace the model inside the persistent Pixi Application',
 );
 assert.doesNotMatch(

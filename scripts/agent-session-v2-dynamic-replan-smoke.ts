@@ -90,7 +90,7 @@ const result = await runAgentProductionSession({
     assert.match(userInput, /Capture source candidate: League Client/u);
     return JSON.stringify({
       action: 'final_answer',
-      message: '我已经重新规划，先找到了可用的窗口来源�?,
+      message: '我已经重新规划，先找到了可用的窗口来源。',
       understanding: {
         blockedGoals: [
           'start the requested item requires a follow-up click approval after locating the specific button',
@@ -105,7 +105,7 @@ const result = await runAgentProductionSession({
     });
   },
   settings,
-  sourceText: '/agent 在启动器里打开目标',
+  sourceText: '/agent 看看启动器现在显示什么',
   toolExecutor: async (command) => {
     toolCommands.push(command);
     assert.equal(command.toolCall?.name, 'execute_desktop_observation');
@@ -147,7 +147,7 @@ const result = await runAgentProductionSession({
 
     throw new Error(`Unexpected action: ${String(action)}`);
   },
-  userGoal: '在启动器里打开目标',
+  userGoal: '看看启动器现在显示什么',
 });
 
 assert.equal(result.status, 'completed');

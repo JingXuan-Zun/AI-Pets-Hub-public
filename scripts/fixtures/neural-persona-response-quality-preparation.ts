@@ -67,7 +67,7 @@ function prepareOne(
     instructionVersion: NEURAL_PERSONA_CHAT_INSTRUCTION_VERSION,
     neuralSystemInstruction: buildCharacterReplySystemInstruction(
       createNeuralPersonaChatPersonality(
-        NEURAL_PERSONA_AB_CLASSIC_PERSONA, built.contribution,
+        NEURAL_PERSONA_AB_CLASSIC_PERSONA, built.contribution, { isolateClassicMemory: true },
       ), resolvedSettings, [], quality.userPrompt,
     ),
     personaVersion: NEURAL_PERSONA_AB_PERSONA_VERSION,

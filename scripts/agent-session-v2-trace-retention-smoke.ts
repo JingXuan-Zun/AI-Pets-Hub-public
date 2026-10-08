@@ -23,7 +23,9 @@ const modelCaller: AgentSessionV2ModelCaller = async ({ userInput }) => {
       reason: `Create trace retention event set ${modelCalls}.`,
       tool: 'observe_windows_and_apps',
       understanding: {
-        remainingGoals: ['collect retention trace events'],
+        // A multi-part plan keeps the Runtime from ending the task after the
+        // first successful read-only observation.
+        remainingGoals: ['collect retention trace events', 'verify old trace events are compacted'],
         successCriteria: 'trace retention compacts old events',
         userNeed: 'exercise long trace retention',
         verificationStatus: 'unknown',

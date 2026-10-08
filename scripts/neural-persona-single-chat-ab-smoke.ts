@@ -12,7 +12,7 @@ import {
   createNeuralPersonaChatPersonality,
   resolveChatInputPersonality,
 } from '../src/services/neuralPersonaChatContextAssembly';
-import { buildCharacterReplySystemInstruction } from '../src/services/geminiPromptService';
+import { buildCharacterReplySystemInstruction, resolveRoleKnowledgeAttachment } from '../src/services/geminiPromptService';
 import type { PetConfig, PetPersonality } from '../src/types';
 import { NEURAL_PERSONA_PERSONALITY_SCENARIOS } from './fixtures/neural-persona-personality-scenario-fixture';
 import { NEURAL_PERSONA_RELATIONSHIP_SCENARIOS } from './fixtures/neural-persona-relationship-scenario-fixture';
@@ -78,9 +78,18 @@ function verifyClassicBranch(query: string) {
   return direct;
 }
 
+
 function verifyNeuralBranch(index: number) {
   const { result, scenario } = buildScenarioContribution(index);
-  const neuralPersonality = createNeuralPersonaChatPersonality(personality, result.contribution);
+  const neuralPersonality = createNeuralPersonaChatPersonality(
+    personality, result.contribution, { isolateClassicMemory: true },
+  );
+  const realChatPersonality = resolveChatInputPersonality(personality, result.contribution);
+  assert.ok(realChatPersonality.systemInstruction.includes('神经人格局部影响（低于 Persona Anchor）'));
+  assert.equal(realChatPersonality.userMemory, CLASSIC_MEMORY, 'real neural chat must keep role memory');
+  assert.equal(realChatPersonality.chatHistoryMemory, CLASSIC_MEMORY, 'real neural chat must keep chat memory');
+  assert.equal(resolveRoleKnowledgeAttachment(realChatPersonality, scenario.input.query)?.content, CLASSIC_KNOWLEDGE,
+    'real neural chat must keep the role knowledge base attached');
   const first = buildCharacterReplySystemInstruction(
     neuralPersonality, settings, [], scenario.input.query,
   );

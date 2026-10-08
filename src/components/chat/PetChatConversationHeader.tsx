@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Infinity, RotateCcw, Square } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Infinity, RotateCcw, Square } from 'lucide-react';
 import { type DesktopPetGroupChatContinuationMode } from '../../chatState';
 import { type DesktopPetChatMode, type PetConfig } from '../../types';
 import { Button } from '../../../components/ui/button';
@@ -7,6 +8,7 @@ import { type ChatTargetOption } from './multiPetChat';
 import type { ChatMessage } from '../../types';
 import { GroupChatDynamicsPanel } from './group/orchestration/GroupChatDynamicsPanel';
 import { ChatModeSelector } from './ChatModeSelector';
+import { ChatSidebarToggleButton } from './ChatSidebarToggleButton';
 import { StoryConversationSidebarPanel } from './story/StoryConversationSidebarPanel';
 import type { StoryDefinition } from './story/storyTypes';
 
@@ -27,12 +29,16 @@ interface PetChatConversationHeaderProps {
   onTargetSelectorCollapsedChange: (isCollapsed: boolean) => void;
   onViewStory: () => void;
   petOptions: ChatTargetOption[];
+  showSidebarToggle?: boolean;
+  /** Rendered under the private-chat role list. */
+  memoryProposalPanel?: ReactNode;
+  pendingMemoryProposalCountByPetId?: Record<string, number>;
 }
 
 const TARGET_BUTTON_CLASS = 'h-10 w-full justify-start rounded-full border px-2.5 text-[10px] tracking-[0.08em]';
 const GROUP_MODE_BUTTON_CLASS = 'h-8 w-full justify-start rounded-full border px-3 text-[10px] tracking-[0.1em]';
-const ACTIVE_BUTTON_CLASS = '!border-sky-950 !bg-sky-950 !text-white';
-const INACTIVE_BUTTON_CLASS = '!border-sky-100 !bg-white !text-sky-950 hover:!bg-sky-50';
+const ACTIVE_BUTTON_CLASS = '!border-primary !bg-primary !text-white';
+const INACTIVE_BUTTON_CLASS = '!border-white/80 !bg-white/60 !text-sky-950 hover:!bg-white/85';
 
 function resolveTargetAvatarFallback(name: string) {
   return name.trim().slice(0, 1) || '宠';
@@ -85,44 +91,38 @@ export function PetChatConversationHeader({
   onTargetSelectorCollapsedChange,
   onViewStory,
   petOptions,
+  showSidebarToggle = true,
+  memoryProposalPanel,
+  pendingMemoryProposalCountByPetId = {},
 }: PetChatConversationHeaderProps) {
   if (isTargetSelectorCollapsed) {
+    if (!showSidebarToggle) return null;
     return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-expanded={false}
-        aria-label="展开聊天目标选择"
-        title="展开聊天目标选择"
-        onClick={() => onTargetSelectorCollapsedChange(false)}
-        className="absolute left-0 top-3 z-30 h-8 w-5 rounded-none border-0 bg-transparent p-0 text-sky-700 shadow-none hover:bg-transparent hover:text-sky-950"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+      <ChatSidebarToggleButton
+        isCollapsed
+        onToggle={() => onTargetSelectorCollapsedChange(false)}
+        className="absolute left-3 top-3 z-30 rounded-lg border border-white/70 glass-bar shadow-[0_6px_18px_rgba(158,84,140,0.16)]"
+      />
     );
   }
 
   return (
-    <aside className="relative flex w-[190px] shrink-0 flex-col overflow-hidden border-r border-sky-100 bg-white px-3 py-3 text-sky-950">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-expanded
-        aria-label="收起聊天目标选择"
-        title="收起聊天目标选择"
-        onClick={() => onTargetSelectorCollapsedChange(true)}
-        className="absolute right-2 top-2 z-10 h-7 w-7 rounded-full text-sky-700 hover:bg-sky-50 hover:text-sky-950"
-      >
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </Button>
+    <aside className="relative my-3 ml-3 flex h-[calc(100%-1.5rem)] w-[190px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/70 glass-bar shadow-[0_10px_30px_rgba(158,84,140,0.12)] px-3 py-3 text-sky-950">
+      {showSidebarToggle ? (
+        <ChatSidebarToggleButton
+          isCollapsed={false}
+          onToggle={() => onTargetSelectorCollapsedChange(true)}
+          tooltipAlign="right"
+          className="absolute right-2 top-2 z-10"
+        />
+      ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 pr-1">
         <ChatModeSelector chatMode={chatMode} onChange={onChatModeChange} />
 
         {chatMode === 'single' ? (
-          <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="min-h-0 shrink space-y-2 overflow-y-auto pr-1">
             {petOptions.map((option) => (
               (() => {
                 const isActive = option.id === activePetId;
@@ -143,10 +143,18 @@ export function PetChatConversationHeader({
                       petId={option.id}
                     />
                     <span className="min-w-0 flex-1 truncate text-center">{option.name}</span>
+                    {pendingMemoryProposalCountByPetId[option.id] ? (
+                      <span
+                        aria-label={`${pendingMemoryProposalCountByPetId[option.id]} 条记忆提议`}
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? 'bg-white' : 'bg-primary'}`}
+                      />
+                    ) : null}
                   </Button>
                 );
               })()
             ))}
+          </div>
+          {memoryProposalPanel}
           </div>
         ) : chatMode === 'group' ? (
           <div className="min-h-0 space-y-3 overflow-y-auto pr-1 text-[10px] leading-relaxed text-sky-800">

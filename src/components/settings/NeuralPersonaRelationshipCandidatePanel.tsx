@@ -34,7 +34,7 @@ export function NeuralPersonaRelationshipCandidatePanel(props: {
         <span className="ml-auto text-3xs text-muted-foreground">可分析节点 {nodes.length} · 已有语义边 {coverage.semanticEdgeCount} · 覆盖 {coverage.connectedContentNodeCount}/{coverage.contentNodeCount}</span>
       </div>
       {coverage.unconnectedContentNodeIds.length ? <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-2 text-3xs leading-4 text-amber-700">仍有 {coverage.unconnectedContentNodeIds.length} 个内容节点没有语义关系；这不是结构层级缺失，先运行关系分析并审核候选。`associated-with` 写入后会按双向路径传播。</div> : <div className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 p-2 text-3xs text-emerald-700">内容节点已经有语义关系覆盖。结构 `contains` 仍只负责组织，不参与激活。</div>}
-      {!props.settings.neuralPersonaProviderDataEgressConsent ? <div className="rounded-sm border border-amber-500/50 bg-amber-500/10 p-2 text-3xs text-amber-700">尚未允许把节点内容发送给当前模型。可在上方“人格文本智能生成节点”区域开启授权。</div> : null}
+      {!props.settings.neuralPersonaProviderDataEgressConsent ? <div className="rounded-sm border border-amber-500/50 bg-amber-500/10 p-2 text-3xs text-amber-700">尚未允许把节点内容发送给当前模型。可在下方“模型语义与智能标签”区域开启授权。</div> : null}
       {controller.message ? <div role="status" className="rounded-sm border border-border bg-background/40 p-2 text-2xs text-muted-foreground">{controller.message}</div> : null}
       {controller.batch ? <div className="space-y-2">
         <div className="text-3xs text-muted-foreground">候选 {controller.batch.candidates.length} · 准备写入 {selected.length} · 基于 revision {controller.batch.revision}</div>

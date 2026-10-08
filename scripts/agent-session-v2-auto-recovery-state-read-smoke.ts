@@ -113,6 +113,14 @@ function createAdjustedTargetResult(): AgentChatCommandResult {
       structuredEvidence: {
         confidence: 'high',
         coordinateConfidence: 'high',
+        elementBounds: {
+          coordinateSpace: 'native-screen',
+          height: 44,
+          source: 'test',
+          width: 150,
+          x: 1385,
+          y: 908,
+        },
         elementCenter: {
           coordinateSpace: 'native-screen',
           source: 'test',
@@ -131,6 +139,18 @@ function createAdjustedTargetResult(): AgentChatCommandResult {
   };
 }
 
+// Recovery reads declare element bounds so the runtime's actionable-area gate
+// (72b9745) accepts the click point; without bounds the runtime hands the
+// click to the model and the deterministic escalation is not exercised.
+const SAME_COORDINATE_START_BOUNDS = {
+  coordinateSpace: 'native-screen',
+  height: 44,
+  source: 'test',
+  width: 150,
+  x: 1365,
+  y: 898,
+};
+
 function createSameCoordinateTargetResult(candidateState?: {
   actions?: string[];
   enabled?: boolean;
@@ -142,6 +162,7 @@ function createSameCoordinateTargetResult(candidateState?: {
     ? {
         actions: candidateState.actions ?? [],
         automationId: 'example-game-start',
+        bounds: SAME_COORDINATE_START_BOUNDS,
         center: {
           coordinateSpace: 'native-screen',
           source: 'test',
@@ -192,6 +213,7 @@ function createSameCoordinateTargetResult(candidateState?: {
         actionCandidates: candidate ? [candidate] : null,
         confidence: 'high',
         coordinateConfidence: 'high',
+        elementBounds: SAME_COORDINATE_START_BOUNDS,
         elementCenter: {
           coordinateSpace: 'native-screen',
           source: 'test',

@@ -130,7 +130,8 @@ const result = await runAgentProductionSession({
     assert.equal(command.toolCall.input.focusCenterRatioY, 0.76);
     assert.equal(command.toolCall.input.focusWidthRatio, 0.192);
     assert.equal(command.toolCall.input.focusHeightRatio, 0.12);
-    assert.equal(command.toolCall.input.focusScale, 3);
+    // Ready evidence refines at 2x unless the candidate itself is low confidence.
+    assert.equal(command.toolCall.input.focusScale, 2);
     assert.match(String(command.toolCall.input.question), /looked action-ready/u);
     assert.match(String(command.toolCall.input.question), /candidate ambiguity/u);
 

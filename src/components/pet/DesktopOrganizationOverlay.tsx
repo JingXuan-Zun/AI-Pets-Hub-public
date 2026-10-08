@@ -70,7 +70,7 @@ function DesktopIconGhost({
       }}
     >
       <div
-        className={`flex items-center justify-center border bg-white/90 shadow-[0_14px_26px_rgba(15,23,42,0.14)] backdrop-blur-md ${
+        className={`flex items-center justify-center border bg-white/90 shadow-[0_14px_26px_rgba(158,84,140,0.14)] backdrop-blur-md ${
           isActive
             ? 'border-sky-300 text-sky-600'
             : 'border-slate-200 text-slate-500'
@@ -175,7 +175,7 @@ export const DesktopOrganizationOverlay = memo(function DesktopOrganizationOverl
         data-desktop-pet-interactive="true"
         data-desktop-pet-window-shape="true"
         data-desktop-pet-native-scope="pet"
-        className="pointer-events-auto absolute flex items-center gap-2 rounded-full border border-sky-100/80 bg-white/88 px-3 py-2 shadow-[0_14px_32px_rgba(15,23,42,0.12)] backdrop-blur-md"
+        className="pointer-events-auto absolute flex items-center gap-2 rounded-full border border-sky-100/80 bg-white/88 px-3 py-2 shadow-[0_14px_32px_rgba(158,84,140,0.12)] backdrop-blur-md"
         style={{
           left: Math.round(shellViewport.x + 24),
           top: Math.round(shellViewport.y + 24),

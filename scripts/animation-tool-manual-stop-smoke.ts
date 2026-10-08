@@ -57,7 +57,7 @@ assert.deepEqual(stopTrigger?.animationIds, []);
 assert.equal(stopTrigger?.source, 'user-direct');
 assert.equal((stopTrigger?.token ?? 0) > (queuedTrigger?.token ?? 0), true);
 assert.equal(cancelledPerformanceState?.status, 'cancelled');
-assert.equal(createAnimationToolPerformanceDisplay(cancelledPerformanceState)?.title, '已取�?);
+assert.equal(createAnimationToolPerformanceDisplay(cancelledPerformanceState)?.title, '已取消');
 
 let resetCount = 0;
 let enqueueCount = 0;
@@ -101,7 +101,7 @@ assert.equal(createAnimationToolPerformanceDisplay({
   status: 'playing',
   token: queuedTrigger!.token,
   updatedAt: Date.now(),
-})?.title, '演出�?);
+})?.title, '演出中');
 
 const audioStates: Array<string | null> = [];
 const activeAudioTrigger = createAudioTrigger(11);

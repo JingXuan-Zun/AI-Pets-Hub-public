@@ -6,22 +6,22 @@ import {
   stripCharacterToolMarkers,
 } from '../src/components/chat/characterToolProtocol';
 
-const message = '（轻轻抖尾巴）我查一下再告诉你。【动�?开心】【查�?今天上海天气�?;
+const message = '（轻轻抖尾巴）我查一下再告诉你。【动作:开心】【查询:今天上海天气】';
 const invocations = extractCharacterToolInvocations(message);
 
 assert.deepEqual(invocations, [
   {
     kind: 'action',
     action: 'HAPPY',
-    raw: '【动�?开心�?,
+    raw: '【动作:开心】',
   },
   {
     kind: 'web-search',
     query: '今天上海天气',
-    raw: '【查�?今天上海天气�?,
+    raw: '【查询:今天上海天气】',
   },
 ]);
-assert.equal(stripCharacterToolMarkers(message), '（轻轻抖尾巴）我查一下再告诉你�?);
+assert.equal(stripCharacterToolMarkers(message), '（轻轻抖尾巴）我查一下再告诉你。');
 
 assert.deepEqual(
   extractCharacterToolInvocations('[动画:scratch_head][action:sleep]'),
@@ -38,29 +38,29 @@ assert.deepEqual(
     },
   ],
 );
-assert.equal(stripCharacterToolMarkers('嗯。[动画:scratch_head]好了�?), '嗯。好了�?);
+assert.equal(stripCharacterToolMarkers('嗯。[动画:scratch_head]好了。'), '嗯。好了。');
 
-const formatPersona = '你的常规回复格式：“（动作）语言 【附加信息】”。额外信息，包括表情、心情、声音等等用方括号【】括起来�?;
+const formatPersona = '你的常规回复格式：“（动作）语言 【附加信息】”。额外信息，包括表情、心情、声音等等用方括号【】括起来。';
 assert.equal(shouldEnforcePersonaExtraInfo(formatPersona), true);
 assert.equal(
-  buildVisibleCharacterReplyText('（轻轻靠近）我在这里�?, formatPersona),
-  '（轻轻靠近）我在这里�?,
+  buildVisibleCharacterReplyText('（轻轻靠近）我在这里。', formatPersona),
+  '（轻轻靠近）我在这里。',
 );
 assert.equal(
-  buildVisibleCharacterReplyText('（轻轻靠近）我在这里。【摩擦声�?, formatPersona),
-  '（轻轻靠近）我在这里。【摩擦声�?,
+  buildVisibleCharacterReplyText('（轻轻靠近）我在这里。【摩擦声】', formatPersona),
+  '（轻轻靠近）我在这里。【摩擦声】',
 );
 assert.equal(
-  buildVisibleCharacterReplyText('（轻轻靠近）我在这里。【动�?开心�?, formatPersona),
-  '（轻轻靠近）我在这里�?,
+  buildVisibleCharacterReplyText('（轻轻靠近）我在这里。【动作:开心】', formatPersona),
+  '（轻轻靠近）我在这里。',
 );
 assert.equal(
-  buildVisibleCharacterReplyText('我在这里。【小声�?, formatPersona),
-  '我在这里。【小声�?,
+  buildVisibleCharacterReplyText('我在这里。【小声】', formatPersona),
+  '我在这里。【小声】',
 );
 assert.equal(
-  buildVisibleCharacterReplyText('(摇尾�? 我马上过来[开心]', formatPersona),
-  '(摇尾�? 我马上过来[开心]',
+  buildVisibleCharacterReplyText('(摇尾巴) 我马上过来[开心]', formatPersona),
+  '(摇尾巴) 我马上过来[开心]',
 );
 
 console.log('character tool protocol smoke ok');

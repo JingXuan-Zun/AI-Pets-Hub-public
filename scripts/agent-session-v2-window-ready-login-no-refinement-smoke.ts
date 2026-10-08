@@ -34,9 +34,12 @@ const result = await runAgentProductionSession({
     if (toolCallCount === 1) {
       assert.equal(command.toolCall.input.action, 'locate_element');
     } else if (toolCallCount === 2) {
-      assert.equal(command.toolCall.input.action, 'describe_elements');
+      // Even window-bound ready evidence gets one read-only focused refinement
+      // before the click can be approved.
+      assert.equal(command.toolCall.input.action, 'locate_element');
       assert.equal(command.toolCall.input.forceRefresh, true);
-      assert.match(String(command.toolCall.input.question), /AgentRuntime target resolution/u);
+      assert.match(String(command.toolCall.input.question), /AgentSessionV2 visual refinement/u);
+      assert.match(String(command.toolCall.input.targetDescription), /; focused candidate: /u);
     } else {
       assert.fail(`Unexpected locate: ${JSON.stringify(command.toolCall.input)}`);
     }
@@ -117,6 +120,7 @@ assert.equal(modelCallCount, 1, result.continuation.historyLines.join('\n'));
 assert.equal(toolCallCount, 2);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
-assert.match(result.continuation.historyLines.join('\n'), /in-app target locate result/u);
+assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval after visual refinement/u);
+assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /1280[^]*757/u);
 
 console.log('agent session v2 window ready login no refinement smoke ok');

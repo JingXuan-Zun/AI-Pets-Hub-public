@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const modelCardsSource = readProjectFile('src/components/settings/SettingsModelCards.tsx');
 const sharedRendererSource = readProjectFile('src/components/pet/live2dSharedRenderer.ts');
-const live2DRendererSource = readProjectFile('src/components/pet/PetLive2DRenderer.tsx');
+const live2DRendererSource = readModuleProjectFile('src/components/pet/PetLive2DRenderer.tsx');
 
 assert.doesNotMatch(
   modelCardsSource,

@@ -14,13 +14,21 @@ const {
   index: indexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  finalResponse: finalResponseSource,
+  guards: guardsSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtimeSignal: 'src/agent/runtime/agentFinalAnswerRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  finalResponse: 'src/agent/productionSession/finalResponse.ts',
+  guards: 'src/agent/productionSession/finalEvidenceGuards.ts',
   signal: 'src/agent/runtime/agentFinalAnswerRejectionSignals.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalResponse'/u, 'The root must import the checked final response module.');
+assertSourceMatches(sessionSource, /const \{ prepareFinalResponse \} = createAgentProductionFinalResponse\(\{/u, 'The root must instantiate the checked final response module.');
+assertSourceMatches(sessionSource, /prepareFinalResponse\(decision, stepIndex/u, 'The root must dispatch responses through the checked module.');
 
 assertSourceMatches(
   runtimeSignalSource,
@@ -33,8 +41,8 @@ assertSourceMatches(
   'Read-only observation final rejection signal should explicitly remain advisory and evidence-driven.',
 );
 assertSourceMatches(
-  sessionSource,
-  /from '\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
+  finalResponseSource,
+  /from '\.\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
   'AgentSessionV2 should consume Runtime final-answer rejection signals.',
 );
 assertSourceDoesNotMatch(
@@ -44,9 +52,13 @@ assertSourceDoesNotMatch(
 );
 assertSourceMatches(
   sessionSource,
-  /function shouldRejectAgentSessionV2ReadonlyObservationFinal/u,
-  'AgentSessionV2 should still own the read-only observation final predicate for this slice.',
+  /shouldRejectAgentProductionReadonlyObservationFinal: shouldRejectAgentSessionV2ReadonlyObservationFinal/u,
+  'Production session should bind the existing evidence guard from its module.',
 );
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalEvidenceGuards'/u, 'The root must import the checked implementation.');
+assertSourceMatches(sessionSource, /createAgentProductionFinalEvidenceGuards\(\{/u, 'The root must instantiate the reachable evidence guard module.');
+assertSourceMatches(guardsSource, /function shouldRejectAgentProductionReadonlyObservationFinal/u, 'The predicate implementation must remain in the bound production module.');
 
 const decision: AgentSessionV2Decision = {
   action: 'final_answer',

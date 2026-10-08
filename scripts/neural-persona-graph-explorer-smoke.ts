@@ -30,16 +30,7 @@ import {
 import { NeuralPersonaGraphExplorer } from '../src/components/settings/NeuralPersonaGraphExplorer';
 import { NeuralPersonaGraphPhysicsSettings } from '../src/components/settings/NeuralPersonaGraphPhysicsSettings';
 import { NeuralPersonaGraphExchangePanel } from '../src/components/settings/NeuralPersonaGraphExchangePanel';
-import { NeuralPersonaEdgeEditor } from '../src/components/settings/NeuralPersonaEdgeEditor';
-import { NeuralPersonaNodeEditorFields } from '../src/components/settings/NeuralPersonaNodeEditorFields';
-import { NeuralPersonaNodeEditor } from '../src/components/settings/NeuralPersonaNodeEditor';
-import { NeuralPersonaNodeResourceManager } from '../src/components/settings/NeuralPersonaNodeResourceManager';
 import { NeuralPersonaTagReviewInbox } from '../src/components/settings/NeuralPersonaTagReviewInbox';
-import { createNeuralPersonaEditorId } from '../src/components/settings/neuralPersonaEditorIds';
-import {
-  buildNeuralPersonaEdgeDraft,
-  createEmptyNeuralPersonaEdgeEditorDraft,
-} from '../src/components/settings/neuralPersonaEdgeEditorDraft';
 import {
   buildNeuralPersonaNodeDraft,
   applyNeuralPersonaNodeEditorType,
@@ -68,11 +59,6 @@ const sourceFiles = [
   'src/components/settings/NeuralPersonaGraphExplorer.tsx',
   'src/components/settings/NeuralPersonaGraphExchangePanel.tsx',
   'src/components/settings/neuralPersonaGraphExchangeActions.ts',
-  'src/components/settings/NeuralPersonaEdgeEditor.tsx',
-  'src/components/settings/NeuralPersonaEdgeEditorAdvancedFields.tsx',
-  'src/components/settings/NeuralPersonaEdgeEditorFields.tsx',
-  'src/components/settings/neuralPersonaEdgeEditorDraft.ts',
-  'src/components/settings/neuralPersonaEditorIds.ts',
   'src/components/settings/SettingsNeuralPersonaGraphSection.tsx',
   'src/components/settings/useNeuralPersonaGraphCanvasController.ts',
   'src/components/settings/useNeuralPersonaGraphPixiCanvas.ts',
@@ -90,13 +76,6 @@ const sourceFiles = [
   'src/components/settings/neuralPersonaGraphPixiViewport.ts',
   'src/components/settings/neuralPersonaGraphWorkerPhysics.ts',
   'src/components/settings/useNeuralPersonaGraphSectionState.ts',
-  'src/components/settings/NeuralPersonaNodeEditor.tsx',
-  'src/components/settings/NeuralPersonaNodeEditorDeleteAction.tsx',
-  'src/components/settings/NeuralPersonaNodeEditorAdvancedFields.tsx',
-  'src/components/settings/NeuralPersonaNodeEditorFields.tsx',
-  'src/components/settings/NeuralPersonaNodeResourceList.tsx',
-  'src/components/settings/NeuralPersonaNodeResourceManager.tsx',
-  'src/components/settings/neuralPersonaNodeResourceTree.ts',
   'src/components/settings/neuralPersonaNodeEditorDraft.ts',
   'src/components/settings/NeuralPersonaTagReviewInbox.tsx',
   'src/components/settings/neuralPersonaTagReviewActions.ts',
@@ -331,14 +310,6 @@ assert.match(physicsSettingsMarkup, /节点间的排斥力/u);
 assert.match(physicsSettingsMarkup, /相连节点间的吸引力/u);
 assert.match(physicsSettingsMarkup, /max="500"/u);
 assert.doesNotMatch(markup, /来源：/u);
-const edgeDraft = buildNeuralPersonaEdgeDraft({
-  ...createEmptyNeuralPersonaEdgeEditorDraft(['identity', 'trust']),
-  edgeId: 'edge:identity-trust',
-});
-assert.equal(edgeDraft.sourceNodeId, 'identity');
-assert.equal(edgeDraft.targetNodeId, 'trust');
-assert.equal(createNeuralPersonaEditorId('node', () => 'fixed'), 'node:fixed');
-assert.equal(createEmptyNeuralPersonaEdgeEditorDraft([], 'edge:generated').edgeId, 'edge:generated');
 const identityDraft = applyNeuralPersonaNodeEditorType(
   createEmptyNeuralPersonaNodeEditorDraft('node:generated'),
   'identity-reference',
@@ -374,45 +345,6 @@ assert.equal(createNeuralPersonaNodeEditorDraft(reviewNode).tags, '旧标签');
 const mergedTags = mergeNeuralPersonaEditorTags(reviewNode, editorDraft.tags);
 assert.equal(mergedTags.some((tag) => tag.canonicalId === 'tone:calm'
   && tag.status === 'pending-review'), true);
-const editorMarkup = renderToStaticMarkup(createElement(NeuralPersonaNodeEditor, {
-  linkedEdgeCount: 0,
-  node: null,
-  onDelete: async () => ({ reason: 'unused', status: 'invalid' }),
-  onUpdate: async () => ({ reason: 'unused', status: 'invalid' }),
-}));
-assert.match(editorMarkup, /节点内容/u);
-const resourceMarkup = renderToStaticMarkup(createElement(NeuralPersonaNodeResourceManager, {
-  batchDeletePanel: null, edges: [], nodes: [reviewNode], selectedNodeId: reviewNode.nodeId,
-  onCreate: async () => ({ reason: 'unused', status: 'invalid' }),
-  onDelete: async () => ({ reason: 'unused', status: 'invalid' }),
-  onSelect: () => undefined,
-  onUpdate: async () => ({ reason: 'unused', status: 'invalid' }),
-}));
-assert.match(resourceMarkup, /节点资源/u);
-assert.match(resourceMarkup, /新建节点/u);
-assert.match(resourceMarkup, /data-neural-node-resource-id/u);
-const nodeFieldsMarkup = renderToStaticMarkup(createElement(NeuralPersonaNodeEditorFields, {
-  createMode: true,
-  draft: createEmptyNeuralPersonaNodeEditorDraft('node:generated'),
-  setDraft: () => undefined,
-}));
-assert.match(nodeFieldsMarkup, /这个节点会怎样影响角色/u);
-assert.match(nodeFieldsMarkup, /<details/u);
-assert.match(nodeFieldsMarkup, /高级设置/u);
-const edgeEditorMarkup = renderToStaticMarkup(createElement(NeuralPersonaEdgeEditor, {
-  edge: null,
-  edges: [],
-  managedPersonaRelationship: false,
-  nodes: [],
-  onCreate: async () => ({ reason: 'unused', status: 'invalid' }),
-  onDelete: async () => ({ reason: 'unused', status: 'invalid' }),
-  onSelectEdge: () => undefined,
-  onUpdate: async () => ({ reason: 'unused', status: 'invalid' }),
-  protectedRelationship: false,
-}));
-assert.match(edgeEditorMarkup, /关系编辑器/u);
-assert.match(edgeEditorMarkup, /快速新建关系/u);
-assert.match(edgeEditorMarkup, /disabled=""/u);
 const reviewMarkup = renderToStaticMarkup(createElement(NeuralPersonaTagReviewInbox, {
   nodes: [],
   onReview: async () => ({ reason: 'unused', status: 'invalid' }),

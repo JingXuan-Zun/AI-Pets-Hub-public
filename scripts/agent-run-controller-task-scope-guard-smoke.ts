@@ -112,4 +112,56 @@ assert.equal(diagnoseAgentTaskScopedApprovalContinuation({
   pendingPlan: approvedPlan,
 }).reason, 'duplicate-command');
 
+function desktopActionCommand(input: Record<string, string>): AgentChatCommand {
+  return {
+    capabilityId: 'app-launcher',
+    instruction: approvedCommand.instruction,
+    kind: 'tool-call',
+    sourceText: approvedCommand.sourceText,
+    toolCall: {
+      goal: approvedCommand.toolCall?.goal,
+      input,
+      name: 'execute_desktop_action',
+    },
+  };
+}
+
+// Opening a file or URL can run scripts, so it never rides on an earlier approval.
+for (const target of ['C:\\Users\\example\\Downloads\\setup.bat', 'https://example.com/']) {
+  const openResourceCommand = desktopActionCommand({ action: 'open_resource', target });
+  const openResourceDecision = diagnoseAgentTaskScopedApprovalContinuation({
+    approvedCommand,
+    approvedPlan,
+    pendingCommand: openResourceCommand,
+    pendingPlan: plan(openResourceCommand),
+  });
+  assert.equal(openResourceDecision.allowed, false, target);
+  assert.equal(openResourceDecision.reason, 'fresh-approval-required', target);
+  assert.equal(openResourceDecision.freshApprovalRequired, true, target);
+}
+
+for (const query of ['C:\\Users\\example\\Downloads\\setup.exe', '"D:/Tools/run.lnk"', '\\\\server\\share\\tool.exe']) {
+  const directPathCommand = launchCommand({
+    goal: approvedCommand.toolCall?.goal ?? '',
+    query,
+    sourceText: approvedCommand.sourceText,
+  });
+  assert.equal(diagnoseAgentTaskScopedApprovalContinuation({
+    approvedCommand,
+    approvedPlan,
+    pendingCommand: directPathCommand,
+    pendingPlan: plan(directPathCommand),
+  }).reason, 'fresh-approval-required', query);
+}
+
+const focusCommand = desktopActionCommand({ action: 'focus_window', target: 'Example Launcher' });
+const focusDecision = diagnoseAgentTaskScopedApprovalContinuation({
+  approvedCommand,
+  approvedPlan,
+  pendingCommand: focusCommand,
+  pendingPlan: plan(focusCommand),
+});
+assert.equal(focusDecision.freshApprovalRequired, false, 'other desktop actions keep same-task approval reuse');
+assert.equal(focusDecision.allowed, true, focusDecision.reason);
+
 console.log('agent permission router task scope guard smoke ok');

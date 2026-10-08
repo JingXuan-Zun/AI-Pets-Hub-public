@@ -15,13 +15,19 @@ const {
   index: indexSource,
   preparation: preparationSource,
   runtimePreparation: runtimePreparationSource,
-  session: sessionSource,
+  session: sessionEntrySource,
+  parallelPreparation: sessionSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   preparation: 'src/agent/runtime/agentParallelToolPreparation.ts',
   runtimePreparation: 'src/agent/runtime/agentParallelToolPreparation.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  parallelPreparation: 'src/agent/productionSession/parallelPreparation.ts',
 });
+
+assertSourceMatches(sessionEntrySource, /from '\.\/productionSession\/parallelPreparation'/u);
+assertSourceMatches(sessionEntrySource, /createAgentProductionParallelPreparation\(\{/u);
+assertSourceMatches(sessionEntrySource, /prepareParallelSelection\(decision, stepIndex\)/u);
 
 assertSourceMatches(
   runtimePreparationSource,
@@ -30,7 +36,7 @@ assertSourceMatches(
 );
 assertSourceMatches(
   sessionSource,
-  /from '\.\/runtime\/agentParallelToolPreparation'/u,
+  /from '\.\.\/runtime\/agentParallelToolPreparation'/u,
   'AgentSessionV2 should consume Runtime parallel preparation directly.',
 );
 assertSourceDoesNotMatch(

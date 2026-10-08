@@ -1,32 +1,33 @@
 import assert from 'node:assert/strict';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { systemInfoServiceSource, viteEnvSource, systemRuntimeSource } = readProjectSources({
-  systemInfoServiceSource: 'electron/systemInfoService.cjs',
+const { systemInfoMergeSource, systemInfoScriptSource, viteEnvSource, systemRuntimeSource } = readProjectSources({
+  systemInfoMergeSource: 'electron/systemInfoMerge.cjs',
+  systemInfoScriptSource: 'electron/systemInfoWindowsScript.cjs',
   viteEnvSource: 'src/vite-env.d.ts',
   systemRuntimeSource: 'src/agent/agentRuntimeSystemTools.ts',
 });
 
 assert.match(
-  systemInfoServiceSource,
+  systemInfoScriptSource,
   /Get-CimInstance Win32_Processor/u,
   'system info service should try Windows CIM CPU data',
 );
 
 assert.match(
-  systemInfoServiceSource,
+  systemInfoScriptSource,
   /Read-RegistryValue[\s\S]*ProcessorNameString/u,
   'system info service should fall back to Windows registry data',
 );
 
 assert.match(
-  systemInfoServiceSource,
+  systemInfoScriptSource,
   /Microsoft\.VisualBasic\.Devices\.ComputerInfo/u,
   'system info service should fall back to .NET ComputerInfo memory and OS data',
 );
 
 assert.match(
-  systemInfoServiceSource,
+  systemInfoMergeSource,
   /mergeCpuInfo[\s\S]*physicalCores[\s\S]*mergeMemoryInfo[\s\S]*installedBytes[\s\S]*totalVisibleBytes/u,
   'system info should merge native physical cores and memory fields into the app model',
 );

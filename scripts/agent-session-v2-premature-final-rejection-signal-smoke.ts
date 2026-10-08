@@ -13,13 +13,21 @@ const {
   index: indexSource,
   runtimeSignal: runtimeSignalSource,
   session: sessionSource,
+  finalResponse: finalResponseSource,
+  evidence: evidenceSource,
   signal: signalSource,
 } = readProjectSources({
   index: 'src/agent/legacy/index.ts',
   runtimeSignal: 'src/agent/runtime/agentFinalAnswerRejectionSignals.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  finalResponse: 'src/agent/productionSession/finalResponse.ts',
+  evidence: 'src/agent/productionSession/desktopActionEvidence.ts',
   signal: 'src/agent/runtime/agentFinalAnswerRejectionSignals.ts',
 });
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/finalResponse'/u, 'The root must import the checked final response module.');
+assertSourceMatches(sessionSource, /const \{ prepareFinalResponse \} = createAgentProductionFinalResponse\(\{/u, 'The root must instantiate the checked final response module.');
+assertSourceMatches(sessionSource, /prepareFinalResponse\(decision, stepIndex/u, 'The root must dispatch responses through the checked module.');
 
 assertSourceMatches(
   runtimeSignalSource,
@@ -37,21 +45,21 @@ assertSourceMatches(
   'Premature final rejection signals should explicitly remain evidence-driven.',
 );
 assertSourceMatches(
-  sessionSource,
-  /from '\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
+  finalResponseSource,
+  /from '\.\.\/runtime\/agentFinalAnswerRejectionSignals'/u,
   'AgentSessionV2 should consume Runtime-owned final answer rejection signals.',
 );
-assertSourceMatches(sessionSource, /createAgentPrematureDesktopOrganizationFinalRejection\(/u);
-assertSourceMatches(sessionSource, /createAgentPrematureWindowMoveFinalRejection\(/u);
+assertSourceMatches(finalResponseSource, /createAgentPrematureDesktopOrganizationFinalRejection\(/u);
+assertSourceMatches(finalResponseSource, /createAgentPrematureWindowMoveFinalRejection\(/u);
 assertSourceMatches(
   sessionSource,
-  /function shouldRejectAgentSessionV2PrematureDesktopOrganizationFinal/u,
-  'AgentSessionV2 should still own the premature desktop organization predicate for this slice.',
+  /shouldRejectAgentProductionPrematureDesktopOrganizationFinal: shouldRejectAgentSessionV2PrematureDesktopOrganizationFinal/u,
+  'Production session must bind the existing desktop action evidence predicate.',
 );
 assertSourceMatches(
   sessionSource,
-  /function shouldRejectAgentSessionV2PrematureWindowMoveFinal/u,
-  'AgentSessionV2 should still own the premature window move predicate for this slice.',
+  /shouldRejectAgentProductionPrematureWindowMoveFinal: shouldRejectAgentSessionV2PrematureWindowMoveFinal/u,
+  'Production session must bind the existing desktop action evidence predicate.',
 );
 assertSourceDoesNotMatch(
   sessionSource,
@@ -63,6 +71,11 @@ assertSourceDoesNotMatch(
   /The original request asks to move a window\/app to a display/u,
   'AgentSessionV2 should not own premature window move final rejection copy.',
 );
+
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/desktopActionEvidence'/u, 'The root must import the checked evidence module.');
+assertSourceMatches(sessionSource, /createAgentProductionDesktopActionEvidence\(\{/u, 'The root must instantiate the desktop evidence module.');
+assertSourceMatches(evidenceSource, /function shouldRejectAgentProductionPrematureDesktopOrganizationFinal/u, 'The original predicate must remain in the bound evidence module.');
+assertSourceMatches(evidenceSource, /function shouldRejectAgentProductionPrematureWindowMoveFinal/u, 'The original predicate must remain in the bound evidence module.');
 
 const desktopOrganizationText = createAgentPrematureDesktopOrganizationFinalRejection({
   decisionMessage: 'Already checked the desktop.',

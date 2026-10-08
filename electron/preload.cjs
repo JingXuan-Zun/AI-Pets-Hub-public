@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   cancelDeepSeekHarness: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-cancel', request ?? {}),
   loadPersistedChatHistory: () => ipcRenderer.invoke('desktop-pet:load-persisted-chat-history'),
   savePersistedChatHistory: (messages) => ipcRenderer.invoke('desktop-pet:save-persisted-chat-history', messages ?? []),
+  archiveChatHistory: (messages) => ipcRenderer.invoke('desktop-pet:archive-chat-history', messages ?? []),
   getExpressionLibraryState: (request) => ipcRenderer.invoke('desktop-pet:expression-library-get-state', request ?? {}),
   getExpressionReplyCatalog: () => ipcRenderer.invoke('desktop-pet:expression-reply-catalog-get'),
   chooseExpressionLibraryRoot: (request) => ipcRenderer.invoke('desktop-pet:expression-library-choose-root', request ?? {}),
@@ -98,6 +99,12 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   minimizeCurrentWindow: () => {
     ipcRenderer.send('desktop-pet:minimize-current-window');
   },
+  toggleMaximizeCurrentWindow: () => ipcRenderer.invoke('desktop-pet:toggle-maximize-current-window'),
+  isCurrentWindowMaximized: () => ipcRenderer.invoke('desktop-pet:is-current-window-maximized'),
+  recognizeScreenText: (request) => ipcRenderer.invoke('desktop-pet:recognize-screen-text', request ?? {}),
+  captureRegionText: (request) => ipcRenderer.invoke('desktop-pet:capture-region-text', request ?? {}),
+  captureSourceImage: (request) => ipcRenderer.invoke('desktop-pet:capture-source-image', request ?? {}),
+  restoreMaximizedWindowForDrag: (request) => ipcRenderer.invoke('desktop-pet:restore-maximized-window-for-drag', request),
   isChatWindowOpen: () => ipcRenderer.invoke('desktop-pet:is-chat-window-open'),
   onChatWindowState: (callback) => {
     if (typeof callback !== 'function') {
@@ -291,6 +298,10 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   stage2DVideo: (request) => ipcRenderer.invoke('desktop-pet:stage-2d-video', request ?? {}),
   choose2DVideoFolder: () => ipcRenderer.invoke('desktop-pet:choose-2d-video-folder'),
   pick2DVideoFromFolder: (request) => ipcRenderer.invoke('desktop-pet:pick-2d-video-from-folder', request ?? {}),
+  choose2DVideoLibrary: () => ipcRenderer.invoke('desktop-pet:choose-2d-video-library'),
+  inspect2DVideoLibrary: (request) => ipcRenderer.invoke('desktop-pet:inspect-2d-video-library', request ?? {}),
+  resolve2DVideoLibraryRoot: (request) => ipcRenderer.invoke('desktop-pet:resolve-2d-video-library-root', request ?? {}),
+  pick2DVideoFromLibrary: (request) => ipcRenderer.invoke('desktop-pet:pick-2d-video-from-library', request ?? {}),
   executeFileManagementAction: (request) => ipcRenderer.invoke('desktop-pet:execute-file-management-action', request ?? {}),
   inspectLocalProject: (request) => ipcRenderer.invoke('desktop-pet:inspect-local-project', request ?? {}),
   runLocalProjectAction: (request) => ipcRenderer.invoke('desktop-pet:run-local-project-action', request ?? {}),
@@ -310,6 +321,22 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   startBrowserTtsService: (settings) => ipcRenderer.invoke('desktop-pet:start-browser-tts-service', settings ?? {}),
   installBrowserTtsDependencies: (settings) => ipcRenderer.invoke('desktop-pet:install-browser-tts-dependencies', settings ?? {}),
   listBrowserTtsSpeakers: (settings) => ipcRenderer.invoke('desktop-pet:list-browser-tts-speakers', settings ?? {}),
+  getGptSovitsHealth: (settings) => ipcRenderer.invoke('desktop-pet:get-gpt-sovits-health', settings ?? {}),
+  startGptSovitsService: (settings) => ipcRenderer.invoke('desktop-pet:start-gpt-sovits-service', settings ?? {}),
+  listGptSovitsModels: () => ipcRenderer.invoke('desktop-pet:list-gpt-sovits-models'),
+  installGptSovitsRuntime: (settings) => ipcRenderer.invoke('desktop-pet:install-gpt-sovits-runtime', settings ?? {}),
+  onGptSovitsInstallProgress: (callback) => {
+    if (typeof callback !== 'function') {
+      return () => {};
+    }
+
+    const listener = (_event, progress) => callback(progress ?? null);
+    ipcRenderer.on('desktop-pet:gpt-sovits-install-progress', listener);
+
+    return () => {
+      ipcRenderer.removeListener('desktop-pet:gpt-sovits-install-progress', listener);
+    };
+  },
   onRuntimeLog: (callback) => {
     if (typeof callback !== 'function') {
       return () => {};

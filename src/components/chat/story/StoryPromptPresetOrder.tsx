@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { getStoryPromptOrderList } from './storyPromptPresetSchema';
 import { moveStoryPromptOrderEntry, setStoryPromptOrderEnabled } from './storyPromptPresetOrderActions';
 import type { StoryPromptPreset } from './storyPromptPresetTypes';
+import { SettingsToggleSwitch } from '../../settings/SettingsToggleSwitch';
 
 function PromptOrderRow(props: {
   index: number;
@@ -14,11 +15,11 @@ function PromptOrderRow(props: {
   if (!entry) return null;
   return (
     <div className="flex items-center gap-2 rounded-lg border border-sky-100 bg-sky-50/50 px-2 py-2">
-      <input
-        type="checkbox"
+      <SettingsToggleSwitch
         checked={entry.enabled}
-        onChange={(event) => props.onChange(setStoryPromptOrderEnabled(props.preset, entry.identifier, event.target.checked))}
-        aria-label={`启用 ${prompt?.name || entry.identifier}`}
+        hideLabel
+        label={`启用 ${prompt?.name || entry.identifier}`}
+        onChange={(checked) => props.onChange(setStoryPromptOrderEnabled(props.preset, entry.identifier, checked))}
       />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[11px] font-medium text-sky-950">{prompt?.name || entry.identifier}</div>

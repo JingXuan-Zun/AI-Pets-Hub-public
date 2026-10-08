@@ -1,10 +1,10 @@
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+
 
 const {
   agentCommandSource,
   chatTypesSource,
-  coreSource,
   assessmentSource,
   controllerSource,
   messageBubbleSource,
@@ -12,7 +12,6 @@ const {
 } = readProjectSources({
   agentCommandSource: 'src/agent/agentChatCommand.ts',
   chatTypesSource: 'src/types.ts',
-  coreSource: 'src/agent/agentCore.ts',
   assessmentSource: 'src/agent/agentResultAssessment.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
   messageBubbleSource: 'src/components/chat/PetChatConversationMessageBubble.tsx',
@@ -50,12 +49,6 @@ assert.match(
 );
 
 assert.match(
-  coreSource,
-  /function createAgentResultAssessment\(/u,
-  'agent core should build a unified result assessment',
-);
-
-assert.match(
   assessmentSource,
   /function hasAgentReadOnlyObservationActionCompletionEvidence\(/u,
   'agent assessment should distinguish read-only observation evidence from action completion evidence',
@@ -65,24 +58,6 @@ assert.match(
   assessmentSource,
   /isAgentReadOnlyObservationForDirectActionRequest/u,
   'agent assessment should guard direct action requests from being completed by plain read-only observations',
-);
-
-assert.match(
-  coreSource,
-  /function assessAgentCommandResult\(/u,
-  'agent core should normalize tool results through assessment',
-);
-
-assert.match(
-  coreSource,
-  /function createAgentRecoveryFollowUpActions\(/u,
-  'agent core should derive recovery actions from the assessment',
-);
-
-assert.match(
-  coreSource,
-  /function enrichAgentResultWithRecoveryActions\(/u,
-  'agent command results should be enriched with recovery follow-up actions',
 );
 
 assert.match(

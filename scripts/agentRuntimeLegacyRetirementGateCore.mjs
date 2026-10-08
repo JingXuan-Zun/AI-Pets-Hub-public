@@ -2,6 +2,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 import { auditAgentRuntimeLegacyImports } from './agentRuntimeLegacyImportAuditCore.mjs';
+import { assertProductionRuntimeCancellation } from './agentRuntimeCancellationGuard.mjs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 export const AGENT_RUNTIME_RETIREMENT_OBSERVATION_SCHEMA_VERSION = 1;
 
@@ -60,8 +62,18 @@ function createStaticCheck(id, passed, detail) {
   return { detail, id, passed };
 }
 
+function hasProductionRuntimeCancellation(source) {
+  try {
+    assertProductionRuntimeCancellation(source);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ERR_ASSERTION') return false;
+    throw error;
+  }
+}
+
 export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = process.cwd()) {
-  const controllerSource = readProjectFile(rootDir, 'src/components/chat/agentRunController.ts');
+  const controllerSource = readModuleProjectFile('src/components/chat/agentRunController.ts', rootDir);
   const chatRuntimeCompatibilitySource = readProjectFile(
     rootDir,
     'src/components/chat/chatAgentRuntimeCompatibility.ts',
@@ -74,6 +86,12 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
   );
   const productionSessionSource = readProjectFile(rootDir, 'src/agent/agentProductionSession.ts');
   const productionSessionImplementationSource = readProjectFile(rootDir, 'src/agent/agentProductionSessionImplementation.ts');
+  const productionSessionImplementationModulesSource = readModuleProjectFile(
+    'src/agent/agentProductionSessionImplementation.ts', rootDir,
+  );
+  const modelPlanningTurnConnected = productionSessionImplementationSource.includes("from './productionSession/modelPlanningTurn'")
+    && productionSessionImplementationSource.includes('const { executeModelPlanningTurn } = createAgentProductionModelPlanningTurn({')
+    && productionSessionImplementationSource.includes('await executeModelPlanningTurn({');
   const retiredSessionV2EntryExists = existsSync(join(rootDir, 'src/agent/agentSessionV2.ts'));
   const retiredSessionV2Modules = readdirSync(join(rootDir, 'src/agent'))
     .filter((name) => /^agentSessionV2.*\.ts$/u.test(name));
@@ -248,7 +266,7 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && productionSessionSource.includes('export async function runAgentProductionApprovedAction')
         && productionSessionSource.includes('export function runAgentProductionApprovalContinuations')
         && productionSessionSource.includes('export function cancelAgentProductionRuntime')
-        && controllerSource.includes('cancelAgentProductionRuntime({ continuation })')
+        && hasProductionRuntimeCancellation(controllerSource)
         && !controllerSource.includes('transitionAgentRuntimeTaskTransaction'),
       'Production start, approval, continuation, and cancellation must stay behind the version-neutral Runtime lifecycle Interface.',
     ),
@@ -283,7 +301,8 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
     createStaticCheck(
       'model-decision-runtime-owned',
       modelDecisionRuntimeSource.includes('export async function runAgentModelDecisionTurn')
-        && productionSessionImplementationSource.includes('runAgentModelDecisionTurn<AgentSessionV2Decision>')
+        && productionSessionImplementationModulesSource.includes('runAgentModelDecisionTurn<AgentModelDecision>')
+        && modelPlanningTurnConnected
         && !productionSessionImplementationSource.includes('runAgentSessionV2ModelDecisionTurn'),
       'Model-call timing, cancellation classification, parsing outcome, Step, and Trace creation must be Runtime-owned.',
     ),
@@ -291,8 +310,9 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
       'decision-contract-runtime-owned',
       decisionContractRuntimeSource.includes('export function parseAgentDecisionContract')
         && decisionContractRuntimeSource.includes('export function prepareAgentDecisionToolInput')
-        && productionSessionImplementationSource.includes('parseDecision: parseAgentDecisionContract')
-        && productionSessionImplementationSource.includes('prepareToolInput: prepareAgentDecisionToolInput')
+        && productionSessionImplementationModulesSource.includes('parseDecision: parseAgentDecisionContract')
+        && modelPlanningTurnConnected
+        && productionSessionImplementationModulesSource.includes('prepareToolInput: prepareAgentDecisionToolInput')
         && !productionSessionImplementationSource.includes('parseAgentSessionV2DecisionContract'),
       'Decision parsing, understanding normalization, tool schema validation, and decision Trace summaries must be Runtime-owned.',
     ),
@@ -300,16 +320,20 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
       'planning-context-runtime-owned',
       planningContextRuntimeSource.includes('export function createAgentPlanningContext')
         && planningContextRuntimeSource.includes('export function createAgentModelInput')
-        && productionSessionImplementationSource.includes('const planningContext = createAgentPlanningContext({')
-        && productionSessionImplementationSource.includes('const modelInput = createAgentModelInput({')
+        && productionSessionImplementationModulesSource.includes('const planningContext = createAgentPlanningContext({')
+        && modelPlanningTurnConnected
+        && productionSessionImplementationModulesSource.includes('const modelInput = createAgentModelInput({')
+        && modelPlanningTurnConnected
         && !productionSessionImplementationSource.includes('const modelInput = createAgentSessionV2ModelInput({'),
       'Planning-signal assembly, priority ordering, history compression, and model-input formatting must be Runtime-owned.',
     ),
     createStaticCheck(
       'working-memory-bias-runtime-owned',
       workingMemoryBiasRuntimeSource.includes('export function createAgentGuardedWorkingMemoryText')
-        && productionSessionImplementationSource.includes("from './runtime/agentWorkingMemoryBias'")
-        && productionSessionImplementationSource.includes('formatWorkingMemory: createAgentGuardedWorkingMemoryText'),
+        && productionSessionImplementationModulesSource.includes("from '../runtime/agentWorkingMemoryBias'")
+        && modelPlanningTurnConnected
+        && productionSessionImplementationModulesSource.includes('formatWorkingMemory: createAgentGuardedWorkingMemoryText')
+        && modelPlanningTurnConnected,
       'Working-memory scoring, recency, kind policy, and guarded formatting must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -337,7 +361,7 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && productionSessionImplementationSource.includes("from './runtime/agentVisualPlanningSignals'")
         && productionSessionImplementationSource.includes('createRecentVisualContextText: createAgentRecentVisualContextText')
         && productionSessionImplementationSource.includes('createVisualRecoveryText: createAgentVisualRecoveryText')
-        && productionSessionImplementationSource.includes('isAgentVisualContextToolCommand(command)'),
+        && productionSessionImplementationModulesSource.includes('isAgentVisualContextToolCommand(command)'),
       'Visual-context classification, recent evidence formatting, and advisory recovery text must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -400,8 +424,11 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
       'trace-summary-runtime-owned',
       decisionTraceSummaryRuntimeSource.includes('export function createAgentPermissionRoutedTraceSummary')
         && decisionTraceSummaryRuntimeSource.includes('export function createAgentApprovalRequiredTraceSummary')
-        && productionSessionImplementationSource.includes('createAgentPermissionRoutedTraceSummary({')
-        && productionSessionImplementationSource.includes('createAgentApprovalRequiredTraceSummary({'),
+        && productionSessionImplementationModulesSource.includes('createAgentPermissionRoutedTraceSummary({')
+        && productionSessionImplementationModulesSource.includes('createAgentApprovalRequiredTraceSummary({')
+        && productionSessionImplementationSource.includes("from './productionSession/singleToolExecution'")
+        && productionSessionImplementationSource.includes('const { executeSingleToolCommand } = createAgentProductionSingleToolExecution({')
+        && productionSessionImplementationSource.includes('await executeSingleToolCommand({'),
       'Generic approval, permission, and Tool lifecycle Trace summaries must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -416,7 +443,10 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && toolResultSummaryRuntimeSource.includes('export function formatAgentToolResultForModel')
         && toolResultSummaryRuntimeSource.includes("from './agentPlanningSignalEvidence'")
         && productionSessionImplementationSource.includes("from './runtime/agentToolResultSummary'")
-        && productionSessionImplementationSource.includes('formatAgentToolResultForModel('),
+        && productionSessionImplementationModulesSource.includes('formatAgentToolResultForModel(')
+        && productionSessionImplementationSource.includes("from './productionSession/singleToolExecution'")
+        && productionSessionImplementationSource.includes('const { executeSingleToolCommand } = createAgentProductionSingleToolExecution({')
+        && productionSessionImplementationSource.includes('await executeSingleToolCommand({'),
       'Critical Tool facts and model-facing Tool Result formatting must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -425,7 +455,8 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && decisionRepairSignalRuntimeSource.includes('export function createAgentUnavailableToolRepairText')
         && decisionRepairSignalRuntimeSource.includes('export function createAgentInvalidToolInputRepairText')
         && productionSessionImplementationSource.includes("from './runtime/agentDecisionRepairSignal'")
-        && productionSessionImplementationSource.includes('createAgentInvalidModelOutputRepairText('),
+        && productionSessionImplementationModulesSource.includes('createAgentInvalidModelOutputRepairText(')
+        && modelPlanningTurnConnected,
       'Decision-contract repair prompts for invalid output, unavailable Tools, and invalid inputs must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -433,7 +464,7 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
       compatibilityToolRejectionRuntimeSource.includes('export function createAgentCompatibilityToolRejection')
         && compatibilityToolRejectionRuntimeSource.includes('AGENT_DESKTOP_COMPATIBILITY_TOOLS')
         && productionSessionImplementationSource.includes("from './runtime/agentCompatibilityToolRejection'")
-        && productionSessionImplementationSource.includes('rejectCompatibilityTool: createAgentCompatibilityToolRejection'),
+        && productionSessionImplementationModulesSource.includes('rejectCompatibilityTool: createAgentCompatibilityToolRejection'),
       'Compatibility Tool classification and decision-contract rejection guidance must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -446,7 +477,10 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && finalAnswerRejectionSignalsRuntimeSource.includes('export function createAgentPrematureWindowMoveFinalRejection')
         && finalAnswerRejectionSignalsRuntimeSource.includes('export function createAgentRecoverableUnverifiedRejection')
         && finalAnswerRejectionSignalsRuntimeSource.includes('AgentRuntimeToolResultEntry[]')
-        && productionSessionImplementationSource.includes("from './runtime/agentFinalAnswerRejectionSignals'"),
+        && productionSessionImplementationModulesSource.includes("from '../runtime/agentFinalAnswerRejectionSignals'")
+        && productionSessionImplementationSource.includes("from './productionSession/finalResponse'")
+        && productionSessionImplementationSource.includes('const { prepareFinalResponse } = createAgentProductionFinalResponse({')
+        && productionSessionImplementationSource.includes('prepareFinalResponse(decision, stepIndex'),
       'Advisory final-answer rejection evidence for incomplete, unverified, read-only-only, unattempted, and premature tasks must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -458,9 +492,16 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && decisionRejectionSignalsRuntimeSource.includes('export function createAgentRepeatedUnverifiedActionRetryRejection')
         && decisionRejectionSignalsRuntimeSource.includes('AgentRuntimeToolResultEntry')
         && productionSessionImplementationSource.includes("from './runtime/agentDecisionRejectionSignals'")
-        && productionSessionImplementationSource.includes('createAgentPrematureActionConfirmationRejection(')
-        && productionSessionImplementationSource.includes('createAgentTransitionalDesktopActionRejection(')
-        && productionSessionImplementationSource.includes('createAgentVideoSummarySearchRejection('),
+        && productionSessionImplementationModulesSource.includes('createAgentPrematureActionConfirmationRejection(')
+        && productionSessionImplementationSource.includes("from './productionSession/finalResponse'")
+        && productionSessionImplementationSource.includes('const { prepareFinalResponse } = createAgentProductionFinalResponse({')
+        && productionSessionImplementationSource.includes('prepareFinalResponse(decision, stepIndex')
+        && productionSessionImplementationSource.includes("from './productionSession/executionPreflight'")
+        && productionSessionImplementationSource.includes('prepareExecutionPreflight({')
+        && productionSessionImplementationModulesSource.includes('createAgentTransitionalDesktopActionRejection(')
+        && productionSessionImplementationSource.includes("from './productionSession/singleToolSelection'")
+        && productionSessionImplementationSource.includes('prepareSingleToolSelection(decision, stepIndex)')
+        && productionSessionImplementationModulesSource.includes('createAgentVideoSummarySearchRejection('),
       'Advisory rejection evidence for premature confirmation, compatibility-only desktop actions, video-summary search substitution, and repeated failed or unverified actions must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -491,7 +532,10 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && verificationRuntimeSource.includes("from './agentExecutionProgressSignals'")
         && recoveryExecutionRuntimeSource.includes("from './agentExecutionProgressSignals'")
         && visualRefinementExecutionRuntimeSource.includes("from './agentExecutionProgressSignals'")
-        && productionSessionImplementationSource.includes("from './runtime/agentExecutionProgressSignals'"),
+        && productionSessionImplementationModulesSource.includes("from '../runtime/agentExecutionProgressSignals'")
+        && productionSessionImplementationSource.includes("from './productionSession/actionOutcomeLifecycle'")
+        && productionSessionImplementationSource.includes('} = createAgentProductionActionOutcomeLifecycle({')
+        && productionSessionImplementationSource.includes('recordActionRuntimeDecision, recordRecoveryTriggerDecision, decideRecoveryTrigger,'),
       'Recovery, verification, refinement, and loop-history presentation must be Runtime-owned.',
     ),
     createStaticCheck(
@@ -512,7 +556,9 @@ export function inspectAgentRuntimeLegacyRetirementStaticCoverage(rootDir = proc
         && deterministicSkillRouteRuntimeSource.includes('export function resolveAgentDeterministicSkillRoute')
         && deterministicSkillRouteRuntimeSource.includes('AgentRuntimeToolResultEntry')
         && productionSessionImplementationSource.includes("from './runtime/agentPendingApprovalAssembly'")
-        && productionSessionImplementationSource.includes("from './runtime/agentParallelToolPreparation'")
+        && productionSessionImplementationSource.includes("from './productionSession/parallelPreparation'")
+        && productionSessionImplementationSource.includes('prepareParallelSelection(decision, stepIndex)')
+        && productionSessionImplementationModulesSource.includes("from '../runtime/agentParallelToolPreparation'")
         && productionSessionImplementationSource.includes("from './runtime/agentDeterministicSkillRoute'")
         && !/from ['"]\.\/agentSessionV2[^'"]*['"]/u.test(productionSessionImplementationSource),
       'Pending approval assembly, parallel preparation, and deterministic Skill routing must be Runtime-owned, leaving no versioned helper imports in Production Session implementation.',
@@ -583,7 +629,7 @@ function isValidDate(value) {
   return typeof value === 'string' && value.trim().length > 0 && !Number.isNaN(Date.parse(value));
 }
 
-export function evaluateAgentRuntimeRetirementObservations(manifest) {
+export function evaluateAgentRuntimeRetirementObservations(manifest, currentSourceRevision) {
   const failures = [];
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
     return {
@@ -598,16 +644,27 @@ export function evaluateAgentRuntimeRetirementObservations(manifest) {
   if (typeof manifest.sourceRevision !== 'string' || !manifest.sourceRevision.trim()) {
     failures.push('sourceRevision is required.');
   }
+  if (typeof currentSourceRevision !== 'string' || !currentSourceRevision.trim()) {
+    failures.push('Current source revision is required to validate production observations.');
+  } else if (manifest.sourceRevision !== currentSourceRevision) {
+    failures.push('Observation manifest sourceRevision does not match current source revision; rerun production observations for this checkout.');
+  }
   if (typeof manifest.reviewedBy !== 'string' || !manifest.reviewedBy.trim()) {
     failures.push('reviewedBy is required.');
   }
-  if ((manifest.unresolvedRegressions ?? []).length > 0) {
+  if (!Array.isArray(manifest.unresolvedRegressions)) {
+    failures.push('unresolvedRegressions must be an array.');
+  } else if (manifest.unresolvedRegressions.length > 0) {
     failures.push('unresolvedRegressions must be empty.');
   }
 
   const observations = Array.isArray(manifest.observations) ? manifest.observations : [];
   for (const requirement of AGENT_RUNTIME_RETIREMENT_REQUIRED_OBSERVATIONS) {
-    const observation = observations.find((candidate) => candidate?.id === requirement.id);
+    const matchingObservations = observations.filter((candidate) => candidate?.id === requirement.id);
+    if (matchingObservations.length > 1) {
+      failures.push(`Duplicate observation: ${requirement.id}.`);
+    }
+    const observation = matchingObservations[0];
     if (!observation) {
       failures.push(`Missing observation: ${requirement.id}.`);
       continue;
@@ -632,7 +689,10 @@ export function evaluateAgentRuntimeRetirementObservations(manifest) {
 export function evaluateAgentRuntimeLegacyRetirementGate(options) {
   const staticChecks = options.staticChecks ?? [];
   const failedStaticChecks = staticChecks.filter((check) => !check.passed);
-  const observations = evaluateAgentRuntimeRetirementObservations(options.observationManifest);
+  const observations = evaluateAgentRuntimeRetirementObservations(
+    options.observationManifest,
+    options.currentSourceRevision,
+  );
   const status = failedStaticChecks.length > 0
     ? 'blocked-static'
     : observations.passed

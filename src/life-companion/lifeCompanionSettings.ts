@@ -4,6 +4,8 @@ export type LifeCompanionNeedLevel = 'critical' | 'high' | 'low' | 'normal';
 export type LifeCompanionMood = 'close' | 'distant' | 'hungry' | 'steady' | 'tired';
 
 export interface PetLifeCompanionSettings {
+  /** Minutes before activity awareness may start another conversation. */
+  desktopActivityAwarenessIntervalMinutes: number;
   desktopActivityAwarenessEnabled: boolean;
   affectionEnabled: boolean;
   hungerEnabled: boolean;
@@ -17,6 +19,10 @@ export interface PetLifeCompanionSettings {
   quietHoursEnd: string;
   quietHoursStart: string;
   randomInteractionEnabled: boolean;
+  /** The user let the character watch the screen; stays on until they disconnect. */
+  screenWatchConsented: boolean;
+  /** Seconds between looks while watching the screen. */
+  screenWatchIntervalSeconds: number;
   textPromptCooldownMinutes: number;
   textPromptEnabled: boolean;
 }
@@ -39,9 +45,12 @@ const MIN_LLM_TEXT_PROMPT_COOLDOWN_MINUTES = 30;
 const MAX_LLM_TEXT_PROMPT_COOLDOWN_MINUTES = 1440;
 const MIN_TEXT_PROMPT_COOLDOWN_MINUTES = 15;
 const MAX_TEXT_PROMPT_COOLDOWN_MINUTES = 1440;
+export const LIFE_COMPANION_AWARENESS_INTERVAL_RANGE = { max: 120, min: 1 } as const;
+export const LIFE_COMPANION_SCREEN_WATCH_INTERVAL_RANGE = { max: 900, min: 30 } as const;
 const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/u;
 
 export const DEFAULT_LIFE_COMPANION_SETTINGS: PetLifeCompanionSettings = {
+  desktopActivityAwarenessIntervalMinutes: 15,
   desktopActivityAwarenessEnabled: false,
   affectionEnabled: true,
   hungerEnabled: true,
@@ -55,6 +64,8 @@ export const DEFAULT_LIFE_COMPANION_SETTINGS: PetLifeCompanionSettings = {
   quietHoursEnd: '09:00',
   quietHoursStart: '23:00',
   randomInteractionEnabled: false,
+  screenWatchConsented: false,
+  screenWatchIntervalSeconds: 300,
   textPromptCooldownMinutes: DEFAULT_TEXT_PROMPT_COOLDOWN_MINUTES,
   textPromptEnabled: false,
 };
@@ -108,6 +119,12 @@ export function normalizeLifeCompanionSettings(value: unknown): PetLifeCompanion
   );
 
   return {
+    desktopActivityAwarenessIntervalMinutes: integerRangeValue(
+      input.desktopActivityAwarenessIntervalMinutes,
+      DEFAULT_LIFE_COMPANION_SETTINGS.desktopActivityAwarenessIntervalMinutes,
+      LIFE_COMPANION_AWARENESS_INTERVAL_RANGE.min,
+      LIFE_COMPANION_AWARENESS_INTERVAL_RANGE.max,
+    ),
     desktopActivityAwarenessEnabled: booleanValue(
       input.desktopActivityAwarenessEnabled,
       DEFAULT_LIFE_COMPANION_SETTINGS.desktopActivityAwarenessEnabled,
@@ -132,6 +149,13 @@ export function normalizeLifeCompanionSettings(value: unknown): PetLifeCompanion
     randomInteractionEnabled: booleanValue(
       input.randomInteractionEnabled,
       DEFAULT_LIFE_COMPANION_SETTINGS.randomInteractionEnabled,
+    ),
+    screenWatchConsented: booleanValue(input.screenWatchConsented, DEFAULT_LIFE_COMPANION_SETTINGS.screenWatchConsented),
+    screenWatchIntervalSeconds: integerRangeValue(
+      input.screenWatchIntervalSeconds,
+      DEFAULT_LIFE_COMPANION_SETTINGS.screenWatchIntervalSeconds,
+      LIFE_COMPANION_SCREEN_WATCH_INTERVAL_RANGE.min,
+      LIFE_COMPANION_SCREEN_WATCH_INTERVAL_RANGE.max,
     ),
     textPromptCooldownMinutes,
     textPromptEnabled: booleanValue(input.textPromptEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.textPromptEnabled),

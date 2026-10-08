@@ -18,7 +18,7 @@ const {
   embeddedChatSurfaceSource,
   embeddedChatPanelSource,
   settingsPanelSource,
-  standaloneWindowCompactFrameSource,
+  standaloneWindowFrameSource,
   desktopShellRuntimeSource,
   desktopShellBridgeSource,
   viteEnvSource,
@@ -35,7 +35,7 @@ const {
   embeddedChatSurfaceSource: 'src/components/chat/EmbeddedPetChatPanelSurface.tsx',
   embeddedChatPanelSource: 'src/components/chat/EmbeddedPetChatPanel.tsx',
   settingsPanelSource: 'src/components/SettingsPanel.tsx',
-  standaloneWindowCompactFrameSource: 'src/standaloneWindowCompactFrame.ts',
+  standaloneWindowFrameSource: 'src/standaloneWindowFrame.ts',
   desktopShellRuntimeSource: 'src/desktopShellRuntime.ts',
   desktopShellBridgeSource: 'src/desktopShellBridge.ts',
   viteEnvSource: 'src/vite-env.d.ts',
@@ -47,8 +47,8 @@ const {
 
 assertIncludes(
   windowFrameControlsSource,
-  'ChevronDown, ChevronUp, X',
-  'shared window frame controls should render collapse/expand and close icons only',
+  'ChevronDown, ChevronUp, Copy, Minus, Square, X',
+  'shared window frame controls should render collapse/expand for embedded panels and minimize/maximize/close for windows',
 );
 assertIncludes(
   windowFrameControlsSource,
@@ -80,18 +80,11 @@ assertIncludes(
   'closeDangerHover',
   'shared window frame controls should allow disabling red close hover per panel',
 );
-[
-  'Copy',
-  'Square',
-  'isMaximized',
-  'maximizeTitle',
-  'restoreTitle',
-  'onToggleMaximize',
-].forEach((unexpected) => {
-  assertNotIncludes(
+['Minus', 'Square', 'Copy', 'onToggleMaximize', 'isMaximized'].forEach((expected) => {
+  assertIncludes(
     windowFrameControlsSource,
-    unexpected,
-    `shared window frame controls should not keep maximize UI token ${unexpected}`,
+    expected,
+    `shared window frame controls should provide standard window control token ${expected}`,
   );
 });
 assertIncludes(
@@ -145,24 +138,14 @@ assertIncludes(
   'standalone window drag hook should anchor dragging to screen coordinates',
 );
 assertIncludes(
-  standaloneWindowCompactFrameSource,
-  'STANDALONE_WINDOW_COMPACT_WIDTH = 56',
-  'standalone compact frame hook should use the shared compact square width',
+  standaloneWindowFrameSource,
+  'desktopPetShellRuntime.minimizeCurrentWindow();',
+  'standalone window frame hook should minimize the OS window',
 );
 assertIncludes(
-  standaloneWindowCompactFrameSource,
-  'STANDALONE_WINDOW_COMPACT_HEIGHT = 48',
-  'standalone compact frame hook should use the shared compact square height',
-);
-assertIncludes(
-  standaloneWindowCompactFrameSource,
-  'restoreBoundsRef',
-  'standalone compact frame hook should preserve restore bounds',
-);
-assertIncludes(
-  standaloneWindowCompactFrameSource,
-  'desktopPetShellRuntime.setCurrentWindowBounds({',
-  'standalone compact frame hook should resize the current window instead of minimizing it',
+  standaloneWindowFrameSource,
+  'desktopPetShellRuntime.toggleMaximizeCurrentWindow()',
+  'standalone window frame hook should toggle maximize through the desktop shell',
 );
 assertIncludes(
   chatWindowSource,
@@ -171,7 +154,7 @@ assertIncludes(
 );
 assertIncludes(
   chatWindowSource,
-  'onPointerDown={interactiveDialogueActive ? undefined : startWindowDrag}',
+  'onPointerDown={isInteractiveDialogue ? undefined : startWindowDrag}',
   'chat window should route standalone pointer drag through the current-window move hook',
 );
 assertIncludes(
@@ -181,18 +164,13 @@ assertIncludes(
 );
 assertIncludes(
   chatWindowSource,
-  'useStandaloneWindowCompactFrame',
-  'chat window should use local compact state instead of OS minimize',
+  'useStandaloneWindowFrame({',
+  'chat window should use standard window minimize/maximize controls',
 );
 assertIncludes(
   chatWindowSource,
-  '<WindowCompactHandle title={CHAT_WINDOW_EXPAND_TITLE} onExpand={restoreWindow} />',
-  'chat window should render a visible square expand handle while compacted',
-);
-assertIncludes(
-  chatWindowSource,
-  'onPointerDown={interactiveDialogueActive ? undefined : startWindowDrag}',
-  'compacted chat window should keep an empty drag surface around its expand handle',
+  "const isInteractiveDialogue = interactiveDialogueActive && chatMode === 'single';",
+  'only single-chat interactive dialogue should disable standalone window dragging',
 );
 assertIncludes(
   chatAutoScrollSource,
@@ -206,22 +184,23 @@ assertIncludes(
 );
 assertIncludes(
   chatWindowSource,
-  'compactWindow();',
-  'chat window minimize control should compact the current window',
+  'onMinimize={minimizeWindow}',
+  'chat window minimize control should minimize the OS window',
+);
+assertIncludes(
+  chatWindowSource,
+  'onToggleMaximize={isInteractiveDialogue ? undefined : toggleMaximizeWindow}',
+  'chat window should offer maximize/restore outside interactive dialogue',
 );
 [
-  'desktopPetShellRuntime.minimizeCurrentWindow();',
-  'toggleCurrentWindowMaximized',
-  'isWindowMaximized',
-  'CHAT_WINDOW_MAXIMIZE_TITLE',
-  'CHAT_WINDOW_RESTORE_TITLE',
-  'maximizeTitle',
-  'restoreTitle',
+  'useStandaloneWindowCompactFrame',
+  'WindowCompactHandle',
+  'CHAT_WINDOW_EXPAND_TITLE',
 ].forEach((unexpected) => {
   assertNotIncludes(
     chatWindowSource,
     unexpected,
-    `chat window should not keep maximize/minimize-to-system token ${unexpected}`,
+    `chat window should no longer keep compact-frame token ${unexpected}`,
   );
 });
 assertIncludes(
@@ -241,18 +220,13 @@ assertIncludes(
 );
 assertIncludes(
   settingsPanelSource,
-  'useStandaloneWindowCompactFrame',
-  'settings window should use local compact state instead of OS minimize',
+  'useStandaloneWindowFrame({ enabled: standalone })',
+  'settings window should use standard window minimize/maximize controls',
 );
 assertIncludes(
   settingsPanelSource,
-  'onExpand={restoreStandaloneWindow}',
-  'standalone settings window should render a visible square expand handle while compacted',
-);
-assertIncludes(
-  settingsPanelSource,
-  'compactStandaloneWindow();',
-  'settings window minimize control should compact the current window',
+  'standaloneWindowFrame.minimizeWindow();',
+  'standalone settings minimize control should minimize the OS window',
 );
 assertIncludes(
   settingsPanelSource,
@@ -296,42 +270,28 @@ assertIncludes(
 );
 assertIncludes(
   settingsPanelSource,
-  'SETTINGS_COMPACT_HANDLE_CLASS',
-  'settings compact square should use the control-center color theme',
+  'onToggleMaximize={standalone ? standaloneWindowFrame.toggleMaximizeWindow : undefined}',
+  'standalone settings window should offer maximize/restore',
 );
-[
-  'desktopPetShellRuntime.minimizeCurrentWindow();',
-  'toggleCurrentWindowMaximized',
-  'isStandaloneMaximized',
-  'isEmbeddedMaximized',
-  'isFrameMaximized',
-  'EMBEDDED_SETTINGS_MAXIMIZED_INSET',
-  'maximizeTitle',
-  'restoreTitle',
-  'maximized',
-  '最大化',
-  '还原',
-].forEach((unexpected) => {
-  assertNotIncludes(
-    settingsPanelSource,
-    unexpected,
-    `settings panel should not keep maximize/minimize-to-system token ${unexpected}`,
-  );
-});
+assertNotIncludes(
+  settingsPanelSource,
+  'useStandaloneWindowCompactFrame',
+  'standalone settings window should no longer collapse into a compact square',
+);
 assertIncludes(
   embeddedChatHeaderSource,
   "minimizeTitle={isMinimized ? '展开聊天面板' : '收纳聊天面板'}",
   'embedded chat header should expose a local collapse/expand control',
 );
-assertIncludes(
+assert.match(
   embeddedChatSurfaceSource,
-  '<WindowCompactHandle title="展开聊天面板" onExpand={onToggleMinimized} />',
+  /<WindowCompactHandle\s+title="展开聊天面板"[\s\S]*?onExpand=\{onToggleMinimized\}\s*\/>/u,
   'embedded chat minimized state should render the compact square expand handle',
 );
 assertIncludes(
   embeddedChatSurfaceSource,
-  'onPointerDown={dragDisabled ? undefined : onStartDrag}',
-  'embedded chat compact frame should allow dragging from its empty surface',
+  'onStartDrag={dragDisabled ? undefined : (event) => onStartDrag(event, { allowControl: true })}',
+  'embedded chat compact handle should delegate dragging while preserving the disabled guard and control allowance',
 );
 assertIncludes(
   embeddedChatSurfaceSource,
@@ -372,58 +332,51 @@ assertIncludes(
 assertIncludes(
   preloadSource,
   "ipcRenderer.send('desktop-pet:minimize-current-window')",
-  'preload should keep the current-window minimize IPC channel for non-compact callers',
+  'preload should expose the current-window minimize IPC channel',
 );
-assertNotIncludes(
+assertIncludes(
   preloadSource,
-  'toggleCurrentWindowMaximized',
-  'preload should not expose current-window maximize IPC after removing the UI',
+  "ipcRenderer.invoke('desktop-pet:toggle-maximize-current-window')",
+  'preload should expose the current-window maximize/restore IPC channel',
 );
 assertIncludes(
   ipcHandlersSource,
   "ipcMain.on('desktop-pet:minimize-current-window'",
-  'main process should keep current-window minimize requests for non-compact callers',
+  'main process should handle current-window minimize requests',
 );
 assertIncludes(
   ipcHandlersSource,
-  'currentWindowOriginalMinimumSize',
-  'main process should remember original minimum size while a window is compacted',
+  "ipcMain.handle('desktop-pet:toggle-maximize-current-window'",
+  'main process should handle current-window maximize/restore requests',
 );
 assertIncludes(
   ipcHandlersSource,
-  'targetWindow.setMinimumSize(',
-  'main process should temporarily lower minimum size for compacted windows',
-);
-assertNotIncludes(
-  ipcHandlersSource,
-  'toggle-current-window-maximized',
-  'main process should not keep current-window maximize handler after removing the UI',
+  'createWindowMaximizeToggle({ screen })',
+  'maximize should fill the display work area through the shared toggle module',
 );
 assertIncludes(
-  windowManagerSource,
-  'isCurrentWindowCompactMinimumSizeActive',
-  'window manager should not re-apply normal chat constraints while compacted',
-);
-assertNotIncludes(
   desktopShellRuntimeSource,
-  'toggleCurrentWindowMaximized',
-  'desktop shell runtime should not publish maximize/restore controls',
+  'toggleMaximizeCurrentWindow',
+  'desktop shell runtime should publish the maximize/restore control',
 );
-assertNotIncludes(
+assertIncludes(
   desktopShellBridgeSource,
-  'toggleCurrentWindowMaximized',
-  'desktop shell bridge should not publish maximize/restore controls',
+  'toggleMaximizeCurrentWindow',
+  'desktop shell bridge should publish the maximize/restore control',
 );
-assertNotIncludes(
+assertIncludes(
   viteEnvSource,
-  'toggleCurrentWindowMaximized',
-  'renderer shell type should not include maximize/restore controls',
+  'toggleMaximizeCurrentWindow?: () => Promise<boolean>;',
+  'renderer shell type should include the maximize/restore control',
 );
 assertIncludes(
   chatWindowSource,
-  'relative flex h-screen w-screen min-h-0 flex-col overflow-hidden border border-sky-100 bg-white text-sky-900',
+  'relative flex h-screen w-screen min-h-0 flex-col overflow-hidden',
   'chat window should keep the original single-shell layout',
 );
+assertIncludes(windowFrameControlsSource, 'onPointerDownCapture={handlePointerDownCapture}', 'compact handles should capture pointerdown before stopping bubbling');
+assertIncludes(windowFrameControlsSource, 'onStartDrag?.(event);', 'compact handles should forward pointerdown to the current drag delegate');
+assert.match(windowFrameControlsSource, /if \(gesture\?\.moved\)\s*\{[\s\S]*return;\s*\}\s*onExpand\(\);/u, 'dragging a compact handle should not also expand it');
 assertIncludes(
   settingsPanelSource,
   '<StandaloneWindowResizeHandles onStartResize={standaloneWindowResize.startWindowResize} />',
@@ -448,6 +401,22 @@ assertNotIncludes(
   windowManagerSource,
   'maxHeight: SETTINGS_PANEL_WINDOW_BOUNDS.maxHeight',
   'settings window should not pass a fixed native height ceiling',
+);
+
+assertIncludes(
+  standaloneWindowDragSource,
+  'desktopPetShellRuntime.restoreMaximizedWindowForDrag({',
+  'dragging a maximized window should restore it to its normal size under the cursor',
+);
+assertIncludes(
+  ipcHandlersSource,
+  "ipcMain.handle('desktop-pet:restore-maximized-window-for-drag'",
+  'main process should restore a maximized window when a drag starts',
+);
+assert.match(
+  chatWindowSource,
+  /useStandaloneWindowDrag\(\{[\s\S]*?isMaximized,\s*\}\);/u,
+  'chat window drag should know whether the window is maximized',
 );
 
 console.log('standalone window resize handles smoke ok');

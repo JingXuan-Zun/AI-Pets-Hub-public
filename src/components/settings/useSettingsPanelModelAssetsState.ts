@@ -292,6 +292,12 @@ export function useSettingsPanelModelAssetsState({
           throw new Error('透明 WebM 桌宠需要在桌面版导入，才能备份并在下次启动后继续播放。');
         }
         const url = stagedVideo.videoUrl;
+        // Clips imported from <root>/<group>/clip.webm make <root> the character
+        // library: idle rotates through its subfolders and emotions pick by name.
+        const videoLibrary = sourcePath
+          ? await window.desktopPetShell?.resolve2DVideoLibraryRoot?.({ sourcePath }).catch(() => null)
+          : null;
+        const videoLibraryRootPath = videoLibrary?.ok ? videoLibrary.rootPath : undefined;
         const fallbackName = `自定义视频桌宠 ${localConfig.customModelPresets.length + index + 1}`;
         const nameWithoutExtension = file.name.replace(/\.(?:webm|mp4|m4v|mov|gif)$/iu, '').trim();
         return {
@@ -304,6 +310,8 @@ export function useSettingsPanelModelAssetsState({
           // stage2DVideo stores every imported format as WebM, including GIF;
           // the renderer must follow the staged output format.
           renderKind: 'video' as const,
+          randomVideoPlaybackEnabled: Boolean(videoLibraryRootPath),
+          videoLibraryRootPath,
           builtIn: false,
           motionBindings: [],
         } satisfies PetModelPreset;

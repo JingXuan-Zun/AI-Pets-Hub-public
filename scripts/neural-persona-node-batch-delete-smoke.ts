@@ -136,7 +136,6 @@ const sectionSource = fs.readFileSync(
 assert.match(toolbarSource, /框选节点/u);
 assert.match(toolbarSource, /data-neural-graph-marquee-toggle/u);
 assert.match(toolbarSource, /selectedNodeCount/u);
-assert.match(sectionSource, /onMultiSelectModeChange/u);
 assert.match(panelSource, /图谱顶部的“框选节点”/u);
 assert.match(panelSource, /全选普通节点/u);
 assert.match(panelSource, /确认批量删除/u);

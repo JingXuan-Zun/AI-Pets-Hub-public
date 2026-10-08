@@ -34,21 +34,20 @@ const modelCaller: AgentSessionV2ModelCaller = async ({ userInput }) => {
     });
   }
 
-  assert.fail(`Locate-ready visual evidence should be converted to pending approval before model call ${modelCallCount}.`);
+  // After the bounded focused refinements confirm the ready login button, the
+  // model selects the click, which must pause for approval.
+  assert.equal(modelCallCount, 2);
+  assert.match(userInput, /elementCenter=1280,806/u);
   return JSON.stringify({
     action: 'tool_call',
     args: {
       stepsJson: JSON.stringify([
         {
           args: {
-            stepsJson: JSON.stringify([
-              {
-                action: 'click',
-                button: 'left',
-                x: 1280,
-                y: 806,
-              },
-            ]),
+            action: 'click',
+            button: 'left',
+            x: 1280,
+            y: 806,
           },
           reason: 'Click the located WeGame login button.',
           tool: 'execute_desktop_input',
@@ -116,14 +115,14 @@ const result = await runAgentProductionSession({
   userGoal: 'click the WeGame login button',
 });
 
-assert.equal(modelCallCount, 1);
+assert.equal(modelCallCount, 2);
 assert.equal(result.status, 'needs-approval');
 assert.match(
   String(result.pendingApproval?.command.toolCall?.name),
   /execute_desktop_input|execute_desktop_sequence/u,
 );
 assert.match(JSON.stringify(result.pendingApproval?.command.toolCall?.input ?? {}), /1280/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval/u);
+assert.match(result.continuation.historyLines.join('\n'), /selected approval-required tool:/u);
 assert.equal(result.debug?.v4TaskShadow?.classification, 'approval_pending');
 assert.equal(result.debug.v4TaskShadow.context.currentState, 'waiting_approval');
 assert.equal(

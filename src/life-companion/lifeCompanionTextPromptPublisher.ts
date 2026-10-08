@@ -3,6 +3,7 @@ import { DEFAULT_CHAT_ACTIVE_PET_ID } from '../chatState';
 import { createChatMessageId } from '../components/chat/multiPetChat';
 import { getDesktopPetSlot } from '../multiPetRoster';
 import type { PetConfig } from '../types';
+import { speakCompanionLine } from './companionLineSpeech';
 import { createLifeCompanionDraftFromState } from './lifeCompanionScheduler';
 
 export interface LifeCompanionPromptPublishResult {
@@ -41,6 +42,7 @@ function publishTextMessage(config: PetConfig, prompt: string) {
     role: 'model',
     text: prompt,
   });
+  speakCompanionLine(prompt, target.petId);
 
   return true;
 }

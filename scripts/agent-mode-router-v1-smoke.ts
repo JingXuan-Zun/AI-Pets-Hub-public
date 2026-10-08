@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertProductionRuntimeSourceContracts } from './productionRuntimeSourceContracts.ts';
 import {
   buildAgentModeRoute,
   buildAgentPermissionRoute,
@@ -18,6 +19,8 @@ const {
   permissionRouterSource: 'src/agent/agentPermissionRouter.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
 });
+
+assertProductionRuntimeSourceContracts();
 
 assert.match(
   modeRouterSource,
@@ -39,8 +42,8 @@ assert.match(
 
 assert.match(
   controllerSource,
-  /runAgentSessionV2\(/u,
-  'Agent run controller should route new Agent requests through AgentSessionV2',
+  /runAgentProductionRuntime\(/u,
+  'Agent run controller should route new Agent requests through the production Runtime',
 );
 
 assert.doesNotMatch(

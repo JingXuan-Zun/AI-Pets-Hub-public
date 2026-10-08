@@ -60,7 +60,6 @@ const {
   growthStatusRowSource,
   runtimeControlsSource,
   settingsPanelSource,
-  guideSource,
 } = readProjectSources({
   controlsSource: 'src/components/settings/SettingsControlsTab.tsx',
   constantsSource: 'src/constants.ts',
@@ -72,7 +71,6 @@ const {
   growthStatusRowSource: 'src/components/settings/SettingsLifeCompanionGrowthStatusRow.tsx',
   runtimeControlsSource: 'src/components/settings/SettingsLifeCompanionRuntimeControls.tsx',
   settingsPanelSource: 'src/components/SettingsPanel.tsx',
-  guideSource: 'PROJECT_NEW_FEATURE_INTEGRATION_GUIDE.md',
 });
 
 assert.match(constantsSource, /DEFAULT_LIFE_COMPANION_SETTINGS/u);
@@ -100,7 +98,6 @@ assert.match(fieldsSource, /LLM prompt/u);
 assert.match(fieldsSource, /LLM cooldown/u);
 assert.match(fieldsSource, /Affection/u);
 assert.match(fieldsSource, /Hunger/u);
-assert.match(guideSource, /Life companion/u);
 assert.ok(panelSource.split(/\r?\n/u).length <= 90);
 assert.ok(fieldsSource.split(/\r?\n/u).length <= 180);
 assert.ok(growthStatusRowSource.split(/\r?\n/u).length <= 80);

@@ -506,11 +506,59 @@ def validate_existing_path(target_path: str | None, error_message: str):
         raise RuntimeError(error_message)
 
 
+def resolve_sensevoice_model_file(stt_model_path: str) -> str:
+    """SenseVoice (sherpa-onnx) model folders hold model(.int8).onnx + tokens.txt instead of a HF checkpoint."""
+    if not os.path.isfile(os.path.join(stt_model_path, "tokens.txt")):
+        return ""
+    for name in ("model.int8.onnx", "model.onnx"):
+        candidate = os.path.join(stt_model_path, name)
+        if os.path.isfile(candidate):
+            return candidate
+    return ""
+
+
+def load_sensevoice_recognizer(stt_model_path: str):
+    if not package_available("sherpa_onnx"):
+        raise RuntimeError("Missing sherpa-onnx dependency for the SenseVoice speech model.")
+    import sherpa_onnx
+
+    return sherpa_onnx.OfflineRecognizer.from_sense_voice(
+        model=resolve_sensevoice_model_file(stt_model_path),
+        tokens=os.path.join(stt_model_path, "tokens.txt"),
+        language="auto",
+        use_itn=True,
+        num_threads=4,
+    )
+
+
+def transcribe_sensevoice(recognizer, audio_path: str) -> tuple[str, str]:
+    """Returns (text, emotion) where emotion is SenseVoice's tag such as "happy" or "neutral"."""
+    import soundfile as sf
+
+    samples, sample_rate = sf.read(audio_path, dtype="float32", always_2d=True)
+    samples = samples.mean(axis=1)
+    if sample_rate != 16000 and len(samples) > 1:
+        target_length = max(1, int(round(len(samples) * 16000 / sample_rate)))
+        samples = np.interp(
+            np.linspace(0, len(samples) - 1, target_length), np.arange(len(samples)), samples,
+        ).astype(np.float32)
+    stream = recognizer.create_stream()
+    stream.accept_waveform(16000, samples)
+    recognizer.decode_stream(stream)
+    emotion = str(getattr(stream.result, "emotion", "") or "").strip("<|>").lower()
+    return (stream.result.text or "").strip(), emotion
+
+
 def load_stt_model(stt_model_path: str):
     global _CACHED_STT_MODEL
     global _CACHED_STT_MODEL_PATH
 
     if _CACHED_STT_MODEL is not None and _CACHED_STT_MODEL_PATH == stt_model_path:
+        return _CACHED_STT_MODEL
+
+    if resolve_sensevoice_model_file(stt_model_path):
+        _CACHED_STT_MODEL = load_sensevoice_recognizer(stt_model_path)
+        _CACHED_STT_MODEL_PATH = stt_model_path
         return _CACHED_STT_MODEL
 
     if not package_available("qwen_asr"):
@@ -825,6 +873,12 @@ def transcribe_audio(audio_path: str, stt_model_path: str, language_code: str | 
 def perform_stt(args):
     validate_existing_path(args.audio_path, "Audio file to transcribe was not found.")
     validate_existing_path(args.stt_model_path, "Selected local STT model path does not exist.")
+
+    if resolve_sensevoice_model_file(args.stt_model_path):
+        text, emotion = transcribe_sensevoice(load_stt_model(args.stt_model_path), args.audio_path)
+        if not text:
+            raise RuntimeError("Local transcription did not return valid text.")
+        return {"text": text, "emotion": emotion}
 
     text = transcribe_audio(args.audio_path, args.stt_model_path, args.language_code)
     if not text:

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 import path from 'node:path';
 
 export const projectRoot = process.cwd();
@@ -9,7 +9,7 @@ export function projectPath(relativePath: string) {
 }
 
 export function readProjectFile(relativePath: string) {
-  return readFileSync(projectPath(relativePath), 'utf8');
+  return readModuleProjectFile(relativePath);
 }
 
 export function readProjectSources<T extends Record<string, string>>(

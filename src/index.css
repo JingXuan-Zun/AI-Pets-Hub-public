@@ -45,10 +45,39 @@
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-xl: var(--radius);
+    --radius-2xl: var(--radius);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Brand palette remap: components historically used Tailwind's sky (brand)
+   and slate (neutral) scales directly. Re-pointing the scales here moves every
+   such class to the rose/mauve theme without touching component markup. */
+@theme {
+    --color-sky-50: #FDF2F8;
+    --color-sky-100: #FBE4F0;
+    --color-sky-200: #F7CCE2;
+    --color-sky-300: #F0A8CB;
+    --color-sky-400: #E785B6;
+    --color-sky-500: #DD68A0;
+    --color-sky-600: #CB4F8A;
+    --color-sky-700: #AE3F76;
+    --color-sky-800: #8C3463;
+    --color-sky-900: #6C2B52;
+    --color-sky-950: #4A2440;
+
+    --color-slate-50: #FAF7FB;
+    --color-slate-100: #F4EEF6;
+    --color-slate-200: #E9DFEE;
+    --color-slate-300: #D8CADF;
+    --color-slate-400: #A897B3;
+    --color-slate-500: #7D6C89;
+    --color-slate-600: #65556F;
+    --color-slate-700: #4F4159;
+    --color-slate-800: #3D3047;
+    --color-slate-900: #2E2236;
+    --color-slate-950: #1F1626;
 }
 
 /* Semantic z-index utilities backed by the token scale in :root */
@@ -82,33 +111,37 @@
 }
 
 :root {
-    /* Light theme — UI/UX Pro Max design system (Minimalism & Swiss Style).
-       Source of truth: design-system/ai-desktop-pet/MASTER.md */
-    --background: #F8FAFC;
-    --foreground: #0F172A;
-    --card: #FFFFFF;
-    --card-foreground: #0F172A;
+    /* Light theme — "pink glass" companion style: soft rose primary, lavender
+       accent, translucent white cards over a warm pink-lavender canvas. */
+    --background: #FBF5FA;
+    --foreground: #3A2A45;
+    --card: rgba(255, 255, 255, 0.82);
+    --card-foreground: #3A2A45;
     --popover: #FFFFFF;
-    --popover-foreground: #0F172A;
-    --primary: #1E3A5F;
+    --popover-foreground: #3A2A45;
+    --primary: #D4518E;
     --primary-foreground: #FFFFFF;
-    --secondary: #E2E8F0;
-    --secondary-foreground: #0F172A;
-    --muted: #F1F3F5;
-    --muted-foreground: #475569;
-    --accent: #059669;
+    --secondary: #F6E9F2;
+    --secondary-foreground: #4A2440;
+    --muted: #F7F0F6;
+    --muted-foreground: #7A6585;
+    --accent: #9B7BEA;
     --accent-foreground: #FFFFFF;
     --destructive: #DC2626;
     --destructive-foreground: #FFFFFF;
-    --border: #E4E7EB;
+    --border: #EEDDEA;
     --input: #FFFFFF;
-    --ring: #1E3A5F;
-    --radius: 0.5rem;
+    --ring: #D4518E;
+    --radius: 15px;
 
     /* Semantic feedback tokens */
     --success: #059669;
     --warning: #D97706;
-    --info: #2563EB;
+    --info: #8B6FE0;
+
+    /* Shell surfaces */
+    --app-canvas: linear-gradient(135deg, #FDF1F7 0%, #F8EEF8 45%, #F1ECFB 100%);
+    --glass-shadow: 0 10px 30px rgba(158, 84, 140, 0.10), 0 2px 6px rgba(158, 84, 140, 0.06);
 
     /* Layered z-index scale (single authority; avoid raw z-[...] classes) */
     --z-base: 0;
@@ -349,6 +382,44 @@
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full hover:bg-muted-foreground/40 transition-colors;
+  }
+
+  /* Warm canvas behind window shells: soft colour blobs give the frosted
+     panels above something to blur, which is what reads as "glass". */
+  .app-shell-canvas {
+    background:
+      radial-gradient(38% 46% at 8% 12%, rgba(246, 168, 206, 0.55) 0%, transparent 70%),
+      radial-gradient(34% 42% at 92% 8%, rgba(196, 172, 246, 0.50) 0%, transparent 70%),
+      radial-gradient(40% 50% at 78% 92%, rgba(250, 196, 214, 0.50) 0%, transparent 70%),
+      radial-gradient(36% 44% at 18% 88%, rgba(214, 190, 250, 0.42) 0%, transparent 70%),
+      var(--app-canvas);
+  }
+
+  /* Frosted card: translucent white with blur and a soft rose shadow. */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
+  }
+
+  /* Frosted bar laid over artwork (chat header / sidebar / composer). */
+  .glass-bar {
+    background: rgba(255, 255, 255, 0.46);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    backdrop-filter: blur(22px) saturate(1.4);
+  }
+
+  /* Settings window: every token-backed card becomes frosted glass. */
+  [data-desktop-pet-settings-panel="true"] {
+    --card: rgba(255, 255, 255, 0.56);
+  }
+  [data-desktop-pet-settings-panel="true"] .bg-card {
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
   }
 }
 

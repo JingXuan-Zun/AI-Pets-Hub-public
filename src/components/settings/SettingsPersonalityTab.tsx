@@ -17,6 +17,8 @@ import { SettingsGroupChatSpeed } from './SettingsGroupChatSpeed';
 import { SettingsGroupSocialControls } from './SettingsGroupSocialControls';
 import { DEFAULT_NEURAL_PERSONA_FEATURE_FLAGS } from '../../character-graph/neural-persona';
 import { resolveNeuralPersonaSettingsPreviewEnabled } from './neuralPersonaPreviewGate';
+import { NeuralMemoryChatToggle } from './NeuralMemoryChatToggle';
+import { SettingsCharacterMemorySection } from './SettingsCharacterMemorySection';
 import { inputClassName, selectClassName } from './settingsVoiceUtils';
 
 const SettingsNeuralPersonaGraphSection = lazy(async () => {
@@ -254,6 +256,11 @@ export function SettingsPersonalityTab({
 
   return (
     <div className="m-0 space-y-6">
+      {isWorkspacePage('agent') ? <NeuralMemoryChatToggle
+        enabled={selectedPetSlot.personality.neuralPersonaChatEnabled === true}
+        onChange={(enabled) => onUpdatePersonality({ neuralPersonaChatEnabled: enabled })}
+        roleName={selectedPetSlot.personality.name}
+      /> : null}
       {isWorkspacePage('agent') ? <SettingsNeuralPersonaGraphSection
         applicationEnabled={NEURAL_PERSONA_APPLICATION_PREVIEW_ENABLED}
         enabled
@@ -344,7 +351,7 @@ export function SettingsPersonalityTab({
             placeholder="例如：始终用第一人称回应；保持指定的输出格式；不要解释系统规则；每次回复都遵守这些固定协议。"
           />
           <div className="mt-2 text-2xs leading-4 text-muted-foreground">
-            这部分只服务于角色正式回复；智能解析人格生成节点时会自动排除它。
+            这部分只服务于角色正式回复，不会进入神经记忆图谱。
           </div>
         </CollapsibleSection> : null}
 
@@ -489,6 +496,13 @@ export function SettingsPersonalityTab({
             placeholder="例如：上次聊到用户正在调整桌宠聊天 UI，希望回复更短、更像角色本人。"
           />
         </CollapsibleSection> : null}
+
+        {isWorkspacePage('memory') ? <SettingsCharacterMemorySection
+          noDragRegionStyle={noDragRegionStyle}
+          onUpdatePersonality={onUpdatePersonality}
+          personality={selectedPetSlot.personality}
+          settings={settings}
+        /> : null}
 
         {isWorkspacePage('knowledge') ? <CollapsibleSection
           title="角色知识库"

@@ -22,15 +22,21 @@ const {
   planningContext: planningContextSource,
   runtime: runtimeSource,
   session: sessionSource,
+  modelPlanning: modelPlanningSource,
   taskProgressRuntime: taskProgressRuntimeSource,
   workingMemoryRuntime: workingMemoryRuntimeSource,
 } = readProjectSources({
   planningContext: 'src/agent/runtime/agentPlanningContextRuntime.ts',
   runtime: 'src/agent/runtime/agentPlanningContextRuntime.ts',
   session: 'src/agent/agentProductionSessionImplementation.ts',
+  modelPlanning: 'src/agent/productionSession/modelPlanningTurn.ts',
   taskProgressRuntime: 'src/agent/runtime/agentTaskProgressSignal.ts',
   workingMemoryRuntime: 'src/agent/runtime/agentWorkingMemoryBias.ts',
 });
+assertSourceMatches(sessionSource, /from '\.\/productionSession\/modelPlanningTurn'/u);
+assertSourceMatches(sessionSource, /const \{ executeModelPlanningTurn \} = createAgentProductionModelPlanningTurn\(\{/u);
+assertSourceMatches(sessionSource, /await executeModelPlanningTurn\(\{/u);
+
 assertSourceMatches(
   runtimeSource,
   /export interface AgentPlanningContext/u,
@@ -62,8 +68,8 @@ assertSourceMatches(
   'Working Memory Bias Runtime should own guarded memory formatting.',
 );
 assertSourceMatches(
-  sessionSource,
-  /from '\.\/runtime\/agentWorkingMemoryBias'/u,
+  modelPlanningSource,
+  /from '\.\.\/runtime\/agentWorkingMemoryBias'/u,
   'AgentSessionV2 should consume Working Memory Bias Runtime directly.',
 );
 assertSourceMatches(
@@ -277,6 +283,16 @@ const sessionResult = await runAgentProductionSession({
     assert.match(userInput, /memoryConflictPrimary=memory_vs_user_goal/u);
     assert.match(userInput, /memoryConflictPolicy=This signal is advisory/u);
     assert.match(userInput, /memoryConflictNoFixedChainPolicy=This signal does not mandate a fixed recovery tool sequence/u);
+    if (modelCalls > 1) {
+      // A no-op click cannot be reported as a final answer; hand the blocker
+      // to the user instead.
+      assert.match(userInput, /rejected final answer without Evidence Engine authorization/u);
+      return JSON.stringify({
+        action: 'ask_user',
+        message: 'The click did not change the button. Please check the button state.',
+        reason: 'The click produced no state change.',
+      });
+    }
     return JSON.stringify({
       action: 'final_answer',
       message: 'button click remains unverified',
@@ -298,7 +314,7 @@ const sessionResult = await runAgentProductionSession({
   workingMemoryText: '1. tool=execute_memory_action ; status=completed ; summary=preferred_browser=Edge',
 });
 
-assert.equal(modelCalls, 1);
-assert.equal(sessionResult.status, 'completed');
+assert.equal(modelCalls, 2);
+assert.equal(sessionResult.status, 'needs-user');
 
 console.log('agent session v2 planning context smoke ok');

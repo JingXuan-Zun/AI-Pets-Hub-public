@@ -4,11 +4,11 @@ import {
   executeAgentChatCommand,
   isAgentToolAvailableInMode,
 } from '../src/agent/index.ts';
-import { createAgentCommandFromPlannerDecision } from '../src/agent/agentLegacy.ts';
+import { createAgentCommandFromPlannerDecision } from '../src/agent/agentPlanner.ts';
 import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 
 const fallbackCommand = createAgentCommandFromPlannerDecision(
-  '/agent 打开浏览器搜�?OpenAI 官网',
+  '/agent 打开浏览器搜索 OpenAI 官网',
   null,
 );
 assert.equal(fallbackCommand?.kind, 'unsupported');
@@ -19,7 +19,7 @@ assert.equal(
 );
 
 const searchCommand = createAgentCommandFromPlannerDecision(
-  '/agent 打开浏览器搜�?OpenAI 官网',
+  '/agent 打开浏览器搜索 OpenAI 官网',
   {
     args: {
       query: 'OpenAI 官网',

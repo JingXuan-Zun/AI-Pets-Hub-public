@@ -1,5 +1,6 @@
+import { readMessageProjectSources as readProjectSources } from './chatMessageSource.mjs';
 import assert from 'node:assert/strict';
-import { readProjectSources } from './smokeTestHarness.ts';
+
 
 const {
   controller: controllerSource,
@@ -29,7 +30,7 @@ assert.match(
 
 assert.ok(
   messageBubbleSource.includes('<div className="font-semibold">{pendingPrimaryText}</div>')
-    && messageBubbleSource.includes('<div className="mt-0.5 text-[10px] text-amber-800">{pendingHelperText}</div>')
+    && /<div className="[^"]*">\{pendingHelperText\}<\/div>/u.test(messageBubbleSource)
     && messageBubbleSource.indexOf('{pendingPrimaryText}') < messageBubbleSource.indexOf("onClick={() => resolveApproval('approve')}"),
   'approval card should render the primary confirmation prompt before the approval button',
 );

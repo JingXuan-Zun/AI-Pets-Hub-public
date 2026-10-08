@@ -5,6 +5,7 @@ import { startVoiceInput } from '../../services/voiceService';
 import { type PetConfig } from '../../types';
 import { getVoiceErrorMessage } from '../../voice/errorMessages';
 import { type VoiceInputSession } from '../../voice/types';
+import { useVoiceConversationController } from './useVoiceConversationController';
 
 const VOICE_INPUT_DISABLED_MESSAGE = '语音输入当前已在设置中关闭。';
 const VOICE_LISTENING_STARTED_MESSAGE = '语音监听已启动。';
@@ -50,7 +51,14 @@ export function usePetChatVoiceInputController({
   voiceInputSessionRef,
   voiceTranscriptRef,
 }: UsePetChatVoiceInputControllerOptions) {
+  const conversation = useVoiceConversationController({ configRef, onOpenChat, publishStatusMessage, sendMessage });
+
   const stopVoiceInput = useCallback(() => {
+    if (conversation.isConversationActive()) {
+      conversation.stopConversation('user');
+      return { ok: true, responseText: '实时对话已结束。', verification: 'Voice conversation stopped.' };
+    }
+
     if (!desktopPetChatStore.getState().isListening && !voiceInputSessionRef.current) {
       publishStatusMessage('当前没有正在进行的语音输入监听。');
       return {
@@ -72,6 +80,7 @@ export function usePetChatVoiceInputController({
       verification: 'Voice input session stopped.',
     };
   }, [
+    conversation,
     publishStatusMessage,
     voiceInputSessionRef,
     voiceTranscriptRef,
@@ -168,18 +177,27 @@ export function usePetChatVoiceInputController({
   ]);
 
   const toggleVoiceInput = useCallback(() => {
-    if (desktopPetChatStore.getState().isListening) {
+    if (desktopPetChatStore.getState().isListening || conversation.isConversationActive()) {
       stopVoiceInput();
+      return;
+    }
+
+    if (configRef.current.settings.voiceInputMode === 'conversation') {
+      void conversation.startConversation();
       return;
     }
 
     void startVoiceInputSession();
   }, [
+    configRef,
+    conversation,
+    onOpenChat,
     startVoiceInputSession,
     stopVoiceInput,
   ]);
 
   return {
+    conversation,
     startVoiceInputSession,
     stopVoiceInput,
     toggleVoiceInput,

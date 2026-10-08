@@ -1,4 +1,4 @@
-import { type LocalVoiceHealth, type PetConfig, type VoiceProvider } from '../types';
+import { type LocalVoiceHealth, type PetConfig, type TtsProvider } from '../types';
 import {
   getLocalVoiceHealth,
   warmupLocalVoice,
@@ -26,7 +26,11 @@ function getToolBooleanInput(toolCall: AgentToolCallCommand, key: string) {
   return typeof value === 'boolean' ? value : undefined;
 }
 
-function getVoiceProviderLabel(provider: VoiceProvider) {
+function getVoiceProviderLabel(provider: TtsProvider) {
+  if (provider === 'gpt-sovits') {
+    return 'GPT-SoVITS 角色音色';
+  }
+
   if (provider === 'api') {
     return 'API 语音';
   }

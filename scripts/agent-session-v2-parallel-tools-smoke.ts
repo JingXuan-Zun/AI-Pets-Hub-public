@@ -22,7 +22,7 @@ const parallelModelCaller: AgentSessionV2ModelCaller = async ({ systemInstructio
   assert.match(systemInstruction, /preflight observation batch with tool_calls/u);
   assert.match(systemInstruction, /For faster response, combine independent read-only preflight observations/u);
   assert.match(systemInstruction, /the app permission UI will ask before changing the computer/u);
-  assert.match(systemInstruction, /remembered preference plus current running\/window\/default-app state/u);
+  assert.match(systemInstruction, /observe current running\/window\/default-app state first; add remembered preference only when/u);
   assert.match(systemInstruction, /Do not search the web unless the user explicitly asks/u);
 
   if (parallelModelCallCount === 1) {
@@ -102,8 +102,11 @@ const parallelResult = await runAgentProductionSession({
   userGoal: 'what are my current computer and display facts',
 });
 
+// The successful read-only batch satisfies the task, so the Runtime answers
+// from every batch result without another model turn.
 assert.equal(parallelResult.status, 'completed');
-assert.equal(parallelResult.finalAnswer, 'display and system information observed');
+assert.equal(parallelModelCallCount, 1);
+assert.equal(parallelResult.finalAnswer, 'Display result\nSystem result');
 assert.equal(parallelResult.toolResults.length, 2);
 assert.equal(parallelCommands.length, 2);
 assert.equal(maxActiveToolCount, 2);

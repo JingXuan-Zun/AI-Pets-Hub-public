@@ -11,9 +11,12 @@ import { useDesktopPetRuntimeLogs } from './useDesktopPetRuntimeLogs';
 import { usePassivePetStatsTicker } from './usePassivePetStatsTicker';
 import { usePetRuntimeNeedMonitors } from './usePetRuntimeNeedMonitors';
 import { usePetRuntimeSpeechController } from './usePetRuntimeSpeechController';
+import { useGptSovitsAutoWarmup } from './useGptSovitsAutoWarmup';
+import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
 import { useLifeCompanionScheduler } from './useLifeCompanionScheduler';
 import { usePersistedChatHistory } from './usePersistedChatHistory';
 import { useDesktopActivityAwareness } from './useDesktopActivityAwareness';
+import { useLifeCompanionScreenWatch } from './useLifeCompanionScreenWatch';
 
 export function usePetRuntimeState() {
   const chatHistoryReady = usePersistedChatHistory();
@@ -77,6 +80,8 @@ export function usePetRuntimeState() {
     addLog,
     configRef,
   });
+  // The first line after launch usually comes from slot 1, so its voice is the one worth preloading.
+  useGptSovitsAutoWarmup(resolvePetVoiceSettings(config, 'primary'));
   const {
     cleanupNeedMonitors,
     clearHighHungerCoaxTimer,
@@ -110,6 +115,11 @@ export function usePetRuntimeState() {
     configRef,
   });
   useDesktopActivityAwareness(configRef);
+  useLifeCompanionScreenWatch({
+    applyConfig: applyConfigStateUpdate,
+    configRef,
+    consented: config.settings.lifeCompanion.screenWatchConsented,
+  });
 
   useEffect(() => {
     if (

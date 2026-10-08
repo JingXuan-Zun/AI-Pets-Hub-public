@@ -8,11 +8,11 @@ import { PetChatConversationMessageFeed } from './PetChatConversationMessageFeed
 import { type PetChatConversationMessagesProps } from './petChatConversationMessageTypes';
 
 export function PetChatConversationMessages(props: PetChatConversationMessagesProps) {
-  const backgroundImageUrl = resolveChatBackgroundImageUrl(props.config);
+  const backgroundImageUrl = props.hoistBackground ? '' : resolveChatBackgroundImageUrl(props.config);
   const backgroundImageStyle = buildChatBackgroundImageStyle(props.config);
   const backgroundOverlayStyle = buildChatBackgroundOverlayStyle(props.config);
   return (
-    <div ref={props.scrollRegionRef} className={`relative min-h-0 flex-1 overflow-hidden ${props.isInteractiveDialogue ? 'bg-transparent' : 'bg-white'}`}>
+    <div ref={props.scrollRegionRef} className={`relative min-h-0 flex-1 overflow-hidden ${props.isInteractiveDialogue || props.hoistBackground ? 'bg-transparent' : 'bg-white'}`}>
       {backgroundImageUrl && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <img

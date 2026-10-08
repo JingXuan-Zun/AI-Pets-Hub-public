@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFile, readModuleProjectFunction } from './projectModuleSource.mjs';
 
-const shellEffectsSource = readProjectFile(
+const shellEffectsSource = readModuleProjectFile(
   'src/components/pet/usePetContainerShellEffects.ts',
 );
 const windowManagerSource = readProjectFile('electron/windowManager.cjs');
+const mainWindowCreationSource = readModuleProjectFunction(
+  'electron/windowManager/mainWindowCreation.cjs', 'createMainWindowCreator',
+);
+const mainWindowOptionsSource = readModuleProjectFunction(
+  'electron/windowManager/mainWindowOptions.cjs', 'createMainWindowOptionsBuilder',
+);
 
 assert.match(
   shellEffectsSource,
@@ -23,7 +30,17 @@ assert.match(
 );
 assert.match(
   windowManagerSource,
-  /mainWindow = new BrowserWindow\(\{[\s\S]*?transparent: true,[\s\S]*?focusable: false,[\s\S]*?title: 'AI Desktop Pet'/u,
+  /const buildMainWindowOptions = createMainWindowOptionsBuilder\(/u,
+  'the root manager should build main window options through the extracted options builder',
+);
+assert.match(
+  mainWindowCreationSource,
+  /setMainWindow\(new BrowserWindow\(buildMainWindowOptions\(\)\)\)/u,
+  'the main window should be constructed from the extracted options builder',
+);
+assert.match(
+  mainWindowOptionsSource,
+  /transparent: true,[\s\S]*?focusable: false,[\s\S]*?title: 'AI Desktop Pet'/u,
   'the transparent pet overlay should not take Windows focus on the first click',
 );
 

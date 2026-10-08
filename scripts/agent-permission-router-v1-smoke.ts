@@ -5,16 +5,15 @@ import {
   shouldRequestAgentPermissionRouteApproval,
   type AgentChatCommand,
 } from '../src/agent/index.ts';
-import { projectRoot, readProjectSources } from './smokeTestHarness.ts';
+import { projectRoot } from './smokeTestHarness.ts';
+import { readModuleProjectSources as readProjectSources } from './projectModuleSource.mjs';
 
 const {
   routerSource,
-  coreSource,
   controllerSource,
   runtimeSource,
 } = readProjectSources({
   routerSource: 'src/agent/agentPermissionRouter.ts',
-  coreSource: 'src/agent/agentCore.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
   runtimeSource: 'src/agent/agentRuntimeExecutor.ts',
 });
@@ -24,12 +23,8 @@ assert.match(
   /export function buildAgentPermissionRoute\([\s\S]*buildAgentExecutionPlan\(command\)[\s\S]*requiresApproval/u,
 );
 assert.match(
-  coreSource,
-  /const permissionRoute = buildAgentPermissionRoute\(command\)[\s\S]*const requiresApproval = shouldRequestAgentPermissionRouteApproval\(permissionRoute\)/u,
-);
-assert.match(
   controllerSource,
-  /runAgentProductionRuntime\([\s\S]*createAgentApprovalMessage\(\{[\s\S]*agentRuntime: result\.continuation/u,
+  /presentAgentRunPendingApproval\(\{\s*agentRuntime: result\.continuation, pendingApproval: result\.pendingApproval[\s\S]*runAgentProductionRuntime\(/u,
 );
 assert.match(
   runtimeSource,

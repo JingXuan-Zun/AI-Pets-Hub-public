@@ -103,6 +103,15 @@ export async function runAgentRuntime<Result>(
     }
   }
 
+  // The approved action has already run, so the next stage gets its own recovery budget.
+  // Applied after the resume transition (which copies the transaction's task state back) and
+  // regardless of acceptance: task-scoped auto continuations arrive outside waiting_approval.
+  // Live WeGame runs spent the budget on launch waits and could not verify the login click.
+  if (options.taskTransactionEvent?.type === 'approve' && currentTaskState) {
+    currentTaskState = { ...currentTaskState, recoveryAttemptCount: 0 };
+    if (taskTransaction) taskTransaction = { ...taskTransaction, taskState: currentTaskState };
+  }
+
   const outcome = await options.adapter.run({
     authorizeModelIteration(request) {
       const decision = authorizeAgentTaskRuntimeModelIteration({

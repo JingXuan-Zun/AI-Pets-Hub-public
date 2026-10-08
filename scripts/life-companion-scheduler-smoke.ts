@@ -95,7 +95,6 @@ const {
   interactionRunnerSource,
   llmControllerSource,
   llmPromptSource,
-  progressSource,
   publisherSource,
   runtimeOverrideSource,
   runtimeSchedulerSource,
@@ -110,7 +109,6 @@ const {
   interactionRunnerSource: 'src/life-companion/lifeCompanionInteractionRunner.ts',
   llmControllerSource: 'src/life-companion/lifeCompanionLlmPromptController.ts',
   llmPromptSource: 'src/life-companion/lifeCompanionLlmPrompt.ts',
-  progressSource: 'PROJECT_FEATURE_PROGRESS.md',
   publisherSource: 'src/life-companion/lifeCompanionTextPromptPublisher.ts',
   runtimeOverrideSource: 'src/life-companion/lifeCompanionRuntimeOverride.ts',
   runtimeSchedulerSource: 'src/life-companion/lifeCompanionRuntimeScheduler.ts',
@@ -166,10 +164,6 @@ assert.match(schedulerSource, /isLifeCompanionQuietHour/u);
 assert.match(soakSource, /life-companion-runtime-soak/u);
 assert.match(soakSource, /phaseCounts/u);
 assert.match(soakSource, /llmStateCounts/u);
-assert.match(progressSource, /Proactive interaction scheduler \| 70%/u);
-assert.match(progressSource, /Proactive text prompt path \| 48%/u);
-assert.match(progressSource, /src\/life-companion\/lifeCompanionRuntimeScheduler\.ts/u);
-assert.match(progressSource, /src\/life-companion\/lifeCompanionRuntimeOverride\.ts/u);
 assert.ok(hookSource.split(/\r?\n/u).length <= 80);
 assert.ok(schedulerSource.split(/\r?\n/u).length <= 180);
 assert.ok(publisherSource.split(/\r?\n/u).length <= 120);

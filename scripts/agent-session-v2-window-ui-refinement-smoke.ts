@@ -11,8 +11,27 @@ let toolCallCount = 0;
 
 const result = await runAgentProductionSession({
   maxSteps: 4,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
+    if (modelCallCount === 2) {
+      // The focused crop around the UIA candidate found the Start button; the
+      // model selects the click, which pauses for approval.
+      assert.match(userInput, /visual refinement result:/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: {
+          stepsJson: JSON.stringify([
+            {
+              args: { action: 'click', x: 810, y: 590 },
+              reason: 'Click the Start button found in the focused crop.',
+              tool: 'execute_desktop_input',
+            },
+          ]),
+        },
+        reason: 'The focused crop found the Start button; request approval for the click.',
+        tool: 'execute_desktop_sequence',
+      });
+    }
     assert.equal(modelCallCount, 1);
     return JSON.stringify({
       action: 'tool_call',
@@ -138,7 +157,7 @@ const result = await runAgentProductionSession({
   userGoal: 'start Example Game inside Launcher',
 });
 
-assert.equal(modelCallCount, 1);
+assert.equal(modelCallCount, 2);
 assert.equal(toolCallCount, 2);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');

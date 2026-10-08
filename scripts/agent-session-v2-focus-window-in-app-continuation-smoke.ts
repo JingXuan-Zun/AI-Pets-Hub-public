@@ -133,6 +133,15 @@ const result = await runAgentProductionSession({
         structuredEvidence: {
           confidence: 'high',
           coordinateConfidence: 'high',
+          // Declared bounds let the actionable-area gate accept the point.
+          elementBounds: {
+            coordinateSpace: 'native-screen',
+            height: 44,
+            source: 'test',
+            width: 150,
+            x: 1365,
+            y: 898,
+          },
           elementCenter: {
             coordinateSpace: 'native-screen',
             source: 'test',
@@ -249,6 +258,15 @@ const activeWindowObservationResult = await runAgentProductionSession({
           confidence: 'high',
           coordinateAuditStatus: 'coordinate_ok',
           coordinateConfidence: 'high',
+          // Declared bounds let the actionable-area gate accept the point.
+          elementBounds: {
+            coordinateSpace: 'native-screen',
+            height: 44,
+            source: 'test',
+            width: 150,
+            x: 1365,
+            y: 898,
+          },
           elementCenter: {
             coordinateSpace: 'native-screen',
             source: 'test',

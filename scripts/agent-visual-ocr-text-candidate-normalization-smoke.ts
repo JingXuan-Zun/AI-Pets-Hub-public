@@ -40,6 +40,51 @@ function createLocateCommand(): AgentChatCommand {
 const originalFetch = globalThis.fetch;
 const originalListCaptureSources = desktopPetShellRuntime.listCaptureSources;
 
+const originalImage = (globalThis as any).Image;
+const originalDocument = (globalThis as any).document;
+
+function createMockUiImageData(width: number, height: number) {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const accent = (x * 7 + y * 11) % 160;
+      data[offset] = 38 + (accent % 80);
+      data[offset + 1] = 48 + ((accent + x) % 90);
+      data[offset + 2] = 62 + ((accent + y) % 100);
+      data[offset + 3] = 255;
+    }
+  }
+  return data;
+}
+
+(globalThis as any).Image = class MockImage {
+  height = 900;
+  naturalHeight = 900;
+  naturalWidth = 1440;
+  onerror: (() => void) | null = null;
+  onload: (() => void) | null = null;
+  width = 1440;
+
+  set src(_value: string) {
+    queueMicrotask(() => this.onload?.());
+  }
+};
+
+(globalThis as any).document = {
+  createElement: () => ({
+    height: 1,
+    getContext: () => ({
+      drawImage: () => undefined,
+      getImageData: (_x: number, _y: number, width: number, height: number) => ({
+        data: createMockUiImageData(width, height),
+      }),
+    }),
+    toDataURL: () => 'data:image/png;base64,mock',
+    width: 1,
+  }),
+};
+
 (desktopPetShellRuntime as any).listCaptureSources = async () => [
   {
     bounds: {
@@ -138,6 +183,8 @@ try {
   ]);
   assert.match(result.observations?.join('\n') ?? '', /Visual action candidate 1: Start/u);
 } finally {
+  (globalThis as any).Image = originalImage;
+  (globalThis as any).document = originalDocument;
   globalThis.fetch = originalFetch;
   (desktopPetShellRuntime as any).listCaptureSources = originalListCaptureSources;
 }

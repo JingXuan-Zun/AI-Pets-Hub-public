@@ -9,6 +9,7 @@ import { resolveClockedPlaybackOverlapMs } from './streamingSpeechSegmentationUt
 import { type EnqueueQueuedReplyVoiceSegmentOptions } from './queuedReplyVoiceSegmentQueueTypes';
 import { resolvePetMessageExpressionAction } from '../../pet-runtime/interactions/petMessageExpressionSignals';
 import { registerReplyMouthPlayback } from '../../pet-runtime/performance/replyMouthSignalRuntime';
+import { resolvePetVoiceSettings } from '../../voice/petVoiceSettings';
 
 type PreparedQueuedReplyVoiceSegment = {
   playback: PreparedVoicePlayback;
@@ -43,12 +44,15 @@ interface RunQueuedReplyVoiceSegmentTaskOptions extends Pick<
 export async function prepareQueuedReplyVoiceSegmentTask({
   configRef,
   segmentText,
-}: Pick<RunQueuedReplyVoiceSegmentTaskOptions, 'configRef' | 'segmentText'>): Promise<PreparedQueuedReplyVoiceSegment> {
-  const settings = configRef.current.settings;
+  targetPetId,
+}: Pick<RunQueuedReplyVoiceSegmentTaskOptions, 'configRef' | 'segmentText' | 'targetPetId'>): Promise<PreparedQueuedReplyVoiceSegment> {
+  const settings = resolvePetVoiceSettings(configRef.current, targetPetId);
   const startedAt = getNowMs();
 
   return {
-    playback: await prepareIndependentVoicePlayback(segmentText, settings),
+    playback: await prepareIndependentVoicePlayback(segmentText, settings, {
+      expressionAction: resolvePetMessageExpressionAction(segmentText),
+    }),
     prepareElapsedMs: Math.round(getNowMs() - startedAt),
     provider: settings.ttsProvider,
   };

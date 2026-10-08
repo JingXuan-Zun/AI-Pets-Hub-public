@@ -1,55 +1,46 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { desktopPetShellRuntime } from '../../desktopShellRuntime';
 
 const NORMAL_GRAPH_HEIGHT = 'clamp(520px, 68vh, 900px)';
 
-type WindowBounds = { height: number; width: number; x: number; y: number };
-type PositionedScreen = Screen & { availLeft?: number; availTop?: number };
-
-function currentWindowBounds(): WindowBounds {
-  return {
-    height: window.outerHeight, width: window.outerWidth,
-    x: window.screenX, y: window.screenY,
-  };
+async function isWindowMaximized() {
+  return desktopPetShellRuntime.isDesktopMode() && Boolean(await desktopPetShellRuntime.isCurrentWindowMaximized());
 }
 
-function availableScreenBounds(): WindowBounds {
-  const display = window.screen as PositionedScreen;
-  return {
-    height: display.availHeight, width: display.availWidth,
-    x: display.availLeft ?? 0, y: display.availTop ?? 0,
-  };
-}
-
-function setCurrentWindowBounds(bounds: WindowBounds) {
-  window.desktopPetShell?.setCurrentWindowBounds?.(bounds);
-}
-
+/**
+ * Opening the memory workspace maximizes the window for real, so dragging its
+ * header restores it like any maximized window. Closing it un-maximizes only
+ * when the workspace did the maximizing and the user has not changed it since.
+ */
 export function useNeuralPersonaGraphFullscreen() {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const originalBounds = useRef<WindowBounds | null>(null);
-  const activeRef = useRef(false);
+  const maximizedByEditor = useRef(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const restoreWindow = async () => {
+    if (!maximizedByEditor.current) return;
+    maximizedByEditor.current = false;
+    if (await isWindowMaximized()) await desktopPetShellRuntime.toggleMaximizeCurrentWindow();
+  };
   const exitEditor = () => {
-    activeRef.current = false;
     setFullscreen(false);
-    if (originalBounds.current) setCurrentWindowBounds(originalBounds.current);
-    originalBounds.current = null;
+    void restoreWindow();
   };
   const enterEditor = () => {
-    originalBounds.current ??= currentWindowBounds();
-    activeRef.current = true;
     setFullscreen(true);
-    setCurrentWindowBounds(availableScreenBounds());
+    void isWindowMaximized().then((maximized) => {
+      if (maximized || !desktopPetShellRuntime.isDesktopMode()) return;
+      maximizedByEditor.current = true;
+      void desktopPetShellRuntime.toggleMaximizeCurrentWindow();
+    });
   };
   useEffect(() => {
     if (!fullscreen) return undefined;
+    // Popovers inside the workspace stop Esc first, so it only exits when nothing else is open.
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && exitEditor();
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [fullscreen]);
-  useEffect(() => () => {
-    if (activeRef.current && originalBounds.current) setCurrentWindowBounds(originalBounds.current);
-  }, []);
+  useEffect(() => () => { void restoreWindow(); }, []);
   const canvasStyle: CSSProperties = {
     height: fullscreen ? 'calc(100vh - 230px)' : NORMAL_GRAPH_HEIGHT, width: '100%',
   };

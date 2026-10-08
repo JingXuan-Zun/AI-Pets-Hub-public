@@ -1,3 +1,4 @@
+import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
 import assert from 'node:assert/strict';
 import {
   AGENT_TOOL_INPUT_PARAM_SPECS,
@@ -13,7 +14,7 @@ import {
   type AgentToolCallName,
 } from '../src/agent/legacy/index.ts';
 import { type PetConfig } from '../src/types.ts';
-import { readProjectFile } from './smokeTestHarness.ts';
+
 
 const toolName = 'analyze_game_screen' satisfies AgentToolCallName;
 const loopToolName = 'manage_game_companion_loop' satisfies AgentToolCallName;
@@ -110,7 +111,6 @@ const runtimeSource = readProjectFile('src/agent/agentRuntimeExecutor.ts');
 const visualRuntimeSource = readProjectFile('src/agent/agentRuntimeVisualTools.ts');
 const serviceSource = readProjectFile('src/services/geminiService.ts');
 const visualSnapshotServiceSource = readProjectFile('src/services/agentVisualSnapshotService.ts');
-const coreSource = readProjectFile('src/agent/agentCore.ts');
 
 for (const source of [
   chatCommandSource,
@@ -120,7 +120,6 @@ for (const source of [
   orchestratorSource,
   sessionSource,
   runtimeSource,
-  coreSource,
 ]) {
   assert.match(source, /analyze_game_screen/u);
   assert.match(source, /manage_game_companion_loop/u);

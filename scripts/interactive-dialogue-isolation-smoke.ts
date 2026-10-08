@@ -65,7 +65,7 @@ assert.match(
 const conversationSource = readProjectFile('src/components/chat/PetChatConversation.tsx');
 assert.match(
   conversationSource,
-  /!isInteractiveDialogue && \(\s*<PetChatConversationHeader/,
+  /!isInteractiveDialogue && \(\s*(?:<div[^>]*>\s*)?<PetChatConversationHeader/,
   'interactive dialogue should hide the normal chat target selector and header',
 );
 

@@ -11,8 +11,27 @@ const toolCalls: AgentChatCommand[] = [];
 
 const result = await runAgentProductionSession({
   maxSteps: 4,
-  modelCaller: async () => {
+  modelCaller: async ({ userInput }) => {
     modelCallCount += 1;
+    if (modelCallCount === 2) {
+      // The refinements verified the Start button; the model selects the
+      // click, which pauses for approval.
+      assert.match(userInput, /elementCenter=924,612/u);
+      return JSON.stringify({
+        action: 'tool_call',
+        args: {
+          stepsJson: JSON.stringify([
+            {
+              args: { action: 'click', x: 924, y: 612 },
+              reason: 'Click the verified Example Game Start button.',
+              tool: 'execute_desktop_input',
+            },
+          ]),
+        },
+        reason: 'The focused crop verified the Start button; request approval for the click.',
+        tool: 'execute_desktop_sequence',
+      });
+    }
     assert.equal(
       modelCallCount,
       1,
@@ -117,10 +136,17 @@ const result = await runAgentProductionSession({
     assert.equal(command.toolCall?.name, 'locate_screen_elements');
     assert.equal(command.toolCall.input.forceRefresh, true);
     assert.equal(command.toolCall.input.focusCoordinateSpace, 'native-screen');
-    assert.equal(command.toolCall.input.focusX, 576);
-    assert.equal(command.toolCall.input.focusY, 402);
-    assert.equal(command.toolCall.input.focusWidth, 528);
-    assert.equal(command.toolCall.input.focusHeight, 286);
+    if (toolCalls.length === 3) {
+      assert.equal(command.toolCall.input.focusX, 576);
+      assert.equal(command.toolCall.input.focusY, 402);
+      assert.equal(command.toolCall.input.focusWidth, 528);
+      assert.equal(command.toolCall.input.focusHeight, 286);
+    } else {
+      // Bounded second refinement re-checks the ready Start button point.
+      assert.equal(toolCalls.length, 4);
+      assert.equal(Number(command.toolCall.input.focusX) + Number(command.toolCall.input.focusWidth) / 2, 924);
+      assert.equal(Number(command.toolCall.input.focusY) + Number(command.toolCall.input.focusHeight) / 2, 612);
+    }
     assert.match(String(command.toolCall.input.question), /AgentSessionV2 visual refinement/u);
     return {
       observations: [
@@ -162,14 +188,14 @@ const result = await runAgentProductionSession({
   userGoal: 'start Example Game inside Launcher',
 });
 
-assert.equal(modelCallCount, 1);
-assert.equal(toolCalls.length, 3);
+assert.equal(modelCallCount, 2);
+assert.equal(toolCalls.length, 4);
 assert.equal(result.status, 'needs-approval');
 assert.equal(result.pendingApproval?.command.toolCall?.name, 'execute_desktop_sequence');
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /924/u);
 assert.match(String(result.pendingApproval?.command.toolCall?.input.stepsJson), /612/u);
 assert.match(result.continuation.historyLines.join('\n'), /parallel tool results/u);
 assert.match(result.continuation.historyLines.join('\n'), /visual refinement result/u);
-assert.match(result.continuation.historyLines.join('\n'), /prepared visual-action approval after visual refinement/u);
+assert.match(result.continuation.historyLines.join('\n'), /selected approval-required tool:/u);
 
 console.log('agent session v2 parallel visual refinement smoke ok');

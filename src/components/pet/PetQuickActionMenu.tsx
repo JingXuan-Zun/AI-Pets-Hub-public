@@ -663,7 +663,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                               })}
                             </div>
                           ) : (
-                            <div className="mt-3 flex min-h-[286px] items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white/55 px-4 text-center text-[10px] leading-5 text-slate-400">
+                            <div className="mt-3 flex min-h-[286px] items-center justify-center rounded-[10px] border border-dashed border-slate-200 bg-white/55 px-4 text-center text-[10px] leading-5 text-slate-400">
                               当前模型还没有导入可用动作，
                               <br />
                               导入后会显示在这里。

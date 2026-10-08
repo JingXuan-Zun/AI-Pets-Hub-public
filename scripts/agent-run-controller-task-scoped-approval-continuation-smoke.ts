@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readProjectFile } from './smokeTestHarness.ts';
+import { readModuleProjectFunction } from './projectModuleSource.mjs';
 
 const controllerSource = [
   readProjectFile('src/components/chat/agentRunController.ts'),
@@ -146,8 +147,8 @@ assert.match(
   'approval handler should route approved execution through the production Runtime entry with the guarded executor',
 );
 assert.match(
-  controllerSource,
-  /executeApprovedCommand: \(command\) => onAgentChatCommand[\s\S]*command,\s*executor: onAgentChatCommand/u,
+  readModuleProjectFunction('src/components/chat/agentRunController.ts', 'runApprovedAgentRuntimeStage'),
+  /executeApprovedCommand: \(command\) => executor\s*\? runAgentControllerToolTransactionWithLiveProgress\(\{\s*command,\s*executor: executor,\s*messageId,\s*signal: signal,/u,
   'approval handler must execute the Runtime-resolved command rather than a stale captured approval command',
 );
 assert.match(
@@ -201,9 +202,14 @@ assert.doesNotMatch(
   'after Runtime continuation, the UI Controller must render the committed result instead of starting a second read-only recovery loop',
 );
 assert.match(
-  controllerSource,
-  /const taskScopedApprovedContinuation = await consumeTaskScopedApprovedContinuations[\s\S]*sessionResult = taskScopedApprovedContinuation\.result[\s\S]*const displayResult = createAgentProductionSessionDisplayResult\(sessionResult, approval\.command\)/u,
+  readModuleProjectFunction('src/components/chat/agentRunController.ts', 'resolveAgentApprovalRequest'),
+  /const taskScopedApprovedContinuation = await consumeTaskScopedApprovedContinuations[\s\S]*sessionResult = taskScopedApprovedContinuation\.result[\s\S]*const \{ displayResult, pendingReadOnlyFollowUpApproval \} = updateApprovedAgentRunPresentation\(\{\s*sessionResult, approval,/u,
   'the approval handler should render the Runtime-owned continuation result directly',
+);
+assert.match(
+  readModuleProjectFunction('src/components/chat/agentRunController.ts', 'updateApprovedAgentRunPresentation'),
+  /const displayResult = createAgentProductionSessionDisplayResult\(sessionResult, approval\.command\)/u,
+  'the reachable presentation stage should display the same committed Runtime result and approval command',
 );
 assert.match(
   approvalRuntimeSource,

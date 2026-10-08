@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { readModuleProjectFile } from './projectModuleSource.mjs';
 
 const senderSource = fs.readFileSync('src/components/chat/petChatMessageSendExecution.ts', 'utf8');
 const senderHookSource = fs.readFileSync('src/components/chat/usePetChatMessageSender.ts', 'utf8');
-const controllerSource = fs.readFileSync('src/components/chat/agentRunController.ts', 'utf8');
+const controllerSource = readModuleProjectFile('src/components/chat/agentRunController.ts');
 const approvalLifecycleSource = fs.readFileSync(
   'src/components/chat/group/task/groupTaskApprovalLifecycle.ts',
   'utf8',

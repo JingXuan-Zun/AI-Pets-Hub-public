@@ -23,6 +23,8 @@ function targetDistance(link: RecoveryLink, fallback: number) {
 }
 
 const RECOVERY_LENGTH_RATIO = 1.02;
+const RECOVERY_PASSES = 8;
+const RECOVERY_RAMP_FRAMES = 4;
 
 export function hasNeuralPersonaGraphExtremeStretch(
   links: RecoveryLink[], fallbackDistance: number,
@@ -60,9 +62,12 @@ function dampRecoveredNodes(links: RecoveryLink[]) {
 
 export function recoverNeuralPersonaGraphExtremeStretch(
   links: RecoveryLink[], fallbackDistance: number,
-  maximumStep: number, timeScale: number,
+  maximumStep: number, timeScale: number, framesSinceRelease = Number.POSITIVE_INFINITY,
 ) {
-  for (let pass = 0; pass < 8; pass += 1) {
+  // Ease in after release: the first frame runs a single pass, so the dragged
+  // node starts rebounding instead of snapping back within one frame.
+  const ramp = Math.min(1, Math.max(1 / RECOVERY_PASSES, (framesSinceRelease - 1) / RECOVERY_RAMP_FRAMES));
+  for (let pass = 0; pass < RECOVERY_PASSES * ramp; pass += 1) {
     links.forEach((link) => {
       recoverLink(link, fallbackDistance, maximumStep, timeScale);
     });

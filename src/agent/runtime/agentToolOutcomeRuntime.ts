@@ -98,9 +98,23 @@ export function transitionAgentToolOutcome(
     };
   }
   if (
+    options.recoveryDecision.action === 'stop-needs-user'
+    && structuredEvidence?.postActionRecovery?.strategy === 'ask-user'
+  ) {
+    return {
+      ...base,
+      kind: 'stop-needs-user',
+      reason: options.recoveryDecision.reason,
+    };
+  }
+  // Only look for a continuation control when the gate's recovery proposal is
+  // actionable. Gates that need the user (QR code, verification code, private
+  // credentials) propose ask-user with no next tool and must stop for the user.
+  if (
     options.refinementAvailable
     && structuredEvidence?.postActionState === 'login_required'
-    && structuredEvidence?.postActionRecovery
+    && structuredEvidence?.postActionRecovery?.nextTool
+    && structuredEvidence.postActionRecovery.strategy !== 'ask-user'
   ) {
     return {
       ...base,
