@@ -1,14 +1,14 @@
 # AI Pets Hub
 
-> 一个面向 Windows 桌面的开源 AI 宠物与 AI Runtime World 平台。
+> 一个面向 Windows 桌面、源码公开的 AI 宠物与 AI Runtime World 平台。
 >
 > 将 AI 角色、长期记忆、神经人格、多 Agent 群体交互、Agent Runtime、Computer Use、MCP、Skill、插件扩展、语音以及 2D / Live2D / 3D 角色运行时组合到同一个可扩展的桌面环境中。
 
 [English README](../README.md)
 
-> **项目状态：Early Open Source / Active Development**
+> **项目状态：早期公开开发 / Active Development**
 >
-> 这是一个正在持续开发和重构中的开源项目。当前源码已经包含大量可运行模块，但不同子系统的稳定程度不同；部分功能仍处于集成、验证或实验阶段。开源的目的之一，就是让开发者能够实际使用、发现问题、参与修复，并共同推进平台建设。
+> 这是一个正在持续开发和重构中的源码公开项目。当前源码已经包含大量可运行模块，但不同子系统的稳定程度不同；部分功能仍处于集成、验证或实验阶段。公开源码的目的之一，就是让开发者能够实际使用、发现问题、参与修复，并共同推进平台建设。
 
 ---
 
@@ -688,7 +688,7 @@ Core Runtime
 
 # 当前状态
 
-AI Pets Hub 当前属于 **Early Open Source / Active Development**。
+AI Pets Hub 当前属于 **早期公开开发 / Active Development**。
 
 源码规模已经较大，包含大量 Runtime、验证和测试辅助代码，但项目还没有把所有系统收束成一个完全稳定的生产版本。
 
@@ -1011,7 +1011,7 @@ AI Pets Hub 正在逐步向社区开放。
 
 请查看 [`LICENSE`](../LICENSE)。
 
-项目源码采用 Apache-2.0 许可证。应用图标中的项目角色插画不在该许可证范围内，详见 [`ASSET_LICENSES.md`](../ASSET_LICENSES.md)。第三方依赖、模型、角色资源、音频、动画和其他内容可能具有独立许可证，请在重新分发前确认对应授权。
+项目源码采用 PolyForm Noncommercial 1.0.0 许可证：个人及其他非商业用途免费；商业使用需另行取得商业许可（联系方式：QQ 群 1082932504）。v0.2.0 之前发布的版本按 Apache-2.0 发布。应用图标中的项目角色插画不在该许可证范围内，详见 [`ASSET_LICENSES.md`](../ASSET_LICENSES.md)。第三方依赖、模型、角色资源、音频、动画和其他内容可能具有独立许可证，请在重新分发前确认对应授权。
 
 ---
 

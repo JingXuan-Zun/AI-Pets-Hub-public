@@ -1,12 +1,12 @@
 # AI Pets Hub
 
-> An open-source desktop AI pet and AI Runtime World platform for building intelligent characters, persistent memory, multi-agent interaction, computer-use agents, and extensible AI systems.
+> A source-available desktop AI pet and AI Runtime World platform for building intelligent characters, persistent memory, multi-agent interaction, computer-use agents, and extensible AI systems.
 >
 > AI Pets Hub brings AI characters, memory, neural personality, multi-agent interaction, Agent Runtime, Computer Use, MCP, Skills, extensions, voice, and 2D / Live2D / 3D character runtimes into one extensible desktop environment.
 
 [中文 README](../README.zh-CN.md)
 
-> **Project Status: Early Open Source / Active Development**
+> **Project Status: Early Public Development / Active Development**
 >
 > AI Pets Hub is actively developed and continuously refactored. The current source tree already contains a large number of working runtime, agent, memory, character, MCP, skill, and desktop subsystems, but different parts of the platform are at different levels of stability. Some features are still being integrated, tested, or experimentally developed.
 
@@ -698,7 +698,7 @@ Exact dependency versions are defined in `package.json`.
 
 # Current Status
 
-AI Pets Hub is currently **Early Open Source / Active Development**.
+AI Pets Hub is currently **Early Public Development / Active Development**.
 
 The source tree already contains a substantial number of runtime, validation, and testing components, but the project has not yet consolidated every subsystem into a fully production-stable release.
 
@@ -1019,7 +1019,7 @@ For security vulnerabilities, use GitHub's private vulnerability reporting if it
 
 See [`LICENSE`](../LICENSE).
 
-The project source is licensed under Apache-2.0. The project character artwork used in the application icons is excluded; see [`ASSET_LICENSES.md`](../ASSET_LICENSES.md). Third-party dependencies, models, character resources, audio, animations, and other content may have separate licenses. Check the corresponding license terms before redistribution.
+The project source is licensed under PolyForm Noncommercial 1.0.0: free for personal and other noncommercial use; commercial use requires a separate license (contact: QQ group 1082932504). Versions released before v0.2.0 were published under Apache-2.0. The project character artwork used in the application icons is excluded; see [`ASSET_LICENSES.md`](../ASSET_LICENSES.md). Third-party dependencies, models, character resources, audio, animations, and other content may have separate licenses. Check the corresponding license terms before redistribution.
 
 ---
 

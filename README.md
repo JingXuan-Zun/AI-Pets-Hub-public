@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
     <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
     <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/Source%20License-Apache--2.0-blue" alt="Source license: Apache-2.0" /></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
   </p>
   <p><a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest">⬇️ Download Windows preview</a></p>
 </div>
@@ -33,7 +33,7 @@
 - 🔊 **Voice and character presentation** — GPT-SoVITS character voices with swappable voice packs (including lite packs), a separate voice per pet, hands-free conversation with per-character wake words, plus Browser TTS and expression modules. Local voice backends must be installed separately.
 - 🧩 **Runtime integrations** — Includes a Unity Bridge, DeepSeek Harness Bridge, and ComfyUI Workflow settings entry to extend runtime and workflow options.
 
-> **Current stage:** Early open source; some capabilities are still being integrated. See [project status](#project-status) for subsystem details.
+> **Current stage:** Early public development; some capabilities are still being integrated. See [project status](#project-status) for subsystem details.
 
 ### 🆕 What's new in v0.2.0
 
@@ -48,7 +48,7 @@
 See [Releases](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases) for the full changelog.
 
 > [!IMPORTANT]
-> Apache-2.0 applies to project source code; the character illustration in the app icon is excluded. The repository does not provide a library of character models, animations, or voice assets for unrestricted redistribution. Read the [asset licensing notes](./ASSET_LICENSES.md) and [public export boundary](./PUBLIC_EXPORT.md) first.
+> The source is available under [PolyForm Noncommercial 1.0.0](./LICENSE): free for personal study, modification, and noncommercial use. **Commercial use requires a separate license** — contact us in QQ group 1082932504. The character illustration in the app icon is excluded from the source license. The repository does not provide a library of character models, animations, or voice assets for unrestricted redistribution. Read the [asset licensing notes](./ASSET_LICENSES.md) and [public export boundary](./PUBLIC_EXPORT.md) first.
 
 <details>
 <summary>📚 Contents</summary>
@@ -295,8 +295,22 @@ Do not infer that a capability is enabled in every app entry point or stable jus
 
 ## 📄 License and Assets
 
-- Project source code is licensed under the [Apache License 2.0](./LICENSE).
-- The character illustration in the application icons is creator-owned and **excluded from the Apache-2.0 grant**. See [ASSET_LICENSES.md](./ASSET_LICENSES.md).
+Project source code is licensed under the [PolyForm Noncommercial License 1.0.0](./LICENSE) (source-available, noncommercial).
+
+| Use | Allowed? |
+| --- | --- |
+| Personal study, research, and private use | ✅ Free |
+| Modifying the source and making your own version | ✅ Free (noncommercial) |
+| Noncommercial sharing and redistribution | ✅ Free, with the license and copyright notices |
+| Use by schools, charities, and public research organizations | ✅ Free |
+| Commercial use (selling, paid services, company business use, ad revenue, bundling into commercial products, etc.) | ❌ Requires a separate commercial license |
+
+**Commercial licensing:** contact us in QQ group **1082932504**.
+
+This table is a summary for convenience; the [LICENSE](./LICENSE) text governs.
+
+- Versions released before v0.2.0 (v0.1.0) were published under Apache-2.0, and that grant is unaffected by this change.
+- The character illustration in the application icons is creator-owned and **excluded from the source license**. See [ASSET_LICENSES.md](./ASSET_LICENSES.md).
 - Third-party dependencies and user-provided character models, animation, audio, and other assets remain subject to their own licenses.
 - See [PUBLIC_EXPORT.md](./PUBLIC_EXPORT.md) for the scope and checks for public exports.
 

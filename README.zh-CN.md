@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
     <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
     <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/Source%20License-Apache--2.0-blue" alt="Source license: Apache-2.0" /></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
   </p>
   <p><a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest">⬇️ 下载 Windows 预览版</a></p>
 </div>
@@ -33,7 +33,7 @@
 - 🔊 **语音与角色表现** — 支持 GPT-SoVITS 角色语音（可换语音包，含轻量包）、每个桌宠单独绑定声音、免手动语音对话与按角色区分的唤醒词，以及 Browser TTS 和表情表现模块；本地语音后端需要自行安装。
 - 🧩 **运行时集成** — 包含 Unity Bridge、DeepSeek Harness Bridge 和 ComfyUI Workflow 设置入口，供扩展不同运行环境与工作流。
 
-> **当前阶段：** 早期开源，部分能力仍在集成；各子系统状态见[项目状态](#项目状态)。
+> **当前阶段：** 早期公开开发，部分能力仍在集成；各子系统状态见[项目状态](#项目状态)。
 
 ### 🆕 v0.2.0 更新
 
@@ -48,7 +48,7 @@
 完整变更见 [Releases](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases)。
 
 > [!IMPORTANT]
-> Apache-2.0 适用于项目源码；应用图标中的角色插画不包含在该许可范围内。公开仓库不提供可自由再分发的角色模型、动画或语音素材库。请先阅读[素材授权说明](./ASSET_LICENSES.md)和[公开仓库边界](./PUBLIC_EXPORT.md)。
+> 本项目源码公开，采用 [PolyForm Noncommercial 1.0.0](./LICENSE)：个人学习、修改和非商业使用免费；**商业使用需另行取得授权**，请加 QQ 群 1082932504 联系。应用图标中的角色插画不在源码许可范围内。公开仓库不提供可自由再分发的角色模型、动画或语音素材库。请先阅读[素材授权说明](./ASSET_LICENSES.md)和[公开仓库边界](./PUBLIC_EXPORT.md)。
 
 <details>
 <summary>📚 目录</summary>
@@ -295,8 +295,22 @@ npm run dist:win        # Windows 分发构建流程
 
 ## 📄 许可证与素材
 
-- 项目源码采用 [Apache License 2.0](./LICENSE)。
-- 应用图标中的角色插画由创作者保留权利，**不包含在 Apache-2.0 授权范围内**；请阅读 [ASSET_LICENSES.md](./ASSET_LICENSES.md)。
+项目源码采用 [PolyForm Noncommercial License 1.0.0](./LICENSE)（源码公开、非商用许可）。
+
+| 用途 | 是否允许 |
+| --- | --- |
+| 个人学习、研究、自用 | ✅ 免费 |
+| 修改源码、做自己的版本 | ✅ 免费（非商业用途） |
+| 非商业分享和再分发 | ✅ 免费，需附带许可证和版权声明 |
+| 学校、公益组织、科研机构使用 | ✅ 免费 |
+| 商业用途（售卖、付费服务、公司内部业务、广告变现、集成进商业产品等） | ❌ 需另行取得商业授权 |
+
+**商业授权：** 请加 QQ 群 **1082932504** 联系我们。
+
+上表是便于理解的摘要，具体以 [LICENSE](./LICENSE) 原文为准。
+
+- v0.2.0 之前发布的版本（v0.1.0）按 Apache-2.0 发布，其授权不受本次变更影响。
+- 应用图标中的角色插画由创作者保留权利，**不包含在源码许可范围内**；请阅读 [ASSET_LICENSES.md](./ASSET_LICENSES.md)。
 - 第三方依赖、用户提供的角色模型 / 动画 / 音频及其他素材仍受各自许可约束。
 - 公开导出内容的范围与检查提示见 [PUBLIC_EXPORT.md](./PUBLIC_EXPORT.md)。
 

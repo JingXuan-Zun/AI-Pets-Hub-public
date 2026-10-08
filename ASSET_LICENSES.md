@@ -1,7 +1,8 @@
 # Asset licensing
 
-The source code is licensed under Apache-2.0. The following project branding files contain an
-original character illustration by the project owner and are excluded from that license:
+The source code is licensed under PolyForm Noncommercial 1.0.0 (see LICENSE). The following
+project branding files contain an original character illustration by the project owner and are
+excluded from that license:
 
 - `build/icon.png`
 - `build/icon.ico`
