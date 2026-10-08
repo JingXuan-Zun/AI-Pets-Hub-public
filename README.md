@@ -1,299 +1,333 @@
-<div align="center">
-  <img src="build/icon.png" alt="AI Pets Hub project icon" width="148" />
-  <h1>AI Pets Hub</h1>
-  <p><strong>Bring AI characters to the desktop. Connect agents to the real environment.</strong></p>
-  <p>A Windows desktop platform for AI characters and agents</p>
-  <p>
-    <a href="./README.zh-CN.md">简体中文</a> · <strong>English</strong>
-  </p>
-  <p>
-    <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
-    <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
-    <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
-  </p>
-  <p><a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest">⬇️ Download Windows preview</a></p>
-</div>
-
 <p align="center">
-  <a href="#feature-overview">✨ Feature overview</a> ·
-  <a href="#quick-start">🚀 Quick start</a> ·
-  <a href="#project-status">📊 Project status</a>
+  <img src="./docs/image/banner.en.png" alt="AI Pets Hub: AI characters that live on your desktop" width="880">
 </p>
 
-## ✨ Feature Overview
+<h1 align="center">AI Pets Hub</h1>
 
-- 🐾 **Desktop AI characters** — Run 2D, Live2D, or 3D characters on Windows, with runtime support for expressions, motion, look-at, and interaction. Character models and assets must be supplied and licensed separately.
-- 💬 **AI character chat** — Configure a model service to chat with characters in the desktop app and manage character and chat settings.
-- 🧠 **Character memory and persona** — Character / group memory, Neural Persona graphs, relationships, and social context provide different foundations for ongoing interactions. Characters can propose memories that are saved only after you approve them, and an Obsidian-style memory workspace lets you drag to link and tag them. Integration is still progressing.
-- 👥 **Multi-character and group interaction** — Modules for group topics, shared memory, character relationships, and social timelines support exploration of shared character environments.
-- 🛠️ **Agent tool execution** — The Agent Runtime plans and calls registered tools, with permission checks, result assessment, and recovery-related paths; end-to-end execution is still being validated.
-- 🖥️ **Windows desktop actions** — Interact with the desktop through screen / window observation, mouse and keyboard input, app launching, and local-file tools; behavior depends on system conditions and integration status.
-- 🔌 **MCP and Skill extensions** — Connect external MCP tool servers and manage Skill packages; policy, trust, and sandbox infrastructure are being improved.
-- 🔊 **Voice and character presentation** — GPT-SoVITS character voices with swappable voice packs (including lite packs), a separate voice per pet, hands-free conversation with per-character wake words, plus Browser TTS and expression modules. Local voice backends must be installed separately.
-- 🧩 **Runtime integrations** — Includes a Unity Bridge, DeepSeek Harness Bridge, and ComfyUI Workflow settings entry to extend runtime and workflow options.
+<p align="center">
+  <a href="./README.zh-CN.md">简体中文</a> | <strong>English</strong>
+</p>
 
-> **Current stage:** Early public development; some capabilities are still being integrated. See [project status](#project-status) for subsystem details.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
+  <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
+  <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><img src="https://img.shields.io/github/v/release/JingXuan-Zun/AI-Pets-Hub-public?label=release&color=D4518E" alt="Latest release" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
+</p>
 
-### 🆕 What's new in v0.2.0
+<p align="center">
+  <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><strong>⬇️ Download for Windows</strong></a> ・
+  <a href="#quick-start">🚀 Quick start</a> ・
+  <a href="#features">✨ Features</a> ・
+  <a href="#contact">💌 Community</a>
+</p>
 
-- 🔊 **Character voices**: GPT-SoVITS support with swappable voice packs (including lite packs); each pet slot can use its own voice; long replies are synthesized in complete sentence groups.
-- 🎙️ **Hands-free voice chat**: talk without pressing a button; each character has its own wake words matched by sound; mic status is shown under the selected character.
-- 🧠 **Memory approval and workspace**: characters propose what to remember and nothing is saved until you approve it in the sidebar; the new memory workspace supports drag-to-link, tags, and a light graph.
-- 👀 **Life companion**: the character watches the screen only with your consent and can be disconnected at any time, including by declining in chat.
-- 🛠️ **Agent loop (preview)**: a new observe → decide → act → verify loop, on by default and switchable in the Agent settings, with better desktop targeting, recovery after clicks, and stopping at login screens it cannot automate. It has been tested on only a few tasks so far; file tasks still use the older path.
-- 🔐 **Security hardening**: opening files or URLs, steps that name a file path, and local project actions now ask for fresh approval; Agent file tools stay away from credentials and app data; IPC is trusted only from the bundled app page.
-- 🎞️ **Other**: 2D video pets rotate through library subfolders and play emotion clips; chat and settings use standard window controls; chat memory saving and long-conversation summaries are improved.
+**AI Pets Hub is an AI companion platform for the Windows desktop: your characters live on your screen, talk to you, remember you, and — when you allow it — help you operate your computer.**
 
-See [Releases](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases) for the full changelog.
+> Built with Electron, React, and TypeScript. Put 2D image / video, Live2D, or VRM / 3D characters on your desktop;
+> give each one its own personality, voice, wake words, and memories, then chat one-on-one, in a group, or play out a story.
+> Memories are proposed by the character and saved only after you approve them, and screen watching starts only with your consent.
+> A purpose-built observe → decide → act → verify agent loop lets characters actually open apps and work with on-screen UI for you.
 
-> [!IMPORTANT]
-> The source is available under [PolyForm Noncommercial 1.0.0](./LICENSE): free for personal study, modification, and noncommercial use. **Commercial use requires a separate license** — contact us in QQ group 1082932504. The character illustration in the app icon is excluded from the source license. The repository does not provide a library of character models, animations, or voice assets for unrestricted redistribution. Read the [asset licensing notes](./ASSET_LICENSES.md) and [public export boundary](./PUBLIC_EXPORT.md) first.
+---
+
+## ✨ At a Glance
+
+- 🐾 **Desktop companions** — Characters stay on your desktop: drag them around, watch them idle, move, and change expressions; run several at once
+- 🎭 **Characters you design** — Each character has its own name, personality, system prompt, knowledge base, and look
+- 💬 **Solo · group · story chat** — Talk with one character, let several chat together, or act out a story
+- 🎙️ **Characters with real voices** — GPT-SoVITS voices with swappable voice packs; bind a different voice to each pet
+- 👂 **Hands-free conversation** — Say a character's wake word and just talk; matching is by sound, so homophones still work
+- 🧠 **They remember you** — Characters propose what to remember and save it only after you approve; organize it all in an Obsidian-style memory workspace
+- 👀 **Life companion** — With your consent, a character notices what you're doing and checks in on you; disconnect with one click
+- 🛠️ **Desktop agent** — Characters can open apps, click buttons, and read on-screen UI, asking first before sensitive steps
+- 🔌 **Extensible** — Connect MCP tool servers and Skill packages; bring whichever model and voice services you like
+- 🔐 **Privacy first** — API keys are encrypted on your machine; chats and memories stay on your own computer
+
+---
+
+## 🖼️ Preview
+
+<!-- Screenshot to add: pet on the desktop + chat window (main preview, 1600px wide) -->
+
+> 📸 App screenshots are on the way. Want to see it now? [Download the portable build](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest) and try it.
+
+---
+
+<a id="agent-loop"></a>
+
+## ⚙️ The Agent Loop
+
+> When a character operates your computer, it runs on a purpose-built desktop agent loop.
+> Source: [`src/agent/loop/`](./src/agent/loop/)
+
+<p align="center">
+  <img src="./docs/image/agent-loop.en.png" alt="Agent loop: observe, decide, act, verify" width="880">
+</p>
+
+The key difference from "have the model emit a list of commands and run them" is that **after every step it looks at the screen again to confirm the result you asked for actually appeared**. A launch command returning success does not prove the right window opened; a task only counts as done once it is verified.
 
 <details>
-<summary>📚 Contents</summary>
+<summary><b>Design details</b> (click to expand)</summary>
 
-- [Project Goal](#project-goal)
-- [Feature Overview](#feature-overview)
-- [Core Systems](#core-systems)
-  - [Agent Runtime](#agent-runtime)
-  - [Windows Computer Use](#windows-computer-use)
-  - [Characters, Memory, and Group Interaction](#characters-memory-and-group-interaction)
-  - [Desktop Pets and Character Presentation](#desktop-pets-and-character-presentation)
-  - [MCP, Skills, and Integrations](#mcp-skills-and-integrations)
-- [Architecture and Tech Stack](#architecture-and-tech-stack)
-- [Quick Start](#quick-start)
-- [Project Status](#project-status)
-- [License and Assets](#license-and-assets)
-- [Contributing and Support](#contributing-and-support)
+- **One loop, one decider** — A single model decider picks the next step within a step and time budget, so multiple planners never fight each other.
+- **Tiered observation** — It looks the cheap way first (window list, UI Automation tree), falls back to region OCR, and only then to a vision model; on-screen elements get numbered marks so the model can point at them precisely.
+- **Task-scoped approval** — Clicks and typing can continue once you approve the task; opening files or URLs, steps that name a file path, and local project actions ask for fresh approval every time.
+- **Verify after acting** — After each action it observes again to confirm the target state; if not reached, it recovers by re-locating or trying another way.
+- **Knows when to stop** — On login or captcha screens that shouldn't be automated, it stops and hands control back to you.
+- **A run panel you can watch** — A collapsible panel in the chat window shows what each step saw and did.
+- **Safety boundaries** — Tool output is treated as data, never as instructions; agent file tools stay away from credentials and app data; IPC is trusted only from the bundled app page.
+
+The new loop is on by default and can be turned off under **Settings → Agent**. It has been tested on only a few tasks so far, and file tasks still use the older path. See the [project overview](./docs/project-overview.en.md) for the full Agent Runtime.
 
 </details>
 
-## 🧭 Project Goal
+---
 
-Many AI companion apps keep interaction inside a single chat. AI Pets Hub explores a different desktop experience: characters can have ongoing context and visual presentation; agents can call tools within runtime and permission boundaries; and multiple characters can share group activity and relationship state.
-
-```text
-Characters and chat ── Memory / persona / relationships
-          │                         │
-          └──── Agent Runtime ────── Tools / MCP / Computer Use
-                          │
-               Desktop, voice, and presentation
-```
-
-These capabilities are being built as composable systems. The long-term direction is an extensible AI Runtime World, rather than a single chat flow that has to own every capability. This direction is still being implemented; actual availability depends on the current code and project status.
-
-## 🧩 Core Systems
-
-### 🤖 Agent Runtime
-
-The project includes its own TypeScript Agent Runtime. The source has components for session entry, context and planning, tool execution, result assessment, and follow-up handling:
-
-```text
-Request / session
-       ↓
-Context and planning
-       ↓
-Permission and preflight checks
-       ↓
-Tool registry and execution
-       ↓
-Observation, evidence, and result assessment
-       ↓
-Verification, recovery, or replanning
-```
-
-The design distinguishes “the tool call returned successfully” from “the requested state was achieved.” For example, a successful app-launch command alone does not prove that the intended window opened. The code therefore also includes window / visual-target verification, action evidence, result assessment, recovery, and replanning modules.
-
-The runtime also contains tool schemas, permission routing, and execution lifecycle controls. These modules continue to evolve; whether a particular Agent entry point uses the full path depends on the feature. Example source files include `src/agent/agentOrchestrator.ts`, `src/agent/agentPlanner.ts`, `src/agent/agentToolRegistry.ts`, and `src/agent/agentRuntimeExecutor.ts`.
-
-#### What the Agent Execution Path Covers
-
-- **Tool registration and input constraints:** tools expose descriptions and input schemas through a shared registry for runtime selection and dispatch.
-- **Permission and policy:** permission routing and policy components participate in preflight checks so model output is not treated as a trusted system command.
-- **Desktop observation:** screen and window tools provide environment information before and after an action; target resolution and visual verification help identify the intended target and check the result.
-- **Evidence and assessment:** result-assessment modules use tool results and observation data to evaluate whether the intended state was reached, rather than relying only on a process exit code.
-- **Failure handling:** cancellation, timeouts, recovery, follow-up, and replanning paths exist in the runtime. The exact behavior depends on the entry point and executor.
-
-Common entry points and implementations live in `src/agent/` and `src/agent/runtime/`. The architecture is still being refactored and integrated, so this diagram describes the design and code components; it does not mean every user request follows the exact same path.
-
-### 🖥️ Windows Computer Use
-
-Desktop actions are organized around observing, locating, acting, and checking. The repository contains code paths for screen capture, region and window handling, desktop input, app launching, local file operations, and visual-target verification.
-
-```text
-Observe desktop → resolve target → check permissions → act
-       ↑                                               ↓
-       └──── verify result ← collect evidence ← observe again
-                                  └→ recover / replan
-```
-
-These capabilities let an Agent interact with a local desktop environment, and require the runtime to handle permissions, cancellation, failures, and uncertain outcomes. Actual behavior depends on the Windows session, target application, and integration status; it is not a guarantee for arbitrary desktop tasks.
-
-### 🧠 Characters, Memory, and Group Interaction
-
-Memory-related code includes more than chat history. It also includes character and group memory, knowledge / retrieval interfaces, and subsystems for neural-persona graphs, relationship state, and social timelines. The design aims to let longer-term context inform later interactions and to provide structure for shared group state between characters.
-
-Group-related modules include group topics, group memory, relationship policies, social events, and trends. They are still being connected: the presence of an infrastructure component does not mean it is already used throughout every conversation, learning, or character-behavior flow.
-
-#### What Neural Persona Includes
-
-Code under `src/character-graph/neural-persona/` covers persona nodes and hierarchy, node generation, graph layout and exploration, relationship analysis, semantic retrieval, and tagging. It also includes feedback ledgers, learning proposals, application / reversal paths, and persistence. Additional modules cover provider-data policy and response-quality A/B flows.
-
-The goal is to organize long-term character information into structures that can be explored and maintained. Integration with cognition and chat is ongoing; the presence of graph modules does not mean automatic memory is fully enabled.
-
-#### What Group Interaction Includes
-
-Group-related code goes beyond a group-chat entry point. It includes group topics, shared memory, social groups, directed character relationships, relationship behavior policies, social timelines, and trends. Group-memory modules also cover conflict detection, evidence scope, review, and readiness logic. The long-term direction is to use this state in later interactions; connections and consistency between modules are still being validated.
-
-### 🎭 Desktop Pets and Character Presentation
-
-- **2D / Live2D:** runtime modules cover model loading, Cubism Core integration, expression discovery and binding, pointer look, and interaction control.
-- **3D / VRM:** built with Three.js / React Three Fiber, with modules for VRM loading, scene mounting, expression and look-at control, motion, and reactions.
-- **Unity Bridge:** the repository contains Unity Runtime / Bridge services and protocol code as another runtime connection path.
-
-These are runtime capabilities; the repository does not thereby include models, motion clips, textures, or voice assets that can be freely redistributed. Check the source and license of any assets you use.
-
-The runtimes also have distinct responsibilities. Live2D modules cover Runtime Profiles, the Cubism Core loader, expression discovery / binding, presentation priority, pointer look, and interaction control. The 3D / VRM path covers asset loading, scene mounting, expression and look-at controls, drag state, external motion clips, and reactions. The Unity Bridge provides service- and protocol-level connection code.
-
-### ✨ Expressions and Life Companion
-
-**Expression Library** modules cover expression categories, asset import and mutation, review queues, settings, semantics, and the system asset catalog. The reply-expression runtime connects AI replies to character presentation. Asset sources and permissions still need to be checked individually.
-
-**Life Companion** is infrastructure for persistent character state and proactive interaction. Source modules include Affection, Hunger, Mood, startup greetings, proactive / random interactions, desktop-activity awareness, quiet hours, scheduling, and growth control. Triggers depend on settings, time windows, and cooldowns, and are still being connected to character behavior.
-
-### 🔌 MCP, Skills, and Integrations
-
-**MCP:** the repository contains modules for server configuration, a Stdio client, session pooling, tool calls, health diagnostics, argument validation, policy, and cancellation. The Agent side also has external MCP bridge and policy-related code.
-
-Other implementations cover server compatibility, environment preflight, call history, soak / readiness checks, risk summaries, and execution receipts. Third-party server behavior and compatibility depend on those servers; the runtime still has to handle connection errors and validate tool arguments.
-
-**Skills and extensions:** source modules cover the Skill Registry, package import and installation, lifecycle, runtime policy, trust evidence, signature verification, update / rollback, and sandbox-related infrastructure. The external extension ecosystem and Marketplace release workflow are still under development and validation.
-
-The Skill design uses manifests and package metadata to describe extensions, with host-side execution scopes, trust information, permission grants, and sandbox boundaries governing runtime behavior. Signature, update, rollback, and Marketplace-readiness components show that a package lifecycle is being built; they do not mean a mature third-party marketplace is already available.
-
-**Other integrations:** the repository also contains a local voice runtime, a DeepSeek Harness Bridge, and a ComfyUI Workflow settings entry, among other code. These may require external software or user-supplied credentials. A settings entry does not mean the full workflow is stable and ready to use.
-
-### 🔊 Voice and Other Integrations
-
-Voice code includes a local voice runtime, voice library, TTS / Browser TTS, voice tools, audio cache, and background workers. Available services depend on the local environment and configuration; the repository does not provide cloud credentials or every backend dependency.
-
-DeepSeek Harness-related code includes a runtime service, process runner, capability bridge / plugin, profile, and runtime adapter. ComfyUI currently appears mainly as a Workflow settings entry and integration direction. These capabilities may need additional runtimes or credentials, and their maturity varies.
-
-### 🗂️ Repository Map
-
-```text
-electron/                 Electron main-process services and desktop integration
-src/agent/                Agent sessions, planning, tools, execution, and verification
-src/pet-runtime/          2D / Live2D / 3D character runtimes
-src/social-group/         Group-interaction types and projections
-src/social-timeline/      Social-event timeline
-src/social-trend/          Relationship trends and evidence-related logic
-src/character-graph/      Character graphs and Neural Persona
-src/voice/                Renderer-side voice and playback logic
-docs/                     Chinese and English project and maintenance notes
-scripts/                  Smoke checks, build, and maintenance scripts
-```
-
-This is a navigation aid; a directory does not imply that every capability in it is integrated as a product feature. See the [project overview](./docs/project-overview.en.md) for a more complete module list.
-
-## 🏗️ Architecture and Tech Stack
-
-The application uses an Electron desktop host with a React / TypeScript renderer. The main process handles windows and IPC, desktop capture, file access, app launching, and some runtime services. Renderer features include chat, character interfaces, memory and persona views, extension controls, and character presentation. Agent, memory, relationship, expression, and Runtime World logic live in their respective modules.
-
-```text
-Electron Main Process              React / TypeScript Renderer
-Windows and IPC                    Chat, character, and settings UI
-Files / desktop input / capture     Live2D / 3D presentation
-Voice / MCP / Skill services        Memory, persona, group, and Agent UI
-            └────────── IPC / Runtime Bridge ──────────┘
-                                 │
-                        Core Runtime Modules
-              Agent · Memory · Cognition · Social · Pet
-```
-
-Main technologies and dependencies:
-
-- Electron 37 and Electron Builder
-- React 19, TypeScript 5.8, and Vite 6
-- Three.js, React Three Fiber, and `@pixiv/three-vrm`
-- PixiJS 6 and `pixi-live2d-display`
-- Project-built TypeScript Agent and MCP runtime components
-
-See [`package.json`](./package.json) and [`package-lock.json`](./package-lock.json) for exact dependency ranges. The [English project overview](./docs/project-overview.en.md) has a more complete architecture map.
+<a id="quick-start"></a>
 
 ## 🚀 Quick Start
 
-### Requirements
+### Option 1: Download the portable build (recommended)
 
-- A Windows desktop environment
-- Node.js, npm, and Git
-- A compatible model service and credentials configured by you for model-backed chat
+1. Open the [Releases page](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest) and download `AI-Desktop-Pet-<version>.exe`.
+2. Double-click to run — no installer needed.
+3. Fill in your model service as described in [First-run setup](#first-setup).
 
-This README does not claim a verified minimum Node.js version. Choose a version compatible with the current dependencies and check installation errors. Desktop capture, input, and some integrations require Windows.
+> [!NOTE]
+> The app is not yet code-signed, so Windows SmartScreen may show a warning. Make sure the file came from this repository's Releases page before running it; you can also check it against the published SHA-256 file.
 
-### Clone, install, and launch
+### Option 2: Run from source
+
+**Requirements:** Windows 10 / 11 64-bit, [Node.js](https://nodejs.org/) 20 LTS or newer, npm, Git.
 
 ```powershell
 git clone https://github.com/JingXuan-Zun/AI-Pets-Hub-public.git
-cd AI-Pets-Hub
+cd AI-Pets-Hub-public
 npm ci
 npm run desktop
 ```
 
-`npm run desktop` builds the renderer and then launches Electron. To work on the renderer UI alone, run:
+`npm run desktop` builds the UI and then launches the Electron desktop app. For UI-only work, use `npm run dev`.
 
-```powershell
-npm run dev
-```
-
-### Common commands
+<details>
+<summary><b>Common development commands</b> (click to expand)</summary>
 
 ```powershell
 npm run lint            # TypeScript type check
-npm run build           # Build the renderer
-npm run smoke:agent:p0  # Focused Agent smoke checks
-npm run dist:win        # Windows distribution build flow
+npm run build           # Build the UI
+npm run smoke:agent:p0  # Focused agent smoke checks
+npm run dist:win        # Build the Windows distribution
 ```
 
-The project also has checks and smoke scripts for Agent, Neural Persona, MCP, Skills, and desktop runtime subsystems. Refer to [`package.json`](./package.json) for their current names and arguments. Configure a model provider in the app after launch. Never put real credentials in the repository or commit them to Git.
+There are also check scripts for Agent, Neural Persona, MCP, Skills, and the desktop runtime; see [`package.json`](./package.json) for names and arguments.
 
-## 🚧 Project Status
+</details>
 
-The table distinguishes “source infrastructure exists” from “end-to-end flow is still being integrated.” A single “done” label would be misleading because modules in the same subsystem can have different levels of maturity.
+---
 
-| Subsystem | Current implementation scope | Status notes |
-| --- | --- | --- |
-| Electron desktop host | Windows, IPC, desktop capture, input, app launching | Desktop foundation exists; individual tools depend on the Windows environment |
-| Chat and character UI | Chat, character settings, model configuration surfaces | Core UI path exists; requires a model service configured by the user |
-| Agent Runtime | Sessions, planning, tool registry, permission routing, execution, result assessment | Core modules exist; production paths continue to be refactored and validated |
-| Computer Use | Screen and window observation, target handling, input, verification | End-to-end reliability is still under validation |
-| Memory / Knowledge | Character and group memory, memory proposals and approval, memory workspace, knowledge and retrieval interfaces | Memory approval and workspace are wired in; other subsystems vary |
-| Neural Persona | Persona nodes, graph, relationships, feedback, persistence | Data and graph foundations exist; cognition / chat integration is ongoing |
-| Multi-Agent / Social | Group topics and memory, relationships, timelines, trends | Consistency of multi-character behavior is still being validated |
-| 2D / Live2D | Cubism loading, expression binding, pointer look, interaction | Runtime foundations exist; asset licensing is separate from this code description |
-| 3D / VRM | Three.js scene, VRM loading, expression, look-at, motion modules | Runtime foundations exist; compatible user-provided assets are required |
-| Unity Bridge | Unity Runtime / Bridge services and protocols | Connection code exists; integration requires a matching Unity side |
-| Life Companion | Mood / affection, proactive interaction, quiet hours, consent-based screen watching | Screen watching requires consent and can be disconnected anytime; other behavior depends on settings and scheduling |
-| MCP | Configuration, Stdio, session pool, diagnostics, policy, argument validation | Host infrastructure exists; third-party compatibility varies |
-| Skills / Sandbox | Package import, trust, signatures, policy, sandbox components | Ecosystem and distribution flows are still being validated |
-| Voice | GPT-SoVITS voice packs, per-pet voices, hands-free chat and wake words, Browser TTS, playback, cache | Main flow works; local backends such as GPT-SoVITS must be installed separately and are slow on CPU |
-| DeepSeek Harness | Runtime service, runner, capability bridge | Integration code exists; external runtime is still required |
-| ComfyUI | Workflow settings entry | An entry point does not mean the generation flow is complete and stable |
+<a id="first-setup"></a>
 
-This status is based on the source tree. It is not a certification of release quality or security. Features may change, and some flows are incomplete.
+## 🔑 First-run Setup
 
-### Current Development Focus
+After launch, open the **Settings center** and configure what you need:
 
-- Stabilize the end-to-end path across Agent sessions, execution, observation, verification, and recovery.
-- Connect Neural Persona, longer-term context, character relationships, and actual conversation behavior incrementally.
-- Validate group memory, relationship state, and multi-character interaction in the shared runtime.
-- Improve trust, sandboxing, distribution, and maintenance workflows for Skills and extensions.
-- Improve public developer documentation and cross-module integration checks.
+1. **🤖 Model service** (required): pick Gemini or any OpenAI-compatible API and enter the API key, base URL, and model name. Chat and the agent both depend on it.
+2. **🎭 Characters**: name your character, write its personality and system prompt, and import 2D / Live2D / 3D models and motions.
+3. **🔊 Voice** (optional): choose browser speech, the OpenAI / Gemini speech APIs, or local GPT-SoVITS; pick a voice pack for each pet and set wake words.
+4. **👀 Life companion / 🛠️ Agent** (optional): enable as you like — screen watching and desktop actions always ask for your consent first.
 
-Do not infer that a capability is enabled in every app entry point or stable just because its source module exists.
+> [!TIP]
+> API keys are encrypted with the operating system and stored only on your machine, never in the repository or the build. If encryption is unavailable, saving is refused rather than falling back to plain text.
 
-## 📄 License and Assets
+---
+
+<a id="features"></a>
+
+## ✨ Features
+
+### 🐾 Desktop Companions
+
+<!-- Screenshot to add: pets on the desktop (several characters) -->
+
+- **Many character formats** — 2D images / video, Live2D (PixiJS + Cubism), 3D models such as VRM / GLTF / GLB / FBX, plus a Unity runtime bridge.
+- **Motion and expressions** — Idle, drag, click reactions, and emotional expressions are scheduled by one runtime; 2D video pets rotate through library folders and play clips matching the current emotion.
+- **Several pets at once** — Place multiple characters on screen, each configured independently.
+- **Separate windows** — Pets, chat, and settings are independent windows that share one state.
+
+### 🎨 Pink Glass Theme
+
+<!-- Screenshots to add: chat window + settings center (side by side) -->
+
+A new pink glass look across the chat window and settings center, with standard window controls and a collapsible sidebar.
+
+### 💬 Character Chat
+
+- **Three modes** — Solo chat for one-on-one company; group chat where characters talk and reply to each other; story mode for playing out a scene.
+- **Personality and knowledge** — Every character has its own name, personality, system prompt, knowledge base, and conversation context.
+- **Long chats without forgetting** — History stays on your machine, and very long conversations get automatic summaries.
+- **Your choice of model** — Gemini or any OpenAI-compatible API, with streaming replies and image input.
+
+<!-- Screenshot to add: group chat -->
+
+### 🧠 Memory and Persona
+
+<p align="center">
+  <img src="./docs/image/memory-approval.en.png" alt="Memory approval: the character proposes, you decide" width="880">
+</p>
+
+- **Memory approval** — When something worth remembering comes up, the character asks "should I remember that?"; you approve, edit, or reject it in the sidebar. **Nothing enters long-term memory without your approval.**
+- **Memory workspace** — Obsidian-style memory notes: drag to link, add tags, and browse the relationship graph, just like organizing notes.
+- **Neural Persona** — Organizes a character's long-term information into a browsable, maintainable persona graph.
+- **Groups and relationships** — Group memory, directed relationships between characters, and a social timeline lay the groundwork for characters living together.
+
+<!-- Screenshots to add: memory workspace + approval sidebar -->
+
+### 🔊 Voice
+
+- **A voice for every character** — GPT-SoVITS support: lite voice packs need only a few reference recordings, trained packs sound closer to the original; each pet slot can use a different voice.
+- **Many voice sources** — Browser speech, OpenAI / Gemini speech APIs, a local voice runtime, or GPT-SoVITS.
+- **Hands-free conversation** — Just talk to your character; each one has its own wake words, matched by sound so misheard homophones still work.
+- **Visible status** — Mic status appears under the character: "waiting for wake word" or "listening to you".
+- **Smooth long replies** — Long replies are synthesized in complete sentence groups and played as they are ready.
+
+See [`docs/voice-pack-format.md`](./docs/voice-pack-format.md) for the voice pack format.
+
+<!-- Screenshot to add: voice pack settings / mic status -->
+
+### 👀 Life Companion
+
+- **Asks before looking** — When a character wants to know what you're doing, it asks first; screen watching starts only after you agree.
+- **Disconnect anytime** — A disconnect button sits under the pet, and saying no in chat disconnects immediately.
+- **Checks in on you** — Mood, affection, time of day, and quiet hours decide when it's a good moment to say something.
+
+<!-- Screenshot to add: consent prompt / disconnect button -->
+
+### 🛠️ Desktop Agent
+
+- **Characters that can act** — Open apps, find and click buttons, and read window content for you.
+- **A process you can see** — The run panel in chat records every observation and action.
+- **Permissions you control** — Read-only observation and actions with side effects are handled separately; sensitive steps are confirmed one by one.
+
+See [The Agent Loop](#agent-loop) above for how it works.
+
+<!-- Screenshot to add: agent run panel -->
+
+### 🔌 Extensions and Integrations
+
+- **MCP** — Connect external MCP tool servers, with configuration, session pooling, health diagnostics, argument validation, and call policies built in.
+- **Skills** — Import and manage Skill packages, with trust, signatures, update / rollback, and sandbox infrastructure.
+- **Persona sharing** — Import or share reusable persona presets (requires a configured sharing service).
+- **More runtimes** — Unity Bridge, DeepSeek Harness Bridge, and a ComfyUI Workflow settings entry.
+
+---
+
+## 🔐 Privacy and Security
+
+- **Your data stays local** — Chat history, memories, character settings, and configuration are stored on your computer.
+- **Encrypted credentials** — Model, search, and voice API keys are encrypted with Electron `safeStorage`; requests with saved model keys are made by the main process and the keys are not sent back to the UI.
+- **New address, new key** — Changing a compatible API base URL requires re-entering the key, so a saved key is never forwarded to a new address.
+- **You decide** — Screen watching, opening files and URLs, and local project actions all need your consent first.
+
+<details>
+<summary><b>More security details</b> (click to expand)</summary>
+
+- Browser dev mode never writes API keys to `localStorage`; you re-enter them after reopening.
+- Legacy desktop storage copies have credential fields cleared after a successful secure save or migration.
+- Some request paths for search and voice credentials have not yet moved to the main process.
+- Encrypted configuration is not a cross-device key backup.
+- Please report security issues through GitHub private vulnerability reporting and avoid publishing exploitable details before a fix.
+
+</details>
+
+---
+
+## 📊 Project Status
+
+The project is in early public development: the core experience works, and some capabilities are still being polished.
+
+| Module | Status | Notes |
+| --- | :---: | --- |
+| Desktop companions and windows | ✅ Ready | Pets, chat, and settings run independently and share state |
+| Character chat (solo / group / story) | ✅ Ready | Requires your own model service |
+| Memory approval and workspace | ✅ Ready | Deeper Neural Persona integration with chat is in progress |
+| Voice and wake words | ✅ Ready | GPT-SoVITS must be installed separately and is slow on CPU |
+| Life companion | 🧪 Preview | Screen watching needs your consent and can be disconnected anytime |
+| Desktop agent | 🧪 Preview | The new loop has been tested on only a few tasks |
+| 2D / Live2D / 3D characters | ⚙️ Needs assets | Runtimes are ready; bring your own models and motions |
+| MCP / Skills | 🧪 Preview | Third-party compatibility varies by server |
+| Unity Bridge / DeepSeek Harness / ComfyUI | ⚙️ Needs setup | Require their external runtimes |
+
+<details>
+<summary><b>Known issues and focus areas</b> (click to expand)</summary>
+
+**Known issues**
+
+- Cancelling an MCP tool during startup (first ~0.6 s) has no effect; resetting MCP on Windows may report "closed 0" even though sessions did close.
+- "Voice playback failed" occasionally appears, possibly related to voice service key settings.
+- App windows do not yet enable the sandbox or a CSP.
+- The stop button for endless group chat still needs hands-on confirmation.
+
+**Focus areas**
+
+- Stabilize the agent's observe, act, verify, and recover path end to end.
+- Let Neural Persona, long-term memory, and character relationships play a bigger part in everyday chat.
+- Let characters share recent news, so each one knows what you have talked about with the others.
+- Mature trust, sandboxing, and distribution for Skills and extensions.
+
+</details>
+
+---
+
+## 🧱 Tech Stack
+
+<p align="center">
+  <img src="./docs/image/architecture.en.png" alt="Architecture" width="880">
+</p>
+
+| Layer | Technology |
+| --- | --- |
+| Desktop host | Electron 37 · Electron Builder |
+| UI | React 19 · TypeScript 5.8 · Vite 6 |
+| 2D / Live2D | PixiJS 6 · `pixi-live2d-display` · Cubism Core |
+| 3D | Three.js · React Three Fiber · `@pixiv/three-vrm` |
+| AI | Gemini · OpenAI-compatible APIs · in-house agent and MCP runtime |
+| Voice | GPT-SoVITS · browser speech · OpenAI / Gemini speech APIs |
+
+<details>
+<summary><b>Project structure</b> (click to expand)</summary>
+
+```text
+electron/                 Electron main-process services and desktop integration
+src/agent/                Agent sessions, planning, tools, execution, verification
+src/agent/loop/           The observe → decide → act → verify desktop agent loop
+src/pet-runtime/          2D / Live2D / 3D character runtimes
+src/neural-memory/        Memory proposals, approval, and the memory workspace
+src/character-graph/      Character graph and Neural Persona
+src/life-companion/       Life companion
+src/voice/                Speech synthesis, recognition, and wake words
+src/social-group/         Group interaction
+docs/                     Project overview, voice pack format, maintenance notes
+scripts/                  Checks, builds, and maintenance scripts
+```
+
+This is a map of entry points; see the [project overview](./docs/project-overview.en.md) for the full module list.
+
+</details>
+
+---
+
+## ⚠️ Disclaimer
+
+- This project ships no AI models, voice models, or character assets; you provide your own and make sure you have the rights to use them.
+- When using third-party model services, follow their terms; any charges are between you and the provider.
+- The desktop agent operates your computer after you approve it. Use it for tasks you trust and pay attention to each confirmation prompt.
+- The project is provided as is, without liability for any loss arising from its use.
+
+---
+
+## 📄 License
 
 Project source code is licensed under the [PolyForm Noncommercial License 1.0.0](./LICENSE) (source-available, noncommercial).
 
@@ -311,24 +345,28 @@ This table is a summary for convenience; the [LICENSE](./LICENSE) text governs.
 
 - Versions released before v0.2.0 (v0.1.0) were published under Apache-2.0, and that grant is unaffected by this change.
 - The character illustration in the application icons is creator-owned and **excluded from the source license**. See [ASSET_LICENSES.md](./ASSET_LICENSES.md).
-- Third-party dependencies and user-provided character models, animation, audio, and other assets remain subject to their own licenses.
-- See [PUBLIC_EXPORT.md](./PUBLIC_EXPORT.md) for the scope and checks for public exports.
-
-Before copying, modifying, or redistributing source, builds, or assets, confirm the license that applies to each item.
-
-## 🤝 Contributing and Support
-
-Before contributing or publishing, follow the [privacy checklist](./docs/PUBLIC_PRIVACY_WORKFLOW.md) to protect local data and commit email addresses.
-
-Issues and pull requests are welcome. For larger architectural changes, open an issue first to discuss the design. When reporting a problem, include as much of the following as possible:
-
-- Windows version and project commit / release
-- Reproduction steps, expected behavior, and actual behavior
-- Relevant logs or screenshots (remove API keys, tokens, cookies, personal paths, and user data first)
-- For Agent issues, the task description, tool-call sequence, and shareable verification results
-
-For security issues, use GitHub private vulnerability reporting if it is enabled for this repository. Do not publish exploitable details in a public issue before maintainers have had a chance to respond.
+- Third-party dependencies and user-provided character models, animation, audio, and other assets remain subject to their own licenses; see [PUBLIC_EXPORT.md](./PUBLIC_EXPORT.md) for the scope of this public repository.
 
 ---
 
-For the complete subsystem inventory, development and check scripts, and roadmap direction, see the [English project overview](./docs/project-overview.en.md).
+## 🤝 Contributing
+
+Issues and pull requests are welcome! For larger changes, please open an issue to discuss first. When reporting a problem, please include:
+
+- Your Windows version and the app version / commit
+- Steps to reproduce, expected result, and actual result
+- Relevant logs or screenshots (**remove API keys, tokens, personal paths, and chat content first**)
+- For agent issues, the task description and the steps shown in the run panel
+
+Please read the [privacy checklist](./docs/PUBLIC_PRIVACY_WORKFLOW.md) before contributing.
+
+---
+
+<a id="contact"></a>
+
+## 💌 Community and Support
+
+- 💬 **QQ group: 1082932504** (questions, feedback, and commercial licensing)
+- 🐛 **Bug reports:** [GitHub Issues](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/issues)
+
+If this project makes your desktop a little warmer, a ⭐ Star means a lot to us!

@@ -1,299 +1,333 @@
-<div align="center">
-  <img src="build/icon.png" alt="AI Pets Hub 项目图标" width="148" />
-  <h1>AI Pets Hub</h1>
-  <p><strong>让 AI 角色住进桌面，让 Agent 能力连接真实环境。</strong></p>
-  <p>Windows 桌面 AI 角色与 Agent 平台</p>
-  <p>
-    <strong>简体中文</strong> · <a href="./README.md">English</a>
-  </p>
-  <p>
-    <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
-    <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
-    <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
-  </p>
-  <p><a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest">⬇️ 下载 Windows 预览版</a></p>
-</div>
-
 <p align="center">
-  <a href="#功能速览">✨ 功能速览</a> ·
-  <a href="#快速开始">🚀 快速开始</a> ·
-  <a href="#项目状态">📊 项目状态</a>
+  <img src="./docs/image/banner.zh.png" alt="AI Pets Hub：让 AI 角色住进你的桌面" width="880">
 </p>
 
-## ✨ 功能速览
+<h1 align="center">AI Pets Hub</h1>
 
-- 🐾 **桌面 AI 角色** — 在 Windows 桌面运行 2D、Live2D 或 3D 角色；运行时包含表情、动作、注视和交互支持。角色模型与素材需自行准备并确认授权。
-- 💬 **AI 角色聊天** — 配置模型服务后，可在桌面应用中与角色对话，并管理角色和聊天相关设置。
-- 🧠 **角色记忆与人格** — 角色 / 群体记忆、Neural Persona 图谱、关系和社交上下文，为持续互动提供不同类型的上下文基础；角色可以提议记忆，经你批准后才写入，并可在 Obsidian 风格的记忆工作区里拖拽连线、打标签。接入程度仍在推进。
-- 👥 **多角色与群体互动** — 群体主题、共享记忆、角色关系和社交时间线等模块，支持探索多角色共处的互动方式。
-- 🛠️ **Agent 工具执行** — Agent Runtime 负责规划和调用已注册工具，并提供权限检查、结果评估与恢复相关流程；端到端执行仍在验证。
-- 🖥️ **Windows 桌面操作** — 通过屏幕 / 窗口观察、鼠标键盘输入、应用启动和本地文件工具与桌面交互；效果取决于系统环境和集成状态。
-- 🔌 **MCP 与 Skill 扩展** — 连接外部 MCP 工具服务、管理 Skill 包；策略、信任和沙箱基础设施正在完善。
-- 🔊 **语音与角色表现** — 支持 GPT-SoVITS 角色语音（可换语音包，含轻量包）、每个桌宠单独绑定声音、免手动语音对话与按角色区分的唤醒词，以及 Browser TTS 和表情表现模块；本地语音后端需要自行安装。
-- 🧩 **运行时集成** — 包含 Unity Bridge、DeepSeek Harness Bridge 和 ComfyUI Workflow 设置入口，供扩展不同运行环境与工作流。
+<p align="center">
+  <strong>简体中文</strong> | <a href="./README.md">English</a>
+</p>
 
-> **当前阶段：** 早期公开开发，部分能力仍在集成；各子系统状态见[项目状态](#项目状态)。
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
+  <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
+  <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><img src="https://img.shields.io/github/v/release/JingXuan-Zun/AI-Pets-Hub-public?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=D4518E" alt="最新版本" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
+</p>
 
-### 🆕 v0.2.0 更新
+<p align="center">
+  <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><strong>⬇️ 下载 Windows 便携版</strong></a> ・
+  <a href="#quick-start">🚀 快速开始</a> ・
+  <a href="#features">✨ 功能</a> ・
+  <a href="#contact">💌 加入交流群</a>
+</p>
 
-- 🔊 **角色语音**：接入 GPT-SoVITS，支持可替换的语音包（含轻量包），每个桌宠槽位可以绑定不同声音；长回复按完整句子分组合成。
-- 🎙️ **免手动语音对话**：开启后可以直接说话聊天；每个角色有自己的唤醒词，按发音匹配；角色下方显示麦克风状态。
-- 🧠 **记忆审批与记忆工作区**：角色会提议要记住的内容，你在侧栏批准后才写入；新的记忆工作区支持拖拽连线、标签和轻量图谱。
-- 👀 **生活陪伴**：经你同意后才会观察屏幕，可以随时断开；在聊天中拒绝也会断开。
-- 🛠️ **Agent 执行循环（预览）**：新的“观察 → 决策 → 执行 → 验证”循环，默认开启，可在设置的 Agent 页关闭；改进了桌面定位、点击后的恢复和遇到登录界面时的停止。目前只在少数任务上实测过，文件类任务仍走旧路径。
-- 🔐 **安全加固**：打开文件 / 网址、涉及文件路径的步骤和本地项目操作都需要重新确认；Agent 文件工具不再接触凭据和应用数据；只信任应用自带页面发来的 IPC。
-- 🎞️ **其他**：2D 视频桌宠可按子文件夹轮播并播放情绪片段；聊天和设置窗口改为标准窗口控件；改进聊天记忆的保存与长对话摘要。
+**AI Pets Hub 是一个运行在 Windows 桌面上的 AI 角色伴侣平台：让你的角色常驻桌面，会说话、记得你，还能在你允许时帮你操作电脑。**
 
-完整变更见 [Releases](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases)。
+> 基于 Electron + React + TypeScript 开发。2D 图片 / 视频、Live2D、VRM / 3D 角色都能放上桌面；
+> 每个角色有自己的人格、声音、唤醒词和记忆，可以单聊、群聊或演一段剧情；
+> 记忆由角色提议、经你批准才写入，屏幕观察也只在你同意后才开始；
+> 自研的“观察 → 决策 → 执行 → 验证”Agent 循环，让角色能真正帮你打开应用、操作界面。
 
-> [!IMPORTANT]
-> 本项目源码公开，采用 [PolyForm Noncommercial 1.0.0](./LICENSE)：个人学习、修改和非商业使用免费；**商业使用需另行取得授权**，请加 QQ 群 1082932504 联系。应用图标中的角色插画不在源码许可范围内。公开仓库不提供可自由再分发的角色模型、动画或语音素材库。请先阅读[素材授权说明](./ASSET_LICENSES.md)和[公开仓库边界](./PUBLIC_EXPORT.md)。
+---
+
+## ✨ 速览
+
+- 🐾 **桌面陪伴** — 角色常驻桌面，可拖拽、待机、做动作、换表情；最多同时摆放多个桌宠
+- 🎭 **你的角色，你来定** — 每个角色独立设置名字、人格、系统提示词、知识库和外观
+- 💬 **单聊 · 群聊 · 剧情** — 和一个角色聊天，或让多个角色一起聊、一起演
+- 🎙️ **会说话的角色** — GPT-SoVITS 角色语音，可换语音包；每个角色绑定自己的声音
+- 👂 **免手动语音对话** — 喊出角色的唤醒词就能直接说话，按发音匹配，容错同音字
+- 🧠 **记得你的事** — 角色提议要记住什么，你批准后才写入；在 Obsidian 风格的记忆工作区里整理
+- 👀 **生活陪伴** — 经你同意后感知你在做什么，主动关心你；随时一键断开
+- 🛠️ **桌面 Agent** — 让角色帮你打开应用、点按钮、读界面，敏感操作先征求你的同意
+- 🔌 **可扩展** — 接入 MCP 工具服务器和 Skill 包；模型和语音服务由你自由选择
+- 🔐 **隐私优先** — API Key 本机加密保存，聊天和记忆都留在你自己的电脑上
+
+---
+
+## 🖼️ 预览
+
+<!-- 截图待补充：桌宠在桌面上 + 聊天窗口（主预览图，宽 1600px） -->
+
+> 📸 应用界面截图正在整理中，很快补上。想先看看效果？可以直接[下载便携版](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest)体验。
+
+---
+
+<a id="agent-loop"></a>
+
+## ⚙️ Agent 执行循环
+
+> 角色帮你操作电脑时，跑的是自研的桌面 Agent 循环。
+> 源码：[`src/agent/loop/`](./src/agent/loop/)
+
+<p align="center">
+  <img src="./docs/image/agent-loop.zh.png" alt="Agent 执行循环：观察、决策、执行、验证" width="880">
+</p>
+
+它和“让模型吐出一串命令然后照做”最大的不同是：**每一步做完都会再看一眼屏幕，确认你要的结果真的出现了**。启动命令返回成功，不代表正确的窗口已经打开；只有验证通过，任务才算完成。
 
 <details>
-<summary>📚 目录</summary>
+<summary><b>设计细节</b>（点击展开）</summary>
 
-- [项目目标](#项目目标)
-- [功能速览](#功能速览)
-- [核心系统](#核心系统)
-  - [Agent Runtime](#agent-runtime)
-  - [Windows Computer Use](#windows-computer-use)
-  - [角色、记忆与群体互动](#角色记忆与群体互动)
-  - [桌宠与角色表现](#桌宠与角色表现)
-  - [MCP、Skill 与外部集成](#mcpskill-与外部集成)
-- [架构与技术栈](#架构与技术栈)
-- [快速开始](#快速开始)
-- [项目状态](#项目状态)
-- [许可证与素材](#许可证与素材)
-- [贡献与反馈](#贡献与反馈)
+- **一个循环、一个决策者** — 单一模型决策器在步数和时间预算内选择下一步，避免多个规划器互相打架。
+- **分层观察** — 先用开销小的方式看（窗口列表、UI Automation 结构），不够再用区域 OCR，最后才用视觉模型；界面元素会被编号标注，方便模型精确指认。
+- **任务级授权** — 点击、输入这类操作在你授权任务后可连续执行；打开文件、打开网址、涉及文件路径的步骤和本地项目操作，每次都需要你重新确认。
+- **执行后验证** — 操作完成后重新观察，确认目标状态；没达成会进入恢复流程，重新定位或换一种方式。
+- **知道何时停下** — 遇到登录、验证码这类不该自动处理的界面，会停下来把控制权交还给你。
+- **可观察的运行面板** — 聊天窗口里有折叠式运行面板，能看到每一步看到了什么、做了什么。
+- **安全边界** — 模型拿到的工具输出被当作数据而不是指令；Agent 文件工具不会接触凭据和应用数据；只信任应用自带页面发来的 IPC。
+
+新循环默认开启，可在 **设置 → Agent** 中关闭；目前只在少数任务上实测过，文件类任务仍走旧路径。更完整的 Agent Runtime 说明见[项目介绍](./docs/project-overview.zh-CN.md)。
 
 </details>
 
-## 🧭 项目目标
+---
 
-大多数 AI 陪伴应用把交互收敛在一段聊天里。AI Pets Hub 探索另一种桌面形态：角色可以拥有持续的上下文和视觉表现；Agent 可以在权限与运行时边界内调用工具；多个角色可以共享群体活动和关系状态。
-
-```text
-角色与对话 ── 记忆 / 人格 / 关系
-     │                 │
-     └──── Agent Runtime ──── 工具 / MCP / Computer Use
-                    │
-           桌面、语音与角色表现
-```
-
-项目将这些能力作为可组合的系统来建设。目标是逐步形成一个可以扩展的 AI Runtime World，而不是把所有能力塞进单一聊天流程。这个方向仍在实现中，具体可用性以当前代码和项目状态为准。
-
-## 🧩 核心系统
-
-### 🤖 Agent Runtime
-
-项目包含自研的 TypeScript Agent Runtime。源码中可以看到从会话入口、上下文与规划，到工具执行、结果评估及后续处理的多个阶段：
-
-```text
-请求 / 会话
-    ↓
-上下文与规划
-    ↓
-权限与执行前检查
-    ↓
-工具注册与执行
-    ↓
-观察、证据与结果评估
-    ↓
-验证、恢复或重新规划
-```
-
-设计上会区分“工具调用返回成功”和“用户要求的目标状态已达成”。例如，启动程序的命令成功返回，并不能单独证明正确的窗口已打开。因此代码中还包含窗口 / 视觉目标验证、Action Evidence、结果评估以及恢复和重新规划相关模块。
-
-Runtime 还包含工具 schema、权限路由、执行生命周期控制等组件。相关模块正在演进；不同 Agent 入口是否走完整链路，需结合具体功能判断。源码入口示例：`src/agent/agentOrchestrator.ts`、`src/agent/agentPlanner.ts`、`src/agent/agentToolRegistry.ts`、`src/agent/agentRuntimeExecutor.ts`。
-
-#### Agent 执行链中的关注点
-
-- **工具注册与输入约束：** 工具通过统一注册表提供描述和输入 schema，供运行时选择与派发。
-- **权限与策略：** 执行前检查由权限路由和策略组件参与，避免把模型输出直接当作可信的系统命令。
-- **桌面观察：** 屏幕和窗口相关工具提供执行前后的环境信息；目标解析与视觉验证用于确认交互对象和结果。
-- **证据与评估：** 结果评估模块结合工具结果及观察信息判断是否达到预期，而不只看进程返回码。
-- **失败处理：** Runtime 中有取消、超时、恢复、跟进和重新规划相关路径，具体行为取决于入口和执行器。
-
-常见入口和实现分布在 `src/agent/` 与 `src/agent/runtime/`。仓库里的架构模块仍处于重构与集成阶段，因此这份流程图表示设计和代码组成，不代表每条用户请求都会经过完全相同的步骤。
-
-### 🖥️ Windows Computer Use
-
-桌面操作能力围绕观察、定位、执行和确认组织。仓库包含屏幕捕获、区域与窗口处理、桌面输入、应用启动、本地文件操作和视觉目标验证等代码路径。
-
-```text
-观察桌面 → 确定目标 → 检查权限 → 执行动作
-    ↑                                  ↓
-    └──── 验证结果 ← 收集证据 ← 再次观察
-                         └→ 恢复 / 重新规划
-```
-
-这些能力让 Agent 有机会与本地桌面环境交互，也意味着运行时需要处理权限、取消、失败和不确定结果。实际行为依赖 Windows 会话、目标应用及当前集成状态；不要把它理解为对任意桌面任务的保证。
-
-### 🧠 角色、记忆与群体互动
-
-项目的记忆相关代码不只包括聊天历史，也包含角色记忆、群体记忆、知识 / 检索接口，以及神经人格图谱、关系状态和社交时间线等子系统。设计方向是让较长期的上下文能够影响后续互动，并为角色之间的群体状态提供独立结构。
-
-群体相关模块包括群体主题、群体记忆、关系策略、社交事件和趋势等。它们仍在持续接合：某一项基础设施存在，不代表它已经贯穿所有对话、自动学习或角色行为流程。
-
-#### Neural Persona 包含什么
-
-`src/character-graph/neural-persona/` 下的代码覆盖人格节点及层级、节点生成、图谱布局与浏览、关系分析、语义检索和标签等功能，也包含反馈账本、学习提案、应用 / 撤销和持久化路径。代码还为 Provider 数据策略及回复质量 A/B 流程提供模块。
-
-设计目标是将角色长期信息组织成可以浏览和维护的结构。它目前仍在接入认知与对话流程；不要把图谱模块存在等同于自动记忆已完整启用。
-
-#### 群体互动包含什么
-
-群体相关模块除了群聊入口，还涉及群体主题、共享记忆、社交群组、有向角色关系、关系行为策略、社交时间线与趋势。群体记忆侧还包含冲突检测、证据范围、审核和 readiness 相关逻辑。长期方向是让这些状态参与后续互动；当前仍在验证各模块之间的连接和一致性。
-
-### 🎭 桌宠与角色表现
-
-- **2D / Live2D：** 包含模型加载、Cubism Core 接入、表情发现与绑定、指针注视和交互控制等运行时模块。
-- **3D / VRM：** 使用 Three.js / React Three Fiber，包含 VRM 加载、场景挂载、表情与注视控制、动作和反应相关模块。
-- **Unity Bridge：** 仓库中有 Unity Runtime / Bridge 相关服务与协议代码，可作为另一种运行时连接路径。
-
-上述模块是运行时能力，不意味着仓库附带了可自由再分发的模型、动作、贴图或语音素材。请先核对素材来源与许可。
-
-运行时内部也有不同职责：Live2D 侧包含 Runtime Profile、Cubism Core Loader、表情发现 / 绑定、表现优先级、指针注视与交互控制；3D / VRM 侧包含资产加载、场景挂载、表情和 Look-at 控制、拖动状态、外部动作片段与反应运行时。Unity Bridge 则提供服务和协议层的连接代码。
-
-### ✨ Expression 与 Life Companion
-
-**Expression Library** 管理表情类别、资源导入与变更、审核队列、设置、语义信息和系统资源目录；回复表达式 Runtime 用于把 AI 回复与角色表现连接起来。表现资源的来源及授权仍需逐项确认。
-
-**Life Companion** 是角色持续状态和主动互动方向的基础设施，源码中可见 Affection、Hunger、Mood、启动问候、主动 / 随机互动、桌面活动感知、安静时段、调度器与成长控制等模块。它们的具体触发受设置、时间窗口和冷却条件约束，仍在逐步接入角色行为。
-
-### 🔌 MCP、Skill 与外部集成
-
-**MCP：** 仓库包含服务配置、Stdio 客户端、会话池、工具调用、健康诊断、参数校验、策略和取消等相关模块。Agent 侧也有外部 MCP 桥接与策略相关代码。
-
-此外还包含 Server 兼容性、环境预检、调用历史、soak / readiness 检查，以及风险摘要和执行回执等实现。第三方 Server 的行为与兼容性由其自身决定，运行时仍需处理连接错误和工具参数校验。
-
-**Skill / 扩展：** 源码包含 Skill Registry、包导入与安装、生命周期、运行策略、信任证据、签名校验、更新 / 回滚以及沙箱相关基础设施。外部扩展生态和 Marketplace 发布流程仍在开发验证中。
-
-Skill 的设计目标是通过 Manifest 和包元数据描述扩展，再由宿主执行范围、信任信息、权限授权及沙箱边界控制运行。仓库中的签名、更新、回滚和 Marketplace readiness 组件说明正在建设完整生命周期；它们不代表已建立成熟的第三方发布市场。
-
-**其他集成：** 仓库还包含本地语音运行时、DeepSeek Harness Bridge，以及 ComfyUI Workflow 设置入口等代码。它们可能需要用户自行安装外部软件或配置服务凭据；设置入口不代表完整工作流已稳定可用。
-
-### 🔊 语音与其他集成
-
-语音代码包含本地语音运行时、语音库、TTS / Browser TTS、语音工具、音频缓存与后台 Worker 等部分。可用服务取决于本地环境和配置，仓库不会替用户提供云服务凭据或所有后端依赖。
-
-DeepSeek Harness 相关实现包含 Runtime Service、进程运行器、Capability Bridge / Plugin、Profile 与 Runtime Adapter。ComfyUI 目前主要体现为 Workflow 设置入口和集成方向。这些能力可能需要额外运行环境或凭据，成熟度也各不相同。
-
-### 🗂️ 项目目录导航
-
-```text
-electron/                 Electron 主进程服务与桌面集成
-src/agent/                Agent 会话、规划、工具、执行与验证
-src/pet-runtime/          2D / Live2D / 3D 角色运行时
-src/social-group/         群体交互基础类型与投影
-src/social-timeline/      社交事件时间线
-src/social-trend/         关系趋势与证据相关逻辑
-src/character-graph/      角色图谱与 Neural Persona
-src/voice/                Renderer 侧语音与播放逻辑
-docs/                     中英文项目介绍与维护说明
-scripts/                  冒烟检查、构建和维护脚本
-```
-
-目录只是入口索引，不保证每个目录都代表已集成的产品功能。更详细的模块列表见[项目介绍](./docs/project-overview.zh-CN.md)。
-
-## 🏗️ 架构与技术栈
-
-项目由 Electron 桌面宿主和 React / TypeScript Renderer 组成。主进程承担窗口与 IPC、桌面捕获、文件访问、应用启动及部分运行时服务；Renderer 包含聊天、角色界面、记忆与人格界面、扩展控制和角色表现层。Agent、记忆、关系、表达和 Runtime World 等逻辑分布在相应模块中。
-
-```text
-Electron 主进程                 React / TypeScript Renderer
-窗口与 IPC                      聊天、角色与设置界面
-文件 / 桌面输入 / 屏幕捕获       Live2D / 3D 角色表现
-语音 / MCP / Skill 服务           记忆、人格、群体与 Agent UI
-          └────────── IPC / Runtime Bridge ──────────┘
-                               │
-                      Core Runtime Modules
-             Agent · Memory · Cognition · Social · Pet
-```
-
-主要依赖与技术：
-
-- Electron 37、Electron Builder
-- React 19、TypeScript 5.8、Vite 6
-- Three.js、React Three Fiber、`@pixiv/three-vrm`
-- PixiJS 6、`pixi-live2d-display`
-- 自研 TypeScript Agent 与 MCP Runtime 组件
-
-准确依赖范围请以 [`package.json`](./package.json) 和 [`package-lock.json`](./package-lock.json) 为准。更完整的结构说明见[中文项目介绍](./docs/project-overview.zh-CN.md)。
+<a id="quick-start"></a>
 
 ## 🚀 快速开始
 
-### 环境要求
+### 方式一：下载便携版（推荐）
 
-- Windows 桌面环境
-- Node.js、npm 与 Git
-- 模型对话功能需要用户自行准备并配置兼容的模型服务凭据
+1. 打开 [Releases 页面](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest)，下载 `AI-Desktop-Pet-<版本号>.exe`。
+2. 双击运行即可，无需安装。
+3. 按下面的 [首次配置](#first-setup) 填好模型服务。
 
-仓库没有在 README 中承诺一个已验证的最低 Node.js 版本；请按当前依赖及安装报错选择兼容版本。桌面捕获、输入和部分集成依赖 Windows 环境。
+> [!NOTE]
+> 应用暂未进行 Windows 代码签名，SmartScreen 可能弹出提示。请确认文件来自本仓库的 Releases 页面后再运行，也可以用发布页提供的 SHA-256 校验文件。
 
-### 克隆、安装和启动
+### 方式二：从源码运行
+
+**前置条件：** Windows 10 / 11 64 位、[Node.js](https://nodejs.org/) 20 LTS 或更新版本、npm、Git。
 
 ```powershell
 git clone https://github.com/JingXuan-Zun/AI-Pets-Hub-public.git
-cd AI-Pets-Hub
+cd AI-Pets-Hub-public
 npm ci
 npm run desktop
 ```
 
-`npm run desktop` 会先构建 Renderer，再启动 Electron。仅开发 Renderer 界面时，可运行：
+`npm run desktop` 会先构建界面，再启动 Electron 桌面应用。只调试界面时可以用 `npm run dev`。
 
-```powershell
-npm run dev
-```
-
-### 常用命令
+<details>
+<summary><b>常用开发命令</b>（点击展开）</summary>
 
 ```powershell
 npm run lint            # TypeScript 类型检查
-npm run build           # 构建 Renderer
+npm run build           # 构建界面
 npm run smoke:agent:p0  # Agent 核心冒烟检查
-npm run dist:win        # Windows 分发构建流程
+npm run dist:win        # 构建 Windows 分发版本
 ```
 
-项目还提供按 Agent、Neural Persona、MCP、Skill 和桌面运行时划分的检查 / smoke 脚本，名称及参数以 [`package.json`](./package.json) 为准。启动后需要在应用内配置模型服务；不要把真实密钥写入仓库或提交到 Git。
+项目还提供按 Agent、Neural Persona、MCP、Skill 和桌面运行时划分的检查脚本，名称和参数以 [`package.json`](./package.json) 为准。
 
-## 🚧 项目状态
+</details>
 
-下表区分“代码基础已存在”和“端到端流程正在集成”。这里不使用一个笼统的“完成”标签，是因为同一子系统的模块成熟度可能不同。
+---
 
-| 子系统 | 当前实现范围 | 状态说明 |
-| --- | --- | --- |
-| Electron 桌面宿主 | 窗口、IPC、桌面捕获、输入、应用启动 | 已形成桌面基础；具体工具受 Windows 环境影响 |
-| Chat 与角色界面 | 聊天、角色设置、模型配置相关界面 | 基础链路存在，依赖用户配置模型服务 |
-| Agent Runtime | 会话、规划、工具注册、权限路由、执行与结果评估 | 核心模块存在，生产执行路径持续重构 / 验证 |
-| Computer Use | 屏幕与窗口观察、目标处理、输入和验证 | 端到端可靠性仍在验证 |
-| Memory / Knowledge | 角色与群体记忆、记忆提议与审批、记忆工作区、知识和检索接口 | 记忆审批与工作区已接入；其余子系统接入程度不一 |
-| Neural Persona | 人格节点、图谱、关系、反馈与持久化 | 数据与图谱基础存在，认知 / 对话接合持续开发 |
-| Multi-Agent / Social | 群体主题、群体记忆、关系、时间线和趋势 | 多角色行为的一致性仍在验证 |
-| 2D / Live2D | Cubism 加载、表情绑定、指针注视和交互 | 运行时基础存在；素材不随 README 中的代码说明授权 |
-| 3D / VRM | Three.js 场景、VRM 加载、表情、注视和动作模块 | 运行时基础存在，依赖用户提供兼容资产 |
-| Unity Bridge | Unity Runtime / Bridge 服务与协议 | 连接路径代码存在，具体集成需对应 Unity 端 |
-| Life Companion | 情绪 / 好感、主动互动、安静时段、经同意的屏幕观察 | 屏幕观察需用户同意并可随时断开；其余行为受设置和调度控制，仍在接合 |
-| MCP | 配置、Stdio、会话池、诊断、策略与参数校验 | 宿主基础设施存在，第三方兼容性有差异 |
-| Skill / Sandbox | 包导入、信任、签名、策略和沙箱组件 | 生态和分发流程仍在验证 |
-| Voice | GPT-SoVITS 语音包、按桌宠绑定声音、免手动对话与唤醒词、Browser TTS、播放与缓存 | 主流程可用；GPT-SoVITS 等本地后端需自行安装，CPU 上合成较慢 |
-| DeepSeek Harness | Runtime Service、Runner、Capability Bridge | 集成方向已在代码中，仍需要外部运行环境 |
-| ComfyUI | Workflow 设置入口 | 入口存在不代表生成链路已完整稳定 |
+<a id="first-setup"></a>
 
-这是基于仓库源码结构整理的项目状态，不是发布质量或安全性的认证。功能可能变化，部分路径尚不完整。
+## 🔑 首次配置
 
-### 当前开发重点
+启动后打开 **设置中心**，按需完成以下配置：
 
-- 稳定 Agent 会话、执行、观察、验证与恢复之间的端到端链路。
-- 逐步连接 Neural Persona、长期上下文、角色关系与实际对话行为。
-- 验证群体记忆、关系状态和多角色交互在统一运行时中的表现。
-- 完善 Skill / 扩展的信任、沙箱、分发和维护流程。
-- 改进公开开发者文档与跨模块集成检查。
+1. **🤖 模型服务**（必需）：选择 Gemini 或任意 OpenAI 兼容接口，填写 API Key、接口地址和模型名称。这是角色聊天和 Agent 的基础。
+2. **🎭 角色**：给角色起名字、写人格和系统提示词，导入 2D / Live2D / 3D 模型和动作资源。
+3. **🔊 语音**（可选）：选择浏览器语音、OpenAI / Gemini 语音接口，或本地 GPT-SoVITS；在语音包页面为每个桌宠选一个声音，并设置唤醒词。
+4. **👀 生活陪伴 / 🛠️ Agent**（可选）：按需开启；屏幕观察和桌面操作都会先征求你的同意。
 
-不要仅凭源码里出现某个模块，就推断该能力已经在所有应用入口中启用或稳定。
+> [!TIP]
+> API Key 会用系统加密保存在本机，不会写进仓库或安装包；加密不可用时会拒绝保存，不会退回明文。
 
-## 📄 许可证与素材
+---
+
+<a id="features"></a>
+
+## ✨ 功能
+
+### 🐾 桌面陪伴
+
+<!-- 截图待补充：桌宠在桌面上（含多个角色） -->
+
+- **多种角色形态** — 支持 2D 图片 / 视频、Live2D（PixiJS + Cubism）、VRM / GLTF / GLB / FBX 等 3D 模型，以及 Unity 运行时桥接。
+- **动作与表情** — 待机、拖拽、点击互动和情绪表情由运行时统一调度；2D 视频桌宠可按文件夹轮播，并根据情绪播放对应片段。
+- **多桌宠同屏** — 可以同时摆放多个角色，各自独立配置。
+- **独立窗口** — 桌宠、聊天、设置中心互相独立，又共享同一份状态。
+
+### 🎨 粉色玻璃主题
+
+<!-- 截图待补充：聊天窗口 + 设置中心（两列并排） -->
+
+全新的粉色玻璃风格界面，覆盖聊天窗口和设置中心；聊天和设置窗口使用标准窗口控件，侧栏可一键收起。
+
+### 💬 角色聊天
+
+- **三种模式** — 单聊专注一对一陪伴；群聊让多个角色一起说话、互相接话；剧情模式适合演绎一段故事。
+- **人格与知识** — 每个角色有独立的名字、人格、系统提示词、知识库和对话上下文。
+- **长对话不失忆** — 聊天记录保存在本机，超长对话会自动生成过往摘要。
+- **自由选模型** — Gemini 和任意 OpenAI 兼容接口都可以用，支持流式回复和图片输入。
+
+<!-- 截图待补充：群聊界面 -->
+
+### 🧠 记忆与人格
+
+<p align="center">
+  <img src="./docs/image/memory-approval.zh.png" alt="记忆审批：角色提议，你来决定" width="880">
+</p>
+
+- **记忆审批** — 聊天中出现值得记住的事，角色会提出“要我记住吗？”；你在侧栏批准、修改或拒绝，**没有你的批准什么都不会写入长期记忆**。
+- **记忆工作区** — Obsidian 风格的记忆笔记：拖拽连线、打标签、看关系图谱，像整理笔记一样整理你们的回忆。
+- **神经人格（Neural Persona）** — 把角色的长期信息组织成可浏览、可维护的人格图谱。
+- **群体与关系** — 群体记忆、角色之间的有向关系和社交时间线，为多角色共处打基础。
+
+<!-- 截图待补充：记忆工作区 + 审批侧栏 -->
+
+### 🔊 语音交互
+
+- **角色专属声音** — 接入 GPT-SoVITS：轻量语音包只需几段参考录音，训练版语音包更接近原声；每个桌宠槽位可以绑定不同的声音。
+- **多种语音来源** — 浏览器语音、OpenAI / Gemini 语音接口、本地语音运行时、GPT-SoVITS 任你选择。
+- **免手动对话** — 开启后直接对角色说话；每个角色有自己的唤醒词，按发音匹配，听成同音字也能唤醒。
+- **状态看得见** — 角色下方显示麦克风状态，“待唤醒”“正在听你说”一目了然。
+- **长回复不卡顿** — 长回复按完整句子分组合成，边合成边播放。
+
+语音包格式见 [`docs/voice-pack-format.md`](./docs/voice-pack-format.md)。
+
+<!-- 截图待补充：语音包设置 / 麦克风状态 -->
+
+### 👀 生活陪伴
+
+- **先问再看** — 角色想了解你在做什么时会先征求同意；同意后才开始观察屏幕。
+- **随时断开** — 桌宠下方有“断开”按钮，在聊天里说不要也会立即断开。
+- **主动关心** — 结合心情、好感、时间和安静时段，在合适的时候主动搭话。
+
+<!-- 截图待补充：同意提示 / 断开按钮 -->
+
+### 🛠️ 桌面 Agent
+
+- **能动手的角色** — 帮你打开应用、在界面里找到按钮并点击、读取窗口内容。
+- **看得见的过程** — 聊天里的运行面板记录每一步观察和操作。
+- **可控的权限** — 只读观察和有副作用的操作分开处理；敏感步骤逐次确认。
+
+工作原理见上方的 [Agent 执行循环](#agent-loop)。
+
+<!-- 截图待补充：Agent 运行面板 -->
+
+### 🔌 扩展与集成
+
+- **MCP** — 连接外部 MCP 工具服务器：配置、会话池、健康诊断、参数校验和调用策略都已内置。
+- **Skill** — 导入和管理 Skill 包，带信任、签名、更新 / 回滚和沙箱相关基础设施。
+- **人格分享** — 导入或分享可复用的人格预设（需要配置分享服务地址）。
+- **更多运行时** — Unity Bridge、DeepSeek Harness Bridge 和 ComfyUI Workflow 设置入口。
+
+---
+
+## 🔐 隐私与安全
+
+- **数据留在本机** — 聊天记录、记忆、角色设定和配置都保存在你的电脑上。
+- **凭据加密** — 模型、搜索和语音的 API Key 用 Electron `safeStorage` 加密保存；已保存的模型密钥由主进程发起请求，不会回传到界面里。
+- **改地址要重填** — 修改兼容接口地址后需要重新填写 API Key，不会把已保存的密钥转发给新地址。
+- **你说了算** — 屏幕观察、打开文件和网址、本地项目操作都要先经过你的同意。
+
+<details>
+<summary><b>更多安全细节</b>（点击展开）</summary>
+
+- 浏览器开发模式不会把 API Key 写入 `localStorage`，重新打开需要重新填写。
+- 桌面旧存储副本在安全保存或迁移成功后会清除凭据字段。
+- 搜索、语音等部分凭据的请求路径还没有全部迁到主进程。
+- 加密配置不是跨设备的密钥备份。
+- 安全问题请通过 GitHub 私密漏洞报告联系我们，在修复前请不要公开可利用细节。
+
+</details>
+
+---
+
+## 📊 项目状态
+
+项目处于早期公开开发阶段，核心体验已经可以使用，部分能力仍在打磨。
+
+| 模块 | 状态 | 说明 |
+| --- | :---: | --- |
+| 桌面陪伴与多窗口 | ✅ 可用 | 桌宠、聊天、设置中心独立运行并共享状态 |
+| 角色聊天（单聊 / 群聊 / 剧情） | ✅ 可用 | 需要自行配置模型服务 |
+| 记忆审批与记忆工作区 | ✅ 可用 | 神经人格与对话的深度接合仍在推进 |
+| 语音与唤醒词 | ✅ 可用 | GPT-SoVITS 需自行安装，CPU 上合成较慢 |
+| 生活陪伴 | 🧪 预览 | 屏幕观察需要你的同意，可随时断开 |
+| 桌面 Agent | 🧪 预览 | 新循环只在少数任务上实测过 |
+| 2D / Live2D / 3D 角色 | ⚙️ 需素材 | 运行时已就绪，模型和动作需要自行准备 |
+| MCP / Skill | 🧪 预览 | 第三方兼容性因服务而异 |
+| Unity Bridge / DeepSeek Harness / ComfyUI | ⚙️ 需环境 | 需要对应的外部运行环境 |
+
+<details>
+<summary><b>已知问题与开发重点</b>（点击展开）</summary>
+
+**已知问题**
+
+- MCP 工具在启动阶段（约 0.6 秒内）取消无效；Windows 上重置 MCP 可能显示“关闭了 0 个”，但会话实际已关闭。
+- 偶尔出现“语音播放失败”，可能与语音服务的密钥设置有关。
+- 应用窗口尚未启用沙箱和 CSP。
+- 群聊无限模式的停止按钮仍待实机确认。
+
+**开发重点**
+
+- 稳定 Agent 观察、执行、验证与恢复的端到端链路。
+- 让神经人格、长期记忆和角色关系更深地参与日常对话。
+- 角色之间互通近况，让多个角色“知道”彼此和你聊过什么。
+- 完善 Skill / 扩展的信任、沙箱和分发流程。
+
+</details>
+
+---
+
+## 🧱 技术栈
+
+<p align="center">
+  <img src="./docs/image/architecture.zh.png" alt="整体架构" width="880">
+</p>
+
+| 层 | 技术 |
+| --- | --- |
+| 桌面宿主 | Electron 37 · Electron Builder |
+| 界面 | React 19 · TypeScript 5.8 · Vite 6 |
+| 2D / Live2D | PixiJS 6 · `pixi-live2d-display` · Cubism Core |
+| 3D | Three.js · React Three Fiber · `@pixiv/three-vrm` |
+| AI | Gemini · OpenAI 兼容接口 · 自研 Agent 与 MCP Runtime |
+| 语音 | GPT-SoVITS · 浏览器语音 · OpenAI / Gemini 语音接口 |
+
+<details>
+<summary><b>项目结构</b>（点击展开）</summary>
+
+```text
+electron/                 Electron 主进程服务与桌面集成
+src/agent/                Agent 会话、规划、工具、执行与验证
+src/agent/loop/           观察 → 决策 → 执行 → 验证 桌面 Agent 循环
+src/pet-runtime/          2D / Live2D / 3D 角色运行时
+src/neural-memory/        记忆提议、审批与记忆工作区
+src/character-graph/      角色图谱与 Neural Persona
+src/life-companion/       生活陪伴
+src/voice/                语音合成、识别与唤醒
+src/social-group/         群体交互
+docs/                     项目介绍、语音包格式与维护说明
+scripts/                  检查、构建和维护脚本
+```
+
+目录只是入口索引，更完整的模块说明见[项目介绍](./docs/project-overview.zh-CN.md)。
+
+</details>
+
+---
+
+## ⚠️ 免责声明
+
+- 本项目不内置任何 AI 模型、语音模型或角色素材；你需要自行准备，并确认拥有相应授权。
+- 使用第三方模型服务时，请遵守对应服务的条款；产生的费用由你与服务商结算。
+- 桌面 Agent 会在你授权后操作你的电脑，请在信任的任务上使用，并留意每一步的确认提示。
+- 本项目按“现状”提供，不对使用造成的任何损失承担责任。
+
+---
+
+## 📄 许可证
 
 项目源码采用 [PolyForm Noncommercial License 1.0.0](./LICENSE)（源码公开、非商用许可）。
 
@@ -311,24 +345,28 @@ npm run dist:win        # Windows 分发构建流程
 
 - v0.2.0 之前发布的版本（v0.1.0）按 Apache-2.0 发布，其授权不受本次变更影响。
 - 应用图标中的角色插画由创作者保留权利，**不包含在源码许可范围内**；请阅读 [ASSET_LICENSES.md](./ASSET_LICENSES.md)。
-- 第三方依赖、用户提供的角色模型 / 动画 / 音频及其他素材仍受各自许可约束。
-- 公开导出内容的范围与检查提示见 [PUBLIC_EXPORT.md](./PUBLIC_EXPORT.md)。
-
-请在复制、修改或重新分发源码、构建产物和素材前，分别确认适用的许可范围。
-
-## 🤝 贡献与反馈
-
-贡献或发布前，请先按[隐私检查流程](./docs/PUBLIC_PRIVACY_WORKFLOW.md)处理本机数据和提交邮箱。
-
-欢迎通过 Issue 反馈问题或提交 Pull Request。较大的架构改动可以先开 Issue 讨论。报告问题时请尽量附上：
-
-- Windows 版本及项目 commit / release 版本
-- 复现步骤、预期结果和实际结果
-- 相关日志或截图（先删除 API Key、Token、Cookie、个人路径和用户数据）
-- 如涉及 Agent，附任务描述、工具调用过程和可分享的验证结果
-
-安全问题请使用仓库启用时提供的 GitHub 私密漏洞报告；在维护者响应前，不要在公开 Issue 发布可利用细节。
+- 第三方依赖、用户提供的角色模型 / 动画 / 音频及其他素材仍受各自许可约束；公开仓库的范围见 [PUBLIC_EXPORT.md](./PUBLIC_EXPORT.md)。
 
 ---
 
-完整的子系统清单、开发与检查脚本以及项目路线方向见[中文项目介绍](./docs/project-overview.zh-CN.md)。
+## 🤝 参与贡献
+
+欢迎提交 Issue 和 Pull Request！较大的改动建议先开 Issue 讨论。反馈问题时请尽量附上：
+
+- Windows 版本和应用版本 / commit
+- 复现步骤、预期结果和实际结果
+- 相关日志或截图（**先删除 API Key、Token、个人路径和聊天内容**）
+- 如果涉及 Agent，附上任务描述和运行面板里的步骤
+
+贡献前请先阅读[隐私检查流程](./docs/PUBLIC_PRIVACY_WORKFLOW.md)。
+
+---
+
+<a id="contact"></a>
+
+## 💌 交流与支持
+
+- 💬 **QQ 交流群：1082932504**（使用交流、问题反馈、商业授权都可以在群里联系）
+- 🐛 **问题反馈：** [GitHub Issues](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/issues)
+
+如果这个项目让你的桌面多了一点温度，欢迎点一个 ⭐ Star 支持我们！
