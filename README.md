@@ -25,15 +25,27 @@
 
 - 🐾 **Desktop AI characters** — Run 2D, Live2D, or 3D characters on Windows, with runtime support for expressions, motion, look-at, and interaction. Character models and assets must be supplied and licensed separately.
 - 💬 **AI character chat** — Configure a model service to chat with characters in the desktop app and manage character and chat settings.
-- 🧠 **Character memory and persona** — Character / group memory, Neural Persona graphs, relationships, and social context provide different foundations for ongoing interactions; integration is still progressing.
+- 🧠 **Character memory and persona** — Character / group memory, Neural Persona graphs, relationships, and social context provide different foundations for ongoing interactions. Characters can propose memories that are saved only after you approve them, and an Obsidian-style memory workspace lets you drag to link and tag them. Integration is still progressing.
 - 👥 **Multi-character and group interaction** — Modules for group topics, shared memory, character relationships, and social timelines support exploration of shared character environments.
 - 🛠️ **Agent tool execution** — The Agent Runtime plans and calls registered tools, with permission checks, result assessment, and recovery-related paths; end-to-end execution is still being validated.
 - 🖥️ **Windows desktop actions** — Interact with the desktop through screen / window observation, mouse and keyboard input, app launching, and local-file tools; behavior depends on system conditions and integration status.
 - 🔌 **MCP and Skill extensions** — Connect external MCP tool servers and manage Skill packages; policy, trust, and sandbox infrastructure are being improved.
-- 🔊 **Voice and character presentation** — Includes a local voice runtime, TTS / Browser TTS, and expression-related modules; specific voice services require user configuration.
+- 🔊 **Voice and character presentation** — GPT-SoVITS character voices with swappable voice packs (including lite packs), a separate voice per pet, hands-free conversation with per-character wake words, plus Browser TTS and expression modules. Local voice backends must be installed separately.
 - 🧩 **Runtime integrations** — Includes a Unity Bridge, DeepSeek Harness Bridge, and ComfyUI Workflow settings entry to extend runtime and workflow options.
 
 > **Current stage:** Early open source; some capabilities are still being integrated. See [project status](#project-status) for subsystem details.
+
+### 🆕 What's new in v0.2.0
+
+- 🔊 **Character voices**: GPT-SoVITS support with swappable voice packs (including lite packs); each pet slot can use its own voice; long replies are synthesized in complete sentence groups.
+- 🎙️ **Hands-free voice chat**: talk without pressing a button; each character has its own wake words matched by sound; mic status is shown under the selected character.
+- 🧠 **Memory approval and workspace**: characters propose what to remember and nothing is saved until you approve it in the sidebar; the new memory workspace supports drag-to-link, tags, and a light graph.
+- 👀 **Life companion**: the character watches the screen only with your consent and can be disconnected at any time, including by declining in chat.
+- 🛠️ **Agent loop (preview)**: a new observe → decide → act → verify loop, on by default and switchable in the Agent settings, with better desktop targeting, recovery after clicks, and stopping at login screens it cannot automate. It has been tested on only a few tasks so far; file tasks still use the older path.
+- 🔐 **Security hardening**: opening files or URLs, steps that name a file path, and local project actions now ask for fresh approval; Agent file tools stay away from credentials and app data; IPC is trusted only from the bundled app page.
+- 🎞️ **Other**: 2D video pets rotate through library subfolders and play emotion clips; chat and settings use standard window controls; chat memory saving and long-conversation summaries are improved.
+
+See [Releases](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases) for the full changelog.
 
 > [!IMPORTANT]
 > Apache-2.0 applies to project source code; the character illustration in the app icon is excluded. The repository does not provide a library of character models, animations, or voice assets for unrestricted redistribution. Read the [asset licensing notes](./ASSET_LICENSES.md) and [public export boundary](./PUBLIC_EXPORT.md) first.
@@ -256,16 +268,16 @@ The table distinguishes “source infrastructure exists” from “end-to-end fl
 | Chat and character UI | Chat, character settings, model configuration surfaces | Core UI path exists; requires a model service configured by the user |
 | Agent Runtime | Sessions, planning, tool registry, permission routing, execution, result assessment | Core modules exist; production paths continue to be refactored and validated |
 | Computer Use | Screen and window observation, target handling, input, verification | End-to-end reliability is still under validation |
-| Memory / Knowledge | Character and group memory, knowledge and retrieval interfaces | Integration varies across subsystems |
+| Memory / Knowledge | Character and group memory, memory proposals and approval, memory workspace, knowledge and retrieval interfaces | Memory approval and workspace are wired in; other subsystems vary |
 | Neural Persona | Persona nodes, graph, relationships, feedback, persistence | Data and graph foundations exist; cognition / chat integration is ongoing |
 | Multi-Agent / Social | Group topics and memory, relationships, timelines, trends | Consistency of multi-character behavior is still being validated |
 | 2D / Live2D | Cubism loading, expression binding, pointer look, interaction | Runtime foundations exist; asset licensing is separate from this code description |
 | 3D / VRM | Three.js scene, VRM loading, expression, look-at, motion modules | Runtime foundations exist; compatible user-provided assets are required |
 | Unity Bridge | Unity Runtime / Bridge services and protocols | Connection code exists; integration requires a matching Unity side |
-| Life Companion | Mood / affection, proactive interaction, quiet hours, desktop awareness | Some behavior depends on settings and scheduling; integration is ongoing |
+| Life Companion | Mood / affection, proactive interaction, quiet hours, consent-based screen watching | Screen watching requires consent and can be disconnected anytime; other behavior depends on settings and scheduling |
 | MCP | Configuration, Stdio, session pool, diagnostics, policy, argument validation | Host infrastructure exists; third-party compatibility varies |
 | Skills / Sandbox | Package import, trust, signatures, policy, sandbox components | Ecosystem and distribution flows are still being validated |
-| Voice | Local voice, TTS / Browser TTS, playback, cache | Requires external services or local backend configuration |
+| Voice | GPT-SoVITS voice packs, per-pet voices, hands-free chat and wake words, Browser TTS, playback, cache | Main flow works; local backends such as GPT-SoVITS must be installed separately and are slow on CPU |
 | DeepSeek Harness | Runtime service, runner, capability bridge | Integration code exists; external runtime is still required |
 | ComfyUI | Workflow settings entry | An entry point does not mean the generation flow is complete and stable |
 
