@@ -4,6 +4,7 @@ const {
   loadExternalMcpServers,
   normalizeMcpTool,
 } = require('./mcpServerConfigLoader.cjs');
+const { listHttpMcpTools } = require('./mcpHttpClient.cjs');
 const {
   closeMcpProcess,
   createMcpProcess,
@@ -71,9 +72,22 @@ function createUnknownServerDiagnostic(serverId) {
   };
 }
 
+async function inspectHttpServer(server, diagnostic, startedAt) {
+  try {
+    const result = await listHttpMcpTools(server);
+    const tools = result.tools.map((tool) => normalizeMcpTool(server, tool)).filter((tool) => tool.name);
+    return { ...diagnostic, durationMs: Date.now() - startedAt, ok: true, toolCount: tools.length, tools };
+  } catch (error) {
+    return { ...diagnostic, durationMs: Date.now() - startedAt, error: error?.message || String(error) };
+  }
+}
+
 async function inspectServer(server, log) {
   const startedAt = Date.now();
   const diagnostic = createBaseDiagnostic(server);
+  if (server.transport === 'http') {
+    return inspectHttpServer(server, diagnostic, startedAt);
+  }
   if (!diagnostic.cwdExists) {
     return {
       ...diagnostic,

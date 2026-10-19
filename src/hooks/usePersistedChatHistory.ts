@@ -44,6 +44,10 @@ export function usePersistedChatHistory() {
       .then((messages) => {
         if (disposed) return;
         restorePersistedChatHistory(messages);
+        // A task card saved mid-task (app closed or reloaded) would show 进行中 forever.
+        void import('../components/chat/runController/conversationTaskCard')
+          .then((taskCard) => taskCard.settleOrphanedTaskCards())
+          .catch(() => undefined);
       })
       .catch(() => undefined)
       .finally(() => {

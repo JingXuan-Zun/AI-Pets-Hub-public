@@ -27,6 +27,52 @@ function credentialEndpoint(request) {
   return url.href;
 }
 
+/**
+ * Optional Gemini endpoint (a relay/proxy). Empty means the official endpoint. A trailing
+ * API version (/v1beta, /v1, /v1alpha) is split off because the SDK appends its own.
+ */
+function normalizeGeminiEndpoint(value) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return null;
+  const url = new URL(text);
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('invalid-endpoint');
+  let pathname = url.pathname.replace(/\/+$/, '');
+  let apiVersion;
+  const version = /\/(v1beta|v1alpha|v1)$/i.exec(pathname);
+  if (version) {
+    apiVersion = version[1].toLowerCase();
+    pathname = pathname.slice(0, -version[0].length);
+  }
+  return { baseUrl: url.origin + pathname, ...(apiVersion ? { apiVersion } : {}) };
+}
+
+/**
+ * What the renderer needs from one Gemini response or chunk: the text and, for the
+ * conversation loop, any function calls with their thought signatures (Gemini requires
+ * those to be sent back with the call on the next turn).
+ */
+function geminiChunkPayload(value) {
+  const parts = value?.candidates?.[0]?.content?.parts ?? [];
+  const functionCalls = parts
+    .filter((part) => part?.functionCall?.name)
+    .map((part) => ({
+      args: part.functionCall.args ?? {},
+      ...(part.functionCall.id ? { id: part.functionCall.id } : {}),
+      name: part.functionCall.name,
+      ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
+    }));
+  const text = parts.length
+    ? parts.filter((part) => typeof part?.text === 'string' && !part.thought).map((part) => part.text).join('')
+    : (value?.text || '');
+  return functionCalls.length ? { functionCalls, text } : { text };
+}
+
+function sameGeminiEndpoint(left, right) {
+  const a = normalizeGeminiEndpoint(left);
+  const b = normalizeGeminiEndpoint(right);
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function createModelRequestService({ persistedConfigStore, fetchImpl = fetch, createGeminiClient }) {
   const sessions = new Map();
   const encoder = new TextEncoder();
@@ -49,7 +95,10 @@ function createModelRequestService({ persistedConfigStore, fetchImpl = fetch, cr
     const loaded = persistedConfigStore.load({ includeModelSecrets: true });
     if (!loaded.ok) throw new Error('credential-unavailable');
     const settings = loaded.config.settings;
-    if (request.provider !== 'gemini') {
+    if (request.provider === 'gemini') {
+      // The saved key only goes to the saved endpoint.
+      if (!sameGeminiEndpoint(settings.geminiApiUrl, request.endpoint)) throw new Error('credential-endpoint-mismatch');
+    } else {
       const urlField = request.credentialField === 'customApiKey' ? 'customApiUrl' : 'visionCustomApiUrl';
       if (normalizeEndpoint(settings[urlField]) !== credentialEndpoint(request)) throw new Error('credential-endpoint-mismatch');
     }
@@ -70,8 +119,10 @@ function createModelRequestService({ persistedConfigStore, fetchImpl = fetch, cr
       if (Buffer.byteLength(JSON.stringify(payload) || '') > MAX_BODY_BYTES) throw new Error('request-too-large');
       if (request.provider === 'gemini') {
         if (!key || !payload || typeof payload.model !== 'string' || payload.httpOptions || payload.config?.httpOptions) throw new Error('invalid-gemini-request');
-        const client = createGeminiClient ? await createGeminiClient(key)
-          : new (await import('@google/genai')).GoogleGenAI({ apiKey: key });
+        const endpoint = normalizeGeminiEndpoint(request.endpoint);
+        const options = { apiKey: key, ...(endpoint ? { httpOptions: endpoint } : {}) };
+        const client = createGeminiClient ? await createGeminiClient(key, options.httpOptions)
+          : new (await import('@google/genai')).GoogleGenAI(options);
         const args = { model: payload.model, contents: payload.contents,
           config: { ...payload.config, abortSignal: controller.signal } };
         if (request.stream) {
@@ -79,7 +130,7 @@ function createModelRequestService({ persistedConfigStore, fetchImpl = fetch, cr
           session.iterator = stream[Symbol.asyncIterator]();
         } else {
           const result = await client.models.generateContent(args);
-          session.single = encoder.encode(JSON.stringify({ text: result.text || '' }));
+          session.single = encoder.encode(JSON.stringify(geminiChunkPayload(result)));
         }
         if (!sessions.has(request.id)) {
           await session.iterator?.return?.();
@@ -113,15 +164,18 @@ function createModelRequestService({ persistedConfigStore, fetchImpl = fetch, cr
       if (session.single) { result = { value: session.single, done: false }; session.single = null; }
       else if (session.iterator) {
         const next = await session.iterator.next();
-        result = { done: next.done, value: next.done ? undefined : encoder.encode(JSON.stringify({ text: next.value.text || '' })) };
+        result = { done: next.done, value: next.done ? undefined : encoder.encode(JSON.stringify(geminiChunkPayload(next.value))) };
       } else result = session.reader ? await session.reader.read() : { done: true };
       session.bytes += result.value?.byteLength || 0;
       if (session.bytes > MAX_RESPONSE_BYTES) throw new Error('response-too-large');
       if (result.done) cancel(owner, id);
       return result;
-    } catch {
+    } catch (error) {
       cancel(owner, id);
-      throw new Error('模型响应读取失败，请重试。');
+      // Keep the kind of failure (timeout, connection reset, too large) so a dropped stream can
+      // be told apart from the rest; no URL, key or body text is included.
+      const reason = String(error?.cause?.code || error?.code || (error?.message === 'response-too-large' ? 'too-large' : error?.name) || '').slice(0, 40);
+      throw new Error(`模型响应读取失败${reason && reason !== 'Error' ? `（${reason}）` : ''}，请重试。`);
     } finally { session.reading = false; }
   }
   return { open, read, cancel, cancelOwner: (owner) => {

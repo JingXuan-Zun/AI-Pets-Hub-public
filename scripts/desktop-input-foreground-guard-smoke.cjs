@@ -54,7 +54,7 @@ for (const field of fields) {
   if (original) assert.deepEqual(actual, outcome(original, field, 7, 'click', true));
   hash.update(JSON.stringify(actual)); cases++;
 }
-assert.equal(hash.digest('hex'), 'bb21ba3a50f317daa54f95258c6721351f421240441d5193dc41e48d15bbc7de', 'Reviewed field precedence/conversion/error trace');
+assert.equal(hash.digest('hex'), '83ec07deafd94958d67e27b475324e0a2c6eb189bcc177657a54f1e84d1eed19', 'Reviewed field precedence/conversion/error trace');
 for (const value of seeds) {
   let actual, previous;
   function escape(read) { try { return { value: read.escapePowerShellSingleQuotedString(value) }; } catch (error) { return { error: [error.name, error.message] }; } }

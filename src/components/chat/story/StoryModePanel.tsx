@@ -135,7 +135,7 @@ function StoryModeEditor(props: {
 }) {
   const { controller, onCancel, onDelete, participants, scrollContainerRef, storyLibrary } = props;
   return (
-    <div ref={scrollContainerRef} className="flex h-full min-h-0 w-full min-w-0 flex-1 basis-0 flex-col overscroll-contain overflow-y-auto p-4" style={{ overflowAnchor: 'none' }} onPointerDown={(event) => event.stopPropagation()}>
+    <div ref={scrollContainerRef} className="flex h-full min-h-0 w-full min-w-0 flex-1 basis-0 flex-col overscroll-contain overflow-y-auto overflow-x-hidden p-4" style={{ overflowAnchor: 'none' }} onPointerDown={(event) => event.stopPropagation()}>
       <div className="glass-card mx-auto w-full max-w-4xl space-y-4 rounded-[15px] p-4">
         <div><div className="text-[10px] uppercase tracking-[0.2em] text-sky-500">Story Mode</div><h2 className="mt-1 text-lg font-semibold text-sky-950">创建或导入故事</h2><p className="mt-1 text-[11px] leading-5 text-sky-600">所有内容都可以修改。手动内容和导入剧本优先于模型生成内容。</p></div>
         <StoryLibraryPanel stories={storyLibrary} onDelete={onDelete} onSelect={(story) => { controller.setDraft(normalizeStoryDefinition(story, participants, story.source)); controller.setIsPreviewing(true); }} />

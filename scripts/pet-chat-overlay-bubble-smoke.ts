@@ -7,14 +7,15 @@ const baseProps = {
   chatBracketOuterTextColor: '#0f766e',
   chatBubbleEnabled: true,
   isPrimaryTyping: false,
-  latestPetMessage: '气泡回归检查',
+  latestPetMessage: '（轻轻点头）气泡回归检查',
   petAnchorPosition: { x: 420, y: 360 },
   petVisualBounds: { top: 180 },
 };
 
 const enabledMarkup = renderToStaticMarkup(createElement(PetChatOverlayBubble, baseProps));
 assert.match(enabledMarkup, /气泡回归检查/, 'the latest pet reply should render in the bubble');
-assert.match(enabledMarkup, /rounded-2xl[^"]*bg-white\/90/, 'the reply should render inside a visible rounded bubble');
+assert.match(enabledMarkup, /class="relative overflow-hidden rounded-2xl"><div class="[^"]*bg-white\/90/, 'the reply should render inside a visible rounded bubble');
+assert.match(enabledMarkup, /<span style="color:#111827">（轻轻点头）<\/span>/, 'bracketed actions should render in the dark action color');
 assert.match(enabledMarkup, /aria-hidden="true"[^>]*class="[^"]*-bottom-1/, 'the bubble should include a small pointer toward the pet');
 
 const disabledMarkup = renderToStaticMarkup(createElement(PetChatOverlayBubble, { ...baseProps, chatBubbleEnabled: false }));

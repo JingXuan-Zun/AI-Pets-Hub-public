@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { type PetConfig } from '../../types';
-import { normalizePetConfig } from '../../petConfigNormalization';
 import {
   getModelUsageSnapshot,
   getSoftwareRuntimeSnapshot,
@@ -10,32 +9,9 @@ import {
   type SoftwareRuntimeSnapshot,
 } from '../../controlCenterUsage';
 import { downloadJsonTextFile } from './settingsDownloadUtils';
+import { buildPrivateDataExport, parsePrivateDataExport, preserveLocalSecrets } from '../../privateDataBackup';
 
 declare const __APP_VERSION__: string;
-
-const PRIVATE_EXPORT_KIND = 'ai-desktop-pet-private-data';
-const PRIVATE_EXPORT_VERSION = 1;
-
-type PrivateDataExport = {
-  appVersion: string;
-  config: PetConfig;
-  exportedAt: string;
-  kind: typeof PRIVATE_EXPORT_KIND;
-  version: typeof PRIVATE_EXPORT_VERSION;
-};
-
-const SECRET_SETTING_KEYS = [
-  'braveSearchApiKey',
-  'browserTtsApiKey',
-  'customApiKey',
-  'geminiApiKey',
-  'customSpeechApiKey',
-  'customVoiceApiKey',
-  'customWebSearchApiKey',
-  'serperApiKey',
-  'tavilyApiKey',
-  'visionCustomApiKey',
-] as const;
 
 function formatDuration(durationMs: number) {
   const totalSeconds = Math.floor(Math.max(0, durationMs) / 1000);
@@ -45,41 +21,6 @@ function formatDuration(durationMs: number) {
   if (days > 0) return `${days}天 ${hours}小时`;
   if (hours > 0) return `${hours}小时 ${minutes}分钟`;
   return `${minutes}分钟`;
-}
-
-function redactSecrets(config: PetConfig): PetConfig {
-  const settings = { ...config.settings };
-  for (const key of SECRET_SETTING_KEYS) {
-    settings[key] = '';
-  }
-  return { ...config, settings };
-}
-
-function preserveLocalSecrets(importedConfig: PetConfig, currentConfig: PetConfig): PetConfig {
-  const settings = { ...importedConfig.settings };
-  for (const key of SECRET_SETTING_KEYS) {
-    settings[key] = currentConfig.settings[key];
-  }
-  return { ...importedConfig, settings };
-}
-
-function buildPrivateDataExport(config: PetConfig): PrivateDataExport {
-  return {
-    appVersion: __APP_VERSION__,
-    config: redactSecrets(normalizePetConfig(config)),
-    exportedAt: new Date().toISOString(),
-    kind: PRIVATE_EXPORT_KIND,
-    version: PRIVATE_EXPORT_VERSION,
-  };
-}
-
-function parsePrivateDataExport(value: unknown) {
-  if (!value || typeof value !== 'object') throw new Error('文件不是有效的私人数据备份。');
-  const payload = value as Partial<PrivateDataExport>;
-  if (payload.kind !== PRIVATE_EXPORT_KIND || payload.version !== PRIVATE_EXPORT_VERSION || !payload.config) {
-    throw new Error('备份格式或版本不受支持。');
-  }
-  return normalizePetConfig(payload.config);
 }
 
 function useOverviewMetrics() {

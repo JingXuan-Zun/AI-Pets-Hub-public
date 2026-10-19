@@ -116,6 +116,8 @@ async function scenario(text, mode, pooled, observer, args) {
       loadExternalMcpPolicyConfig(projectRoot) { assert.equal(projectRoot, 'fixture-root'); calls.push(['policy-config']); return config; },
     },
     './mcpStdioClientRules.cjs': rules,
+    // Remote (HTTP) servers have their own client; these fixtures are local, so it must not be used.
+    './mcpHttpClient.cjs': { callHttpMcpTool() { throw new Error('stdio fixture used the HTTP client'); }, listHttpMcpTools() { throw new Error('stdio fixture used the HTTP client'); } },
     './mcpStdioSession.cjs': hostSession,
     './mcpStdioSessionPool.cjs': { createMcpStdioSessionPool() { throw new Error('Only the provided fixture pool may be used'); } },
     './mcpStdioToolDiscovery.cjs': { listToolsWithPooledSession: (value, entry) => value.runRpc(entry, 'tools/list', {}, entry.timeoutMs) },

@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 
-import {
-  createAgentTaskRuntimeModelLoopState,
-  decideAgentTaskRuntimeLoopContinuation,
-  selectAgentTaskRuntimeNextTransition,
-  transitionAgentTaskRuntimeModelLoop,
-  type AgentTaskRuntimeNextSubgoalAction,
-} from '../src/agent/index.ts';
+import { createAgentTaskRuntimeModelLoopState, decideAgentTaskRuntimeLoopContinuation, selectAgentTaskRuntimeNextTransition, transitionAgentTaskRuntimeModelLoop } from '../src/agent/runtime/taskRuntime/transitionPolicy';
+import { type AgentTaskRuntimeNextSubgoalAction } from '../src/agent/runtime/agentRuntimeContract';
 
 function select(nextSubgoalAction: AgentTaskRuntimeNextSubgoalAction | null) {
   return selectAgentTaskRuntimeNextTransition({

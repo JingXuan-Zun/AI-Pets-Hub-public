@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  buildAgentPermissionRoute,
-  diagnoseAgentTaskScopedApprovalContinuation,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { buildAgentPermissionRoute, diagnoseAgentTaskScopedApprovalContinuation } from '../src/agent/agentPermissionRouter';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 
 function launchCommand(options: {
   goal: string;

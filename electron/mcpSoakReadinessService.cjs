@@ -84,13 +84,14 @@ function parseDraftServers(rawText, projectRoot) {
 }
 
 function createServerReadiness(server) {
-  const commandPathExists = commandExists(server);
+  // A hosted server has no local command or script to check.
+  const commandPathExists = server.transport === 'http' ? true : commandExists(server);
   const cwdExists = server.cwd ? fs.existsSync(server.cwd) : null;
   const fakeFixture = isFakeFixture(server);
   const referenceServer = isReferenceServer(server);
   const blockers = [
     createPlaceholderBlocker(server),
-    createScriptPathBlocker(server),
+    server.transport === 'http' ? '' : createScriptPathBlocker(server),
     commandPathExists === false ? 'command path does not exist' : '',
     cwdExists === false ? 'cwd does not exist' : '',
   ].filter(Boolean);

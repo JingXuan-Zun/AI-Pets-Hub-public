@@ -1,5 +1,5 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react';
-import { type PetConfig } from '../../types';
+import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
 import {
   buildNextVoiceConfig,
 } from './chatVoiceControlUtils';
@@ -8,7 +8,7 @@ import { useReplyVoiceWarmup } from './useReplyVoiceWarmup';
 
 interface UseDirectChatVoicePlaybackOptions {
   configRef: MutableRefObject<PetConfig>;
-  onUpdateConfig: (config: PetConfig) => void;
+  onUpdateConfig: PetConfigUpdateHandler;
   publishStatusMessage: (message: string) => void;
   replyVoiceWarmupActiveKeyRef: MutableRefObject<string>;
   replyVoiceWarmupReadyKeyRef: MutableRefObject<string>;
@@ -55,7 +55,9 @@ export function useDirectChatVoicePlayback({
   const toggleVoiceEnabled = useCallback(() => {
     const nextConfig = buildNextVoiceConfig(configRef.current);
     configRef.current = nextConfig;
-    onUpdateConfig(nextConfig);
+    // Saved, not just applied: an unsaved switch went back to off on every reload or restart,
+    // and replies were silently not read out.
+    onUpdateConfig(nextConfig, { persist: true });
 
     if (!nextConfig.settings.voiceEnabled) {
       stopPetSpeech();

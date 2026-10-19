@@ -11,6 +11,12 @@ import {
 } from './neuralPersonaNodeBatchGraphPreparation';
 import type { NeuralPersonaNodeGenerationCandidate } from './neuralPersonaNodeGenerationTypes';
 import { NEURAL_PERSONA_NODE_GENERATION_VERSION } from './neuralPersonaNodeGenerationTypes';
+import {
+  createNeuralPersonaBatchSourceDocument,
+  createNeuralPersonaCandidateSourceReference,
+  neuralPersonaCandidateContent,
+  neuralPersonaCandidateRetrievalSummary,
+} from './neuralPersonaContentLayers';
 import type {
   CommitNeuralPersonaGeneratedNodesCommand,
   NeuralPersonaNodeBatchCommandResult,
@@ -44,7 +50,7 @@ function tags(candidate: NeuralPersonaNodeGenerationCandidate, command: {
 }
 
 function createNode(options: {
-  batchId: string;
+  batch: CommitNeuralPersonaGeneratedNodesCommand['batch'];
   candidate: NeuralPersonaNodeGenerationCandidate;
   reviewerId: string;
   roleId: string;
@@ -55,10 +61,18 @@ function createNode(options: {
     confidence: options.candidate.confidence, createdAt: options.timestamp,
     currentActivation: 0, decayRate: 0.02,
     influenceSummary: options.candidate.influenceSummary.trim(),
-    nodeId: generatedCandidateNodeId(options.batchId, options.candidate.candidateId),
+    nodeId: generatedCandidateNodeId(options.batch.batchId, options.candidate.candidateId),
+    normalizedContent: neuralPersonaCandidateContent(options.candidate),
     ownerRoleId: options.roleId,
     plasticity: 0.2, protected: false,
+    retrievalSummary: neuralPersonaCandidateRetrievalSummary(options.candidate),
     schemaVersion: NEURAL_PERSONA_SCHEMA_VERSION, scope: 'private', stability: 0.8,
+    sourceReferences: (() => {
+      const reference = createNeuralPersonaCandidateSourceReference(
+        options.batch, options.candidate,
+      );
+      return reference ? [reference] : undefined;
+    })(),
     status: 'active', tags: tags(options.candidate, options),
     type: options.candidate.type, updatedAt: options.timestamp,
   };
@@ -99,15 +113,25 @@ function prepareBatchGraph(options: {
   revision: number;
   timestamp: number;
 }) {
+  const proposedSource = createNeuralPersonaBatchSourceDocument(options.command.batch);
+  const matchingSource = options.current?.sources?.find((source) => (
+    source.contentFingerprint === proposedSource.contentFingerprint
+  ));
+  const command = matchingSource && matchingSource.sourceId !== proposedSource.sourceId
+    ? {
+      ...options.command,
+      batch: { ...options.command.batch, sourceDocumentId: matchingSource.sourceId },
+    }
+    : options.command;
   const content = prepareNodeBatchContent({
-    command: options.command, current: options.current, timestamp: options.timestamp,
+    command, current: options.current, timestamp: options.timestamp,
     createNode: (candidate) => createNode({
-      batchId: options.command.batch.batchId, candidate,
-      reviewerId: options.command.reviewerId.trim(), roleId: options.command.roleId,
+      batch: command.batch, candidate,
+      reviewerId: command.reviewerId.trim(), roleId: command.roleId,
       timestamp: options.timestamp,
     }),
   });
-  const assembled = assembleNodeBatchGraph({ ...options, content });
+  const assembled = assembleNodeBatchGraph({ ...options, command, content });
   if (assembled.issue) return {
     anchor: content.anchor, issue: assembled.issue, newNodes: content.newNodes,
     reused: content.reused,

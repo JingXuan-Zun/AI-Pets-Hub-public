@@ -1,9 +1,7 @@
-import {
-  resolveAgentCharacterAnimationIntent,
-  resolveAgentChatEntryRoute,
-  resolveAgentProductionSessionInstruction,
-  shouldUseAgentChatEntryRouter,
-} from '../../agent';
+import { createConversationChatRuntime, createConversationToolActorGate } from './runController/conversationChatRuntime';
+import { beginDelegatedScope, resolveDelegatedSlotId } from './runController/chatDelegation';
+import { resolveChatTargetSlots } from './chatTargetResolutionUtils';
+import { latestPendingAgentLoopApprovalId } from './runController/agentLoopApprovalRegistry';
 import { desktopPetChatStore } from '../../chatStore';
 import type { DesktopPetChatSendOptions } from '../../chatState';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
@@ -15,15 +13,7 @@ import {
   findLatestPendingAgentApprovalMessage,
   resolveAgentApprovalDecisionFromText,
   resolveAgentApprovalRequest,
-  runPreparedAgentProductionSession,
 } from './agentRunController';
-import { resolveRoutedGroupTask } from './group/task/groupTaskRouting';
-import { applyGroupTaskRuntimeResult } from './group/task/groupTaskRuntimeResult';
-import {
-  createGroupTaskLifecycleCallbacks,
-  continueActiveGroupTaskConversation,
-  startPreparedGroupTaskRuntime,
-} from './group/task/groupTaskSenderLifecycle';
 import type { UsePetChatMessageSenderOptions } from './petChatMessageSenderTypes';
 import { getChatTargetOptions } from './multiPetChat';
 import { normalizeStoryDefinition } from './story/storyDraftNormalization';
@@ -31,11 +21,8 @@ import {
   resolveStoryDefinitionForSend,
   shouldRestoreStorySession,
 } from './story/storySessionRecovery';
-import { runGroupTaskCollaborationPreflight } from './group/task/groupTaskCollaborationExecution';
 
-export type PetChatMessageSenderContext = UsePetChatMessageSenderOptions & {
-  groupTaskLifecycle: ReturnType<typeof createGroupTaskLifecycleCallbacks>;
-};
+export type PetChatMessageSenderContext = UsePetChatMessageSenderOptions;
 
 type SendInput = {
   followUpAction: DesktopPetChatSendOptions['agentFollowUpAction'];
@@ -67,11 +54,14 @@ async function tryResolveTextApproval(context: PetChatMessageSenderContext, inpu
   }
   const state = desktopPetChatStore.getState();
   const decision = resolveAgentApprovalDecisionFromText(input.outgoingText);
-  const message = decision ? findLatestPendingAgentApprovalMessage(state.messages, {
+  // A task card waiting on a question is answered first (its question has its own id).
+  const loopApprovalId = decision ? latestPendingAgentLoopApprovalId() : null;
+  const message = decision && !loopApprovalId ? findLatestPendingAgentApprovalMessage(state.messages, {
     activePetId: state.activePetId,
     chatMode: state.chatMode,
   }) : null;
-  if (!decision || !message?.id) {
+  const approvalId = loopApprovalId ?? message?.id ?? null;
+  if (!decision || !approvalId) {
     return false;
   }
   resetVoiceInputSession(context.voiceInputSessionRef, context.voiceTranscriptRef);
@@ -79,10 +69,10 @@ async function tryResolveTextApproval(context: PetChatMessageSenderContext, inpu
   desktopPetChatStore.setStatusMessage('');
   pushFrontendRuntimeLog('agent-run', 'text approval resolved pending request', {
     decision,
-    messageId: message.id,
+    messageId: approvalId,
     textLength: input.outgoingText.length,
   });
-  await resolveAgentApprovalRequest({ ...context, decision, messageId: message.id });
+  await resolveAgentApprovalRequest({ ...context, decision, messageId: approvalId });
   return true;
 }
 
@@ -136,140 +126,64 @@ async function prepareSendRequest(context: PetChatMessageSenderContext, input: S
   });
 }
 
-function resolveInitialAgentInstruction(input: SendInput) {
-  if (input.hasImageAttachments) return '';
-  if (input.followUpAction?.kind === 'run-command') {
-    const command = input.followUpAction.command;
-    return command.toolCall?.goal
-      || command.instruction
-      || command.sourceText
-      || input.outgoingText
-      || input.followUpAction.label;
-  }
-  if (input.options?.agentMode) return input.outgoingText;
-  return resolveAgentProductionSessionInstruction(input.outgoingText);
-}
-
-function resolveAnimationAgentInstruction(input: SendInput, instruction: string) {
-  if (instruction || input.hasImageAttachments) return instruction;
-  const animationIntent = resolveAgentCharacterAnimationIntent(input.outgoingText);
-  if (!animationIntent) return '';
-  pushFrontendRuntimeLog('agent-entry-router', 'route=agent deterministic-character-skill', {
-    animationId: animationIntent.animationId,
-    reason: animationIntent.reason,
-    textLength: input.outgoingText.length,
-  });
-  return input.outgoingText;
-}
-
-async function resolveRoutedAgentInstruction(
-  context: PetChatMessageSenderContext,
-  input: SendInput,
-  preparedRequest: PreparedChatSendRequest,
-  instruction: string,
-) {
-  if (instruction || input.hasImageAttachments) return instruction;
-
-  if (!shouldUseAgentChatEntryRouter({
-    historyMessages: preparedRequest.promptHistoryMessages,
-    sourceText: input.outgoingText,
-  })) {
-    pushFrontendRuntimeLog('agent-entry-router', 'skipped for plain chat', {
-      textLength: input.outgoingText.length,
-    });
-    return '';
-  }
+/**
+ * A private-chat message handed to another character ("让小玲去把文件夹挪到副屏"): that character
+ * replies and does the work with its own voice, task card and questions, while everything stays
+ * in the conversation the user is in. Returns false when the message is not a hand-off.
+ */
+async function runDelegatedRequest(context: PetChatMessageSenderContext, preparedRequest: PreparedChatSendRequest) {
+  if (preparedRequest.isGroupMode || preparedRequest.currentChatState.chatMode !== 'single') return false;
+  const chatting = preparedRequest.targetSlots[0];
+  if (!chatting) return false;
+  const others = resolveChatTargetSlots(context.configRef.current, 'group', null);
+  const helperId = resolveDelegatedSlotId(preparedRequest.outgoingText, others, chatting.id);
+  const helper = helperId ? others.find((slot) => slot.id === helperId) : null;
+  if (!helper) return false;
+  pushFrontendRuntimeLog('chat', 'message handed to another character', { from: chatting.id, to: helper.id });
+  const endScope = beginDelegatedScope(helper.id, chatting.id);
   try {
-    const decision = await resolveAgentChatEntryRoute({
-      historyMessages: preparedRequest.promptHistoryMessages,
-      settings: preparedRequest.currentConfig.settings,
-      sourceText: input.outgoingText,
+    await runPreparedChatSendRequest({
+      ...context,
+      preparedRequest: { ...preparedRequest, targetSlots: [helper] },
+      runPetResponseTurn: (targetSlot, turnOptions) => context.runPetResponseTurn(targetSlot, {
+        ...turnOptions,
+        conversationTools: createConversationChatRuntime({
+          configRef: context.configRef, executeAgentCommand: context.onAgentChatCommand, onUpdateConfig: context.onUpdateConfig, preparedRequest, targetSlot,
+        }),
+      }),
     });
-    pushFrontendRuntimeLog('agent-entry-router', `route=${decision.mode}`, {
-      confidence: decision.confidence ?? null,
-      reason: decision.reason,
-      rewrittenGoal: decision.rewrittenGoal ?? null,
-      textLength: input.outgoingText.length,
-    });
-    if (decision.mode !== 'agent') return '';
-    routePreparedGroupTask(context, input, preparedRequest, decision);
-    return decision.rewrittenGoal || input.outgoingText;
-  } catch (error) {
-    pushFrontendRuntimeLog('agent-entry-router', 'router failed; falling back to normal chat', {
-      error: error instanceof Error ? error.message : String(error),
-      textLength: input.outgoingText.length,
-    });
-    return '';
+  } finally {
+    endScope();
   }
-}
-
-function routePreparedGroupTask(
-  context: PetChatMessageSenderContext,
-  input: SendInput,
-  preparedRequest: PreparedChatSendRequest,
-  decision: Awaited<ReturnType<typeof resolveAgentChatEntryRoute>>,
-) {
-  if (!preparedRequest.isGroupMode) return;
-  preparedRequest.groupTaskCandidate = resolveRoutedGroupTask({
-    decision,
-    groupSessionId: `group-${preparedRequest.requestToken}`,
-    sourceText: input.outgoingText,
-    targetSlots: preparedRequest.targetSlots,
-    topicId: preparedRequest.userMessage.id,
-  }) ?? undefined;
-  startPreparedGroupTaskRuntime(context.activeGroupRuntimeRef, preparedRequest);
-}
-
-async function executePreparedAgentSession(
-  context: PetChatMessageSenderContext,
-  input: SendInput,
-  preparedRequest: PreparedChatSendRequest,
-  instruction: string,
-) {
-  const collaborationReady = await runGroupTaskCollaborationPreflight({
-    request: preparedRequest,
-    runPetResponseTurn: context.runPetResponseTurn,
-  });
-  if (!collaborationReady) return;
-  await runPreparedAgentProductionSession({
-    ...context,
-    instruction,
-    onRuntimeResult: preparedRequest.groupTaskCandidate
-      ? ({ implementation, result }) => applyGroupTaskRuntimeResult({
-          implementation,
-          preparedRequest,
-          result,
-        })
-      : undefined,
-    preparedRequest,
-  });
-  await continueActiveGroupTaskConversation(context, preparedRequest);
+  return true;
 }
 
 async function executePreparedRequest(
   context: PetChatMessageSenderContext,
-  input: SendInput,
   preparedRequest: PreparedChatSendRequest,
 ) {
+  // Story mode keeps its own narrator and uses no tools.
   if (preparedRequest.currentChatState.chatMode === 'story') {
     await runPreparedChatSendRequest({ ...context, preparedRequest });
     return;
   }
-  const initialInstruction = resolveAnimationAgentInstruction(
-    input,
-    resolveInitialAgentInstruction(input),
-  );
-  const instruction = await resolveRoutedAgentInstruction(
-    context,
-    input,
+  // "让小玲去…" in a private chat: 小玲 answers and does it, inside this conversation.
+  if (await runDelegatedRequest(context, preparedRequest)) return;
+  // Every other message goes through the conversation loop: the reply itself may call
+  // tools. In a group only one character gets them (see createConversationToolActorGate).
+  const mayUseTools = createConversationToolActorGate(preparedRequest);
+  await runPreparedChatSendRequest({
+    ...context,
     preparedRequest,
-    initialInstruction,
-  );
-  if (instruction) {
-    await executePreparedAgentSession(context, input, preparedRequest, instruction);
-    return;
-  }
-  await runPreparedChatSendRequest({ ...context, preparedRequest });
+    runPetResponseTurn: (targetSlot, turnOptions) => (mayUseTools(targetSlot.id)
+      ? context.runPetResponseTurn(targetSlot, {
+        ...turnOptions,
+        conversationTools: createConversationChatRuntime({
+          configRef: context.configRef, executeAgentCommand: context.onAgentChatCommand, onUpdateConfig: context.onUpdateConfig, preparedRequest, targetSlot,
+        }),
+      })
+      : context.runPetResponseTurn(targetSlot, turnOptions)),
+  });
 }
 
 export async function executePetChatMessageSend(
@@ -301,7 +215,7 @@ export async function executePetChatMessageSend(
   const preparedRequest = await prepareSendRequest(context, input);
   if (!preparedRequest) return;
   try {
-    await executePreparedRequest(context, input, preparedRequest);
+    await executePreparedRequest(context, preparedRequest);
   } finally {
     finalizeChatSendRequest(
       preparedRequest.requestToken,

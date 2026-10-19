@@ -17,6 +17,20 @@ export const CHAT_FONT_WEIGHT_MIN = 300;
 export const CHAT_FONT_WEIGHT_MAX = 1000;
 export const CHAT_FONT_WEIGHT_DEFAULT = 400;
 
+/** 界面玻璃（Hub 面板、设置卡片）的透明度，0 = 原始不透明度，越大越透明。 */
+export const UI_GLASS_TRANSPARENCY_MIN = 0;
+export const UI_GLASS_TRANSPARENCY_MAX = 100;
+export const UI_GLASS_TRANSPARENCY_DEFAULT = 30;
+
+export function clampUiGlassTransparency(value: unknown) {
+  return clampNumber(value, UI_GLASS_TRANSPARENCY_DEFAULT, UI_GLASS_TRANSPARENCY_MIN, UI_GLASS_TRANSPARENCY_MAX);
+}
+
+/** 写到窗口根元素上的 CSS 变量：玻璃底色的不透明度系数（见 index.css 的 --ui-glass-opacity）。 */
+export function resolveUiGlassStyle(transparency: unknown) {
+  return { '--ui-glass-opacity': String(Number((1 - clampUiGlassTransparency(transparency) / 100).toFixed(3))) } as Record<string, string>;
+}
+
 export function clampChatBubbleTransparency(value: unknown) {
   return clampNumber(value, 0, 0, 100);
 }

@@ -32,10 +32,11 @@ type MorphTargetReactionDebugSummary = {
 };
 
 const EXPRESSION_NAME_CANDIDATES: Record<PetMessageExpressionAction, string[]> = {
-  EATING: ['eating', 'eat', 'chew', 'chewing', 'mogu', 'munch', 'nom', 'food'],
-  HAPPY: ['happy', 'smile', 'joy', 'laugh', 'grin', 'cheer'],
-  SAD: ['sad', 'cry', 'sorrow', 'upset', 'frown', 'troubled'],
-  SLEEPING: ['sleeping', 'sleepy', 'sleep', 'drowsy', 'blink', 'relaxed'],
+  // The Japanese names are MMD's standard morphs; English names are tried first.
+  EATING: ['eating', 'eat', 'chew', 'chewing', 'mogu', 'munch', 'nom', 'food', 'もぐもぐ'],
+  HAPPY: ['happy', 'smile', 'joy', 'laugh', 'grin', 'cheer', '笑い', 'にこり'],
+  SAD: ['sad', 'cry', 'sorrow', 'upset', 'frown', 'troubled', '困る'],
+  SLEEPING: ['sleeping', 'sleepy', 'sleep', 'drowsy', 'blink', 'relaxed', 'まばたき'],
 };
 
 const EXPRESSION_WEIGHT_BY_ACTION: Record<PetMessageExpressionAction, number> = {
@@ -46,11 +47,11 @@ const EXPRESSION_WEIGHT_BY_ACTION: Record<PetMessageExpressionAction, number> = 
 };
 
 const LIP_SYNC_VISEME_FALLBACKS: Record<string, string[]> = {
-  aa: ['aa', 'a', 'mouthOpen', 'open'],
-  ee: ['ee', 'e'],
-  ih: ['ih', 'i'],
-  oh: ['oh', 'o'],
-  ou: ['ou', 'u'],
+  aa: ['aa', 'a', 'mouthOpen', 'open', 'あ'],
+  ee: ['ee', 'e', 'え'],
+  ih: ['ih', 'i', 'い'],
+  oh: ['oh', 'o', 'お'],
+  ou: ['ou', 'u', 'う'],
 };
 
 const MANIFEST_EXPRESSION_KEY_BY_ACTION: Record<PetMessageExpressionAction, PetContentExpressionKey> = {

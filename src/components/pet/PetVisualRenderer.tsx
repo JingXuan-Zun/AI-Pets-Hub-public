@@ -6,7 +6,7 @@ import {
   type PetModelMotionBinding,
   type PetVideoEmotionFolderAliases,
 } from '../../types';
-import { DEFAULT_BUILTIN_STATIC_PET_MODEL_URL } from '../../constants';
+import { PetModelStatusPlaceholder } from './PetModelStatusPlaceholder';
 import Pet2DRenderer from './Pet2DRenderer';
 import Pet3DRenderer from './Pet3DRenderer';
 import PetLive2DRenderer from './PetLive2DRenderer';
@@ -175,23 +175,15 @@ const PetVisualRenderer = memo(function PetVisualRenderer({
       <div className={showStartupPlaceholder ? 'invisible h-full w-full' : 'h-full w-full'}>
         {runtime}
       </div>
-      {showStartupPlaceholder ? (
-        <img
-          src={DEFAULT_BUILTIN_STATIC_PET_MODEL_URL}
-          alt="Loading pet model"
-          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
-        />
-      ) : null}
+      {showStartupPlaceholder ? <PetModelStatusPlaceholder kind="loading" /> : null}
     </div>
   );
 
   if (failedModelRuntimeKey === modelRuntimeKey) {
     return (
-      <img
-        src={DEFAULT_BUILTIN_STATIC_PET_MODEL_URL}
-        alt="Pet model failed to load; showing the built-in pet"
-        className="pointer-events-none h-full w-full object-contain"
-      />
+      <div className="relative h-full w-full">
+        <PetModelStatusPlaceholder kind="failed" />
+      </div>
     );
   }
 

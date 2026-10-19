@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
-import {
-  type AgentChatCommandResult,
-  type AgentRuntimeGameCompanionLoopController,
-  type AgentRuntimeGameCompanionLoopStartOptions,
-} from '../../agent';
+import { type AgentChatCommandResult } from '../../agent/agentChatCommand';
+import { type AgentRuntimeGameCompanionLoopController, type AgentRuntimeGameCompanionLoopStartOptions } from '../../agent/agentRuntimeExecutor';
 import { DEFAULT_CHAT_ACTIVE_PET_ID } from '../../chatState';
 import { desktopPetChatStore } from '../../chatStore';
 import { desktopPetShellRuntime } from '../../desktopShellRuntime';
@@ -27,6 +24,10 @@ const FIRST_FRAME_AGENT_RESULT_TIMEOUT_MS = 12000;
 const GAME_COMPANION_PENDING_REPLY_RECHECK_MS = 2500;
 const GAME_COMPANION_UNCERTAIN_RETRY_INTERVAL_MS = 1200;
 const MAX_CONSECUTIVE_GAME_COMPANION_CAPTURE_FAILURES = 4;
+// Game companion only ends when the user ends it. Failures (window hidden, analysis error)
+// slow the checks down to at most once a minute and recover by themselves.
+const GAME_COMPANION_FAILURE_RETRY_BASE_MS = 10_000;
+const GAME_COMPANION_FAILURE_RETRY_MAX_MS = 60_000;
 const MIN_GAME_COMPANION_INTERVAL_MS = MIN_GAME_COMPANION_OBSERVATION_INTERVAL_MS;
 const MAX_GAME_COMPANION_INTERVAL_MS = MAX_GAME_COMPANION_OBSERVATION_INTERVAL_MS;
 const MIN_GAME_COMPANION_COMMENT_INTERVAL_MS = 5000;
@@ -56,6 +57,8 @@ type FirstFrameToolResultResolver = (result: AgentChatCommandResult) => void;
 interface GameCompanionLoopRuntimeState {
   commentCount: number;
   consecutiveErrorCount: number;
+  /** Said once per run of failures that she cannot see / read the game; reset on success. */
+  failureNoticePosted: boolean;
   detectedGameOrGenre: string | null;
   firstFrameResultResolvers: FirstFrameToolResultResolver[];
   firstFrameResultSettled: boolean;
@@ -731,7 +734,10 @@ export function useGameCompanionLoopController({
     }
 
     clearLoopTimer();
-    const delayMs = state.sourceCheckStatus === 'checking' || state.sourceCheckStatus === 'uncertain'
+    // While the game cannot be seen or read, look again less often instead of stopping.
+    const delayMs = state.consecutiveErrorCount > 0
+      ? Math.min(Math.max(state.intervalMs, GAME_COMPANION_FAILURE_RETRY_BASE_MS) * state.consecutiveErrorCount, GAME_COMPANION_FAILURE_RETRY_MAX_MS)
+      : state.sourceCheckStatus === 'checking' || state.sourceCheckStatus === 'uncertain'
       ? Math.min(state.intervalMs, GAME_COMPANION_UNCERTAIN_RETRY_INTERVAL_MS)
       : state.pendingCompanionReplyRevision !== null
         ? Math.min(state.intervalMs, GAME_COMPANION_PENDING_REPLY_RECHECK_MS)
@@ -749,11 +755,6 @@ export function useGameCompanionLoopController({
 
     state.isTicking = true;
     try {
-      if (state.sampleCount >= state.maxSamples) {
-        stopInternal('游戏陪伴循环已达到本次最大观察次数，已自动停止。');
-        return;
-      }
-
       const activeWindow = !state.sourceId && !state.query
         ? await desktopPetShellRuntime.getActiveWindowInfo().catch(() => null) as {
             executablePath?: string;
@@ -820,9 +821,9 @@ export function useGameCompanionLoopController({
           resolveFirstFrameToolResult(state);
         }
         state.consecutiveErrorCount += 1;
-        if (state.consecutiveErrorCount >= MAX_CONSECUTIVE_GAME_COMPANION_CAPTURE_FAILURES) {
-          postCompanionMessage('我这边连续没捕获到游戏画面，先把陪伴观察停一下。你把游戏窗口露出来或重新选择来源后再叫我继续。');
-          stopInternal('游戏陪伴循环因连续无法捕获缩略图而停止。');
+        if (state.consecutiveErrorCount >= MAX_CONSECUTIVE_GAME_COMPANION_CAPTURE_FAILURES && !state.failureNoticePosted) {
+          state.failureNoticePosted = true;
+          postCompanionMessage('我这边暂时看不到游戏画面了。你把游戏窗口露出来，我就接着陪你看；不玩了的话点一下结束就好。');
         }
         return;
       }
@@ -867,6 +868,7 @@ export function useGameCompanionLoopController({
       state.observationRevision += 1;
       const observationRevision = state.observationRevision;
       state.consecutiveErrorCount = 0;
+      state.failureNoticePosted = false;
       state.lastObservationSummary = observationSummary || state.lastObservationSummary;
       state.detectedGameOrGenre = analysis.detectedGameOrGenre?.trim() || state.detectedGameOrGenre;
       state.gameIdentityEvidence = analysis.gameIdentityEvidence?.trim() || state.gameIdentityEvidence;
@@ -920,9 +922,9 @@ export function useGameCompanionLoopController({
         resolveFirstFrameToolResult(state);
       }
       addLog(`游戏陪伴观察失败：${errorText}`);
-      if (state.consecutiveErrorCount >= 2) {
-        postCompanionMessage('游戏画面分析连续失败，我先停一下，避免一直打扰你。');
-        stopInternal('游戏陪伴循环因连续分析失败而停止。');
+      if (state.consecutiveErrorCount >= 2 && !state.failureNoticePosted) {
+        state.failureNoticePosted = true;
+        postCompanionMessage('游戏画面我这会儿看不太清，先安静一会儿，过一阵再试着看看。');
       }
     } finally {
       if (loopStateRef.current === state) {
@@ -969,6 +971,7 @@ export function useGameCompanionLoopController({
       loopStateRef.current = {
         commentCount: 0,
         consecutiveErrorCount: 0,
+        failureNoticePosted: false,
         detectedGameOrGenre: configRef.current.settings.gameCompanionGameName.trim() || null,
         firstFrameResultResolvers: [],
         firstFrameResultSettled: false,
@@ -999,7 +1002,7 @@ export function useGameCompanionLoopController({
         timerId: null,
       };
 
-      addLog(`游戏陪伴循环已启动：间隔 ${intervalMs}ms，最多 ${maxSamples} 次。`);
+      addLog(`游戏陪伴循环已启动：间隔 ${intervalMs}ms，直到你点结束。`);
       publishStatus();
       const startedState = loopStateRef.current;
       const startResult: AgentChatCommandResult = {

@@ -1,4 +1,4 @@
-import { Suspense, type MouseEvent as ReactMouseEvent } from 'react';
+import { Suspense, useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Box, Trash2 } from 'lucide-react';
 import { resolve3DModelFormatFromUrl } from '../../model3dFormatSupport';
 import PetVisualRenderer from '../pet/PetVisualRenderer';
@@ -7,6 +7,32 @@ import { FoodAppearanceVisual } from '../food/FoodAppearanceVisual';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
 import { resolveStoredAssetDisplayPath } from './settingsStoredAssetPath';
+import { readCachedModelThumbnail, requestModelThumbnail } from './modelLibraryThumbnails';
+
+// A light backdrop: the models are drawn on a transparent background, and a dark one turned the
+// frosted card behind them grey.
+const PREVIEW_BACKDROP_CLASS = 'bg-[radial-gradient(circle_at_50%_32%,rgba(255,255,255,0.92),rgba(255,244,250,0.72)_58%,rgba(240,222,236,0.62))]';
+
+type ThumbnailState = { status: 'failed' | 'loading' | 'ready'; url: string | null };
+
+function useModelThumbnail(preset: PetModelPreset): ThumbnailState {
+  const usesThumbnail = preset.type === '3d' || preset.type === 'live2d';
+  const [state, setState] = useState<ThumbnailState>(() => {
+    const cached = usesThumbnail ? readCachedModelThumbnail(preset) : null;
+    return cached ? { status: 'ready', url: cached } : { status: 'loading', url: null };
+  });
+  useEffect(() => {
+    if (!usesThumbnail) return undefined;
+    let cancelled = false;
+    void requestModelThumbnail(preset).then((url) => {
+      if (!cancelled) setState(url ? { status: 'ready', url } : { status: 'failed', url: null });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [preset.type, preset.url, usesThumbnail]);
+  return state;
+}
 
 export function FoodAppearanceCard({
   appearance,
@@ -82,9 +108,11 @@ function ModelPresetPreview({
   isActive: boolean;
   preset: PetModelPreset;
 }) {
+  const thumbnail = useModelThumbnail(preset);
+
   if (preset.type === '2d') {
     if (preset.renderKind === 'gif') {
-      return <img src={preset.url} alt={preset.name} className="pointer-events-none h-full w-full object-contain opacity-85" />;
+      return <img src={preset.url} alt={preset.name} className="pointer-events-none h-full w-full object-contain" />;
     }
     if (preset.renderKind === 'video') {
       return (
@@ -94,7 +122,7 @@ function ModelPresetPreview({
           autoPlay
           loop
           playsInline
-          className="pointer-events-none h-full w-full object-contain opacity-85"
+          className="pointer-events-none h-full w-full object-contain"
         />
       );
     }
@@ -103,13 +131,26 @@ function ModelPresetPreview({
       <img
         src={preset.url}
         alt={preset.name}
-        className="pointer-events-none h-full w-full object-contain opacity-85"
+        className="pointer-events-none h-full w-full object-contain"
         referrerPolicy="no-referrer"
       />
     );
   }
 
   if (preset.type === 'live2d' || preset.type === '3d') {
+    if (thumbnail.url) {
+      return <img src={thumbnail.url} alt={preset.name} className="pointer-events-none h-full w-full object-contain" />;
+    }
+
+    if (thumbnail.status === 'loading') {
+      return (
+        <div className="pointer-events-none flex h-full w-full items-center justify-center text-2xs text-muted-foreground" aria-label="正在生成模型预览">
+          <span className="animate-pulse">正在生成预览…</span>
+        </div>
+      );
+    }
+
+    // The picture could not be drawn: the model in use still gets a live view.
     if (isActive) {
       return (
         <Suspense fallback={<div className="h-full w-full animate-pulse bg-secondary/50" aria-label="正在加载模型预览" />}>
@@ -201,7 +242,7 @@ export function ModelPresetCard({
       onClick={onClick}
     >
       <CardContent className="flex flex-col p-0">
-        <div className="relative aspect-square overflow-hidden border-b border-border bg-black/40">
+        <div className={`relative aspect-square overflow-hidden border-b border-border ${PREVIEW_BACKDROP_CLASS}`}>
           <ModelPresetPreview preset={preset} formatLabel={formatLabel} isActive={isActive} />
           <Button
             type="button"

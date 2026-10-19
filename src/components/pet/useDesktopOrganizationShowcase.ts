@@ -1,26 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  classifyDesktopItem,
-  createDesktopIconArrangementPlan,
-  createDesktopIconRelativePlacementPlan,
-  createDesktopItemClassificationGroups,
-  createDesktopOrganizationIconPositionSourceSummary,
-  createDesktopOrganizationObservationEvidence,
-  findDesktopOrganizationTargetDisplay,
-  formatDesktopOrganizationIconPositionSourceSummary,
-  formatDisplayResolutionSummary,
-  getDesktopOrganizationDisplayLabel,
-  isDesktopIconInsideDesktopOrganizationViewport,
-  normalizeDesktopOrganizationDisplayRect,
-  selectMovableDesktopOrganizationFallbackIcons,
-  type AgentDesktopIconPlacementCommand,
-  type AgentDesktopOrganizationCommand,
-  type AgentDesktopObservationStats,
-  type DesktopIconArrangementPlan,
-  type DesktopIconArrangementViewport,
-  type DesktopItemClassificationGroup,
-  summarizeDesktopItemClassificationGroups,
-} from '../../agent';
+import { classifyDesktopItem, createDesktopItemClassificationGroups, type DesktopItemClassificationGroup, summarizeDesktopItemClassificationGroups } from '../../agent/desktopItemClassification';
+import { createDesktopIconArrangementPlan, createDesktopIconRelativePlacementPlan, type DesktopIconArrangementPlan, type DesktopIconArrangementViewport } from '../../agent/desktopIconArrangementPlan';
+import { createDesktopOrganizationIconPositionSourceSummary, createDesktopOrganizationObservationEvidence, findDesktopOrganizationTargetDisplay, formatDesktopOrganizationIconPositionSourceSummary, getDesktopOrganizationDisplayLabel, isDesktopIconInsideDesktopOrganizationViewport, normalizeDesktopOrganizationDisplayRect, selectMovableDesktopOrganizationFallbackIcons } from '../../agent/desktopOrganizationObservation';
+import { formatDisplayResolutionSummary } from '../../agent/displayMetrics';
+import { type AgentDesktopIconPlacementCommand, type AgentDesktopOrganizationCommand, type AgentDesktopObservationStats } from '../../agent/agentChatCommand';
 import { desktopPetShellRuntime } from '../../desktopShellRuntime';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type PetAction } from '../../types';

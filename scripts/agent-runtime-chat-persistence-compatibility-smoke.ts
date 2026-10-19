@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { type AgentRuntimeContinuation } from '../src/agent/index.ts';
+import { type AgentRuntimeContinuation } from '../src/agent/runtime/agentRuntimeContract';
 import { resolveChatAgentRuntimeContinuation } from '../src/components/chat/chatAgentRuntimeCompatibility.ts';
 
 function continuation(userGoal: string): AgentRuntimeContinuation {

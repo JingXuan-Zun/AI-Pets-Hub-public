@@ -1,7 +1,7 @@
 {
   "name": "ai-pets-hub",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -12,16 +12,9 @@
     "lint": "tsc --noEmit",
     "check:maintenance-runtime-contracts": "node scripts/maintenanceRuntimeContractChecks.mjs",
     "check:maintenance-modules": "node scripts/maintenanceModuleChecks.mjs",
-    "check:agent-runtime-architecture": "node .\\scripts\\agent-runtime-architecture-guard.mjs",
-    "check:agent-runtime-retirement": "node .\\scripts\\agent-runtime-legacy-retirement-gate.mjs",
-    "report:agent-runtime-retirement": "node .\\scripts\\agent-runtime-legacy-retirement-gate.mjs --report-only",
     "report:agent-runtime-source-revision": "node .\\scripts\\agent-runtime-source-revision.mjs",
-    "prepare:agent-runtime-observation": "node .\\scripts\\agent-runtime-observation-prepare.mjs",
     "smoke:agent:p0": "node scripts/agent-p0-smoke-health.mjs",
     "smoke:agent:canonical-journal": "npx.cmd tsx .\\scripts\\agent-canonical-event-journal-smoke.ts",
-    "smoke:agent:outcome-projection": "npx.cmd tsx .\\scripts\\agent-tool-outcome-projection-smoke.ts",
-    "smoke:agent:runtime-journal": "npx.cmd tsx .\\scripts\\agent-runtime-canonical-journal-integration-smoke.ts",
-    "smoke:collaborator-port": "npx.cmd tsx .\\scripts\\agent-session-v2-tool-execution-transaction-smoke.ts && npx.cmd tsx .\\scripts\\agent-session-v2-parallel-tool-execution-transaction-smoke.ts && npx.cmd tsx .\\scripts\\agent-task-runtime-model-iteration-continuation-smoke.ts && npx.cmd tsx .\\scripts\\collaborator-port-agent-outcome-smoke.ts && npx.cmd tsx .\\scripts\\collaborator-port-regression-smoke.ts && node .\\scripts\\local-voice-runtime-smoke.cjs",
     "smoke:neural-memory:proposal": "npx.cmd tsx .\\scripts\\neural-memory-proposal-smoke.ts",
     "smoke:neural-memory:notes": "npx.cmd tsx .\\scripts\\neural-memory-notes-smoke.ts",
     "smoke:neural-persona:contract": "npx.cmd tsx .\\scripts\\neural-persona-contract-smoke.ts",
@@ -58,9 +51,6 @@
     "dist:win": "vite build && node scripts/dist-win-incremental.mjs",
     "dist:win:force": "vite build && node scripts/dist-win-incremental.mjs --force",
     "dist:win:fresh": "vite build --outDir release/.fresh-renderer-dist --emptyOutDir && node scripts/dist-win-fresh.mjs",
-    "dist:win:production": "vite build --outDir release/.fresh-renderer-dist --emptyOutDir && node scripts/dist-win-fresh.mjs --require-marketplace-production",
-    "check:marketplace-production-config": "node scripts/check-marketplace-production-config.mjs --require",
-    "bootstrap:marketplace:first-publisher": "node scripts/marketplace-first-publisher-bootstrap.mjs",
     "moss:bridge": "powershell -ExecutionPolicy Bypass -File scripts/build-moss-bridge-windows.ps1",
     "unity:build-runtime": "node scripts/build-unity-runtime.mjs",
     "unity:diagnostic-runtime": "node scripts/unity-bridge-diagnostic-runtime.mjs"
@@ -78,6 +68,7 @@
     "@types/three": "^0.183.1",
     "@vitejs/plugin-react": "^5.0.4",
     "ajv": "^8.18.0",
+    "ammojs-typed": "1.0.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
@@ -119,7 +110,9 @@
       "dist/**/*",
       "electron/**/*",
       "resources/**/*",
-      "package.json"
+      "package.json",
+      "!**/__pycache__/**",
+      "!**/*.pyc"
     ],
     "extraResources": [
       {

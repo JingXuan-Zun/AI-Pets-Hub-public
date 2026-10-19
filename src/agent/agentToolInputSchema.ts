@@ -41,6 +41,7 @@ export const AGENT_TOOL_INPUT_PARAM_SPECS: Record<AgentToolCallName, readonly Ag
   get_system_info: AGENT_OBSERVATION_INPUT_SPECS.get_system_info,
   get_pet_settings: AGENT_LOCAL_SERVICE_INPUT_SPECS.get_pet_settings,
   update_pet_settings: AGENT_LOCAL_SERVICE_INPUT_SPECS.update_pet_settings,
+  use_platform_capability: AGENT_LOCAL_SERVICE_INPUT_SPECS.use_platform_capability,
   get_voice_status: AGENT_LOCAL_SERVICE_INPUT_SPECS.get_voice_status,
   list_running_apps: AGENT_OBSERVATION_INPUT_SPECS.list_running_apps,
   get_active_window_info: AGENT_OBSERVATION_INPUT_SPECS.get_active_window_info,
@@ -131,8 +132,8 @@ export function prepareAgentToolInput(
 
   for (const spec of specs) {
     const rawValue = getAgentToolInputParamRawValue(input, spec);
-    const normalizedRawValue = toolName === 'update_pet_settings'
-      && spec.key === 'changesJson'
+    const normalizedRawValue = ((toolName === 'update_pet_settings' && spec.key === 'changesJson')
+      || (toolName === 'use_platform_capability' && spec.key === 'argsJson'))
       && rawValue
       && typeof rawValue === 'object'
       && !Array.isArray(rawValue)

@@ -42,7 +42,7 @@ export function StoryParticipantRoutesEditor(props: {
       {selected.map((participant, index) => {
         const route = routes.find((item) => item.participantId === participant.id) ?? createRoute(participant.id, index);
         return (
-          <div key={participant.id} className="grid gap-2 md:grid-cols-[1fr_9rem_1fr] md:items-center">
+          <div key={participant.id} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] md:items-center">
             <span className="text-[11px] font-medium text-sky-800">{participant.name}</span>
             <select
               value={route.entryMode}

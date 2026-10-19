@@ -12,6 +12,7 @@ import {
   type NeuralPersonaContextInput,
   type NeuralPersonaTrace,
 } from './neuralPersonaTypes';
+import { neuralPersonaNodeContent } from './neuralPersonaContentLayers';
 
 export interface NeuralPersonaContextAdapterResult {
   contribution: NeuralContextContribution;
@@ -28,7 +29,7 @@ function createInfluence(candidate: ReturnType<typeof retrieveNeuralPersonaCandi
     intensity: candidate.score.total,
     nodeId: candidate.node.nodeId,
     reason: candidate.reason,
-    summary: candidate.node.influenceSummary,
+    summary: neuralPersonaNodeContent(candidate.node),
     type: candidate.node.type,
   } satisfies NeuralContextInfluence;
 }

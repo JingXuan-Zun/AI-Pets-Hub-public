@@ -67,6 +67,8 @@ interface PetChatConversationProps {
   composerClassName?: string;
   /** When provided, the host owns the sidebar state and renders the toggle in its own title bar. */
   sidebarCollapsed?: boolean;
+  /** 外层（聊天 Hub）已有私聊/群聊/故事入口时，侧栏不再重复显示模式切换。 */
+  hideModeSelector?: boolean;
   onSidebarCollapsedChange?: (isCollapsed: boolean) => void;
 }
 
@@ -122,10 +124,12 @@ export default function PetChatConversation({
   composerProps,
   composerClassName = '',
   sidebarCollapsed,
+  hideModeSelector = false,
   onSidebarCollapsedChange,
 }: PetChatConversationProps) {
   const { scrollRegionRef } = usePetChatConversationAutoScroll({
     isTyping,
+    lastMessageFromUser: messages[messages.length - 1]?.role === 'user',
     lastMessageText: messages[messages.length - 1]?.text,
     messageCount: messages.length,
     storageKey: scrollPositionKey,
@@ -237,8 +241,8 @@ export default function PetChatConversation({
 
   const mergedComposerClassName = [
     isInteractiveDialogue
-      ? 'shrink-0 flex gap-2 border-t border-white/15 bg-black/25 px-5 py-3 text-white'
-      : 'mx-3 mb-3 shrink-0 flex gap-2 rounded-2xl border border-white/70 glass-bar px-4 py-3 text-sky-900 shadow-[0_10px_30px_rgba(158,84,140,0.12)]',
+      ? 'relative z-20 shrink-0 flex gap-2 border-t border-white/15 bg-black/25 px-5 py-3 text-white'
+      : 'relative z-20 mx-3 mb-3 shrink-0 flex gap-2 rounded-2xl border border-white/70 glass-bar px-4 py-3 text-sky-900 shadow-[0_10px_30px_rgba(158,84,140,0.12)]',
     composerClassName,
   ].filter(Boolean).join(' ');
 
@@ -286,6 +290,7 @@ export default function PetChatConversation({
               }}
               petOptions={petOptions}
               showSidebarToggle={!isSidebarControlled}
+              hideModeSelector={hideModeSelector}
               pendingMemoryProposalCountByPetId={pendingMemoryProposalCountByPetId}
               memoryProposalPanel={onUpdateConfig ? (
                 <NeuralMemoryProposalPanel

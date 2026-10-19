@@ -38,6 +38,12 @@ if (-not $foregroundGuardOk) {
   @{ ok = $false; action = '${escapePowerShellSingleQuotedString(action)}'; error = 'target_window_not_foreground'; foregroundBefore = $foregroundGuard; expectedForeground = @{ hwnd = $expectedForegroundHwnd; pid = $expectedForegroundPid; processName = $expectedForegroundProcessName; title = $expectedForegroundTitle }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; failureClassification = 'target_window_not_foreground'; foregroundProtectionOk = $false; foregroundProtectionReason = $foregroundGuardReason } } | ConvertTo-Json -Depth 8 -Compress
   exit 0
 }
+# Keys and text sent to a window running as administrator are dropped silently by Windows;
+# report it so the caller can ask for the elevated helper instead of claiming success.
+if ($foregroundGuard.elevated -eq $true -and (Test-DesktopPetInputCurrentProcessElevated) -eq $false) {
+  @{ ok = $false; action = '${escapePowerShellSingleQuotedString(action)}'; error = 'target_requires_elevation'; foregroundBefore = $foregroundGuard; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; failureClassification = 'integrity_level_mismatch'; permissionStatus = 'target_requires_elevation' } } | ConvertTo-Json -Depth 8 -Compress
+  exit 0
+}
 `;
 }
 

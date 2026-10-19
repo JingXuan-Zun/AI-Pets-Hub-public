@@ -1,4 +1,5 @@
 import type { PetPersonality } from '../types';
+import { resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
 
 export type PersonaRuleMode = 'default' | 'user-defined';
 
@@ -12,10 +13,10 @@ export interface PersonaRulePolicy {
 // the app's defaults can step aside.
 const EXPLICIT_RULE_SIGNAL = /(?:回复|回答|输出).{0,40}(?:格式|规则|模板|结构|只能|必须|不要|禁止)|(?:格式|模板|结构|括号|方括号|附加信息|动作描写|纯文本|JSON|XML|Markdown|标签).{0,40}(?:必须|只能|不要|禁止|固定|按照|使用|输出)|\b(?:must|only|do not|don't|format|template|json|xml|markdown)\b/iu;
 
-export function resolvePersonaRulePolicy(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset'>): PersonaRulePolicy {
+export function resolvePersonaRulePolicy(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset'> & { name?: string }): PersonaRulePolicy {
   const sourceText = [
     personality.systemInstruction?.trim() ?? '',
-    personality.dialogueCompletionPreset?.trim() ?? '',
+    resolveDialogueCompletionPresetText(personality.dialogueCompletionPreset, personality.name?.trim() ?? ''),
   ].filter(Boolean).join('\n\n');
 
   return {

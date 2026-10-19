@@ -8,6 +8,8 @@ export interface PetLifeCompanionSettings {
   desktopActivityAwarenessIntervalMinutes: number;
   desktopActivityAwarenessEnabled: boolean;
   affectionEnabled: boolean;
+  /** When a task needs permission the character asks out loud, and reminds (shaking the chat) if unanswered. */
+  approvalVoicePromptEnabled: boolean;
   hungerEnabled: boolean;
   startupGreetingEnabled: boolean;
   llmTextPromptCooldownMinutes: number;
@@ -53,6 +55,7 @@ export const DEFAULT_LIFE_COMPANION_SETTINGS: PetLifeCompanionSettings = {
   desktopActivityAwarenessIntervalMinutes: 15,
   desktopActivityAwarenessEnabled: false,
   affectionEnabled: true,
+  approvalVoicePromptEnabled: true,
   hungerEnabled: true,
   startupGreetingEnabled: true,
   llmTextPromptCooldownMinutes: DEFAULT_LLM_TEXT_PROMPT_COOLDOWN_MINUTES,
@@ -130,6 +133,7 @@ export function normalizeLifeCompanionSettings(value: unknown): PetLifeCompanion
       DEFAULT_LIFE_COMPANION_SETTINGS.desktopActivityAwarenessEnabled,
     ),
     affectionEnabled: booleanValue(input.affectionEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.affectionEnabled),
+    approvalVoicePromptEnabled: booleanValue(input.approvalVoicePromptEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.approvalVoicePromptEnabled),
     hungerEnabled: booleanValue(input.hungerEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.hungerEnabled),
     startupGreetingEnabled: booleanValue(
       input.startupGreetingEnabled,

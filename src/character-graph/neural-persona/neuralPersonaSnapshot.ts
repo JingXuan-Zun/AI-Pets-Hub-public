@@ -23,12 +23,21 @@ function cloneNode(node: NeuralPersonaNode): NeuralPersonaNode {
         previousValues: node.learningApplication.previousValues
           ? Object.freeze({ ...node.learningApplication.previousValues }) : undefined,
       }) : undefined,
+    sourceReferences: node.sourceReferences
+      ? Object.freeze(node.sourceReferences.map((reference) => Object.freeze({
+        ...reference,
+      }))) as NeuralPersonaNode['sourceReferences']
+      : undefined,
     tags: Object.freeze(node.tags.map(cloneTag)) as NeuralPersonaTag[],
   });
 }
 
 function cloneEdge(edge: NeuralPersonaEdge): NeuralPersonaEdge {
   return Object.freeze({ ...edge });
+}
+
+function cloneSources(graph: NeuralPersonaGraphSnapshot) {
+  return graph.sources?.map((source) => Object.freeze({ ...source }));
 }
 
 export function createImmutableNeuralPersonaSnapshot(
@@ -38,5 +47,6 @@ export function createImmutableNeuralPersonaSnapshot(
     ...graph,
     edges: Object.freeze(graph.edges.map(cloneEdge)) as NeuralPersonaEdge[],
     nodes: Object.freeze(graph.nodes.map(cloneNode)) as NeuralPersonaNode[],
+    sources: cloneSources(graph),
   });
 }

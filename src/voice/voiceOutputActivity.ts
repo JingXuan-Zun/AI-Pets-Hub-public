@@ -11,16 +11,34 @@ function notify() {
   listeners.forEach((listener) => listener());
 }
 
-export function beginVoiceOutputJob() {
+// A job that never reported its end (a prepared sentence dropped without dispose, playback that
+// never settled) kept the hands-free microphone on "稍等，马上继续听" for good. No sentence takes
+// this long even with a cold voice model (warm-up ≈50 s), so such a job is ended by the watchdog.
+export const VOICE_OUTPUT_JOB_WATCHDOG_MS = 120_000;
+let onJobExpired: (() => void) | null = null;
+
+/** Lets the app log watchdog expiries (they point at a playback path that leaks a job). */
+export function setVoiceOutputJobExpiredListener(listener: (() => void) | null) {
+  onJobExpired = listener;
+}
+
+export function beginVoiceOutputJob(watchdogMs = VOICE_OUTPUT_JOB_WATCHDOG_MS) {
   activeJobs += 1;
   if (activeJobs === 1) notify();
   let ended = false;
-  return () => {
+  const end = () => {
     if (ended) return;
     ended = true;
+    globalThis.clearTimeout(watchdog);
     activeJobs = Math.max(0, activeJobs - 1);
     if (activeJobs === 0) notify();
   };
+  const watchdog = globalThis.setTimeout(() => {
+    if (ended) return;
+    onJobExpired?.();
+    end();
+  }, watchdogMs);
+  return end;
 }
 
 export function isVoiceOutputActive() {

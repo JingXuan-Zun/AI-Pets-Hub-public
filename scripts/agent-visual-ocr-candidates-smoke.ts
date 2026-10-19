@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  executeAgentChatCommand,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { executeAgentChatCommand } from '../src/agent/agentRuntimeExecutor';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 import { type PetConfig } from '../src/types.ts';
 

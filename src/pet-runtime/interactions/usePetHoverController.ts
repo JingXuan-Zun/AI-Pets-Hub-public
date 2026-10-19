@@ -18,6 +18,13 @@ type UsePetHoverControllerOptions = {
 };
 
 const HOVER_REFRESH_INTERVAL_MS = 48;
+// Region hysteresis. The hit box is re-measured as the model animates (a few px), and
+// regions (body / hands / head) touch each other, so a pointer near a border used to
+// flip region every few frames — each flip restarted a hover reaction or resumed
+// walking, which showed as the model twitching in place. A new region must hold for a
+// moment before it wins, and briefly slipping into a gap does not count as leaving.
+const REGION_SWITCH_HOLD_MS = 160;
+const REGION_EXIT_GRACE_MS = 220;
 
 function areHoverStatesEqual(left: PetHoverState, right: PetHoverState) {
   return left.activeRegion === right.activeRegion
@@ -37,8 +44,11 @@ export function usePetHoverController({
   const [hoverState, setHoverState] = useState<PetHoverState>(() => (
     createEmptyPetHoverState(supportedRegions)
   ));
+  const committedRegionRef = useRef<string | null>(null);
+  const pendingRegionRef = useRef<{ region: string | null; since: number } | null>(null);
 
   const commitHoverState = useCallback((nextState: PetHoverState) => {
+    committedRegionRef.current = nextState.activeRegion;
     setHoverState((currentState) => (
       areHoverStatesEqual(currentState, nextState)
         ? currentState
@@ -46,9 +56,41 @@ export function usePetHoverController({
     ));
   }, []);
 
+  /** Immediate clear: pointer left the window, window blurred, or hover got disabled. */
   const clearHoverState = useCallback(() => {
+    pendingRegionRef.current = null;
     commitHoverState(createEmptyPetHoverState(supportedRegions));
   }, [commitHoverState, supportedRegions]);
+
+  /** Region changes from pointer position go through the hysteresis above. */
+  const proposeHoverState = useCallback((nextState: PetHoverState) => {
+    const committedRegion = committedRegionRef.current;
+    if (nextState.activeRegion === committedRegion || committedRegion === null) {
+      pendingRegionRef.current = null;
+      commitHoverState(nextState);
+      return;
+    }
+
+    const now = performance.now();
+    const pending = pendingRegionRef.current;
+    if (!pending || pending.region !== nextState.activeRegion) {
+      pendingRegionRef.current = { region: nextState.activeRegion, since: now };
+    }
+    const holdMs = nextState.activeRegion === null ? REGION_EXIT_GRACE_MS : REGION_SWITCH_HOLD_MS;
+    if (now - (pendingRegionRef.current?.since ?? now) >= holdMs) {
+      pendingRegionRef.current = null;
+      commitHoverState(nextState);
+      return;
+    }
+
+    // Keep the current region but let the look-at point follow the pointer.
+    if (nextState.focusTarget) {
+      setHoverState((currentState) => {
+        const keptState = { ...currentState, focusTarget: nextState.focusTarget };
+        return areHoverStatesEqual(currentState, keptState) ? currentState : keptState;
+      });
+    }
+  }, [commitHoverState]);
 
   const updateHoverFromClientPoint = useCallback((clientPoint: { x: number; y: number } | null) => {
     if (!enabled) {
@@ -67,7 +109,7 @@ export function usePetHoverController({
       clientPoint.y,
     );
     if (topmostPointerElement && !hoverTarget.contains(topmostPointerElement)) {
-      clearHoverState();
+      proposeHoverState(createEmptyPetHoverState(supportedRegions));
       return;
     }
 
@@ -83,7 +125,7 @@ export function usePetHoverController({
       && clientPoint.y <= rect.bottom;
 
     if (!isInsideRect) {
-      clearHoverState();
+      proposeHoverState(createEmptyPetHoverState(supportedRegions));
       return;
     }
 
@@ -92,8 +134,8 @@ export function usePetHoverController({
       y: Math.min(1, Math.max(0, (clientPoint.y - rect.top) / rect.height)),
     };
 
-    commitHoverState(resolvePetHoverState(normalizedPoint, supportedRegions));
-  }, [clearHoverState, commitHoverState, enabled, supportedRegions]);
+    proposeHoverState(resolvePetHoverState(normalizedPoint, supportedRegions));
+  }, [clearHoverState, enabled, proposeHoverState, supportedRegions]);
 
   useEffect(() => {
     if (!enabled) {
@@ -159,9 +201,11 @@ export function usePetHoverController({
     });
   }, [enabled, updateHoverFromClientPoint]);
 
+  // The hit box edge moves a little as the model animates, so leave/enter can blink at the
+  // edge; treat a leave like any other region change and let the grace period settle it.
   const handlePointerLeave = useCallback(() => {
-    clearHoverState();
-  }, [clearHoverState]);
+    proposeHoverState(createEmptyPetHoverState(supportedRegions));
+  }, [proposeHoverState, supportedRegions]);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     hoverTargetRef.current = event.currentTarget;

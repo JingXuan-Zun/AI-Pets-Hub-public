@@ -21,6 +21,8 @@ export interface VoiceConversationSessionDeps {
   onEnd: (reason: VoiceConversationEndReason) => void;
   onRecognitionError?: (error: unknown) => void;
   idleTimeoutMs: number;
+  /** While true (a question waits for the user's answer) the idle countdown does not end the session. */
+  holdIdle?: () => boolean;
   /** Consecutive recognition failures that end the session instead of silently "listening" forever. */
   maxConsecutiveFailures?: number;
   setTimer?: (callback: () => void, ms: number) => number;
@@ -58,7 +60,16 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
   // Counts down only while listening; pausing keeps the remaining time.
   function armIdleTimer() {
     idleTimer = clear(idleTimer);
-    idleTimer = setTimer(() => stop('idle'), Math.max(0, idleDeadline - now()));
+    idleTimer = setTimer(() => {
+      // Waiting on the user's answer to her question is not "nobody talking": the session
+      // closed 20 s into a question and the answer then went to the wrong listener.
+      if (deps.holdIdle?.()) {
+        refreshIdleDeadline();
+        armIdleTimer();
+        return;
+      }
+      stop('idle');
+    }, Math.max(0, idleDeadline - now()));
   }
 
   function setListening(listening: boolean) {
@@ -109,15 +120,19 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
         if (consecutiveFailures >= maxFailures) stop('error');
       }
     }
+    // The microphone is released as soon as recognition is done, not when the reply ends: a
+    // reply that runs a task can wait on the user's spoken "同意", and holding the microphone
+    // until it ended meant that answer was never heard (each waited on the other). While the
+    // reply generates and speaks the pet is busy, which keeps the microphone paused anyway.
+    recognizing = false;
+    sync();
+    if (!active || !text) return;
     try {
       // Reply failures (model errors, empty replies) are reported by the chat flow itself and must not
       // count as recognition failures that would close the mic.
-      if (active && text) await deps.send(text);
+      await deps.send(text);
     } catch {
       // Already surfaced by the send pipeline.
-    } finally {
-      recognizing = false;
-      sync();
     }
   }
 

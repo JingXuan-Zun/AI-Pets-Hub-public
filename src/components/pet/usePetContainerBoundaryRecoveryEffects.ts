@@ -1,4 +1,5 @@
-﻿import { useEffect, type MutableRefObject } from 'react';
+﻿import { markCompanionSettling } from './companionSettleSignal';
+import { useEffect, type MutableRefObject } from 'react';
 import { PRIMARY_DESKTOP_PET_SLOT_ID, applyDesktopPetSlotChanges } from '../../multiPetRoster';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
@@ -184,6 +185,7 @@ export function usePetContainerBoundaryRecoveryEffects({
       );
 
       if (!positionsMatch(nextCompanionPosition, pet.position)) {
+        markCompanionSettling(pet.id);
         nextConfig = applyDesktopPetSlotChanges(nextConfig, pet.id, {
           position: nextCompanionPosition,
         });
@@ -201,6 +203,7 @@ export function usePetContainerBoundaryRecoveryEffects({
       );
 
       if (!positionsMatch(recoveredCompanionPosition, nextCompanionPosition)) {
+        markCompanionSettling(pet.id);
         nextCompanionPosition = recoveredCompanionPosition;
         nextConfig = applyDesktopPetSlotChanges(nextConfig, pet.id, {
           position: recoveredCompanionPosition,

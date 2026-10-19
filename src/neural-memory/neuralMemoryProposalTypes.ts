@@ -1,4 +1,5 @@
 import type { NeuralPersonaNodeType } from '../character-graph/neural-persona';
+import { isCharacterMemoryKind, type CharacterMemoryKind } from '../character-memory/characterMemoryTypes';
 
 /** Memory kinds a character may propose; all map onto neural persona node types. */
 export const NEURAL_MEMORY_PROPOSAL_TYPES = [
@@ -30,6 +31,9 @@ export interface NeuralMemoryProposal {
   id: string;
   reason: string;
   roleId: string;
+  /** 'shared' proposals go to the “关于你” memory every character knows; absent = this role's own memory. */
+  scope?: 'shared';
+  sharedKind?: CharacterMemoryKind;
   sourceExcerpt: string;
   sourceMessageIds: string[];
   type: NeuralMemoryProposalType;
@@ -60,6 +64,10 @@ function normalizeProposal(value: unknown): NeuralMemoryProposal | null {
     id,
     reason: text(item.reason, 200),
     roleId,
+    ...(item.scope === 'shared' ? {
+      scope: 'shared' as const,
+      sharedKind: isCharacterMemoryKind(item.sharedKind) ? item.sharedKind : 'other' as const,
+    } : {}),
     sourceExcerpt: text(item.sourceExcerpt, 240),
     sourceMessageIds: Array.isArray(item.sourceMessageIds)
       ? item.sourceMessageIds.filter((entry): entry is string => typeof entry === 'string').slice(0, 8)

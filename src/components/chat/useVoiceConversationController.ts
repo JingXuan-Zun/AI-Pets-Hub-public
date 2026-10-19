@@ -7,7 +7,9 @@ import { resolveConversationSttSettings } from '../../voice/conversationSttModel
 import { getVoiceErrorMessage } from '../../voice/errorMessages';
 import { voiceMicStatusStore } from '../../voice/voiceMicStatus';
 import { transcribeLocalVoice } from '../../voice/runtime';
-import { isPetVoiceBusy, subscribePetVoiceBusy } from './voiceConversationBusy';
+import { judgeApprovalAnswerWithModel, resolvePendingApprovalBySpeech } from './voiceApproval';
+import { latestPendingAgentLoopApprovalId } from './runController/agentLoopApprovalRegistry';
+import { isAwaitingVoiceApproval, isPetAudible, isPetVoiceBusy, subscribePetVoiceBusy } from './voiceConversationBusy';
 import { createVoiceConversationSession, type VoiceConversationEndReason } from './voiceConversationSession';
 
 interface UseVoiceConversationControllerOptions {
@@ -29,6 +31,18 @@ const END_MESSAGES: Record<VoiceConversationEndReason, string> = {
   idle: '一段时间没听到你说话，麦克风先关啦。',
   error: '语音识别连续失败，实时对话已停止。请检查语音识别模型后再试。',
 };
+
+// The repeated-failure stop used to blame the model even when the speech environment was
+// simply not installed (a new build in another folder), which sent people the wrong way.
+const MISSING_STT_ENVIRONMENT = /venv|python|runtime|environment|not installed|ENOENT|环境|未安装|找不到/iu;
+
+export function resolveRecognitionStopMessage(lastError: string) {
+  if (MISSING_STT_ENVIRONMENT.test(lastError)) {
+    return '语音识别环境还没装好，实时对话已停止。请到 设置 → 语音模型 安装语音识别环境后再试。';
+  }
+  const reason = lastError.trim().slice(0, 80);
+  return reason ? `${END_MESSAGES.error.replace('请检查语音识别模型后再试。', '')}原因：${reason}` : END_MESSAGES.error;
+}
 
 // React glue for the hands-free conversation session (settings, sending, status, active flag).
 export function useVoiceConversationController({
@@ -54,15 +68,28 @@ export function useVoiceConversationController({
       publishStatusMessage(stt.error);
       return false;
     }
+    let lastRecognitionError = '';
     const session = createVoiceConversationSession({
       startCapture: startConversationCapture,
       recognize: (audioBase64) => transcribeLocalVoice(audioBase64, stt.settings),
-      send: sendMessage,
+      // A spoken "同意"/"拒绝" while an approval card waits answers the card instead of chatting;
+      // other speech then is not sent, so it cannot cut into the task that is waiting.
+      send: async (text) => {
+        const decision = await resolvePendingApprovalBySpeech(text, judgeApprovalAnswerWithModel(configRef.current.settings));
+        if (isAwaitingVoiceApproval() || decision) pushFrontendRuntimeLog('voice', 'approval answer heard', { decision, heard: text.slice(0, 40), listener: 'conversation' });
+        if (decision) return;
+        if (isAwaitingVoiceApproval()) {
+          if (!isPetAudible()) publishStatusMessage('正在等你确认上面的卡片：说“好”或“不要”就可以。');
+          return;
+        }
+        await sendMessage(text);
+      },
       isBusy: isPetVoiceBusy,
       subscribeBusy: subscribePetVoiceBusy,
       onListeningChange: (listening) => desktopPetChatStore.setListening(listening),
       onRecognitionError: (error) => {
         pushFrontendRuntimeError('voice', 'conversation recognition failed', error);
+        lastRecognitionError = getVoiceErrorMessage(error, '');
         publishStatusMessage(getVoiceErrorMessage(error, '语音识别执行失败，请再说一次。'));
       },
       onEnd: (reason) => {
@@ -71,9 +98,10 @@ export function useVoiceConversationController({
         voiceMicStatusStore.setConversation(false);
         pushFrontendRuntimeLog('voice', 'conversation stopped', { reason });
         if (reason === 'error') onOpenChat?.(); // status messages only render in chat; surface the failure
-        publishStatusMessage(END_MESSAGES[reason]);
+        publishStatusMessage(reason === 'error' ? resolveRecognitionStopMessage(lastRecognitionError) : END_MESSAGES[reason]);
       },
       idleTimeoutMs: settings.voiceConversationIdleTimeoutSec * 1000,
+      holdIdle: () => Boolean(latestPendingAgentLoopApprovalId()),
     });
     sessionRef.current = session;
     try {

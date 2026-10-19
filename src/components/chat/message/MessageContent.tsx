@@ -111,7 +111,7 @@ export function OrderedMessageContent({
     : (
       <Fragment key={`${messageKey}-content-text-${index}`}>
         {splitMessageTextByBrackets(segment.text).map((part, partIndex) => (
-          <span key={`${messageKey}-content-text-${index}-${partIndex}`} style={!part.isBracketContent ? { color } : undefined}>{part.text}</span>
+          <span key={`${messageKey}-content-text-${index}-${partIndex}`} style={{ ...(!part.isBracketContent ? { color } : {}), ...(part.bold ? { fontWeight: 700 } : {}) }}>{part.text}</span>
         ))}
       </Fragment>
     ));

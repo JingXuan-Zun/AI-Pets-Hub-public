@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  selectMovableDesktopOrganizationFallbackIcons,
-  type DesktopPetDesktopIconLike,
-} from '../src/agent/index.ts';
+import { selectMovableDesktopOrganizationFallbackIcons } from '../src/agent/desktopOrganizationObservation';
 
 const fallbackIcons: DesktopPetDesktopIconLike[] = [
   {

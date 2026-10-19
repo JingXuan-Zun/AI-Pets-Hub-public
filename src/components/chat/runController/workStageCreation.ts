@@ -1,4 +1,4 @@
-import { type AgentExecutionPlan } from '../../../agent';
+import { type AgentExecutionPlan } from '../../../agent/planning/agentPlanShared';
 import { type ChatAgentWorkStageStatus, type ChatAgentWorkStage } from '../../../types';
 
 export function formatAgentPlanToolSummary(plan: AgentExecutionPlan) {

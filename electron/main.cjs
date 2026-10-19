@@ -24,48 +24,17 @@ const { createBrowserSearchService } = require('./browserSearchService.cjs');
 const { createControlledCommandService } = require('./controlledCommandService.cjs');
 const { createDesktopIconService } = require('./desktopIconService.cjs');
 const { createDesktopInputService } = require('./desktopInputService.cjs');
+const { createElevatedInputBroker, registerElevatedInputIpcHandlers } = require('./elevatedInputBroker.cjs');
 const { createExpressionLibraryService } = require('./expressionLibraryService.cjs');
 const { registerExpressionLibraryIpcHandlers } = require('./expressionLibraryIpcHandlers.cjs');
+const { createDataBackupService, registerDataBackupIpcHandlers } = require('./dataBackupIpcHandlers.cjs');
+const { createKnownFoldersService, registerKnownFoldersIpcHandlers } = require('./knownFoldersIpcHandlers.cjs');
+const { createComfyUiService, registerComfyUiIpcHandlers } = require('./comfyUiService.cjs');
 const { createGptSovitsService } = require('./gptSovitsService.cjs');
 const { registerGptSovitsIpcHandlers } = require('./gptSovitsIpcHandlers.cjs');
 const { createSystemExpressionCatalogService } = require('./systemExpressionCatalog.cjs');
-const { createExternalSkillSandboxSupervisorService } = require('./externalSkillSandboxSupervisorService.cjs');
-const { createExternalSkillCapabilityGateway } = require('./externalSkillCapabilityGateway.cjs');
-const {
-  createExternalSkillMarketplacePublisherCatalogDeliveryService,
-} = require('./externalSkillMarketplacePublisherCatalogDeliveryService.cjs');
-const {
-  createExternalSkillMarketplacePublisherCatalogService,
-} = require('./externalSkillMarketplacePublisherCatalogService.cjs');
-const {
-  createExternalSkillMarketplacePublisherIdentityService,
-} = require('./externalSkillMarketplacePublisherIdentityService.cjs');
-const {
-  createExternalSkillMarketplaceProductionReadinessService,
-} = require('./externalSkillMarketplaceProductionReadinessService.cjs');
-const {
-  isExternalSkillMarketplaceProductionProbeEnabled,
-  runExternalSkillMarketplaceProductionProbe,
-} = require('./externalSkillMarketplaceProductionProbe.cjs');
-const {
-  applyExternalSkillMarketplaceProductionProbeArgs,
-} = require('./externalSkillMarketplaceProductionProbeArgs.cjs');
-const {
-  resolveExternalSkillMarketplaceProductionConfigPaths,
-} = require('./externalSkillMarketplaceProductionConfigPaths.cjs');
-const { applyExternalSkillPackagedDiagnosticArgs } = require('./externalSkillPackagedDiagnosticArgs.cjs');
-const { createExternalSkillPackageLifecycleService } = require('./externalSkillPackageLifecycleService.cjs');
-const {
-  createExternalSkillPackageArchiveInstallerService,
-} = require('./externalSkillPackageArchiveInstallerService.cjs');
-const {
-  isExternalSkillPackagedAdmissionProbeEnabled,
-  runExternalSkillPackagedAdmissionProbe,
-} = require('./externalSkillPackagedAdmissionProbe.cjs');
 const { registerDesktopPetIpcHandlers } = require('./ipcHandlers.cjs');
 const { createTrustedIpcMain, installNavigationGuards } = require('./ipcSenderGuard.cjs');
-const { createSkillPackageArtifactStore } = require('./skillPackageArtifactStore.cjs');
-const { createSkillPackageSignedInstallCoordinator } = require('./skillPackageSignedInstallCoordinator.cjs');
 const { createLocalFileSystemService } = require('./localFileSystemService.cjs');
 const { createSequenceAssetStore } = require('./sequenceAssetStore.cjs');
 const { resolveModelAssetRoot, MODEL_ASSET_DIRECTORY_NAME, LEGACY_MODEL_ASSET_DIRECTORY_NAME } = require('./modelAssetRoot.cjs');
@@ -105,9 +74,7 @@ const { createUnityRuntimeProcessService } = require('./unityRuntimeProcessServi
 const { createWindowManager } = require('./windowManager.cjs');
 
 applyMcpPackagedDiagnosticArgs(process.env, process.argv);
-applyExternalSkillPackagedDiagnosticArgs(process.env, process.argv);
 applyNeuralPersonaPackagedProbeArgs(process.env, process.argv);
-applyExternalSkillMarketplaceProductionProbeArgs(process.env, process.argv);
 
 const appProcessStartedAt = Date.now();
 
@@ -188,6 +155,21 @@ if (isLocalTest) {
   app.commandLine.appendSwitch('enable-features', 'NetworkServiceInProcess');
   app.setPath('userData', localTestProfileRoot);
   app.setPath('crashDumps', path.join(localTestProfileRoot, 'crashDumps'));
+} else {
+  // The pet window is a full-screen transparent overlay. Chromium's native occlusion check
+  // treats a chat or settings window opened above it as covered and stops painting it: the
+  // window then shows on the taskbar, draws nothing, and still swallows clicks meant for other
+  // programs. Local tests already turned the check off; normal runs need the same.
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+}
+// A separate profile for a normal development run (e.g. a clean demo profile for recording
+// a video): same GPU, renderer and behaviour as usual, only the data folder differs.
+const devUserDataDir = !app.isPackaged && !isLocalTest
+  ? (process.env.DESKTOP_PET_DEV_USER_DATA_DIR || '').trim()
+  : '';
+if (devUserDataDir) {
+  app.setPath('userData', path.resolve(devUserDataDir));
+  app.setPath('crashDumps', path.join(path.resolve(devUserDataDir), 'crashDumps'));
 }
 if (packagedProfileRoot) {
   app.setPath('userData', path.resolve(packagedProfileRoot));
@@ -199,14 +181,6 @@ const shouldRunPackagedReadOnlyHeadlessProbe = !isDev
   && !isLocalTest
   && isMcpPackagedReadOnlyCallProbeEnabled(process.env)
   && process.env.DESKTOP_PET_MCP_PACKAGED_READ_ONLY_CALL_HEADLESS === '1';
-const shouldRunPackagedExternalSkillAdmissionProbe = !isDev
-  && !isLocalTest
-  && isExternalSkillPackagedAdmissionProbeEnabled(process.env)
-  && process.env.DESKTOP_PET_SKILL_PACKAGED_ADMISSION_HEADLESS === '1';
-const shouldRunPackagedMarketplaceProductionProbe = !isDev
-  && !isLocalTest
-  && isExternalSkillMarketplaceProductionProbeEnabled(process.env)
-  && process.env.DESKTOP_PET_MARKETPLACE_PRODUCTION_PROBE_HEADLESS === '1';
 const shouldRunNeuralPersonaPackagedProbe = !isDev
   && !isLocalTest
   && isNeuralPersonaPackagedProbeEnabled(process.env);
@@ -456,75 +430,13 @@ const controlledCommandService = createControlledCommandService({
   app,
   log: (message, details) => runtimeLogger.log('backend', 'controlled-command', message, details),
 });
+const elevatedInputBroker = createElevatedInputBroker({
+  log: (message, details) => runtimeLogger.log('backend', 'elevated-input', message, details),
+});
 const desktopInputService = createDesktopInputService({
+  elevatedBroker: elevatedInputBroker,
   log: (message, details) => runtimeLogger.log('backend', 'desktop-input', message, details),
   screen,
-});
-const skillPackageArtifactStore = createSkillPackageArtifactStore({
-  log: (message, details) => runtimeLogger.log('backend', 'skill-package-artifacts', message, details),
-  userDataPath: app.getPath('userData'),
-});
-const externalSkillMarketplaceProductionConfig =
-  resolveExternalSkillMarketplaceProductionConfigPaths({ resourcesPath: process.resourcesPath });
-const externalSkillSandboxSupervisorService = createExternalSkillSandboxSupervisorService({
-  artifactStore: skillPackageArtifactStore,
-  log: (message, details) => runtimeLogger.log('backend', 'skill-sandbox', message, details),
-});
-const externalSkillMarketplacePublisherCatalogService =
-  createExternalSkillMarketplacePublisherCatalogService({
-    log: (message, details) => runtimeLogger.log('backend', 'skill-marketplace-catalog', message, details),
-    rootKeyRegistryPath: externalSkillMarketplaceProductionConfig.rootKeyRegistryPath,
-    userDataPath: app.getPath('userData'),
-  });
-const externalSkillMarketplacePublisherIdentityService =
-  createExternalSkillMarketplacePublisherIdentityService({
-    catalogService: externalSkillMarketplacePublisherCatalogService,
-    log: (message, details) => runtimeLogger.log('backend', 'skill-marketplace-identity', message, details),
-    userDataPath: app.getPath('userData'),
-  });
-const externalSkillCapabilityGateway = createExternalSkillCapabilityGateway({
-  artifactStore: skillPackageArtifactStore,
-  hostContext: {
-    arch: process.arch,
-    electronVersion: process.versions.electron,
-    nodeVersion: process.versions.node,
-    packaged: app.isPackaged,
-    platform: process.platform,
-  },
-  log: (message, details) => runtimeLogger.log('backend', 'skill-capability', message, details),
-  marketplacePublisherIdentityService: externalSkillMarketplacePublisherIdentityService,
-  supervisor: externalSkillSandboxSupervisorService,
-  userDataPath: app.getPath('userData'),
-});
-const externalSkillMarketplacePublisherCatalogDeliveryService =
-  createExternalSkillMarketplacePublisherCatalogDeliveryService({
-    catalogService: externalSkillMarketplacePublisherCatalogService,
-    configPath: externalSkillMarketplaceProductionConfig.deliveryConfigPath,
-    log: (message, details) => runtimeLogger.log('backend', 'skill-marketplace-catalog', message, details),
-    userDataPath: app.getPath('userData'),
-  });
-const externalSkillMarketplaceProductionReadinessService =
-  createExternalSkillMarketplaceProductionReadinessService({
-    catalogService: externalSkillMarketplacePublisherCatalogService,
-    configSource: externalSkillMarketplaceProductionConfig.configSource,
-    deliveryService: externalSkillMarketplacePublisherCatalogDeliveryService,
-  });
-const skillPackageSignedInstallCoordinator = createSkillPackageSignedInstallCoordinator({
-  artifactStore: skillPackageArtifactStore,
-  log: (message, details) => runtimeLogger.log('backend', 'skill-package-security', message, details),
-  userDataPath: app.getPath('userData'),
-});
-const externalSkillPackageArchiveInstallerService = createExternalSkillPackageArchiveInstallerService({
-  artifactStore: skillPackageArtifactStore,
-  log: (message, details) => runtimeLogger.log('backend', 'skill-package-archive', message, details),
-  signedInstallCoordinator: skillPackageSignedInstallCoordinator,
-});
-const externalSkillPackageLifecycleService = createExternalSkillPackageLifecycleService({
-  artifactStore: skillPackageArtifactStore,
-  capabilityGateway: externalSkillCapabilityGateway,
-  log: (message, details) => runtimeLogger.log('backend', 'skill-package-lifecycle', message, details),
-  signedInstallCoordinator: skillPackageSignedInstallCoordinator,
-  userDataPath: app.getPath('userData'),
 });
 const desktopIconService = createDesktopIconService({
   app,
@@ -665,11 +577,6 @@ registerDesktopPetIpcHandlers({
   controlledCommandService,
   desktopIconService,
   desktopInputService,
-  externalSkillCapabilityGateway,
-  externalSkillMarketplaceProductionReadinessService,
-  externalSkillPackageArchiveInstallerService,
-  externalSkillPackageLifecycleService,
-  externalSkillSandboxSupervisorService,
   ipcMain: trustedIpcMain,
   localFileSystemService,
   localProjectInspectorService,
@@ -689,8 +596,6 @@ registerDesktopPetIpcHandlers({
   runtimeLogger,
   screen,
   sequenceAssetStore,
-  skillPackageArtifactStore,
-  skillPackageSignedInstallCoordinator,
   systemInfoService,
   unityBridgeService,
   unityRuntimeProcessService,
@@ -702,6 +607,21 @@ registerExpressionLibraryIpcHandlers({
   ipcMain: trustedIpcMain,
   shell,
   systemExpressionCatalogService,
+});
+registerComfyUiIpcHandlers({
+  ipcMain: trustedIpcMain,
+  service: createComfyUiService({ log: (message, details) => runtimeLogger.log('backend', 'comfyui', message, details) }),
+});
+registerDataBackupIpcHandlers({
+  ipcMain: trustedIpcMain,
+  service: createDataBackupService({ backupDirectory: path.join(app.getPath('userData'), 'backups') }),
+  shell,
+});
+registerElevatedInputIpcHandlers({ broker: elevatedInputBroker, ipcMain: trustedIpcMain });
+registerKnownFoldersIpcHandlers({
+  ipcMain: trustedIpcMain,
+  service: createKnownFoldersService({ app, projectRoot: path.join(__dirname, '..'), protectedRoots: [app.getPath('userData')] }),
+  shell,
 });
 registerGptSovitsIpcHandlers({
   gptSovitsService,
@@ -729,8 +649,6 @@ app.on('before-quit', () => {
 
 const gotSingleInstanceLock = isLocalTest
   || shouldRunPackagedReadOnlyHeadlessProbe
-  || shouldRunPackagedExternalSkillAdmissionProbe
-  || shouldRunPackagedMarketplaceProductionProbe
   || shouldRunNeuralPersonaPackagedProbe
   ? true
   : app.requestSingleInstanceLock();
@@ -769,58 +687,6 @@ if (!gotSingleInstanceLock) {
         app.quit();
         return;
       }
-
-      if (shouldRunPackagedExternalSkillAdmissionProbe) {
-        runtimeLogger.log('backend', 'skill-capability', 'packaged External Skill admission probe begin');
-        const report = await runExternalSkillPackagedAdmissionProbe({
-          app,
-          capabilityGateway: externalSkillCapabilityGateway,
-          env: process.env,
-          signedInstallCoordinator: skillPackageSignedInstallCoordinator,
-        });
-        runtimeLogger.log('backend', 'skill-capability', 'packaged External Skill admission probe complete', report.summary);
-        app.exit(report.ok ? 0 : 1);
-        return;
-      }
-
-      if (shouldRunPackagedMarketplaceProductionProbe) {
-        runtimeLogger.log('backend', 'skill-marketplace-catalog', 'packaged marketplace production probe begin');
-        try {
-          const report = await runExternalSkillMarketplaceProductionProbe({
-            app,
-            appAsarPath: path.join(process.resourcesPath, 'app.asar'),
-            deliveryService: externalSkillMarketplacePublisherCatalogDeliveryService,
-            env: process.env,
-            productionConfigPaths: externalSkillMarketplaceProductionConfig,
-            readinessService: externalSkillMarketplaceProductionReadinessService,
-          });
-          runtimeLogger.log(
-            'backend',
-            'skill-marketplace-catalog',
-            'packaged marketplace production probe complete',
-            report.summary,
-          );
-          app.exit(report.ok ? 0 : 1);
-        } catch (error) {
-          runtimeLogger.log(
-            'backend',
-            'skill-marketplace-catalog',
-            'packaged marketplace production probe failed',
-            error?.stack || error,
-          );
-          app.exit(1);
-        }
-        return;
-      }
-
-      const marketplaceCatalogDelivery =
-        await externalSkillMarketplacePublisherCatalogDeliveryService.refreshCatalog();
-      runtimeLogger.log(
-        'backend',
-        'skill-marketplace-catalog',
-        'Marketplace publisher catalog delivery startup check',
-        marketplaceCatalogDelivery,
-      );
 
       const activeSession = isLocalTest
         ? session.fromPartition(localTestSessionPartition)
@@ -1153,7 +1019,6 @@ app.on('before-quit', () => {
   }
   browserTtsService.dispose();
   gptSovitsService.dispose();
-  externalSkillSandboxSupervisorService.dispose();
   mcpStdioClientService.dispose('app-quit');
   browserSearchService.dispose();
   areaPickerServiceInstance.dispose();
@@ -1172,6 +1037,7 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   runtimeLogger.log('backend', 'main-process', 'will-quit');
+  elevatedInputBroker.stop();
 });
 
 app.on('quit', (_event, exitCode) => {

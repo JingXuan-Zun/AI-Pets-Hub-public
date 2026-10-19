@@ -1,5 +1,4 @@
 import { type PetConfig } from '../../types';
-import { SettingsAgentSkillManifestPanel } from './SettingsAgentSkillManifestPanel';
 import { SettingsMcpSection } from './SettingsMcpSection';
 import { SettingsSkillDirectory } from './SettingsSkillDirectory';
 
@@ -21,10 +20,6 @@ export function SettingsPlatformSkillApiTab({ localConfig, currentPetId = 'prima
         <p className="mb-5 text-xs text-muted-foreground">导入和管理 Skill，为当前选中的桌宠启用所需能力。</p>
         <SettingsSkillDirectory currentPetId={currentPetId} />
       </section>
-      <details className="mt-4 rounded-lg border border-border p-4">
-        <summary className="cursor-pointer text-sm font-semibold">内置能力与高级设置</summary>
-        <SettingsAgentSkillManifestPanel localConfig={localConfig} showMcpProgress={false} />
-      </details>
     </div>
   );
 }

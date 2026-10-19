@@ -68,6 +68,7 @@ function buildToolCallPlan(command: AgentChatCommand): AgentExecutionPlan | null
     case 'get_display_info':
     case 'get_pet_settings':
     case 'update_pet_settings':
+    case 'use_platform_capability':
     case 'get_voice_status':
     case 'switch_tts_provider':
     case 'warmup_local_voice':

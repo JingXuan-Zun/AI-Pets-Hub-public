@@ -89,8 +89,8 @@ function semanticPrompt(request: NeuralPersonaSemanticRetrievalRequest) {
       const documentId = `document-${index + 1}`;
       aliases.set(documentId, document.nodeId);
       return {
-        documentId, summary: document.summary,
-      tags: document.tagLabels, type: document.type,
+        content: document.content, documentId, summary: document.summary,
+        tags: document.tagLabels, type: document.type,
       };
     }),
     maxResults: request.maxResults,

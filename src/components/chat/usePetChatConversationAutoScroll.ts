@@ -12,6 +12,15 @@ function scrollViewportToLatest(viewport: HTMLElement) {
   viewport.scrollTop = viewport.scrollHeight;
 }
 
+// Kept across reopening the window, not just tab switches.
+function scrollStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 type ScrollPositionSnapshot = {
   maxScrollTop: number;
   ratio: number;
@@ -31,6 +40,7 @@ export function capturePetChatScrollPosition(storageKey: string) {
 
 interface UsePetChatConversationAutoScrollOptions {
   isTyping: boolean;
+  lastMessageFromUser?: boolean;
   lastMessageText?: string;
   messageCount: number;
   storageKey?: string;
@@ -38,6 +48,7 @@ interface UsePetChatConversationAutoScrollOptions {
 
 export function usePetChatConversationAutoScroll({
   isTyping,
+  lastMessageFromUser = false,
   lastMessageText,
   messageCount,
   storageKey = 'default',
@@ -51,13 +62,14 @@ export function usePetChatConversationAutoScroll({
 
   const readSavedScrollTop = () => {
     try {
-      const rawValue = window.sessionStorage.getItem(scrollStorageKey);
+      const rawValue = scrollStorage()?.getItem(scrollStorageKey)
+        ?? window.sessionStorage.getItem(scrollStorageKey);
       if (!rawValue) return null;
 
       const parsedValue = JSON.parse(rawValue) as Partial<ScrollPositionSnapshot>;
       if (
         Number.isFinite(parsedValue.scrollTop)
-        && Number.isFinite(parsedValue.maxScrollTop)
+        && Number(parsedValue.maxScrollTop) > 0
         && Number.isFinite(parsedValue.ratio)
       ) {
         return {
@@ -78,6 +90,9 @@ export function usePetChatConversationAutoScroll({
   };
 
   const saveScrollTop = (viewport: HTMLElement) => {
+    // A detached viewport, or one whose history has not loaded yet, reads as scrollTop 0;
+    // saving that would send the user back to the top next time.
+    if (!viewport.isConnected || viewport.scrollHeight - viewport.clientHeight <= 0) return;
     try {
       const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
       const scrollTop = Math.max(0, viewport.scrollTop);
@@ -86,7 +101,7 @@ export function usePetChatConversationAutoScroll({
         ratio: maxScrollTop > 0 ? Math.max(0, Math.min(1, scrollTop / maxScrollTop)) : 0,
         scrollTop,
       } satisfies ScrollPositionSnapshot;
-      window.sessionStorage.setItem(scrollStorageKey, JSON.stringify(snapshot));
+      scrollStorage()?.setItem(scrollStorageKey, JSON.stringify(snapshot));
     } catch {
       // Scroll restoration is a convenience; storage may be unavailable.
     }
@@ -107,10 +122,25 @@ export function usePetChatConversationAutoScroll({
     let restoreObserver: ResizeObserver | null = null;
     let restoreMutationObserver: MutationObserver | null = null;
 
+    let lastScrollTop = viewport.scrollTop;
     const updateStickiness = () => {
+      const scrolledUp = viewport.scrollTop < lastScrollTop - 1;
+      lastScrollTop = viewport.scrollTop;
       if (isRestoringScrollRef.current || isScrollSnapshotFrozenRef.current) return;
-      shouldStickToBottomRef.current = isViewportNearBottom(viewport);
+      // Following only ever scrolls down, so any upward move is the user reading back.
+      shouldStickToBottomRef.current = !scrolledUp && isViewportNearBottom(viewport);
       saveScrollTop(viewport);
+    };
+    // Wheel scrolling animates over several frames; the first frame may still be within the
+    // bottom threshold, and streaming would snap it back. Stop following on the gesture itself.
+    const stopFollowingOnUpwardGesture = (event: WheelEvent) => {
+      if (event.deltaY < 0) {
+        shouldStickToBottomRef.current = false;
+        isRestoringScrollRef.current = false;
+      }
+    };
+    const stopFollowingOnUpwardKey = (event: KeyboardEvent) => {
+      if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) shouldStickToBottomRef.current = false;
     };
 
     const captureBeforeCompact = (event: Event) => {
@@ -124,11 +154,14 @@ export function usePetChatConversationAutoScroll({
     shouldStickToBottomRef.current = savedScrollPosition === null
       || savedScrollPosition.ratio >= 0.999;
     viewport.addEventListener('scroll', updateStickiness, { passive: true });
+    viewport.addEventListener('wheel', stopFollowingOnUpwardGesture, { passive: true });
+    viewport.addEventListener('keydown', stopFollowingOnUpwardKey);
     window.addEventListener(CAPTURE_SCROLL_POSITION_EVENT, captureBeforeCompact);
 
     isRestoringScrollRef.current = true;
     const restoreScrollPosition = () => {
       restoreFrameId = null;
+      if (!isRestoringScrollRef.current) return;
       restoreAttemptRef.current += 1;
 
       const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
@@ -152,6 +185,7 @@ export function usePetChatConversationAutoScroll({
             : savedScrollPosition.ratio * maxScrollTop;
         viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, targetScrollTop));
       }
+      lastScrollTop = viewport.scrollTop;
 
       stableRestoreFrameCount += 1;
       if (
@@ -191,9 +225,12 @@ export function usePetChatConversationAutoScroll({
       if (restoreFrameId !== null) window.cancelAnimationFrame(restoreFrameId);
       restoreObserver?.disconnect();
       restoreMutationObserver?.disconnect();
+      const wasRestoring = isRestoringScrollRef.current;
       isRestoringScrollRef.current = false;
-      if (!isScrollSnapshotFrozenRef.current) saveScrollTop(viewport);
+      if (!wasRestoring && !isScrollSnapshotFrozenRef.current) saveScrollTop(viewport);
       viewport.removeEventListener('scroll', updateStickiness);
+      viewport.removeEventListener('wheel', stopFollowingOnUpwardGesture);
+      viewport.removeEventListener('keydown', stopFollowingOnUpwardKey);
       window.removeEventListener(CAPTURE_SCROLL_POSITION_EVENT, captureBeforeCompact);
       if (scrollViewportRef.current === viewport) {
         scrollViewportRef.current = null;
@@ -201,13 +238,22 @@ export function usePetChatConversationAutoScroll({
     };
   }, [scrollStorageKey, storageKey]);
 
+  // Sending a message yourself always brings the conversation back to the latest.
+  const previousMessageCountRef = useRef(messageCount);
+  useEffect(() => {
+    const added = messageCount > previousMessageCountRef.current;
+    previousMessageCountRef.current = messageCount;
+    if (added && lastMessageFromUser && !isRestoringScrollRef.current) shouldStickToBottomRef.current = true;
+  }, [lastMessageFromUser, messageCount]);
+
   useEffect(() => {
     const viewport = scrollViewportRef.current;
-    if (!viewport || !shouldStickToBottomRef.current) {
+    if (!viewport || isRestoringScrollRef.current || !shouldStickToBottomRef.current) {
       return undefined;
     }
 
     const frameId = window.requestAnimationFrame(() => {
+      if (!shouldStickToBottomRef.current) return;
       scrollViewportToLatest(viewport);
       shouldStickToBottomRef.current = true;
     });

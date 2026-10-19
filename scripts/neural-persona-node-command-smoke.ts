@@ -143,11 +143,30 @@ if (updated.status === 'ok') {
   assert.equal(updated.receipt.appliedRevision, 2);
   assert.equal(updated.record.graph.nodes[0]?.createdAt, 200);
   assert.equal(updated.record.graph.nodes[0]?.updatedAt, 200);
+  assert.equal(updated.record.graph.nodes[0]?.normalizedContent,
+    '角色会稳定维护自己的身份边界。');
+  assert.equal(updated.record.graph.nodes[0]?.retrievalSummary,
+    '角色会稳定维护自己的身份边界。');
+}
+
+const longInfluenceSummary = '这是需要完整保留的人格节点内容。'.repeat(40);
+const longUpdated = await service.updateNode({
+  commandId: 'command:update-long-content',
+  expectedRevision: 2,
+  nodeId: 'identity:self',
+  patch: { influenceSummary: longInfluenceSummary },
+  roleId: 'role-a',
+});
+assert.equal(longUpdated.status, 'ok');
+if (longUpdated.status === 'ok') {
+  assert.equal(longUpdated.record.graph.nodes[0]?.influenceSummary, longInfluenceSummary);
+  assert.equal(longUpdated.record.graph.nodes[0]?.normalizedContent, longInfluenceSummary);
+  assert.equal(longUpdated.record.graph.nodes[0]?.retrievalSummary, longInfluenceSummary);
 }
 
 const preference = await service.createNode({
   commandId: 'command:create-preference',
-  expectedRevision: 2,
+  expectedRevision: 3,
   node: {
     ...identityDraft(), nodeId: 'preference:quiet', protected: false,
     sourceRef: undefined, type: 'preference',
@@ -162,16 +181,16 @@ const linked = await edgeService.createEdge({
     confidence: 0.8, edgeId: 'edge:identity-quiet', relationType: 'supports',
     sourceNodeId: 'identity:self', targetNodeId: 'preference:quiet', weight: 0.7,
   },
-  expectedRevision: 3,
+  expectedRevision: 4,
   roleId: 'role-a',
 });
 assert.equal(linked.status, 'ok');
 assert.deepEqual(await service.deleteNode({
-  commandId: 'command:protected-delete', expectedRevision: 4,
+  commandId: 'command:protected-delete', expectedRevision: 5,
   nodeId: 'identity:self', roleId: 'role-a',
 }), { reason: 'protected-node-confirmation-required', status: 'invalid' });
 const deleted = await service.deleteNode({
-  commandId: 'command:delete-preference', expectedRevision: 4,
+  commandId: 'command:delete-preference', expectedRevision: 5,
   nodeId: 'preference:quiet', roleId: 'role-a',
 });
 assert.equal(deleted.status, 'ok');
@@ -187,10 +206,10 @@ assert.deepEqual(await service.updateNode({
   nodeId: 'identity:self',
   patch: { influenceSummary: '过期更新不能生效。' },
   roleId: 'role-a',
-}), { actualRevision: 5, status: 'conflict' });
+}), { actualRevision: 6, status: 'conflict' });
 assert.deepEqual(await service.updateNode({
   commandId: 'command:missing',
-  expectedRevision: 5,
+  expectedRevision: 6,
   nodeId: 'missing',
   patch: { influenceSummary: '不存在。' },
   roleId: 'role-a',

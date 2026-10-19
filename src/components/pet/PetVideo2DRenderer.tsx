@@ -3,6 +3,16 @@ import { arePetVisualBoundsEqual, type PetVisualBounds } from './petVisualBounds
 import { type PetAction, type PetVideoEmotionFolderAliases } from '../../types';
 import { useVideo2DPlaybackQueue } from '../../pet-runtime/video2d/useVideo2DPlaybackQueue';
 import { resolveVideo2DVisualBounds } from './video2dVisualBounds';
+import {
+  areVideoContentBoxesEqual,
+  measureVideoContentBox,
+  unionVideoContentBoxes,
+  type VideoContentBox,
+} from './video2dContentBox';
+
+/** Sample a new clip's frames this often, for this long, to cover its whole motion. */
+const CONTENT_SAMPLE_INTERVAL_MS = 400;
+const CONTENT_SAMPLE_COUNT = 8;
 
 interface PetVideo2DRendererProps {
   emotionAction?: PetAction | null;
@@ -32,6 +42,9 @@ const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const reportedBoundsRef = useRef<PetVisualBounds | null>(null);
+  // Where the character is inside the current clip's frames (union over samples).
+  const contentBoxRef = useRef<VideoContentBox | null>(null);
+  const faceDirectionRef = useRef(1);
   const {
     activeVideo,
     handleEnded,
@@ -65,14 +78,20 @@ const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
   const faceDirection = pointerLookTarget?.x && Math.abs(pointerLookTarget.x) >= 0.25
     ? (pointerLookTarget.x < 0 ? -1 : 1)
     : 1;
+  faceDirectionRef.current = faceDirection;
 
   const reportVisibleVideoBounds = useCallback(() => {
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
 
+    const contentBox = contentBoxRef.current;
     const bounds = resolveVideo2DVisualBounds({
       containerRect: container.getBoundingClientRect(),
+      // A flipped (facing left) video mirrors where the character sits in the frame.
+      contentBox: contentBox && faceDirectionRef.current < 0
+        ? { ...contentBox, left: 1 - contentBox.right, right: 1 - contentBox.left }
+        : contentBox,
       sourceHeight: video.videoHeight,
       sourceWidth: video.videoWidth,
       videoRect: video.getBoundingClientRect(),
@@ -99,15 +118,52 @@ const PetVideo2DRenderer = memo(function PetVideo2DRenderer({
     video.addEventListener('loadedmetadata', scheduleMeasurement);
     video.addEventListener('canplay', scheduleMeasurement);
     scheduleMeasurement();
+    // Scale changes animate (and ResizeObserver ignores transforms), so the first measurement
+    // can still see the old size. Measure again once the scale transition has settled so
+    // things anchored under the feet (mic / screen-watch pills) follow the new size.
+    const settleTimers = [260, 600].map((delay) => window.setTimeout(scheduleMeasurement, delay));
 
     return () => {
       cancelAnimationFrame(frameId);
+      settleTimers.forEach((timer) => window.clearTimeout(timer));
       resizeObserver.disconnect();
       video.removeEventListener('loadeddata', scheduleMeasurement);
       video.removeEventListener('loadedmetadata', scheduleMeasurement);
       video.removeEventListener('canplay', scheduleMeasurement);
     };
   }, [activeVideo?.requestId, modelUrl, reportVisibleVideoBounds, scale, translateX, translateY]);
+
+  // Learn where the character is in each new clip: sample a few frames and keep the union,
+  // so the bounds cover the whole motion without jittering frame to frame.
+  useEffect(() => {
+    // Keep the previous clip's box until this clip's first sample, so the bounds never
+    // fall back to the whole (wide, mostly transparent) frame in between.
+    let clipBox: VideoContentBox | null = null;
+    let samplesLeft = CONTENT_SAMPLE_COUNT;
+    const sample = () => {
+      const video = videoRef.current;
+      const measured = video ? measureVideoContentBox(video) : null;
+      if (!measured) return;
+      samplesLeft -= 1;
+      clipBox = unionVideoContentBoxes(clipBox, measured);
+      if (areVideoContentBoxesEqual(contentBoxRef.current, clipBox)) return;
+      contentBoxRef.current = clipBox;
+      requestAnimationFrame(reportVisibleVideoBounds);
+    };
+    const timer = window.setInterval(() => {
+      if (samplesLeft <= 0) {
+        window.clearInterval(timer);
+        return;
+      }
+      sample();
+    }, CONTENT_SAMPLE_INTERVAL_MS);
+    const video = videoRef.current;
+    video?.addEventListener('loadeddata', sample);
+    return () => {
+      window.clearInterval(timer);
+      video?.removeEventListener('loadeddata', sample);
+    };
+  }, [activeVideo?.requestId, modelUrl, reportVisibleVideoBounds]);
 
   return (
     <div ref={containerRef} className="flex h-full w-full items-center justify-center overflow-visible">

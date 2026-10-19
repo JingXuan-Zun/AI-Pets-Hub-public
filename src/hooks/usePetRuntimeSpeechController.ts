@@ -7,6 +7,7 @@ import { getVoiceErrorMessage, isVoiceCancellationError } from '../voice/errorMe
 import { resolvePetMessageExpressionAction } from '../pet-runtime/interactions/petMessageExpressionSignals';
 import { getStartupGreetingLlmResponse } from '../life-companion/startupGreetingLlm';
 import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
+import { getDesktopPetSlot, PRIMARY_DESKTOP_PET_SLOT_ID } from '../multiPetRoster';
 
 interface UsePetRuntimeSpeechControllerOptions {
   addLog: (message: string) => void;
@@ -53,10 +54,20 @@ export function usePetRuntimeSpeechController({
     signal.addEventListener('abort', onAbort, { once: true });
   }), []);
 
-  const playPetSpeech = useCallback(async (text: string, settings: PetConfig['settings']) => {
+  // Any character can speak up on her own now (greetings, hunger, affection), not only the
+  // main one: the line is posted and voiced as that character.
+  const resolveSpeaker = useCallback((petId: string | null | undefined) => {
+    const slot = getDesktopPetSlot(configRef.current, petId || PRIMARY_DESKTOP_PET_SLOT_ID);
+    return slot
+      ? { id: slot.id, personality: slot.personality }
+      : { id: PRIMARY_DESKTOP_PET_SLOT_ID, personality: configRef.current.personality };
+  }, [configRef]);
+
+  const playPetSpeech = useCallback(async (text: string, settings: PetConfig['settings'], petId: string = PRIMARY_DESKTOP_PET_SLOT_ID) => {
     if (!text.trim()) {
       return;
     }
+    const speaker = resolveSpeaker(petId);
 
     desktopPetChatStore.addMessage({
       id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -65,8 +76,8 @@ export function usePetRuntimeSpeechController({
       role: 'model',
       text,
       chatMode: 'single',
-      petId: 'primary',
-      petName: configRef.current.personality.name,
+      petId: speaker.id,
+      petName: speaker.personality.name,
     });
 
     const chatState = desktopPetChatStore.getState();
@@ -86,14 +97,14 @@ export function usePetRuntimeSpeechController({
       const playbackToken = ++autoSpeechTokenRef.current;
     try {
       desktopPetChatStore.setSpeaking(true);
-      desktopPetChatStore.setSpeakingPetId('primary');
+      desktopPetChatStore.setSpeakingPetId(speaker.id);
       const expressionAction = resolvePetMessageExpressionAction(text);
-      desktopPetChatStore.setSpeechExpressionAction('primary', expressionAction);
+      desktopPetChatStore.setSpeechExpressionAction(speaker.id, expressionAction);
       pushFrontendRuntimeLog('语音', '开始主动播报', {
         provider: settings.ttsProvider,
         textLength: text.length,
       });
-      const voiceSettings = resolvePetVoiceSettings({ ...configRef.current, settings }, 'primary');
+      const voiceSettings = resolvePetVoiceSettings({ ...configRef.current, settings }, speaker.id);
       const playback = await speakText(text, voiceSettings, undefined, { expressionAction });
       if (playbackToken !== autoSpeechTokenRef.current) {
         playback.stop();
@@ -120,12 +131,16 @@ export function usePetRuntimeSpeechController({
         autoSpeechStopRef.current = null;
         desktopPetChatStore.setSpeaking(false);
         desktopPetChatStore.setSpeakingPetId(null);
-        desktopPetChatStore.setSpeechExpressionAction('primary', null);
+        desktopPetChatStore.setSpeechExpressionAction(speaker.id, null);
       }
     }
-  }, [addLog, configRef]);
+  }, [addLog, configRef, resolveSpeaker]);
 
   const enqueueTriggeredPetSpeech = useCallback((trigger: PetAutoSpeechTrigger) => {
+    // The life companion switches for these lines were shown in settings but never checked.
+    const lifeCompanion = configRef.current.settings.lifeCompanion;
+    if (trigger.kind === 'affection-milestone' && lifeCompanion?.affectionEnabled === false) return;
+    if (trigger.kind !== 'affection-milestone' && lifeCompanion?.hungerEnabled === false) return;
     autoSpeechQueueRef.current = autoSpeechQueueRef.current
       .catch(() => undefined)
       .then(async () => {
@@ -134,10 +149,11 @@ export function usePetRuntimeSpeechController({
           pushFrontendRuntimeLog('对话', '开始生成主动对话', {
             trigger: trigger.kind,
           });
+          const speaker = resolveSpeaker(trigger.petId);
           const text = await getPetTriggeredResponse(
             desktopPetChatStore.getState().messages,
             trigger,
-            configRef.current.personality,
+            speaker.personality,
             configRef.current.settings,
           );
 
@@ -152,7 +168,7 @@ export function usePetRuntimeSpeechController({
             trigger: trigger.kind,
             textLength: text.length,
           });
-          await playPetSpeech(text, configRef.current.settings);
+          await playPetSpeech(text, configRef.current.settings, speaker.id);
         } catch (error) {
           pushFrontendRuntimeError('对话', '主动对话生成失败', error, {
             trigger: trigger.kind,
@@ -165,9 +181,10 @@ export function usePetRuntimeSpeechController({
           );
         }
       });
-  }, [addLog, configRef, playPetSpeech]);
+  }, [addLog, configRef, playPetSpeech, resolveSpeaker]);
 
-  const enqueueStartupGreeting = useCallback(() => {
+  /** Greets from each given character in turn (one queued task, so they do not cancel each other). */
+  const enqueueStartupGreeting = useCallback((petIds: string[] = [PRIMARY_DESKTOP_PET_SLOT_ID]) => {
     const requestToken = ++startupGreetingTokenRef.current;
     startupGreetingAbortRef.current?.abort();
     const abortController = new AbortController();
@@ -177,17 +194,20 @@ export function usePetRuntimeSpeechController({
       .then(async () => {
         if (requestToken !== startupGreetingTokenRef.current || abortController.signal.aborted) return;
         try {
-          pushFrontendRuntimeLog('对话', '开始生成启动模型问候');
-          const text = await getStartupGreetingLlmResponse({
-            history: desktopPetChatStore.getState().messages,
-            personality: configRef.current.personality,
-            settings: configRef.current.settings,
-            signal: abortController.signal,
-          });
-          if (requestToken !== startupGreetingTokenRef.current || abortController.signal.aborted) return;
-          await waitForChatIdle(abortController.signal);
-          if (requestToken !== startupGreetingTokenRef.current || abortController.signal.aborted) return;
-          await playPetSpeech(text, configRef.current.settings);
+          for (const petId of petIds) {
+            const speaker = resolveSpeaker(petId);
+            pushFrontendRuntimeLog('对话', '开始生成启动模型问候', { petId: speaker.id });
+            const text = await getStartupGreetingLlmResponse({
+              history: desktopPetChatStore.getState().messages,
+              personality: speaker.personality,
+              settings: configRef.current.settings,
+              signal: abortController.signal,
+            });
+            if (requestToken !== startupGreetingTokenRef.current || abortController.signal.aborted) return;
+            await waitForChatIdle(abortController.signal);
+            if (requestToken !== startupGreetingTokenRef.current || abortController.signal.aborted) return;
+            await playPetSpeech(text, configRef.current.settings, speaker.id);
+          }
           addLog('启动问候已发送');
         } catch (error) {
           if (abortController.signal.aborted || requestToken !== startupGreetingTokenRef.current) return;
@@ -202,7 +222,7 @@ export function usePetRuntimeSpeechController({
           }
         }
       });
-  }, [addLog, configRef, playPetSpeech, waitForChatIdle]);
+  }, [addLog, configRef, playPetSpeech, resolveSpeaker, waitForChatIdle]);
 
   const cleanupAutoSpeech = useCallback(() => {
     startupGreetingTokenRef.current += 1;

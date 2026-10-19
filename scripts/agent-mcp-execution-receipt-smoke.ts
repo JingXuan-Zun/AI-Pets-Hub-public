@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { executeCallMcpTool } from '../src/agent';
+import { executeCallMcpTool } from '../src/agent/agentRuntimeSkillTools';
 import { createAgentMcpExecutionReceipt } from '../src/agent/agentMcpExecutionReceipt';
 import { setAgentExternalMcpRuntimeOverride } from '../src/agent/agentExternalMcpBridge';
 

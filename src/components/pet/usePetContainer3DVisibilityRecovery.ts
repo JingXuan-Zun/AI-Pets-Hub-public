@@ -10,6 +10,9 @@ import {
   type ViewportRect,
 } from './petContainerMath';
 
+/** How far a 3D model may overflow the screen edge before visibility recovery moves it. */
+const VISIBILITY_RECOVERY_OVERFLOW_TOLERANCE_PX = 64;
+
 type Position = { x: number; y: number };
 
 type VisibilityRecoverySnapshot = {
@@ -94,7 +97,17 @@ export function usePetContainer3DVisibilityRecovery({
 
     recovered3DVisibilitySignatureByPetIdRef.current[petId] = visibilitySignature;
 
-    if (isPetPositionVisibleInViewport(position, activityCenter, visibleDisplayViewport, visualBounds)) {
+    // This rescues a model that ended up off screen. Requiring the whole box plus 16px
+    // padding to be inside made it fire after every drop near an edge (the drag clamp
+    // allows touching the edge), nudging the pet ~16px a moment after release. Only step
+    // in when the model is clearly out of view.
+    const toleratedBounds = {
+      left: Math.max(1, visualBounds.left - VISIBILITY_RECOVERY_OVERFLOW_TOLERANCE_PX),
+      right: Math.max(1, visualBounds.right - VISIBILITY_RECOVERY_OVERFLOW_TOLERANCE_PX),
+      top: Math.max(1, visualBounds.top - VISIBILITY_RECOVERY_OVERFLOW_TOLERANCE_PX),
+      bottom: Math.max(1, visualBounds.bottom - VISIBILITY_RECOVERY_OVERFLOW_TOLERANCE_PX),
+    };
+    if (isPetPositionVisibleInViewport(position, activityCenter, visibleDisplayViewport, toleratedBounds, 0)) {
       return position;
     }
 

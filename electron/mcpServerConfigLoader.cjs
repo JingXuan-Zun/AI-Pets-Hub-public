@@ -18,6 +18,26 @@ function normalizeServerEntry(entry, projectRoot) {
 
   const id = typeof entry.id === 'string' ? entry.id.trim() : '';
   const command = typeof entry.command === 'string' ? entry.command.trim() : '';
+  const url = typeof entry.url === 'string' ? entry.url.trim() : '';
+  const timeoutMs = Number.isFinite(Number(entry.timeoutMs))
+    ? Math.max(1000, Math.min(120_000, Math.round(Number(entry.timeoutMs))))
+    : DEFAULT_MCP_SERVER_TIMEOUT_MS;
+  // Hosted servers are given by URL (README configs: { "url": ..., "headers": {...} }).
+  if (id && !command && /^https?:\/\//iu.test(url)) {
+    return {
+      args: [],
+      command: '',
+      cwd: projectRoot,
+      description: typeof entry.description === 'string' ? entry.description.trim() : '',
+      env: {},
+      headers: Object.fromEntries(Object.entries(parseJsonObject(entry.headers)).filter(([, value]) => typeof value === 'string')),
+      id,
+      timeoutMs,
+      title: typeof entry.title === 'string' && entry.title.trim() ? entry.title.trim() : id,
+      transport: 'http',
+      url,
+    };
+  }
   if (!id || !command) {
     return null;
   }
@@ -32,17 +52,18 @@ function normalizeServerEntry(entry, projectRoot) {
     description: typeof entry.description === 'string' ? entry.description.trim() : '',
     env: parseJsonObject(entry.env),
     id,
-    timeoutMs: Number.isFinite(Number(entry.timeoutMs))
-      ? Math.max(1000, Math.min(120_000, Math.round(Number(entry.timeoutMs))))
-      : DEFAULT_MCP_SERVER_TIMEOUT_MS,
+    timeoutMs,
     title: typeof entry.title === 'string' && entry.title.trim() ? entry.title.trim() : id,
+    transport: 'stdio',
   };
 }
 
 function normalizeConfigServers(rawConfig, projectRoot) {
-  const rawServers = Array.isArray(rawConfig?.servers)
-    ? rawConfig.servers
-    : Object.entries(parseJsonObject(rawConfig?.servers)).map(([id, entry]) => ({
+  // "mcpServers" is the format most MCP READMEs (Claude Desktop, Cursor) give to copy.
+  const listed = rawConfig?.servers ?? rawConfig?.mcpServers;
+  const rawServers = Array.isArray(listed)
+    ? listed
+    : Object.entries(parseJsonObject(listed)).map(([id, entry]) => ({
         ...(parseJsonObject(entry)),
         id,
       }));

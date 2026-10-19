@@ -140,12 +140,23 @@ export function SettingsModelProviderTools({
     }
 
     if (settings.llmProvider === 'gemini') {
-      updateTestStatus(
-        settings.geminiApiKey.trim()
-          ? 'Gemini API Key 已填写，将在首次请求时验证。'
-          : '请先填写 Gemini API Key。',
-        settings.geminiApiKey.trim() ? 'info' : 'error',
-      );
+      if (!settings.geminiApiKey.trim() || !settings.llmModel.trim()) {
+        updateTestStatus('请先填写并保存 Gemini 模型名称和 API Key。', 'error');
+        return;
+      }
+      // Tests the saved Gemini settings (endpoint, key, model) with one tiny request.
+      setIsTestingConnection(true);
+      updateTestStatus('正在测试连接...', 'info');
+      try {
+        const { getGeminiClient } = await import('../../services/geminiClient');
+        const client = await getGeminiClient(settings.geminiApiKey, settings.geminiApiUrl);
+        const result = await client.models.generateContent({ contents: 'Reply PONG only.', model: settings.llmModel.trim() });
+        updateTestStatus(result.text ? '连接成功。' : '连上了，但没有返回内容，请检查模型名称。', result.text ? 'success' : 'error');
+      } catch (error) {
+        updateTestStatus(error instanceof Error ? `连接失败：${error.message}` : '连接测试失败。', 'error');
+      } finally {
+        setIsTestingConnection(false);
+      }
       return;
     }
 
@@ -191,7 +202,7 @@ export function SettingsModelProviderTools({
   const resetModelSettings = () => {
     const confirmed = window.confirm(settings.llmProvider === 'openai'
       ? '确定清空当前自定义模型配置和高级参数吗？'
-      : '确定清空当前 Gemini API Key 并重置高级参数吗？');
+      : '确定清空当前 Gemini 接口地址和 API Key 并重置高级参数吗？');
     if (!confirmed) {
       return;
     }
@@ -199,7 +210,7 @@ export function SettingsModelProviderTools({
     onApplySettings({
       ...(settings.llmProvider === 'openai'
         ? { customApiKey: '', customApiUrl: '', customModelName: '' }
-        : { geminiApiKey: '' }),
+        : { geminiApiKey: '', geminiApiUrl: '' }),
       customModelCapabilities: { ...DEFAULT_MODEL_CAPABILITIES },
       customModelRequestParams: createDefaultModelRequestParams(),
     });

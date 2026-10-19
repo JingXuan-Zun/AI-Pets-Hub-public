@@ -45,7 +45,7 @@ for (const button of ['left', 'right', 'middle']) for (const conversionFailure o
   hash.update(JSON.stringify(actual)); cases++;
 }
 const fingerprint = hash.digest('hex');
-assert.equal(fingerprint, '25813ad98854c828155f2f8df74e23c8ccfb9801abdf93b38d29035382fb9533', 'Deferred getter/conversion ordering remains unchanged');
+assert.equal(fingerprint, '8ade95b12c9a2642ae11da6228811f6613cd0731c0553f2c24d47827aed09924', 'Deferred getter/conversion ordering remains unchanged');
 const trace = []; let state = 'before';
 const value = { [Symbol.toPrimitive](hint) { trace.push(hint); return state; } };
 const left = fragments.captureScriptFragment`A\n${value}B`;

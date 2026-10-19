@@ -8,7 +8,7 @@ try:
     patch_path = os.environ.get('DSH_CAPABILITY_PROFILE_PATCH', '').strip()
     with DeepSeekHarness(
         provider='deepseek-official',
-        model=os.environ.get('DSH_MODEL', 'deepseek-v4-flash'),
+        model=os.environ.get('DSH_MODEL', 'deepseek-flash'),
         cwd=os.environ['DSH_WORKSPACE'],
         dsh_home=os.environ['DSH_HOME'],
         profile='sdk-minimal',

@@ -94,6 +94,7 @@ const AGENT_MODE_POLICIES: Record<AgentModeRouteMode, AgentModePolicy> = {
       'place_desktop_icon',
       'get_pet_settings',
       'update_pet_settings',
+      'use_platform_capability',
       'get_voice_status',
       'switch_tts_provider',
       'warmup_local_voice',

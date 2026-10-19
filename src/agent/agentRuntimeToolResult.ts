@@ -97,6 +97,8 @@ function createAgentRuntimeToolFollowUp(toolCall: AgentToolCallCommand, ok: bool
       return '可以指定一个配置 path，或用 query 搜索当前桌宠配置路径。';
     case 'update_pet_settings':
       return '先读取对应配置路径，确认现有字段类型后再提交 changesJson。';
+    case 'use_platform_capability':
+      return '检查能力名称和参数是否正确；能力列表在工具说明里。';
     case 'get_voice_status':
       return '可以到语音设置里检查播报、输入、TTS/STT 来源和本地语音环境。';
     case 'switch_tts_provider':
@@ -208,6 +210,8 @@ function createAgentRuntimeToolVerification(toolCall: AgentToolCallCommand, ok: 
       return '桌宠配置来自当前运行配置；敏感值会在返回前隐藏。';
     case 'update_pet_settings':
       return '桌宠配置已经通过规范化后保存，并返回每个请求路径的实际值。';
+    case 'use_platform_capability':
+      return '平台能力已经执行，结果来自能力本身的回读。';
     case 'get_voice_status':
       return '语音状态来自当前配置；本地语音健康状态来自桌面运行时。';
     case 'switch_tts_provider':

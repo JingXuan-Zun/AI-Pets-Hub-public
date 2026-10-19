@@ -71,7 +71,7 @@ export function memoryTextFingerprint(value: string) {
   return value.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '');
 }
 
-function normalizeItems(value: unknown): CharacterMemoryItem[] {
+export function normalizeCharacterMemoryItems(value: unknown): CharacterMemoryItem[] {
   if (!Array.isArray(value)) return [];
   const seenIds = new Set<string>();
   return value.flatMap((entry): CharacterMemoryItem[] => {
@@ -102,7 +102,7 @@ export function normalizeCharacterMemoryState(value: unknown): CharacterMemorySt
     }
     : null;
   const itemsBackup = isRecord(value.itemsBackup)
-    ? { items: normalizeItems(value.itemsBackup.items), savedAt: finiteNumber(value.itemsBackup.savedAt, 0) }
+    ? { items: normalizeCharacterMemoryItems(value.itemsBackup.items), savedAt: finiteNumber(value.itemsBackup.savedAt, 0) }
     : null;
   const manualBackup = isRecord(value.manualBackup)
     && (value.manualBackup.field === 'userMemory' || value.manualBackup.field === 'chatHistoryMemory')
@@ -113,7 +113,7 @@ export function normalizeCharacterMemoryState(value: unknown): CharacterMemorySt
       text: value.manualBackup.text,
     }
     : null;
-  return { items: normalizeItems(value.items), itemsBackup, manualBackup, summary };
+  return { items: normalizeCharacterMemoryItems(value.items), itemsBackup, manualBackup, summary };
 }
 
 let memoryItemSequence = 0;

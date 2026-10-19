@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import { COMPANION_SETTLE_TRANSITION, isCompanionSettling } from './companionSettleSignal';
 import { AnimatePresence, motion } from 'motion/react';
 import { type DesktopPetSlot } from '../../multiPetRoster';
 import { type Avatar3DRuntimeBackend, type PetModelMotionBinding, type PetModelPreset } from '../../types';
@@ -44,6 +45,12 @@ import {
 } from './petAvatarLayerGeometry';
 import { usePetLayerMotionState } from './usePetLayerMotionState';
 import { PetDebugBoundsOverlay } from './PetDebugBoundsOverlay';
+import { DEFAULT_CONFIG } from '../../constants';
+import {
+  PET_SPEECH_BUBBLE_FRAME_CLASS,
+  PET_SPEECH_BUBBLE_MOTION,
+  PetSpeechBubbleCard,
+} from '../chat/PetSpeechBubbleCard';
 import { useLive2DDragReleaseProbe } from './useLive2DDragReleaseProbe';
 
 type Position = {
@@ -69,6 +76,8 @@ function areCompanionSlotsEqual(left: DesktopPetSlot, right: DesktopPetSlot) {
 
 interface PetCompanionLayerProps {
   activityCenter: Position;
+  chatBubbleEnabled?: boolean;
+  chatBubbleTextColor?: string;
   dragDelta?: Position | null;
   active3DSceneCount?: number;
   avatar3dRuntimeBackend?: Avatar3DRuntimeBackend;
@@ -111,6 +120,8 @@ function arePetCompanionLayerPropsEqual(
 ) {
   return previousProps.active3DSceneCount === nextProps.active3DSceneCount
     && previousProps.avatar3dRuntimeBackend === nextProps.avatar3dRuntimeBackend
+    && previousProps.chatBubbleEnabled === nextProps.chatBubbleEnabled
+    && previousProps.chatBubbleTextColor === nextProps.chatBubbleTextColor
     && previousProps.activityCenter.x === nextProps.activityCenter.x
     && previousProps.activityCenter.y === nextProps.activityCenter.y
     && previousProps.customModelPresets === nextProps.customModelPresets
@@ -143,8 +154,12 @@ function arePetCompanionLayerPropsEqual(
     && areCompanionSlotsEqual(previousProps.slot, nextProps.slot);
 }
 
+const DEFAULT_CHAT_BUBBLE_TEXT_COLOR = DEFAULT_CONFIG.settings.chatBracketOuterTextColor;
+
 function PetCompanionLayerComponent({
   activityCenter,
+  chatBubbleEnabled = true,
+  chatBubbleTextColor = DEFAULT_CHAT_BUBBLE_TEXT_COLOR,
   dragDelta = null,
   active3DSceneCount = 1,
   avatar3dRuntimeBackend = 'three',
@@ -376,7 +391,7 @@ function PetCompanionLayerComponent({
     runtimeViewport,
     slot.modelType,
   ]);
-  const avatarShellStyle = useMemo(() => (
+  const baseAvatarShellStyle = useMemo(() => (
     resolvePetAvatarShellStyle({
       isDragging,
       isScaling: isWheelInteractionActive,
@@ -384,9 +399,19 @@ function PetCompanionLayerComponent({
       shellSize,
     })
   ), [isDragging, isWheelInteractionActive, renderedPosition, shellSize]);
+  // Being pushed aside after a drop: use the longer eased slide for this move.
+  const isSettling = !isDragging && isCompanionSettling(slot.id);
+  const avatarShellStyle = isSettling
+    ? { ...baseAvatarShellStyle, transition: COMPANION_SETTLE_TRANSITION }
+    : baseAvatarShellStyle;
+  // Name tag and bubble sit above the drawn model's head (measured from the shell
+  // center), not above the fixed-size shell, so they follow the model when it is
+  // scaled. Stack: head -> name tag -> bubble.
+  const modelTopOffset = Math.round(latestVisualBounds?.top ?? shellSize / 2);
+  const resolvedNameTagOffset = Math.max(4, modelTopOffset + 6);
   const resolvedBubbleTopOffset = Math.max(
     28,
-    Math.round((latestVisualBounds?.top ?? shellSize / 2) + 10),
+    resolvedNameTagOffset + NAME_TAG_HEIGHT_PX + 6,
   );
   const visualRendererProps = useMemo(() => (
       resolvePetVisualRendererProps({
@@ -497,22 +522,21 @@ function PetCompanionLayerComponent({
         style={avatarShellStyle}
       >
         <AnimatePresence>
-          {displayBubbleMessage && (
+          {chatBubbleEnabled && displayBubbleMessage && (
+            // Same bubble as the primary pet; each pet shows only its own words.
             <motion.div
+              data-desktop-pet-interactive="true"
               data-desktop-pet-window-shape="true"
               data-desktop-pet-native-scope="pet"
-              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              className="pointer-events-none absolute left-1/2 z-10 w-60 max-w-[30vw] -translate-x-1/2 text-center text-xs font-semibold leading-relaxed text-primary"
+              {...PET_SPEECH_BUBBLE_MOTION}
+              className={`${PET_SPEECH_BUBBLE_FRAME_CLASS} left-1/2 z-10`}
               style={{
                 bottom: `calc(50% + ${resolvedBubbleTopOffset}px)`,
-                textShadow: '0 1px 6px rgba(0, 0, 0, 0.88)',
+                color: chatBubbleTextColor,
               }}
+              onPointerDown={(event) => event.stopPropagation()}
             >
-              <div className="max-h-20 overflow-hidden whitespace-pre-wrap break-words">
-                {displayBubbleMessage}
-              </div>
+              <PetSpeechBubbleCard text={displayBubbleMessage} textColor={chatBubbleTextColor} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -520,7 +544,8 @@ function PetCompanionLayerComponent({
         <div
           data-desktop-pet-window-shape="true"
           data-desktop-pet-native-scope="pet"
-          className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-sm border border-primary/30 bg-background/70 px-2 py-1 text-[10px] font-bold tracking-widest text-primary backdrop-blur-sm"
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm border border-primary/30 bg-background/70 px-2 py-1 text-[10px] font-bold tracking-widest text-primary backdrop-blur-sm"
+          style={{ bottom: `calc(50% + ${resolvedNameTagOffset}px)` }}
         >
           {slot.personality.name}
         </div>
@@ -626,6 +651,9 @@ function PetCompanionLayerComponent({
     </div>
   );
 }
+
+/** Rendered height of the name tag above a companion (text-[10px] + py-1 + border). */
+const NAME_TAG_HEIGHT_PX = 24;
 
 export const PetCompanionLayer = memo(PetCompanionLayerComponent, arePetCompanionLayerPropsEqual);
 PetCompanionLayer.displayName = 'PetCompanionLayer';

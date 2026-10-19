@@ -10,7 +10,8 @@ export type AgentCapabilityId =
   | 'voice-control'
   | 'game-companion'
   | 'skill-system'
-  | 'mcp-tools';
+  | 'mcp-tools'
+  | 'platform-capabilities';
 
 export type AgentCapabilityStage = 'foundation' | 'mvp' | 'future';
 
@@ -32,6 +33,8 @@ export type AgentToolActionKind =
   | 'read-system-info'
   | 'read-pet-settings'
   | 'update-pet-settings'
+  | 'read-platform-capability'
+  | 'use-platform-capability'
   | 'read-voice-status'
   | 'capture-screen-context'
   | 'locate-screen-elements'

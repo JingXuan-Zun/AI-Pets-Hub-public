@@ -241,6 +241,9 @@ export function Avatar3DScene({
 
   return (
     <Canvas
+      // The canvas is far larger than the model; pointer input goes to the pet's hit
+      // area instead (React Three Fiber would otherwise set pointer-events: auto here).
+      style={{ pointerEvents: 'none' }}
       dpr={sceneQuality.renderDpr}
       frameloop={sceneQuality.useDemandFrameLoop ? 'demand' : 'always'}
       camera={{ fov: 45, near: 0.05, far: 220, position: [0, 0.06, baseCameraDistance] }}
@@ -264,6 +267,7 @@ export function Avatar3DScene({
         gl.setClearColor(0x000000, 0);
         gl.domElement.dataset.desktopPetThreeCanvas = 'true';
         gl.domElement.style.background = 'transparent';
+        gl.domElement.style.pointerEvents = 'none';
         gl.domElement.style.imageRendering = 'auto';
         gl.domElement.style.transform = 'translateZ(0)';
       }}

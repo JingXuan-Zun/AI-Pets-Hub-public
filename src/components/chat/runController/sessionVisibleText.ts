@@ -1,4 +1,6 @@
-import { type AgentChatCommandResult, type AgentRuntimeProgressEvent, type AgentProductionSessionResult } from '../../../agent';
+import { type AgentChatCommandResult } from '../../../agent/agentChatCommand';
+import { type AgentRuntimeProgressEvent } from '../../../agent/runtime/agentRuntimeContract';
+import { type AgentProductionSessionResult } from '../../../agent/agentProductionSessionContract';
 import { isAgentTaskRuntimeWaitingApproval } from '../agentRuntimeUiStatusProjection';
 import { compactAgentPersonaPromptText } from './personaText';
 
@@ -66,7 +68,7 @@ export function createAgentProductionSessionResultVisibleText(result: AgentProdu
 }
 
 export function createAgentPendingApprovalVisibleText(goal: string) {
-  return `已准备好执行${formatAgentVisibleGoal(goal)}，确认后会直接操作电脑并继续。`;
+  return `已准备好执行${formatAgentVisibleGoal(goal)}，你点“允许”后我就去做。`;
 }
 
 export function createAgentApprovalDeniedVisibleText() {

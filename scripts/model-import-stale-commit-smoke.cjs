@@ -18,6 +18,7 @@ const code = ts.transpileModule(fs.readFileSync('src/components/settings/useSett
 vm.runInNewContext(code, { exports: exported, require(id) {
   if (id === 'react') return react;
   if (id.includes('petConfigNormalization')) return { normalizePetConfig: (x) => x };
+  if (id.includes('screenWatchConsentMerge')) return { keepLiveScreenWatchConsent: (next) => next };
   if (id.includes('multiPetRoster')) return { PRIMARY_DESKTOP_PET_SLOT_ID: 'primary', getDesktopPetSlot: (c) => c,
     getDesktopPetSlots: (c) => [c] };
   return {};

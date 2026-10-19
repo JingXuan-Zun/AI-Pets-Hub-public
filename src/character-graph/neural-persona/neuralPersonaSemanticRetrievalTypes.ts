@@ -1,6 +1,7 @@
 import type { NeuralPersonaNodeType, NeuralPersonaScope } from './neuralPersonaTypes';
 
 export interface NeuralPersonaSemanticDocument {
+  content?: string;
   nodeId: string;
   scope: NeuralPersonaScope;
   summary: string;

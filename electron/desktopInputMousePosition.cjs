@@ -29,6 +29,14 @@ if ($cursorVerified) {
   }
   if (${expectedTargetHwnd} -gt 0) {
     $pointWindowMatchesTarget = ([int64]$pointRootWindow.ToInt64() -eq [int64]${expectedTargetHwnd})
+  # A menu, dropdown or popup of the same program is its own top-level window; it still counts.
+  if (-not $pointWindowMatchesTarget -and $pointRootWindow -ne [IntPtr]::Zero) {
+    $pointPid = [uint32]0
+    $targetPid = [uint32]0
+    [void][DesktopPetInput]::GetWindowThreadProcessId($pointRootWindow, [ref]$pointPid)
+    [void][DesktopPetInput]::GetWindowThreadProcessId([IntPtr][int64]${expectedTargetHwnd}, [ref]$targetPid)
+    $pointWindowMatchesTarget = ($pointPid -ne 0 -and $pointPid -eq $targetPid)
+  }
     $inputBackendStageResults += @{ stage = 'PointWindowVerify'; ok = [bool]$pointWindowMatchesTarget; pointHwnd = [int64]$pointWindow.ToInt64(); pointRootHwnd = [int64]$pointRootWindow.ToInt64(); expectedHwnd = [int64]${expectedTargetHwnd}; x = [int]$point.X; y = [int]$point.Y }
   } else {
     $inputBackendStageResults += @{ stage = 'PointWindowObserve'; ok = $true; pointHwnd = [int64]$pointWindow.ToInt64(); pointRootHwnd = [int64]$pointRootWindow.ToInt64(); expectedHwnd = 0; x = [int]$point.X; y = [int]$point.Y }
@@ -36,7 +44,7 @@ if ($cursorVerified) {
 }
 if ($cursorVerified -and ${expectedTargetHwnd} -gt 0 -and $pointWindowMatchesTarget -ne $true) {
   $diagnosticStartedAt.Stop()
-  @{ ok = $false; action = '${options.action}'; x = ${x}; y = ${y}; button = '${button}'; clickCount = ${clicks}; cursorSet = $cursorSet; cursorVerified = $cursorVerified; sendInput = $false; sendInputAllOk = $false; processElevated = $processElevated; cursorBefore = @{ ok = $cursorBeforeOk; x = [int]$cursorBefore.X; y = [int]$cursorBefore.Y }; cursorAfter = @{ ok = $true; x = [int]$point.X; y = [int]$point.Y }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; inputPlan = $inputPlan; failureClassification = 'target_hit_test_mismatch'; stageResults = $inputBackendStageResults; pointWindowHwnd = [int64]$pointWindow.ToInt64(); pointRootWindowHwnd = [int64]$pointRootWindow.ToInt64(); expectedTargetHwnd = [int64]${expectedTargetHwnd}; totalElapsedMs = [int]$diagnosticStartedAt.ElapsedMilliseconds; forceMouseEventFallback = ${forceMouseEventFallback ? '$true' : '$false'} } } | ConvertTo-Json -Depth 10 -Compress
+  @{ ok = $false; action = '${options.action}'; x = ${x}; y = ${y}; button = '${button}'; clickCount = ${clicks}; cursorSet = $cursorSet; cursorVerified = $cursorVerified; sendInput = $false; sendInputAllOk = $false; processElevated = $processElevated; cursorBefore = @{ ok = $cursorBeforeOk; x = [int]$cursorBefore.X; y = [int]$cursorBefore.Y }; cursorAfter = @{ ok = $true; x = [int]$point.X; y = [int]$point.Y }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; inputPlan = $inputPlan; failureClassification = 'target_hit_test_mismatch'; stageResults = $inputBackendStageResults; pointWindowHwnd = [int64]$pointWindow.ToInt64(); pointRootWindowHwnd = [int64]$pointRootWindow.ToInt64(); expectedTargetHwnd = [int64]${expectedTargetHwnd}; totalElapsedMs = [int]$diagnosticStartedAt.ElapsedMilliseconds; forceMouseEventFallback = ${forceMouseEventFallback ? '$true' : '$false'} }; error = 'target_hit_test_mismatch' } | ConvertTo-Json -Depth 10 -Compress
   exit 0
 }
 `;
@@ -60,7 +68,7 @@ if (-not $cursorVerified) {
 }
 if (-not $cursorVerified) {
   $diagnosticStartedAt.Stop()
-  @{ ok = $false; action = '${options.action}'; x = ${x}; y = ${y}; button = '${button}'; clickCount = ${clicks}; cursorSet = $cursorSet; cursorVerified = $false; sendInput = $false; sendInputAllOk = $false; processElevated = $processElevated; cursorBefore = @{ ok = $cursorBeforeOk; x = [int]$cursorBefore.X; y = [int]$cursorBefore.Y }; cursorAfter = @{ ok = $true; x = [int]$point.X; y = [int]$point.Y }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; inputPlan = $inputPlan; failureClassification = 'cursor_target_not_reached'; stageResults = $inputBackendStageResults; setCursorLastError = [int]$cursorSetError; virtualMoveSent = [int]$virtualMoveSent; virtualMoveLastError = [int]$virtualMoveError; totalElapsedMs = [int]$diagnosticStartedAt.ElapsedMilliseconds; forceMouseEventFallback = ${forceMouseEventFallback ? '$true' : '$false'} } } | ConvertTo-Json -Depth 10 -Compress
+  @{ ok = $false; action = '${options.action}'; x = ${x}; y = ${y}; button = '${button}'; clickCount = ${clicks}; cursorSet = $cursorSet; cursorVerified = $false; sendInput = $false; sendInputAllOk = $false; processElevated = $processElevated; cursorBefore = @{ ok = $cursorBeforeOk; x = [int]$cursorBefore.X; y = [int]$cursorBefore.Y }; cursorAfter = @{ ok = $true; x = [int]$point.X; y = [int]$point.Y }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; inputPlan = $inputPlan; failureClassification = 'cursor_target_not_reached'; stageResults = $inputBackendStageResults; setCursorLastError = [int]$cursorSetError; virtualMoveSent = [int]$virtualMoveSent; virtualMoveLastError = [int]$virtualMoveError; totalElapsedMs = [int]$diagnosticStartedAt.ElapsedMilliseconds; forceMouseEventFallback = ${forceMouseEventFallback ? '$true' : '$false'} }; error = 'cursor_target_not_reached' } | ConvertTo-Json -Depth 10 -Compress
   exit 0
 }
 $pointWindow = [DesktopPetInput]::WindowFromPoint($point)
@@ -70,10 +78,18 @@ if ($pointRootWindow -eq [IntPtr]::Zero) {
 }
 if (${expectedTargetHwnd} -gt 0) {
   $pointWindowMatchesTarget = ([int64]$pointRootWindow.ToInt64() -eq [int64]${expectedTargetHwnd})
+  # A menu, dropdown or popup of the same program is its own top-level window; it still counts.
+  if (-not $pointWindowMatchesTarget -and $pointRootWindow -ne [IntPtr]::Zero) {
+    $pointPid = [uint32]0
+    $targetPid = [uint32]0
+    [void][DesktopPetInput]::GetWindowThreadProcessId($pointRootWindow, [ref]$pointPid)
+    [void][DesktopPetInput]::GetWindowThreadProcessId([IntPtr][int64]${expectedTargetHwnd}, [ref]$targetPid)
+    $pointWindowMatchesTarget = ($pointPid -ne 0 -and $pointPid -eq $targetPid)
+  }
   $inputBackendStageResults += @{ stage = 'PointWindowVerify'; ok = [bool]$pointWindowMatchesTarget; pointHwnd = [int64]$pointWindow.ToInt64(); pointRootHwnd = [int64]$pointRootWindow.ToInt64(); expectedHwnd = [int64]${expectedTargetHwnd}; x = [int]$point.X; y = [int]$point.Y }
   if ($pointWindowMatchesTarget -ne $true) {
     $diagnosticStartedAt.Stop()
-    @{ ok = $false; action = '${options.action}'; x = ${x}; y = ${y}; button = '${button}'; clickCount = ${clicks}; cursorSet = $cursorSet; cursorVerified = $cursorVerified; sendInput = $false; sendInputAllOk = $false; processElevated = $processElevated; cursorBefore = @{ ok = $cursorBeforeOk; x = [int]$cursorBefore.X; y = [int]$cursorBefore.Y }; cursorAfter = @{ ok = $true; x = [int]$point.X; y = [int]$point.Y }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; inputPlan = $inputPlan; failureClassification = 'target_hit_test_mismatch'; stageResults = $inputBackendStageResults; pointWindowHwnd = [int64]$pointWindow.ToInt64(); pointRootWindowHwnd = [int64]$pointRootWindow.ToInt64(); expectedTargetHwnd = [int64]${expectedTargetHwnd}; totalElapsedMs = [int]$diagnosticStartedAt.ElapsedMilliseconds; forceMouseEventFallback = ${forceMouseEventFallback ? '$true' : '$false'} } } | ConvertTo-Json -Depth 10 -Compress
+    @{ ok = $false; action = '${options.action}'; x = ${x}; y = ${y}; button = '${button}'; clickCount = ${clicks}; cursorSet = $cursorSet; cursorVerified = $cursorVerified; sendInput = $false; sendInputAllOk = $false; processElevated = $processElevated; cursorBefore = @{ ok = $cursorBeforeOk; x = [int]$cursorBefore.X; y = [int]$cursorBefore.Y }; cursorAfter = @{ ok = $true; x = [int]$point.X; y = [int]$point.Y }; inputDiagnostics = @{ backendName = 'DesktopInputBackend'; inputPlan = $inputPlan; failureClassification = 'target_hit_test_mismatch'; stageResults = $inputBackendStageResults; pointWindowHwnd = [int64]$pointWindow.ToInt64(); pointRootWindowHwnd = [int64]$pointRootWindow.ToInt64(); expectedTargetHwnd = [int64]${expectedTargetHwnd}; totalElapsedMs = [int]$diagnosticStartedAt.ElapsedMilliseconds; forceMouseEventFallback = ${forceMouseEventFallback ? '$true' : '$false'} }; error = 'target_hit_test_mismatch' } | ConvertTo-Json -Depth 10 -Compress
     exit 0
   }
 }

@@ -302,7 +302,7 @@ const live2dSharedRendererSource = readProjectFile('src/components/pet/live2dSha
 const live2dSharedRendererFrameSource = readProjectFile('src/components/pet/live2dSharedRendererFrame.ts');
 
 assert.match(typeSource, /ModelType = '2d' \| '3d' \| 'live2d'/u);
-assert.match(typeSource, /PetModelMotionAssetFormat = 'exp3' \| 'fbx' \| 'glb' \| 'gltf' \| 'motion3' \| 'vrma'/u);
+assert.match(typeSource, /PetModelMotionAssetFormat = 'exp3' \| 'fbx' \| 'glb' \| 'gltf' \| 'motion3' \| 'vmd' \| 'vrma'/u);
 assert.match(typeSource, /PetModelMotionBindingKind = 'expression' \| 'motion'/u);
 assert.match(visualRendererSource, /modelType === 'live2d'/u);
 assert.match(visualRendererSource, /<PetLive2DRenderer/u);

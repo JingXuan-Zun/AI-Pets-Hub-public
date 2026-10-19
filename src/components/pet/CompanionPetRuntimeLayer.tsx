@@ -38,6 +38,8 @@ interface CompanionPetRuntimeLayerProps {
   active3DSceneCount?: number;
   avatar3dRuntimeBackend?: Avatar3DRuntimeBackend;
   addLog?: (message: string) => void;
+  chatBubbleEnabled?: boolean;
+  chatBubbleTextColor?: string;
   clampCompanionPosition: (position: Position, pet: CompanionPetConfig) => Position;
   configRef: MutableRefObject<PetConfig>;
   createCompanionRoamTarget?: (pet: CompanionPetConfig) => Position;
@@ -86,6 +88,8 @@ export const CompanionPetRuntimeLayer = memo(function CompanionPetRuntimeLayer({
   active3DSceneCount = 1,
   avatar3dRuntimeBackend = 'three',
   addLog,
+  chatBubbleEnabled = true,
+  chatBubbleTextColor,
   clampCompanionPosition,
   configRef,
   createCompanionRoamTarget,
@@ -217,6 +221,8 @@ export const CompanionPetRuntimeLayer = memo(function CompanionPetRuntimeLayer({
   return (
     <PetCompanionLayer
       activityCenter={activityCenter}
+      chatBubbleEnabled={chatBubbleEnabled}
+      chatBubbleTextColor={chatBubbleTextColor}
       dragDelta={companionDragDelta}
       active3DSceneCount={active3DSceneCount}
       avatar3dRuntimeBackend={avatar3dRuntimeBackend}

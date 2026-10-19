@@ -1,4 +1,4 @@
-import { type AgentRuntimeContinuation } from '../../agent';
+import { type AgentRuntimeContinuation } from '../../agent/runtime/agentRuntimeContract';
 import { type ChatAgentApproval, type ChatAgentRun } from '../../types';
 
 type ChatAgentRuntimeRecord = Pick<

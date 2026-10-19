@@ -39,7 +39,25 @@ const EMPTY_MEASURED_VISUAL_BOUNDS_STATE: MeasuredPetVisualBoundsState = {
 
 type MeasuredPetVisualBoundsStateForModel = MeasuredPetVisualBoundsState & {
   measurementKey: string;
+  /** Pet scale the bounds were measured at (0 = none yet). */
+  measuredScale: number;
 };
+
+/**
+ * 3D bounds are only re-measured once the model settles, so while the user scales a
+ * 3D pet the measured box lagged behind and everything anchored to it (name tag,
+ * bubble, hit area, mic pill) jumped into place only when scaling stopped. Until the
+ * next measurement arrives, scale the last one by how much the pet scale changed.
+ */
+function scaleBoundsForCurrentScale(bounds: PetVisualBounds | null, ratio: number) {
+  if (!bounds || ratio === 1) return bounds;
+  return {
+    left: Math.max(1, Math.round(bounds.left * ratio)),
+    right: Math.max(1, Math.round(bounds.right * ratio)),
+    top: Math.max(1, Math.round(bounds.top * ratio)),
+    bottom: Math.max(1, Math.round(bounds.bottom * ratio)),
+  } satisfies PetVisualBounds;
+}
 
 function createMeasuredVisualBoundsKey(modelType: ModelType, modelUrl: string) {
   return `${modelType}:${modelUrl}`;
@@ -51,6 +69,7 @@ function createEmptyMeasuredVisualBoundsStateForModel(
   return {
     ...EMPTY_MEASURED_VISUAL_BOUNDS_STATE,
     measurementKey,
+    measuredScale: 0,
   };
 }
 
@@ -112,6 +131,9 @@ export function usePetVisualBoundsMeasurement({
     () => createEmptyMeasuredVisualBoundsStateForModel(measurementKey),
   );
   const measuredVisualBoundsRef = useRef(measuredVisualBounds);
+  // The renderer re-reports its last measurement when props (like scale) change; only a
+  // genuinely new raw measurement may move the scale it was taken at.
+  const lastRawBoundsRef = useRef<PetVisualBounds | null>(null);
   const currentMeasuredVisualBounds = measuredVisualBounds.measurementKey === measurementKey
     ? measuredVisualBounds
     : EMPTY_MEASURED_VISUAL_BOUNDS_STATE;
@@ -152,8 +174,12 @@ export function usePetVisualBoundsMeasurement({
       return;
     }
 
+    const isNewRawMeasurement = !arePetVisualBoundsEqual(lastRawBoundsRef.current, bounds)
+      || currentBoundsForModel.measuredScale === 0;
+    lastRawBoundsRef.current = bounds;
     const nextState = {
       measurementKey,
+      measuredScale: isNewRawMeasurement ? scale : currentBoundsForModel.measuredScale,
       interactiveVisualBounds: preserveEqualBounds(
         currentBoundsForModel.interactiveVisualBounds,
         nextMeasuredVisualBounds.interactiveVisualBounds,
@@ -181,10 +207,13 @@ export function usePetVisualBoundsMeasurement({
     visualRendererIsMoving,
   ]);
 
+  const measuredScale = measuredVisualBounds.measurementKey === measurementKey ? measuredVisualBounds.measuredScale : 0;
+  const liveScaleRatio = modelType === '3d' && measuredScale > 0 && scale > 0 ? scale / measuredScale : 1;
+
   return {
     handleVisualBoundsChange,
-    latestVisualBounds: currentMeasuredVisualBounds.latestVisualBounds,
-    measuredInteractiveVisualBounds: currentMeasuredVisualBounds.interactiveVisualBounds,
-    measuredWindowShapeVisualBounds: currentMeasuredVisualBounds.windowShapeVisualBounds,
+    latestVisualBounds: scaleBoundsForCurrentScale(currentMeasuredVisualBounds.latestVisualBounds, liveScaleRatio),
+    measuredInteractiveVisualBounds: scaleBoundsForCurrentScale(currentMeasuredVisualBounds.interactiveVisualBounds, liveScaleRatio),
+    measuredWindowShapeVisualBounds: scaleBoundsForCurrentScale(currentMeasuredVisualBounds.windowShapeVisualBounds, liveScaleRatio),
   };
 }

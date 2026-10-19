@@ -2,7 +2,6 @@ import { Monitor, RotateCcw } from 'lucide-react';
 import { type CSSProperties } from 'react';
 import { type PetConfig } from '../../types';
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import {
   createDefaultModelRequestParams,
@@ -19,9 +18,10 @@ import { SettingsVisionFolderPositionsPanel } from './vision/SettingsVisionFolde
 import { SettingsVisionPetPositionPanel } from './vision/SettingsVisionPetPositionPanel';
 import { SettingsVisionSourcePanel } from './vision/SettingsVisionSourcePanel';
 import { type ActivityDisplayOption } from './vision/types';
-import { inputClassName, selectClassName } from './settingsVoiceUtils';
+import { selectClassName } from './settingsVoiceUtils';
 import { SettingsModelRequestParamEditor } from './SettingsModelRequestParamEditor';
-import { SettingsOpenAIModelPicker } from './SettingsOpenAIModelPicker';
+import { SettingsGeminiApiFields } from './SettingsGeminiApiFields';
+import { SettingsVisionOpenAIApiFields } from './SettingsVisionOpenAIApiFields';
 
 export interface SettingsVisionTabProps {
   activePreviewSourceId: string;
@@ -350,44 +350,20 @@ export function SettingsVisionTab({
         )}
 
         {!resolvedVisionModel.disabled && visionModelProvider === 'gemini' && (
-          <select
-            value={settings.visionLlmModel}
-            onChange={(event) => applySettings({ visionLlmModel: event.target.value })}
-            className={selectClassName()}
-          >
-            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
-            <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
-          </select>
+          <SettingsGeminiApiFields
+            modelField="visionLlmModel"
+            noDragRegionStyle={noDragRegionStyle}
+            onApplySettings={applySettings}
+            settings={settings}
+          />
         )}
 
         {!resolvedVisionModel.disabled && visionModelProvider === 'openai' && (
-          <div className="space-y-3">
-            <SettingsOpenAIModelPicker
-              apiKey={settings.visionCustomApiKey}
-              apiUrl={settings.visionCustomApiUrl}
-              inputClassName={inputClassName()}
-              modelName={settings.visionCustomModelName}
-              noDragRegionStyle={noDragRegionStyle}
-              onModelNameChange={(modelName) => applySettings({ visionCustomModelName: modelName })}
-            />
-            <Input
-              className={inputClassName()}
-              style={noDragRegionStyle}
-              value={settings.visionCustomApiUrl}
-              onChange={(event) => applySettings({ visionCustomApiUrl: event.target.value })}
-              placeholder="视觉接口地址"
-            />
-            <Input
-              type="password"
-              className={inputClassName()}
-              style={noDragRegionStyle}
-              value={settings.visionCustomApiKey}
-              onChange={(event) => applySettings({ visionCustomApiKey: event.target.value })}
-              placeholder="视觉 API Key"
-            />
-          </div>
+          <SettingsVisionOpenAIApiFields
+            noDragRegionStyle={noDragRegionStyle}
+            onApplySettings={applySettings}
+            settings={settings}
+          />
         )}
 
         {!resolvedVisionModel.disabled && visionModelProvider !== 'inherit' && (
@@ -514,5 +490,3 @@ export function SettingsVisionTab({
     </div>
   );
 }
-
-

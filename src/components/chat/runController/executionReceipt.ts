@@ -1,4 +1,5 @@
-import { type AgentChatCommandResult, type AgentChatCommand, resolveAgentResultFollowUpActions } from '../../../agent';
+import { type AgentChatCommandResult, type AgentChatCommand } from '../../../agent/agentChatCommand';
+import { resolveAgentResultFollowUpActions } from '../../../agent/resultAssessment/resultEvidenceAssessment';
 import { type ChatAgentExecutionReceipt } from '../../../types';
 import { AGENT_STOPPED_DETAIL_TEXT, AGENT_STOPPED_RECEIPT_TITLE } from './stoppedText';
 

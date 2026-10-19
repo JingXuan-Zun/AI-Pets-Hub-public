@@ -21,7 +21,11 @@ function parseJsonConfig(rawText) {
   }
 
   if (!('servers' in config)) {
-    return { ...config, servers: [] };
+    // A config pasted from an MCP README uses "mcpServers"; show and save it as "servers".
+    const { mcpServers, ...rest } = config;
+    return mcpServers && typeof mcpServers === 'object'
+      ? { ...rest, servers: mcpServers }
+      : { ...config, servers: [] };
   }
 
   if (Array.isArray(config.servers)) {

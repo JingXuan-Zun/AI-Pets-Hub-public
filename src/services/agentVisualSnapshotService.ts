@@ -175,7 +175,7 @@ async function requestOpenAICompatibleVisualSnapshotSummary(options: AgentVisual
 
 async function requestGeminiVisualSnapshotSummary(options: AgentVisualSnapshotSummaryOptions) {
   const { base64, mimeType } = parseVisualSnapshotDataUrl(options.imageDataUrl);
-  const aiClient = await getGeminiClient(options.settings.geminiApiKey);
+  const aiClient = await getGeminiClient(options.settings.geminiApiKey, options.settings.geminiApiUrl);
   const config: Record<string, unknown> = {
     systemInstruction: getAgentVisualSnapshotSystemInstruction(options),
   };

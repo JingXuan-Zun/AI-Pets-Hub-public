@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  classifyDesktopItem,
-  createDesktopIconArrangementPlan,
-} from '../src/agent/index.ts';
+import { classifyDesktopItem } from '../src/agent/desktopItemClassification';
+import { createDesktopIconArrangementPlan } from '../src/agent/desktopIconArrangementPlan';
 
 const viewport = {
   height: 900,

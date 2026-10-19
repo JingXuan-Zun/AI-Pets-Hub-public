@@ -30,7 +30,7 @@ export type PetContentMotionKey =
   | 'hover-hand-left'
   | 'hover-hand-right';
 
-export const SUPPORTED_PET_CONTENT_MOTION_ASSET_FORMATS = ['fbx', 'glb', 'gltf', 'motion3', 'vrma'] as const;
+export const SUPPORTED_PET_CONTENT_MOTION_ASSET_FORMATS = ['fbx', 'glb', 'gltf', 'motion3', 'vmd', 'vrma'] as const;
 export type PetContentMotionAssetFormat = (typeof SUPPORTED_PET_CONTENT_MOTION_ASSET_FORMATS)[number];
 
 export type PetContentMotionAssetSource = {
@@ -349,7 +349,7 @@ const SUPPORTED_PET_CONTENT_MOTION_ASSET_FORMAT_SET = new Set<PetContentMotionAs
   ...SUPPORTED_PET_CONTENT_MOTION_ASSET_FORMATS,
 ]);
 const DEFAULT_PET_CONTENT_MOTION_AUTO_SOURCE_DIRECTORIES = ['motions'] as const;
-const DEFAULT_PET_CONTENT_MOTION_AUTO_SOURCE_FORMATS: PetContentMotionAssetFormat[] = ['glb', 'gltf', 'fbx', 'motion3', 'vrma'];
+const DEFAULT_PET_CONTENT_MOTION_AUTO_SOURCE_FORMATS: PetContentMotionAssetFormat[] = ['glb', 'gltf', 'fbx', 'motion3', 'vrma', 'vmd'];
 const DEFAULT_PET_CONTENT_MOTION_AUTO_SOURCE_FILE_NAMES = ['motion', 'index'] as const;
 
 function normalizePetContentMotionAssetFormat(format: string | null | undefined) {

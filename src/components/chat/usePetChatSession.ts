@@ -1,7 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import {
-  type AgentChatCommandHandler,
-} from '../../agent';
+import { type AgentChatCommandHandler } from '../../agent/agentChatCommand';
 import { desktopPetChatStore, useDesktopPetChatStore } from '../../chatStore';
 import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
 import { publishChatStatusMessage } from './chatSessionRuntimeUtils';
@@ -17,7 +15,9 @@ import {
   type NeuralMemoryReplyCompletedEvent,
 } from '../../neural-memory/useNeuralMemoryProposalCapture';
 import { useCharacterMemoryMaintenance } from '../../character-memory/useCharacterMemoryMaintenance';
+import { useSharedUserMemoryCapture } from '../../character-memory/useSharedUserMemoryCapture';
 import { useVoiceWakeListener } from './useVoiceWakeListener';
+import { useApprovalVoiceListener } from './useApprovalVoiceListener';
 import { registerCompanionLineSpeaker } from '../../life-companion/companionLineSpeech';
 
 interface UsePetChatSessionOptions {
@@ -103,10 +103,12 @@ export function usePetChatSession({
   });
   const captureNeuralMemoryProposals = useNeuralMemoryProposalCapture({ configRef, onUpdateConfig });
   const maintainCharacterMemory = useCharacterMemoryMaintenance({ configRef, onUpdateConfig });
+  const captureSharedUserMemory = useSharedUserMemoryCapture({ configRef, onUpdateConfig });
   const onReplyCompleted = useCallback((event: NeuralMemoryReplyCompletedEvent) => {
+    captureSharedUserMemory(event);
     captureNeuralMemoryProposals(event);
     maintainCharacterMemory(event);
-  }, [captureNeuralMemoryProposals, maintainCharacterMemory]);
+  }, [captureNeuralMemoryProposals, captureSharedUserMemory, maintainCharacterMemory]);
   const runPetResponseTurn = usePetChatResponseTurn({
     activeChatRequestTokenRef,
     configRef,
@@ -168,6 +170,7 @@ export function usePetChatSession({
     const { isTyping, isSpeaking } = desktopPetChatStore.getState();
     if (!isTyping && !isSpeaking) void playVoiceText(text, { petId });
   }), [playVoiceText]);
+  useApprovalVoiceListener({ config, conversationActive: voiceInputController.conversation.active });
   useVoiceWakeListener({
     config,
     conversationActive: voiceInputController.conversation.active,

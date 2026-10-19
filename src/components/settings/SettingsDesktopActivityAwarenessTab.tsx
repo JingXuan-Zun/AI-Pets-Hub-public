@@ -127,6 +127,15 @@ export function SettingsDesktopActivityAwarenessTab(props: {
         <span className="block">开启后，角色会看你当前前台的窗口画面并陪你聊天：按下面的间隔看一次，切换窗口后会提前看；有话想说时才开口。每次观看会调用一次视觉识别，间隔越短调用越多。</span>
         <span className="block">随时可以断开：点桌宠下方的“断开”，在聊天里说“不用看了”“不准看了”，或在这里关闭。需要先在视觉设置里启用视觉模型。</span>
       </SwitchCard>
+      <SwitchCard
+        checked={lifeCompanion.approvalVoicePromptEnabled}
+        label="需要权限时开口询问"
+        onChange={(checked) => update({ approvalVoicePromptEnabled: checked })}
+        title="需要权限时开口询问"
+      >
+        <span className="block">角色帮你办事、需要你同意时（比如操作电脑、改文件），会用自己的语气和声音问你一句；你直接说“同意”或“拒绝”就行。</span>
+        <span className="block">5 分钟没回应，角色会按自己的性格再提醒一次，聊天窗口也会抖一下。关闭后只在任务卡片上安静地等你。也可以直接跟角色说“需要权限的时候别念出来了”。</span>
+      </SwitchCard>
       <SettingsLifeCompanionPanel
         noDragRegionStyle={props.noDragRegionStyle}
         settings={lifeCompanion}

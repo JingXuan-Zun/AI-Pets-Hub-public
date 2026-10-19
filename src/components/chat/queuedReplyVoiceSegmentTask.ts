@@ -18,6 +18,8 @@ type PreparedQueuedReplyVoiceSegment = {
 };
 
 let queuedMouthPlaybackSourceSerial = 0;
+const SEGMENT_END_MARGIN_MS = 15_000;
+const SEGMENT_END_FALLBACK_MS = 90_000;
 
 function getNowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -76,6 +78,10 @@ export async function runQueuedReplyVoiceSegmentTask({
 
   try {
     if (playbackToken !== voicePlaybackTokenRef.current) {
+      // The reply was cancelled (stop, cleared chat) before this sentence's turn. Its audio is
+      // still being prepared and counts as voice output until disposed; skipping it without
+      // disposing kept the hands-free microphone on "稍等，马上继续听" for two minutes.
+      void preparedPlaybackPromise.then((segment) => segment.playback.dispose(), () => undefined);
       finalizeQueuedReplySegmentCount(queuedVoiceSegmentCountRef);
       didFinalizeSegmentCount = true;
       return;
@@ -139,7 +145,22 @@ export async function runQueuedReplyVoiceSegmentTask({
         return;
       }
 
-      await playback.done;
+      // A segment whose end never arrives (a scheduled gapless playback that was cut short)
+      // held every later segment and left her "speaking" for good, which also kept the
+      // hands-free microphone shut. Each segment waits at most its own length plus a margin.
+      const limitMs = typeof preparedPlayback.durationMs === 'number' && preparedPlayback.durationMs > 0
+        ? preparedPlayback.durationMs + SEGMENT_END_MARGIN_MS
+        : SEGMENT_END_FALLBACK_MS;
+      let limitTimer: ReturnType<typeof setTimeout> | null = null;
+      const timedOut = await Promise.race([
+        playback.done.then(() => false, () => false),
+        new Promise<boolean>((resolve) => { limitTimer = setTimeout(() => resolve(true), limitMs); }),
+      ]);
+      if (limitTimer) clearTimeout(limitTimer);
+      if (timedOut) {
+        pushFrontendRuntimeLog('voice', 'streaming voice segment never reported its end; moving on', { limitMs, textLength: segmentText.length });
+        playback.stop();
+      }
     } finally {
       queuedVoicePlaybackSessionsRef.current.delete(playback);
       preparedPlayback.dispose();

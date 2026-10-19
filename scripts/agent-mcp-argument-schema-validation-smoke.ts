@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { callAgentMcpTool } from '../src/agent';
+import { callAvailableAgentMcpTool } from '../src/agent/agentMcpRegistry';
 
 const { validateMcpToolArguments } = await import('../electron/mcpArgumentSchemaValidation.cjs') as {
   validateMcpToolArguments: (
@@ -28,17 +28,18 @@ assert.equal(validateMcpToolArguments({ patternProperties: { '(a+)+$': { type: '
 assert.equal(validateMcpToolArguments({ type: 'object' }, { items: Array.from({ length: 1_025 }, () => 1) }).error, 'mcp_tool_arguments_array_limit_exceeded');
 assert.equal(validateMcpToolArguments({ description: '界'.repeat(22 * 1024), type: 'object' }, {}).error, 'mcp_tool_schema_size_limit_exceeded');
 
-const oversized = callAgentMcpTool({
+// Oversized arguments are refused before any server is contacted.
+const oversized = await callAvailableAgentMcpTool({
   argumentsJson: JSON.stringify({ query: 'x'.repeat(70 * 1024) }),
-  name: 'skills.list',
-  serverId: 'platform',
+  name: 'search',
+  serverId: 'any-server',
 });
 assert.equal(oversized.isError, true);
 assert.match(oversized.content[0]?.text ?? '', /64 KiB/u);
-const oversizedUtf8 = callAgentMcpTool({
+const oversizedUtf8 = await callAvailableAgentMcpTool({
   argumentsJson: JSON.stringify({ query: '界'.repeat(24 * 1024) }),
-  name: 'skills.list',
-  serverId: 'platform',
+  name: 'search',
+  serverId: 'any-server',
 });
 assert.equal(oversizedUtf8.isError, true);
 assert.match(oversizedUtf8.content[0]?.text ?? '', /64 KiB/u);

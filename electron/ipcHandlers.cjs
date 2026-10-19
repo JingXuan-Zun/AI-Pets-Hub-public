@@ -4,6 +4,7 @@ const { registerModelRequestIpc } = require('./modelRequestIpc.cjs');
 const { createWindowMaximizeToggle } = require('./windowMaximizeToggle.cjs');
 
 const { BrowserWindow, dialog } = require('electron');
+const { createConfigSaveFailureNotifier } = require('./configSaveFailureNotice.cjs');
 
 const CURRENT_WINDOW_COMPACT_MINIMUM_SIZE_KEY = '__desktopPetCompactMinimumSizeActive';
 const currentWindowOriginalMinimumSize = new WeakMap();
@@ -87,11 +88,6 @@ function registerDesktopPetIpcHandlers({
   controlledCommandService,
   desktopIconService,
   desktopInputService,
-  externalSkillCapabilityGateway,
-  externalSkillMarketplaceProductionReadinessService,
-  externalSkillPackageArchiveInstallerService,
-  externalSkillPackageLifecycleService,
-  externalSkillSandboxSupervisorService,
   ipcMain,
   localFileSystemService,
   localProjectInspectorService,
@@ -111,8 +107,6 @@ function registerDesktopPetIpcHandlers({
   screen,
   sequenceAssetStore,
   shell,
-  skillPackageArtifactStore,
-  skillPackageSignedInstallCoordinator,
   systemInfoService,
   unityBridgeService,
   unityRuntimeProcessService,
@@ -224,6 +218,23 @@ function registerDesktopPetIpcHandlers({
     windowManager.openChatWindow();
   }, { logArgs: false });
 
+  // A question has waited a while for the user: bring the chat forward and give it a short
+  // shake so the waiting card is noticed.
+  registerLoggedEvent(ipcMain, runtimeLogger, 'desktop-pet:nudge-chat-window', () => {
+    windowManager.openChatWindow();
+    const chatWindow = windowManager.getChatWindow?.();
+    if (!chatWindow || chatWindow.isDestroyed()) return;
+    const [x, y] = chatWindow.getPosition();
+    const offsets = [10, -10, 8, -8, 5, -5, 2, 0];
+    offsets.forEach((offset, index) => {
+      setTimeout(() => {
+        if (!chatWindow.isDestroyed()) chatWindow.setPosition(x + offset, y);
+      }, 300 + index * 45);
+    });
+    chatWindow.flashFrame(true);
+    setTimeout(() => { if (!chatWindow.isDestroyed()) chatWindow.flashFrame(false); }, 3000);
+  }, { logArgs: false });
+
   registerLoggedEvent(ipcMain, runtimeLogger, 'desktop-pet:close-chat-window', () => {
     windowManager.closeChatWindow();
   }, { logArgs: false });
@@ -232,206 +243,6 @@ function registerDesktopPetIpcHandlers({
     windowManager.setAgentDesktopExecutionActive(Boolean(active));
     return { active: Boolean(active) };
   });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:run-skill-sandbox-supervisor-probe', async (_event, request) => {
-    return externalSkillSandboxSupervisorService.runBootstrapProbe(request ?? {});
-  }, {
-    summarizeResult: (result) => ({
-      packageCodeLoaded: Boolean(result?.packageCodeLoaded),
-      permissionRequests: result?.permissionRequests ?? 0,
-      status: result?.status ?? 'unknown',
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:run-skill-sandbox-package', async (_event, request) => {
-    return externalSkillCapabilityGateway.runPackageExecution(request ?? {});
-  }, {
-    summarizeResult: (result) => ({
-      capabilityCalls: result?.capabilityFlow?.calls ?? 0,
-      capabilityFlowStatus: result?.capabilityFlow?.status ?? null,
-      executionKind: result?.executionKind ?? null,
-      packageHealthStatus: result?.packageHealth?.status ?? null,
-      packageQuarantined: Boolean(result?.packageHealth?.quarantineApplied),
-      packageCodeLoaded: Boolean(result?.packageCodeLoaded),
-      permissionRequests: result?.permissionRequests ?? 0,
-      status: result?.status ?? 'unknown',
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:list-skill-capability-grants', () => {
-    return externalSkillCapabilityGateway.listGrants();
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:list-skill-capability-receipts', (_event, request) => {
-    return externalSkillCapabilityGateway.listReceiptHistory(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:clear-skill-capability-receipts', (_event, request) => {
-    return externalSkillCapabilityGateway.clearReceiptHistory(request ?? {});
-  }, {
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), removedCount: result?.removedCount ?? 0 }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:list-external-skill-package-health', (_event, request) => {
-    return externalSkillCapabilityGateway.listPackageHealth(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:reset-external-skill-package-health', (_event, request) => {
-    return externalSkillCapabilityGateway.resetPackageHealth(request ?? {});
-  }, {
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), reset: Boolean(result?.reset), error: result?.error ?? null }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:create-external-skill-release-admission-report', (_event, request) => {
-    return externalSkillCapabilityGateway.createReleaseAdmissionReport(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      blocked: result?.summary?.blocked ?? 0,
-      eligible: result?.summary?.eligible ?? 0,
-      ok: Boolean(result?.ok),
-      reviewRequired: result?.summary?.['review-required'] ?? 0,
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:export-external-skill-release-admission-report', (_event, request) => {
-    return externalSkillCapabilityGateway.exportReleaseAdmissionReport(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:export-external-skill-package-health-diagnostics', (_event, request) => {
-    return externalSkillCapabilityGateway.exportPackageHealthDiagnostics(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:get-external-skill-marketplace-production-readiness', () => {
-    return externalSkillMarketplaceProductionReadinessService.createReport();
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      operationalConfigurationReady: Boolean(result?.operationalConfigurationReady),
-      status: result?.status ?? 'unknown',
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:export-external-skill-marketplace-production-readiness', () => {
-    return externalSkillMarketplaceProductionReadinessService.exportReport();
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:set-skill-capability-grant', (_event, request) => {
-    return externalSkillCapabilityGateway.setGrant(request ?? {});
-  }, {
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), error: result?.error ?? null }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:revoke-skill-capability-grant', (_event, request) => {
-    return externalSkillCapabilityGateway.revokeGrant(request ?? {});
-  }, {
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), revoked: Boolean(result?.revoked) }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:decide-skill-capability-request', (_event, request) => {
-    return externalSkillCapabilityGateway.decide(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:read-skill-capability-storage', (_event, request) => {
-    return externalSkillCapabilityGateway.readStorageValue(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:cancel-skill-sandbox-supervisor-probe', (_event, request) => {
-    return externalSkillCapabilityGateway.cancelExecution(request?.requestId);
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:stage-skill-package-artifact', (_event, request) => {
-    return skillPackageSignedInstallCoordinator.stageSignedPackage(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      artifactDigest: result?.package?.artifactDigest ?? null,
-      ok: Boolean(result?.ok),
-      replaced: Boolean(result?.replaced),
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:stage-signed-skill-package-archive', (_event, request) => {
-    return externalSkillPackageArchiveInstallerService.stageSignedArchiveBase64(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      ok: Boolean(result?.ok),
-      packageId: result?.identity?.packageId ?? null,
-      status: result?.status ?? 'rejected',
-      version: result?.identity?.version ?? null,
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:audit-skill-package-artifacts', (_event, request) => {
-    return skillPackageArtifactStore.auditPackages(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), rows: result?.rows?.length ?? 0 }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:quarantine-skill-package-artifact', (_event, request) => {
-    return skillPackageArtifactStore.quarantinePackage(request?.packageId, request?.reason);
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), status: result?.package?.status ?? 'unknown' }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:restore-quarantined-external-skill-package', (_event, request) => {
-    return externalSkillPackageLifecycleService.restoreQuarantinedPackage(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), error: result?.error ?? null }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:uninstall-external-skill-package', (_event, request) => {
-    return externalSkillPackageLifecycleService.uninstallPackage(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      ok: Boolean(result?.ok),
-      snapshotId: result?.snapshot?.snapshotId ?? null,
-      error: result?.error ?? null,
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:rollback-external-skill-package-uninstall', (_event, request) => {
-    return externalSkillPackageLifecycleService.rollbackUninstall(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({ ok: Boolean(result?.ok), error: result?.error ?? null }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:list-external-skill-package-uninstall-snapshots', (_event, request) => {
-    return externalSkillPackageLifecycleService.listUninstallSnapshots(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      invalidSnapshotCount: result?.invalidSnapshotCount ?? 0,
-      ok: Boolean(result?.ok),
-      totalCount: result?.totalCount ?? 0,
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:cleanup-external-skill-package-uninstall-snapshots', (_event, request) => {
-    return externalSkillPackageLifecycleService.cleanupUninstallSnapshots(request ?? {});
-  }, {
-    logArgs: false,
-    summarizeResult: (result) => ({
-      deletedArtifactCount: result?.deletedArtifactCount ?? 0,
-      ok: Boolean(result?.ok),
-      removedSnapshotCount: result?.removedSnapshotCount ?? 0,
-      status: result?.status ?? 'unknown',
-    }),
-  });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:list-external-skill-package-lifecycle-receipts', (_event, request) => {
-    return externalSkillPackageLifecycleService.listReceipts(request ?? {});
-  }, { logArgs: false });
-
-  registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:export-external-skill-package-lifecycle-receipts', (_event, request) => {
-    return externalSkillPackageLifecycleService.exportReceipts(request ?? {});
-  }, { logArgs: false });
 
   ipcMain.on('desktop-pet:set-current-window-bounds', (event, bounds) => {
     const targetWindow = BrowserWindow.fromWebContents(event.sender);
@@ -1328,6 +1139,15 @@ function registerDesktopPetIpcHandlers({
     }
   });
 
+  const notifyConfigSaveFailure = createConfigSaveFailureNotifier({
+    dialog,
+    // The window the user is in; else an open settings or chat window, so the dialog is not
+    // left behind other apps (Windows will not bring a background app's dialog forward).
+    getParentWindow: () => BrowserWindow.getFocusedWindow()
+      ?? [windowManager.getSettingsWindow?.(), windowManager.getChatWindow?.()]
+        .find((win) => win && !win.isDestroyed() && win.isVisible())
+      ?? null,
+  });
   registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:save-persisted-config', async (_event, config) => {
     const saveTask = persistedConfigSaveQueue.then(() => new Promise((resolve, reject) => {
       setImmediate(() => {
@@ -1347,6 +1167,7 @@ function registerDesktopPetIpcHandlers({
       () => undefined,
       () => undefined,
     );
+    saveTask.then(notifyConfigSaveFailure, (error) => notifyConfigSaveFailure({ error: error?.message ?? error, ok: false }));
     return saveTask;
   }, {
     logArgs: false,

@@ -7,10 +7,6 @@ import {
   findSharedDirectoryIssues,
   getStoredBaselineLines,
 } from './dist-win-package-guards.mjs';
-import {
-  assertMarketplaceProductionPackagingMode,
-  loadMarketplaceProductionPackagingConfig,
-} from './marketplace-production-packaging-config.mjs';
 
 const projectRoot = process.cwd();
 const releaseRoot = path.join(projectRoot, 'release');
@@ -33,7 +29,6 @@ const {
   listPackage,
 } = await import('@electron/asar');
 const { copyUnityRuntimeIfPresent } = await import('./unity-runtime-assets.mjs');
-const marketplaceProductionConfig = await loadMarketplaceProductionPackagingConfig();
 
 async function pathExists(targetPath) {
   try {
@@ -300,11 +295,6 @@ const appAsarPath = path.join(latestBuild, 'win-unpacked', 'resources', 'app.asa
 const appUnpackedPath = path.join(latestBuild, 'win-unpacked', 'resources', 'app.asar.unpacked');
 const resourcesDir = path.join(latestBuild, 'win-unpacked', 'resources');
 const launcherPath = path.join(latestBuild, 'win-unpacked', 'AI Desktop Pet.exe');
-const marketplaceProductionResourceDir = path.join(resourcesDir, 'marketplace-production');
-assertMarketplaceProductionPackagingMode(marketplaceProductionConfig, 'incremental');
-if (await pathExists(marketplaceProductionResourceDir)) {
-  throw new Error('Incremental packaging is disabled for a build containing marketplace production trust resources. Run a fresh production build.');
-}
 const currentBaseline = await collectPackagingBaseline(projectRoot);
 const baselineIssues = comparePackagingBaseline(info, currentBaseline);
 const sharedDirectoryIssues = await findSharedDirectoryIssues(projectRoot, sharedDirectoryLines);

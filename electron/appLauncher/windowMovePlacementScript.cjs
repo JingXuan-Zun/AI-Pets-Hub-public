@@ -183,6 +183,15 @@ $moveHeight = [Math]::Max(80, [Math]::Min($moveHeight, $targetHeight))
 if ($position -eq 'top-left') {
   $nextX = $targetX
   $nextY = $targetY
+} elseif ($position -eq 'top-right') {
+  $nextX = $targetX + [Math]::Max(0, $targetWidth - $moveWidth)
+  $nextY = $targetY
+} elseif ($position -eq 'bottom-left') {
+  $nextX = $targetX
+  $nextY = $targetY + [Math]::Max(0, $targetHeight - $moveHeight)
+} elseif ($position -eq 'bottom-right') {
+  $nextX = $targetX + [Math]::Max(0, $targetWidth - $moveWidth)
+  $nextY = $targetY + [Math]::Max(0, $targetHeight - $moveHeight)
 } else {
   $nextX = $targetX + [Math]::Max(0, [Math]::Floor(($targetWidth - $moveWidth) / 2))
   $nextY = $targetY + [Math]::Max(0, [Math]::Floor(($targetHeight - $moveHeight) / 2))

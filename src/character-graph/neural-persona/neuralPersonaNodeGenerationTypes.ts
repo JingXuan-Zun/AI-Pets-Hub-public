@@ -23,7 +23,12 @@ export interface NeuralPersonaNodeGenerationCandidate {
   enabled: boolean;
   evidence: string;
   influenceSummary: string;
+  originalContent?: string;
   origin: 'model' | 'user';
+  retrievalSummary?: string;
+  sourceBlockId?: string;
+  sourceEndOffset?: number;
+  sourceStartOffset?: number;
   tags: string[];
   topic?: string;
   type: NeuralPersonaGeneratedNodeType;
@@ -42,6 +47,7 @@ export interface NeuralPersonaNodeGenerationBatch {
     status: 'complete' | 'failed' | 'pending';
   };
   roleId: string;
+  sourceDocumentId?: string;
   sourceText: string;
   version: typeof NEURAL_PERSONA_NODE_GENERATION_VERSION;
 }

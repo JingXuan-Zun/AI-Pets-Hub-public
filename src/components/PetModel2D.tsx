@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { type PetAction } from '../types';
-import { DEFAULT_BUILTIN_STATIC_PET_MODEL_URL } from '../constants';
+import { PetModelStatusPlaceholder } from './pet/PetModelStatusPlaceholder';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
 import { type PetContentManifest } from '../pet-runtime/content/petContentManifest';
 import {
@@ -915,11 +915,9 @@ function PetModel2D({
       >
         <div className="flex h-full w-full items-center justify-center" style={pointerLookStyle}>
           {showBuiltInFallback ? (
-            <img
-              src={DEFAULT_BUILTIN_STATIC_PET_MODEL_URL}
-              alt="Pet model failed to load; showing the built-in pet"
-              className="max-h-full max-w-full object-contain"
-            />
+            <div className="relative h-full w-full">
+              <PetModelStatusPlaceholder kind="failed" />
+            </div>
           ) : hasAnimatedSequence ? (
             <img
               ref={imageRef}

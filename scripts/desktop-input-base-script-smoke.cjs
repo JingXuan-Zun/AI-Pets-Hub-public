@@ -77,7 +77,7 @@ for (const action of ['move_mouse', 'click', 'double_click', 'right_click', 'typ
     hash.update(JSON.stringify(result)); scripts++;
   }
 const fingerprint = hash.digest('hex');
-assert.equal(fingerprint, '50a69a3d636b74bd5e20f4e8fa65902ce090d197bf1b4fd1814be7be40c71167', 'Complete scripts retain the reviewed baseline');
+assert.equal(fingerprint, '0c883d714570e7bcee3dd859addb120a19c35ff9c38e8330b8ee7b8bdd3dac09', 'Complete scripts retain the reviewed baseline');
 const service = api.createDesktopInputService({ screen: { dipToScreenPoint: ({ x, y }) => ({ x: x * 2, y: y * 2 }) } });
 for (const action of ['click', 'drag', 'move_mouse']) {
   const projected = service._createNativeScreenInputRequest(action, request);

@@ -50,6 +50,22 @@ function graphVersion(revision: number) {
   return `neural-graph.r${revision}`;
 }
 
+function contentPatch(
+  node: NeuralPersonaNode,
+  patch: UpdateNeuralPersonaNodeCommand['patch'],
+) {
+  if (patch.influenceSummary === undefined) return patch;
+  return {
+    ...patch,
+    normalizedContent: patch.normalizedContent
+      ?? (!node.normalizedContent || node.normalizedContent === node.influenceSummary
+        ? patch.influenceSummary : node.normalizedContent),
+    retrievalSummary: patch.retrievalSummary
+      ?? (!node.retrievalSummary || node.retrievalSummary === node.influenceSummary
+        ? patch.influenceSummary : node.retrievalSummary),
+  };
+}
+
 function invalidEnvelope(command: { commandId: string; expectedRevision: number }) {
   if (!command.commandId.trim()) return 'command-id-missing';
   if (!Number.isInteger(command.expectedRevision) || command.expectedRevision < 0) {
@@ -159,6 +175,8 @@ async function executeUpdate(
     return { reason: 'node-missing', status: 'missing' };
   }
   const timestamp = options.now();
+  const currentNode = loaded.record.graph.nodes.find((node) => node.nodeId === command.nodeId)!;
+  const patch = contentPatch(currentNode, command.patch);
   const hierarchy = 'parentNodeId' in command.patch
     ? reparentNeuralPersonaNode(
       loaded.record.graph, command.nodeId, command.patch.parentNodeId, timestamp,
@@ -172,7 +190,7 @@ async function executeUpdate(
       ...hierarchy.graph,
       graphVersion: graphVersion(revision),
       nodes: hierarchy.graph.nodes.map((node) => node.nodeId === command.nodeId
-        ? { ...node, ...command.patch, updatedAt: timestamp }
+        ? { ...node, ...patch, updatedAt: timestamp }
         : node),
     }),
   });

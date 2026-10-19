@@ -28,6 +28,10 @@ function normalizeDesktopInputAction(value) {
     case 'drag':
     case 'drag_mouse':
       return 'drag';
+    case 'scroll':
+    case 'wheel':
+    case 'mouse_wheel':
+      return 'scroll';
     default:
       return '';
   }

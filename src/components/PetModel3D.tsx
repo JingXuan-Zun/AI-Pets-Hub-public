@@ -1,8 +1,11 @@
 import {
   Component,
   memo,
+  useEffect,
   useMemo,
+  useRef,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ErrorInfo,
   type ReactNode,
 } from 'react';
@@ -169,6 +172,27 @@ function PetModel3D({
   updatePriority = 'companion',
 }: PetModel3DProps) {
   const { handleMiddleMouseDownCapture, manualOrbitRef, stopMiddleMouseDefault } = useAvatar3DManualOrbitController();
+  // The 3D canvas is much larger than the model (often several hundred px of empty
+  // space), so it must not take pointer input: it covered nearby pets, which then
+  // showed the drag cursor but could not be dragged. Pointer input belongs to the pet's
+  // own hit area inside its shell; middle-button orbit is listened for on that shell.
+  const modelRootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const shell = modelRootRef.current?.closest<HTMLElement>('[data-desktop-pet-owner-id]');
+    if (!shell) return undefined;
+    const handleMouseDown = (event: MouseEvent) => {
+      handleMiddleMouseDownCapture(event as unknown as ReactMouseEvent<HTMLDivElement>);
+    };
+    const handleAuxClick = (event: MouseEvent) => {
+      stopMiddleMouseDefault(event as unknown as ReactMouseEvent<HTMLDivElement>);
+    };
+    shell.addEventListener('mousedown', handleMouseDown, true);
+    shell.addEventListener('auxclick', handleAuxClick, true);
+    return () => {
+      shell.removeEventListener('mousedown', handleMouseDown, true);
+      shell.removeEventListener('auxclick', handleAuxClick, true);
+    };
+  }, [handleMiddleMouseDownCapture, stopMiddleMouseDefault]);
   const resolvedState = useMemo(() => (
     resolvePetThreeAvatarComponentState({
       action,
@@ -273,10 +297,9 @@ function PetModel3D({
 
   return (
     <div
-      className="relative flex h-full w-full min-h-full min-w-full flex-1 basis-full self-stretch overflow-visible"
+      ref={modelRootRef}
+      className="pointer-events-none relative flex h-full w-full min-h-full min-w-full flex-1 basis-full self-stretch overflow-visible"
       style={modelShellStyle}
-      onAuxClick={stopMiddleMouseDefault}
-      onMouseDownCapture={handleMiddleMouseDownCapture}
     >
       <PetModel3DErrorBoundary
         key={`${modelFormat ?? 'unknown'}:${modelRuntimeUrl}`}
@@ -287,10 +310,13 @@ function PetModel3D({
       >
         {loadError && !loadedInstance ? <RuntimeLoadErrorThrower error={loadError} /> : null}
         {loadedInstance ? (
-          <div className="pointer-events-auto" style={pointerLookCanvasStyle}>
+          <div className="pointer-events-none" style={pointerLookCanvasStyle}>
               <Avatar3DScene
               activeSceneCount={resolvedState.activeSceneCount}
               {...sceneSurface}
+              // The settings preview frames the whole model; it was dropped on the way here,
+              // so the preview used the desktop camera and some models sat low and lost their hems.
+              fitToPreview={fitToPreview}
               dragMotionState={resolvedState.dragMotionState}
               focusTarget={resolvedState.focusTarget}
               hoverState={resolvedState.hoverState}

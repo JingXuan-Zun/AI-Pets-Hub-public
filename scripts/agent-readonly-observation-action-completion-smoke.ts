@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
-import {
-  assessAgentCommandResult,
-  createAgentDecisionSummary,
-  resolveAgentResultFollowUpActions,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { assessAgentCommandResult, createAgentDecisionSummary } from '../src/agent/agentResultAssessment';
+import { resolveAgentResultFollowUpActions } from '../src/agent/resultAssessment/resultEvidenceAssessment';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 
 function createToolCommand(name: AgentChatCommand['toolCall']['name'], input: Record<string, unknown>): AgentChatCommand {
   return {

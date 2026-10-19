@@ -1,11 +1,13 @@
 const { normalizeMcpTool } = require('./mcpServerConfigLoader.cjs');
 const { sendRpc, withMcpSession } = require('./mcpStdioSession.cjs');
 const { listToolsWithPooledSession } = require('./mcpStdioToolDiscovery.cjs');
+const { listHttpMcpTools } = require('./mcpHttpClient.cjs');
 const { validateMcpToolArguments } = require('./mcpArgumentSchemaValidation.cjs');
 const { createSchemaRejectedToolCallResult } = require('./mcpStdioClientRules.cjs');
 const { recordMcpRejectedToolCall } = require('./mcpStdioCallPreflight.cjs');
 
 function discoverMcpCallSchemaTools(server, sessionPool, log) {
+  if (server.transport === 'http') return listHttpMcpTools(server);
   return sessionPool
     ? listToolsWithPooledSession(sessionPool, server)
     : withMcpSession(server, log, (session) => sendRpc(session, 'tools/list', {}, server.timeoutMs));

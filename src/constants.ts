@@ -2,6 +2,8 @@ import petCharacter26 from './assets/pet-character-26-optimized.png';
 import walkFramePlaceholder from './assets/walk-01-placeholder.png';
 import testSquare200 from './assets/test-square-200.svg';
 import { DEFAULT_FOOD_APPEARANCES } from './foodAppearances';
+import { DEFAULT_PRODUCTIVITY_SETTINGS } from './productivity/productivitySettings';
+import { DEFAULT_COMFY_UI_SETTINGS } from './comfyui/comfyUiSettings';
 import { DEFAULT_EXPRESSION_REPLY_SETTINGS } from './expression/expressionSettings';
 import { DEFAULT_WALK_SEQUENCE_FRAMES, PET2_WALK_SEQUENCE_FRAMES } from './petAnimationSequences';
 import { type CompanionPetConfig, type ModelType, type PetCollisionProfile, type PetConfig, type PetModelPreset } from './types';
@@ -322,15 +324,15 @@ export const DEFAULT_CONFIG: PetConfig = {
     engineType: 'Three.js / GLTF',
     llmProvider: 'openai',
     agentRuntimeProvider: 'native',
-    agentDesktopLoopEnabled: true,
     deepseekHarnessPythonPath: '',
     deepseekHarnessWorkspace: '',
     deepseekHarnessHome: '',
-    deepseekHarnessModel: 'deepseek-v4-flash',
+    deepseekHarnessModel: 'deepseek-flash',
     deepseekHarnessBaseUrl: '',
     deepseekHarnessApiKey: '',
     llmModel: '',
     geminiApiKey: '',
+    geminiApiUrl: '',
     customApiUrl: '',
     customApiKey: '',
     customModelName: '',
@@ -352,6 +354,10 @@ export const DEFAULT_CONFIG: PetConfig = {
     gameCompanionGameName: '',
     gameCompanionGameDescription: '',
     globalKnowledgeBase: '',
+    sharedUserMemory: [],
+    productivity: DEFAULT_PRODUCTIVITY_SETTINGS,
+    comfyUi: DEFAULT_COMFY_UI_SETTINGS,
+    comfyUiApiKey: '',
     webSearchEnabled: false,
     webLearningEnabled: false,
     webSearchProvider: 'browser',
@@ -431,6 +437,7 @@ export const DEFAULT_CONFIG: PetConfig = {
     chatFontWeight: 400,
     chatFontSize: 14,
     chatBubbleTransparency: 0,
+    uiGlassTransparency: 30,
     chatBubbleEnabled: true,
     chatStreamingEnabled: true,
     groupChatTurnDelayMs: 6000,

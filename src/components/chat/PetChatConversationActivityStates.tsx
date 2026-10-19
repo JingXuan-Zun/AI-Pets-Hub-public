@@ -1,7 +1,10 @@
 import * as motion from 'motion/react-m';
+import { AvatarBadge } from './message/MessageContent';
 
 interface PetChatConversationActivityStatesProps {
   activePetName: string;
+  /** 正在输入的角色头像；聊天外观关闭头像时为 null。 */
+  typingAvatar?: { url: string; fallbackText: string; size: number } | null;
   isListening: boolean;
   isTyping: boolean;
   showStatusMessage: boolean;
@@ -11,6 +14,7 @@ interface PetChatConversationActivityStatesProps {
 
 export function PetChatConversationActivityStates({
   activePetName,
+  typingAvatar = null,
   isListening,
   isTyping,
   showStatusMessage,
@@ -20,20 +24,23 @@ export function PetChatConversationActivityStates({
   return (
     <>
       {isTyping && (
-        <div className="flex flex-col items-start">
-          <div className="mb-1 font-mono text-[9px] uppercase tracking-tighter text-sky-700">
-            {typingPetName?.trim() || activePetName}
-          </div>
-          <div className="rounded-[15px] border border-sky-100/85 bg-[linear-gradient(180deg,rgba(252,254,255,0.94),rgba(239,247,253,0.9))] px-4 py-3">
-            <motion.div
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="flex gap-1"
-            >
-              <div className="h-1 w-1 rounded-full bg-primary" />
-              <div className="h-1 w-1 rounded-full bg-primary" />
-              <div className="h-1 w-1 rounded-full bg-primary" />
-            </motion.div>
+        <div
+          className="flex items-start gap-2.5 self-start"
+          role="status"
+          aria-label={`${typingPetName?.trim() || activePetName}正在输入`}
+        >
+          {typingAvatar ? (
+            <AvatarBadge avatarUrl={typingAvatar.url} fallbackText={typingAvatar.fallbackText} size={typingAvatar.size} />
+          ) : null}
+          <div className="flex h-10 items-center gap-1.5 rounded-[15px] border border-white/80 bg-white/90 px-4 shadow-[0_8px_22px_rgba(158,84,140,0.12)] backdrop-blur-xl">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                className="h-1.5 w-1.5 rounded-full bg-primary/70"
+                animate={{ y: [0, -4, 0], opacity: [0.45, 1, 0.45] }}
+                transition={{ duration: 0.9, repeat: Infinity, delay: index * 0.15, ease: 'easeInOut' }}
+              />
+            ))}
           </div>
         </div>
       )}

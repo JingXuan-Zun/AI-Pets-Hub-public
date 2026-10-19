@@ -33,6 +33,8 @@ interface CreatePrimaryPetAvatarLayerPropsOptions extends Omit<
 
 interface CreateCompanionRuntimeLayerItemsOptions {
   active3DSceneCount: CompanionPetRuntimeLayerProps['active3DSceneCount'];
+  chatBubbleEnabled: boolean;
+  chatBubbleTextColor: string;
   avatar3dRuntimeBackend: CompanionPetRuntimeLayerProps['avatar3dRuntimeBackend'];
   activityArea: CompanionPetRuntimeLayerProps['activityArea'];
   activityCenter: CompanionPetRuntimeLayerProps['activityCenter'];
@@ -104,6 +106,8 @@ export function createPrimaryPetAvatarLayerProps({
 
 export function createCompanionRuntimeLayerItems({
   active3DSceneCount,
+  chatBubbleEnabled,
+  chatBubbleTextColor,
   avatar3dRuntimeBackend,
   activityArea,
   activityCenter,
@@ -148,6 +152,8 @@ export function createCompanionRuntimeLayerItems({
 }: CreateCompanionRuntimeLayerItemsOptions): CompanionPetRuntimeLayerProps[] {
   return companionRenderSlots.map((slot) => createCompanionRuntimeLayerItem({
     active3DSceneCount,
+    chatBubbleEnabled,
+    chatBubbleTextColor,
     avatar3dRuntimeBackend,
     activityArea,
     activityCenter,

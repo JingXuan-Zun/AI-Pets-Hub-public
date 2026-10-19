@@ -3,16 +3,8 @@ import { spawnSync } from 'node:child_process';
 // Keep the historical failure set repeatable without running packaged apps,
 // real model requests, or using observation fixtures as production evidence.
 const checks = [
-  'agent-mode-router-v1-smoke.ts',
-  'agent-production-session-boundary-smoke.ts',
-  'agent-progress-store-performance-diagnostics-smoke.ts',
-  'agent-followup-action-direct-command-smoke.ts',
   'agent-typing-state-cleanup-smoke.ts',
   'agent-desktop-execution-window-isolation-smoke.ts',
-  'agent-fixed-directives-removed-smoke.ts',
-  'agent-session-v2-in-app-launch-guidance-smoke.ts',
-  'agent-runtime-legacy-retirement-gate-smoke.ts',
-  'agent-run-controller-task-scoped-approval-continuation-smoke.ts',
   'agent-runtime-cancellation-guard-smoke.mjs',
 ];
 

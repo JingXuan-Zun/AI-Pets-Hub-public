@@ -28,7 +28,7 @@ function formatTime(timestamp: number) {
     : '—';
 }
 
-function MemoryPanel({
+export function MemoryPanel({
   actions,
   children,
   description,
@@ -186,14 +186,14 @@ export function SettingsCharacterMemorySection({
         {sortedItems.length ? sortedItems.map((item) => (
           <div key={`${item.id}:${item.updatedAt}`} className="flex items-start gap-2" style={noDragRegionStyle}>
             <select
-              className={`${selectClassName} w-24 shrink-0`}
+              className={`${selectClassName().replace('w-full', 'w-24')} shrink-0`}
               value={item.kind}
               onChange={(event) => updateItem(item.id, { kind: event.target.value as CharacterMemoryKind })}
             >
               {CHARACTER_MEMORY_KINDS.map((kind) => <option key={kind} value={kind}>{CHARACTER_MEMORY_KIND_LABELS[kind]}</option>)}
             </select>
             <input
-              className={`${inputClassName} min-w-0 flex-1`}
+              className={`${inputClassName()} min-w-0 flex-1`}
               defaultValue={item.text}
               title={`${item.source === 'auto' ? '自动记录' : '手动添加'} · ${formatTime(item.updatedAt)}`}
               onBlur={(event) => {
@@ -222,14 +222,14 @@ export function SettingsCharacterMemorySection({
         )) : <div className="text-2xs text-muted-foreground">还没有自动记忆。多聊几句，角色会自己记下值得记住的事。</div>}
         <div className="flex items-center gap-2 border-t border-border pt-3" style={noDragRegionStyle}>
           <select
-            className={`${selectClassName} w-24 shrink-0`}
+            className={`${selectClassName().replace('w-full', 'w-24')} shrink-0`}
             value={newItemKind}
             onChange={(event) => setNewItemKind(event.target.value as CharacterMemoryKind)}
           >
             {CHARACTER_MEMORY_KINDS.map((kind) => <option key={kind} value={kind}>{CHARACTER_MEMORY_KIND_LABELS[kind]}</option>)}
           </select>
           <input
-            className={`${inputClassName} min-w-0 flex-1`}
+            className={`${inputClassName()} min-w-0 flex-1`}
             value={newItemText}
             placeholder="手动添加一条，例如：用户对芒果过敏"
             onChange={(event) => setNewItemText(event.target.value)}

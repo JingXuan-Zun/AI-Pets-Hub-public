@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bot, Check, Gamepad2, MessageCircle, Monitor, RefreshCw, Settings2, Sparkles, StopCircle, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -30,6 +30,7 @@ import {
   QUICK_SUB_PANEL_WIDTH,
   type PetQuickActionMenuItemId,
 } from './petQuickActionMenuGeometry';
+import { subscribeQuickMenuDragOffset } from './quickMenuDragFollow';
 export {
   PET_QUICK_ACTION_MENU_INTERACTIVE_HEIGHT,
   PET_QUICK_ACTION_MENU_INTERACTIVE_WIDTH,
@@ -175,6 +176,24 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
   onToggleActionSelector,
   onToggleChatSelector,
 }: PetQuickActionMenuProps) {
+  // A final choice (an action, a way to chat, the game companion) closes the menu by itself;
+  // it used to stay open until 收起. Wrapped once per handler so the memoized menu does not
+  // re-render on every parent render (that made it flicker whenever a 2D clip changed).
+  const closeAfter = useMemo(() => {
+    const wrap = <Args extends unknown[]>(handler: (...args: Args) => void) => (...args: Args) => {
+      handler(...args);
+      onClose();
+    };
+    return {
+      onOpenChat: wrap(onOpenChat),
+      onOpenInteractiveDialogue: wrap(onOpenInteractiveDialogue),
+      onOpenNormalAgent: wrap(onOpenNormalAgent),
+      onSelectAction: wrap(onSelectAction),
+      onSelectCustomMotionBinding: wrap(onSelectCustomMotionBinding),
+      onStopGameCompanionLoop: wrap(onStopGameCompanionLoop),
+      onToggleGameCompanionLoop: wrap(onToggleGameCompanionLoop),
+    };
+  }, [onClose, onOpenChat, onOpenInteractiveDialogue, onOpenNormalAgent, onSelectAction, onSelectCustomMotionBinding, onStopGameCompanionLoop, onToggleGameCompanionLoop]);
   const [isGameSourcePickerOpen, setIsGameSourcePickerOpen] = useState(false);
   const [gameSourcePickerSources, setGameSourcePickerSources] = useState<DesktopPetCaptureSourceLike[]>([]);
   const [gameSourcePickerLoading, setGameSourcePickerLoading] = useState(false);
@@ -237,17 +256,32 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
     && (gameCompanionLoopStatus.sourceCheckStatus === 'uncertain' || gameCompanionLoopStatus.sourceCheckStatus === 'error');
   const handleGameCompanionToggle = useCallback(() => {
     if (gameCompanionLoopStatus.running || gameCompanionSourcePreference) {
-      onToggleGameCompanionLoop();
+      closeAfter.onToggleGameCompanionLoop();
       return;
     }
 
     openGameSourcePickerForRecovery();
   }, [
+    closeAfter,
     gameCompanionLoopStatus.running,
     gameCompanionSourcePreference,
-    onToggleGameCompanionLoop,
     openGameSourcePickerForRecovery,
   ]);
+
+  // Follows a drag of its pet (see quickMenuDragFollow); a new committed position resets it.
+  const followRef = useRef<HTMLDivElement | null>(null);
+  // The offset lives on a plain inner element: the animated outer one belongs to motion, and
+  // writing its style on every re-placement (each 2D clip change) made the menu flicker.
+  useLayoutEffect(() => {
+    if (followRef.current?.style.translate) followRef.current.style.translate = '';
+  }, [position.x, position.y, isOpen]);
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    return subscribeQuickMenuDragOffset((offset) => {
+      if (offset.petId !== nativeDragOwnerId || !followRef.current) return;
+      followRef.current.style.translate = `${Math.round(offset.x)}px ${Math.round(offset.y)}px`;
+    });
+  }, [isOpen, nativeDragOwnerId]);
 
   return (
     <AnimatePresence>
@@ -266,6 +300,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
           }}
         >
           <div
+            ref={followRef}
             data-desktop-pet-interactive="true"
             data-desktop-pet-window-shape-padding={QUICK_MENU_NATIVE_SHAPE_PADDING}
             data-desktop-pet-window-shape="true"
@@ -316,7 +351,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                     <div className="space-y-2 p-3">
                       <button
                         type="button"
-                        onClick={onOpenChat}
+                        onClick={closeAfter.onOpenChat}
                         className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
                           !isInteractiveDialogueActive
                             ? 'border-sky-300 bg-sky-50 text-sky-700'
@@ -329,7 +364,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
 
                       <button
                         type="button"
-                        onClick={onOpenInteractiveDialogue}
+                        onClick={closeAfter.onOpenInteractiveDialogue}
                         className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
                           isInteractiveDialogueActive
                             ? 'border-sky-300 bg-sky-50 text-sky-700'
@@ -389,7 +424,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                                   : gameCompanionLoopStatus.lastObservationSummary
                                   ? `${gameCompanionLoopStatus.lastObservationSummary} · `
                                   : `${gameCompanionLoopStatus.isTicking ? '正在分析' : '等待下次观察'} · `}
-                                {gameCompanionLoopStatus.sampleCount}/{gameCompanionLoopStatus.maxSamples}
+                                观察 {gameCompanionLoopStatus.sampleCount}
                                 {' · '}
                                 评论 {gameCompanionLoopStatus.commentCount}
                               </div>
@@ -404,7 +439,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                             </div>
                             <button
                               type="button"
-                              onClick={onStopGameCompanionLoop}
+                              onClick={closeAfter.onStopGameCompanionLoop}
                               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-white/80 text-rose-600 transition-colors hover:border-rose-200 hover:bg-rose-50"
                               title="停止游戏陪玩"
                             >
@@ -540,7 +575,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
 
                       <button
                         type="button"
-                        onClick={onOpenNormalAgent}
+                        onClick={closeAfter.onOpenNormalAgent}
                         className="w-full rounded-2xl border border-violet-200 bg-violet-50 px-3 py-3 text-left text-violet-800 transition-colors hover:border-violet-300 hover:bg-violet-100"
                       >
                         <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.08em]">
@@ -610,7 +645,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                                 <button
                                   key={action}
                                   type="button"
-                                  onClick={() => onSelectAction(action)}
+                                  onClick={() => closeAfter.onSelectAction(action)}
                                   className={`rounded-2xl border px-3 py-2 text-left transition-colors ${
                                     isActive
                                       ? 'border-sky-300 bg-sky-50 text-sky-700'
@@ -644,7 +679,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                                   <button
                                     key={binding.id}
                                     type="button"
-                                    onClick={() => onSelectCustomMotionBinding(binding)}
+                                    onClick={() => closeAfter.onSelectCustomMotionBinding(binding)}
                                     className={`w-full rounded-2xl border px-3 py-2 text-left transition-colors ${
                                       isSelected
                                         ? 'border-sky-300 bg-sky-50 text-sky-700'

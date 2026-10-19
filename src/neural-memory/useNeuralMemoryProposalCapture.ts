@@ -7,6 +7,7 @@ import { appendNeuralMemoryProposals, listNeuralMemoryProposals } from './neural
 import { buildNeuralMemoryJudgementPrompt, parseNeuralMemoryJudgement } from './neuralMemoryProposalJudge';
 import { createNeuralMemoryJudgementTrigger } from './neuralMemoryProposalTrigger';
 import { loadNeuralMemorySummaries } from './neuralMemoryStaging';
+import { isSharedRememberRequest, listSharedUserMemory } from '../character-memory/sharedUserMemory';
 
 const JUDGEMENT_TIMEOUT_MS = 45_000;
 const JUDGEMENT_MAX_OUTPUT_TOKENS = 800;
@@ -41,6 +42,8 @@ export function useNeuralMemoryProposalCapture(options: {
 
   return useCallback((event: NeuralMemoryReplyCompletedEvent) => {
     if (event.chatMode !== 'single' || !event.neuralPersonaEnabled) return;
+    // "记住……" goes to the shared “关于你” memory; don't propose it again for this role.
+    if (isSharedRememberRequest(event.userText)) return;
     if (!triggerRef.current.recordTurn(event.roleId, event.userText)) return;
     if (runningRolesRef.current.has(event.roleId)) return;
     runningRolesRef.current.add(event.roleId);
@@ -52,6 +55,7 @@ export function useNeuralMemoryProposalCapture(options: {
         const knownMemories = [
           ...await loadNeuralMemorySummaries(event.roleId),
           ...listNeuralMemoryProposals(configRef.current, event.roleId).map((proposal) => proposal.content),
+          ...listSharedUserMemory(configRef.current).map((item) => item.text),
         ];
         const input = { knownMemories, messages, roleId: event.roleId, roleName: event.roleName };
         const prompt = buildNeuralMemoryJudgementPrompt(input);

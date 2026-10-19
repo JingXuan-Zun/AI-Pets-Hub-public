@@ -1,6 +1,7 @@
 import { type ChatSendTargetSlot } from '../chatMessageSendUtils';
 import { type PlayVoiceTextOptions } from '../chatVoicePlaybackTypes';
-import { type AgentChatFollowUpAction, type AgentChatCommandResult, type AgentExecutionPlan } from '../../../agent';
+import { type AgentChatFollowUpAction, type AgentChatCommandResult } from '../../../agent/agentChatCommand';
+import { type AgentExecutionPlan } from '../../../agent/planning/agentPlanShared';
 
 export type AgentRunPetResponseTurn = (
   targetSlot: ChatSendTargetSlot,

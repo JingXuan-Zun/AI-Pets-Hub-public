@@ -397,29 +397,43 @@
 
   /* Frosted card: translucent white with blur and a soft rose shadow. */
   .glass-card {
-    background: rgba(255, 255, 255, 0.58);
+    background: rgba(255, 255, 255, calc(0.58 * var(--ui-glass-opacity, 1)));
     border: 1px solid rgba(255, 255, 255, 0.78);
     box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-    -webkit-backdrop-filter: blur(18px) saturate(1.35);
-    backdrop-filter: blur(18px) saturate(1.35);
+    -webkit-backdrop-filter: blur(calc(18px * var(--ui-glass-opacity, 1))) saturate(1.35);
+    backdrop-filter: blur(calc(18px * var(--ui-glass-opacity, 1))) saturate(1.35);
   }
 
   /* Frosted bar laid over artwork (chat header / sidebar / composer). */
   .glass-bar {
-    background: rgba(255, 255, 255, 0.46);
-    -webkit-backdrop-filter: blur(22px) saturate(1.4);
-    backdrop-filter: blur(22px) saturate(1.4);
+    background: rgba(255, 255, 255, calc(0.46 * var(--ui-glass-opacity, 1)));
+    -webkit-backdrop-filter: blur(calc(22px * var(--ui-glass-opacity, 1))) saturate(1.4);
+    backdrop-filter: blur(calc(22px * var(--ui-glass-opacity, 1))) saturate(1.4);
+  }
+
+  /* Chat Hub surfaces. Both the white tint and the frosted blur scale with
+     --ui-glass-opacity, which the window root sets from the 界面透明度 setting
+     (1 = original frosted look; lower = clearer, more see-through glass). */
+  .hub-glass-panel {
+    background: rgba(255, 255, 255, calc(0.6 * var(--ui-glass-opacity, 1)));
+    -webkit-backdrop-filter: blur(calc(24px * var(--ui-glass-opacity, 1))) saturate(1.2);
+    backdrop-filter: blur(calc(24px * var(--ui-glass-opacity, 1))) saturate(1.2);
+  }
+  .hub-glass-card {
+    background: rgba(255, 255, 255, calc(0.55 * var(--ui-glass-opacity, 1)));
+    -webkit-backdrop-filter: blur(calc(24px * var(--ui-glass-opacity, 1))) saturate(1.2);
+    backdrop-filter: blur(calc(24px * var(--ui-glass-opacity, 1))) saturate(1.2);
   }
 
   /* Settings window: every token-backed card becomes frosted glass. */
   [data-desktop-pet-settings-panel="true"] {
-    --card: rgba(255, 255, 255, 0.56);
+    --card: rgba(255, 255, 255, calc(0.56 * var(--ui-glass-opacity, 1)));
   }
   [data-desktop-pet-settings-panel="true"] .bg-card {
     border-color: rgba(255, 255, 255, 0.8);
     box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.75);
-    -webkit-backdrop-filter: blur(18px) saturate(1.35);
-    backdrop-filter: blur(18px) saturate(1.35);
+    -webkit-backdrop-filter: blur(calc(18px * var(--ui-glass-opacity, 1))) saturate(1.35);
+    backdrop-filter: blur(calc(18px * var(--ui-glass-opacity, 1))) saturate(1.35);
   }
 }
 

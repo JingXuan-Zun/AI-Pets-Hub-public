@@ -83,6 +83,21 @@ const generatedNew = await generateNeuralPersonaRelationshipCandidates({
 });
 assert.equal(generatedNew.status, 'ok');
 if (generatedNew.status !== 'ok') throw new Error('new relationship generation failed');
+let capturedFocusNodeIds: string[] | undefined;
+await generateNeuralPersonaRelationshipCandidates({
+  batchId: 'relationship-focus', edges: graph.edges,
+  focusNodeIds: ['quiet'], graphVersion: graph.graphVersion,
+  nodes: graph.nodes, now: 10,
+  provider: {
+    providerId: 'focus-capture',
+    generate: async (request) => {
+      capturedFocusNodeIds = request.focusNodeIds;
+      return { candidates: [], status: 'ok' as const };
+    },
+  },
+  revision: 0, roleId: graph.roleId,
+});
+assert.deepEqual(capturedFocusNodeIds, ['quiet']);
 
 const storeResult = createReadonlyNeuralPersonaGraphStore(graph, DEFAULT_NEURAL_PERSONA_CONFIG);
 assert.equal(storeResult.valid, true);

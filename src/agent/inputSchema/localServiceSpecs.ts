@@ -180,6 +180,19 @@ export const AGENT_LOCAL_SERVICE_INPUT_SPECS = {
       type: 'string',
     },
   ],
+  use_platform_capability: [
+    {
+      aliases: ['capabilityId', 'id', 'name'],
+      key: 'capability',
+      required: true,
+      type: 'string',
+    },
+    {
+      aliases: ['args', 'arguments', 'params'],
+      key: 'argsJson',
+      type: 'string',
+    },
+  ],
   get_voice_status: [
     {
       key: 'includeLocalHealth',

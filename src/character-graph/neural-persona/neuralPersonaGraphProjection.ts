@@ -5,6 +5,7 @@ import type {
   NeuralPersonaNodeType,
   NeuralPersonaScope,
 } from './neuralPersonaTypes';
+import { neuralPersonaNodeRetrievalSummary } from './neuralPersonaContentLayers';
 
 export interface NeuralPersonaGraphViewNode {
   incomingCount: number;
@@ -61,7 +62,7 @@ export function createNeuralPersonaGraphProjection(
     graphVersion: snapshot.graphVersion,
     nodes: snapshot.nodes.map((node) => ({
       incomingCount: incoming.get(node.nodeId) ?? 0,
-      label: shortLabel(node.influenceSummary),
+      label: shortLabel(neuralPersonaNodeRetrievalSummary(node)),
       nodeId: node.nodeId,
       outgoingCount: outgoing.get(node.nodeId) ?? 0,
       protected: node.protected,

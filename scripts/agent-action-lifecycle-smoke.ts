@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  evaluateAgentActionLifecycle,
-  type AgentChatCommandResult,
-} from '../src/agent/index.ts';
+import { evaluateAgentActionLifecycle } from '../src/agent/agentActionLifecycle';
+import { type AgentChatCommandResult } from '../src/agent/agentChatCommand';
 
 const waitingTargetResult: AgentChatCommandResult = {
   ok: true,

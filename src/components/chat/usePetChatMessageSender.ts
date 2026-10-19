@@ -7,18 +7,12 @@ import {
   executePetChatMessageSend,
   type PetChatMessageSenderContext,
 } from './petChatMessageSendExecution';
-import {
-  continueActiveGroupTaskConversation,
-  createGroupTaskLifecycleCallbacks,
-} from './group/task/groupTaskSenderLifecycle';
+import { continueActiveGroupTaskConversation } from './group/task/groupTaskSenderLifecycle';
 import type { UsePetChatMessageSenderOptions } from './petChatMessageSenderTypes';
 
 export function usePetChatMessageSender(options: UsePetChatMessageSenderOptions) {
   const contextRef = useRef<PetChatMessageSenderContext>(null!);
-  contextRef.current = {
-    ...options,
-    groupTaskLifecycle: createGroupTaskLifecycleCallbacks(options.activeGroupRuntimeRef),
-  };
+  contextRef.current = options;
 
   const sendMessage = useCallback(async (
     textOverride?: string,

@@ -9,6 +9,10 @@ import {
 import type { NeuralPersonaContextInput, NeuralPersonaNode } from './neuralPersonaTypes';
 import { isNeuralPersonaAnchorNode } from './neuralPersonaAnchor';
 import { isNeuralPersonaStructuralNode } from './neuralPersonaGeneratedHierarchy';
+import {
+  neuralPersonaNodeContent,
+  neuralPersonaNodeRetrievalSummary,
+} from './neuralPersonaContentLayers';
 
 function queryTerms(query: string) {
   return [...new Set(query.normalize('NFKC').toLocaleLowerCase()
@@ -31,7 +35,7 @@ function queryTermsWithCjkBigrams(query: string) {
 }
 
 function countKeywordMatches(node: NeuralPersonaNode, terms: string[]) {
-  const text = `${node.influenceSummary} ${node.tags.map((tag) => tag.label).join(' ')}`
+  const text = `${neuralPersonaNodeRetrievalSummary(node)} ${neuralPersonaNodeContent(node)} ${node.tags.map((tag) => tag.label).join(' ')}`
     .normalize('NFKC').toLocaleLowerCase();
   return terms.filter((term) => text.includes(term)).length;
 }

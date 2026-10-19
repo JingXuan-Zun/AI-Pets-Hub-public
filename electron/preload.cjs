@@ -25,6 +25,26 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   loadPersistedChatHistory: () => ipcRenderer.invoke('desktop-pet:load-persisted-chat-history'),
   savePersistedChatHistory: (messages) => ipcRenderer.invoke('desktop-pet:save-persisted-chat-history', messages ?? []),
   archiveChatHistory: (messages) => ipcRenderer.invoke('desktop-pet:archive-chat-history', messages ?? []),
+  comfyUi: {
+    run: (request) => ipcRenderer.invoke('desktop-pet:comfyui-run', request ?? {}),
+    test: (request) => ipcRenderer.invoke('desktop-pet:comfyui-test', request ?? {}),
+  },
+  dataBackup: {
+    list: () => ipcRenderer.invoke('desktop-pet:data-backup-list'),
+    openFolder: () => ipcRenderer.invoke('desktop-pet:data-backup-open-folder'),
+    read: (name) => ipcRenderer.invoke('desktop-pet:data-backup-read', { name }),
+    save: (text) => ipcRenderer.invoke('desktop-pet:data-backup-save', { text }),
+  },
+  // Starting the helper always shows the Windows UAC prompt; the chat asks the user first.
+  elevatedInput: {
+    start: () => ipcRenderer.invoke('desktop-pet:elevated-input-start'),
+    status: () => ipcRenderer.invoke('desktop-pet:elevated-input-status'),
+    stop: () => ipcRenderer.invoke('desktop-pet:elevated-input-stop'),
+  },
+  knownFolders: {
+    list: () => ipcRenderer.invoke('desktop-pet:known-folders-list'),
+    reveal: (targetPath) => ipcRenderer.invoke('desktop-pet:known-folders-reveal', { path: targetPath }),
+  },
   getExpressionLibraryState: (request) => ipcRenderer.invoke('desktop-pet:expression-library-get-state', request ?? {}),
   getExpressionReplyCatalog: () => ipcRenderer.invoke('desktop-pet:expression-reply-catalog-get'),
   chooseExpressionLibraryRoot: (request) => ipcRenderer.invoke('desktop-pet:expression-library-choose-root', request ?? {}),
@@ -86,6 +106,9 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   },
   openChatWindow: () => {
     ipcRenderer.send('desktop-pet:open-chat-window');
+  },
+  nudgeChatWindow: () => {
+    ipcRenderer.send('desktop-pet:nudge-chat-window');
   },
   closeChatWindow: () => {
     ipcRenderer.send('desktop-pet:close-chat-window');
@@ -246,34 +269,6 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   executeDesktopInput: (request) => ipcRenderer.invoke('desktop-pet:execute-desktop-input', request ?? {}),
   runControlledCommand: (request) => ipcRenderer.invoke('desktop-pet:run-controlled-command', request ?? {}),
   cancelControlledCommand: (request) => ipcRenderer.invoke('desktop-pet:cancel-controlled-command', request ?? {}),
-  runSkillSandboxSupervisorProbe: (request) => ipcRenderer.invoke('desktop-pet:run-skill-sandbox-supervisor-probe', request ?? {}),
-  runSkillSandboxPackage: (request) => ipcRenderer.invoke('desktop-pet:run-skill-sandbox-package', request ?? {}),
-  listSkillCapabilityGrants: () => ipcRenderer.invoke('desktop-pet:list-skill-capability-grants'),
-  listSkillCapabilityReceipts: (request) => ipcRenderer.invoke('desktop-pet:list-skill-capability-receipts', request ?? {}),
-  clearSkillCapabilityReceipts: (request) => ipcRenderer.invoke('desktop-pet:clear-skill-capability-receipts', request ?? {}),
-  listExternalSkillPackageHealth: (request) => ipcRenderer.invoke('desktop-pet:list-external-skill-package-health', request ?? {}),
-  resetExternalSkillPackageHealth: (request) => ipcRenderer.invoke('desktop-pet:reset-external-skill-package-health', request ?? {}),
-  createExternalSkillReleaseAdmissionReport: (request) => ipcRenderer.invoke('desktop-pet:create-external-skill-release-admission-report', request ?? {}),
-  exportExternalSkillReleaseAdmissionReport: (request) => ipcRenderer.invoke('desktop-pet:export-external-skill-release-admission-report', request ?? {}),
-  exportExternalSkillPackageHealthDiagnostics: (request) => ipcRenderer.invoke('desktop-pet:export-external-skill-package-health-diagnostics', request ?? {}),
-  getExternalSkillMarketplaceProductionReadiness: () => ipcRenderer.invoke('desktop-pet:get-external-skill-marketplace-production-readiness'),
-  exportExternalSkillMarketplaceProductionReadiness: () => ipcRenderer.invoke('desktop-pet:export-external-skill-marketplace-production-readiness'),
-  setSkillCapabilityGrant: (request) => ipcRenderer.invoke('desktop-pet:set-skill-capability-grant', request ?? {}),
-  revokeSkillCapabilityGrant: (request) => ipcRenderer.invoke('desktop-pet:revoke-skill-capability-grant', request ?? {}),
-  decideSkillCapabilityRequest: (request) => ipcRenderer.invoke('desktop-pet:decide-skill-capability-request', request ?? {}),
-  readSkillCapabilityStorage: (request) => ipcRenderer.invoke('desktop-pet:read-skill-capability-storage', request ?? {}),
-  cancelSkillSandboxSupervisorProbe: (request) => ipcRenderer.invoke('desktop-pet:cancel-skill-sandbox-supervisor-probe', request ?? {}),
-  stageSkillPackageArtifact: (request) => ipcRenderer.invoke('desktop-pet:stage-skill-package-artifact', request ?? {}),
-  stageSignedSkillPackageArchive: (request) => ipcRenderer.invoke('desktop-pet:stage-signed-skill-package-archive', request ?? {}),
-  auditSkillPackageArtifacts: (request) => ipcRenderer.invoke('desktop-pet:audit-skill-package-artifacts', request ?? {}),
-  quarantineSkillPackageArtifact: (request) => ipcRenderer.invoke('desktop-pet:quarantine-skill-package-artifact', request ?? {}),
-  restoreQuarantinedExternalSkillPackage: (request) => ipcRenderer.invoke('desktop-pet:restore-quarantined-external-skill-package', request ?? {}),
-  uninstallExternalSkillPackage: (request) => ipcRenderer.invoke('desktop-pet:uninstall-external-skill-package', request ?? {}),
-  rollbackExternalSkillPackageUninstall: (request) => ipcRenderer.invoke('desktop-pet:rollback-external-skill-package-uninstall', request ?? {}),
-  listExternalSkillPackageUninstallSnapshots: (request) => ipcRenderer.invoke('desktop-pet:list-external-skill-package-uninstall-snapshots', request ?? {}),
-  cleanupExternalSkillPackageUninstallSnapshots: (request) => ipcRenderer.invoke('desktop-pet:cleanup-external-skill-package-uninstall-snapshots', request ?? {}),
-  listExternalSkillPackageLifecycleReceipts: (request) => ipcRenderer.invoke('desktop-pet:list-external-skill-package-lifecycle-receipts', request ?? {}),
-  exportExternalSkillPackageLifecycleReceipts: (request) => ipcRenderer.invoke('desktop-pet:export-external-skill-package-lifecycle-receipts', request ?? {}),
   listMcpTools: (request) => ipcRenderer.invoke('desktop-pet:list-mcp-tools', request ?? {}),
   inspectMcpServer: (request) => ipcRenderer.invoke('desktop-pet:inspect-mcp-server', request ?? {}),
   preflightMcpServerEnvironment: (request) => ipcRenderer.invoke('desktop-pet:preflight-mcp-server-environment', request ?? {}),

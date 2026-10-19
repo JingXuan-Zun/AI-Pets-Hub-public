@@ -1,7 +1,5 @@
 import { type MutableRefObject } from 'react';
-import {
-  type AgentChatCommandHandler,
-} from '../../agent';
+import { type AgentChatCommandHandler } from '../../agent/agentChatCommand';
 import { usePetChatSession } from '../chat/usePetChatSession';
 import { useFloatingChatPanel } from '../chat/useFloatingChatPanel';
 import { type FloatingChatPanelBasePositionResolver } from '../chat/floatingChatPanelTypes';

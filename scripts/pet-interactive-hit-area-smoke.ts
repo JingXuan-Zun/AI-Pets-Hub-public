@@ -605,8 +605,8 @@ assert.equal(
 );
 assert.equal(
   large3DSelectionScoreSurface.interactiveHitAreaStyle?.height,
-  `${defaultThreeFallbackBounds.top + defaultThreeFallbackBounds.bottom}px`,
-  'large 3D measured bounds should cap the real DOM pointer hit area to the stable 3D fallback height',
+  `${Math.min(230, defaultThreeFallbackBounds.top * 3) + Math.min(130, defaultThreeFallbackBounds.bottom * 3)}px`,
+  'large 3D measured bounds should keep the measured model height (legs/feet stay grabbable), within 3x the fallback',
 );
 assert.equal(
   large3DSelectionScoreSurface.windowShapeProxyStyle?.width,

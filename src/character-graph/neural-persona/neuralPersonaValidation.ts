@@ -6,10 +6,12 @@ import type {
 } from './neuralPersonaTypes';
 import type { NeuralPersonaConfig } from './neuralPersonaConfig';
 import { isReservedNeuralPersonaStorageRoleId } from './neuralPersonaStorageNamespaces';
+import { neuralPersonaSourceFingerprint } from './neuralPersonaContentLayers';
 
 export type NeuralPersonaValidationIssueCode =
   | 'duplicate-edge-id'
   | 'duplicate-node-id'
+  | 'duplicate-source-id'
   | 'duplicate-tag-id'
   | 'edge-id-missing'
   | 'edge-crosses-role-boundary'
@@ -23,12 +25,16 @@ export type NeuralPersonaValidationIssueCode =
   | 'learning-application-metadata-invalid'
   | 'node-id-missing'
   | 'node-role-missing'
+  | 'node-content-empty'
   | 'node-value-out-of-range'
   | 'persona-anchor-not-protected'
   | 'protected-type-invalid'
   | 'reference-source-missing'
+  | 'retrieval-summary-empty'
+  | 'source-document-invalid'
+  | 'source-reference-invalid'
+  | 'source-reference-missing-document'
   | 'summary-empty'
-  | 'summary-too-long'
   | 'subgroup-id-missing'
   | 'tag-limit-exceeded'
   | 'tag-record-limit-exceeded'
@@ -92,13 +98,40 @@ function validLearningApplication(node: NeuralPersonaNode) {
     && validReversalMetadata(marker));
 }
 
-function validateNode(node: NeuralPersonaNode, config: NeuralPersonaConfig) {
+function sourceReferenceIssues(
+  node: NeuralPersonaNode,
+  sources: ReadonlyMap<string, NonNullable<NeuralPersonaGraphSnapshot['sources']>[number]>,
+) {
+  return (node.sourceReferences ?? []).flatMap((reference): NeuralPersonaValidationIssue[] => {
+    const source = sources.get(reference.sourceId);
+    if (!source) return [{ code: 'source-reference-missing-document', targetId: node.nodeId }];
+    const validOffsets = Number.isSafeInteger(reference.startOffset)
+      && Number.isSafeInteger(reference.endOffset)
+      && reference.startOffset >= 0 && reference.endOffset >= reference.startOffset
+      && reference.endOffset <= source.content.length;
+    return !reference.blockId.trim() || !reference.quote.trim() || !validOffsets
+      || source.content.slice(reference.startOffset, reference.endOffset) !== reference.quote
+      ? [{ code: 'source-reference-invalid', targetId: node.nodeId }] : [];
+  });
+}
+
+function validateNode(
+  node: NeuralPersonaNode,
+  config: NeuralPersonaConfig,
+  sources: ReadonlyMap<string, NonNullable<NeuralPersonaGraphSnapshot['sources']>[number]>,
+) {
   const issues: NeuralPersonaValidationIssue[] = [];
   const add = (code: NeuralPersonaValidationIssueCode) => issues.push({ code, targetId: node.nodeId });
   if (!node.nodeId.trim()) add('node-id-missing');
   if (!node.ownerRoleId.trim()) add('node-role-missing');
   if (!node.influenceSummary.trim()) add('summary-empty');
-  if (node.influenceSummary.length > config.maxInfluenceSummaryCharacters) add('summary-too-long');
+  if (node.normalizedContent !== undefined && !node.normalizedContent.trim()) {
+    add('node-content-empty');
+  }
+  if (node.retrievalSummary !== undefined && !node.retrievalSummary.trim()) {
+    add('retrieval-summary-empty');
+  }
+  issues.push(...sourceReferenceIssues(node, sources));
   if (node.tags.filter((tag) => tag.status !== 'rejected').length > config.maxTagsPerNode) {
     add('tag-limit-exceeded');
   }
@@ -128,6 +161,21 @@ function validateNode(node: NeuralPersonaNode, config: NeuralPersonaConfig) {
   return issues;
 }
 
+function validateSources(graph: NeuralPersonaGraphSnapshot) {
+  const sources = graph.sources ?? [];
+  const issues: NeuralPersonaValidationIssue[] = [];
+  issues.push(...duplicateIssues(sources.map((source) => source.sourceId), 'duplicate-source-id'));
+  sources.forEach((source) => {
+    const valid = source.sourceId.trim() && source.ownerRoleId === graph.roleId
+      && source.title.trim() && source.type === 'persona-import'
+      && Number.isSafeInteger(source.createdAt) && source.createdAt >= 0
+      && source.content.trim()
+      && source.contentFingerprint === neuralPersonaSourceFingerprint(source.content);
+    if (!valid) issues.push({ code: 'source-document-invalid', targetId: source.sourceId });
+  });
+  return issues;
+}
+
 function validateEdge(
   edge: NeuralPersonaEdge,
   nodesById: ReadonlyMap<string, NeuralPersonaNode>,
@@ -147,7 +195,7 @@ function validateEdge(
 
 function duplicateIssues(
   ids: string[],
-  code: 'duplicate-edge-id' | 'duplicate-node-id',
+  code: 'duplicate-edge-id' | 'duplicate-node-id' | 'duplicate-source-id',
 ) {
   const seen = new Set<string>();
   const duplicates = new Set<string>();
@@ -165,11 +213,13 @@ export function validateNeuralPersonaGraph(
   }
   issues.push(...duplicateIssues(graph.nodes.map((node) => node.nodeId), 'duplicate-node-id'));
   issues.push(...duplicateIssues(graph.edges.map((edge) => edge.edgeId), 'duplicate-edge-id'));
+  issues.push(...validateSources(graph));
+  const sources = new Map((graph.sources ?? []).map((source) => [source.sourceId, source]));
   graph.nodes.forEach((node) => {
     if (node.ownerRoleId !== graph.roleId) {
       issues.push({ code: 'graph-role-mismatch', targetId: node.nodeId });
     }
-    issues.push(...validateNode(node, config));
+    issues.push(...validateNode(node, config, sources));
   });
   const nodesById = new Map(graph.nodes.map((node) => [node.nodeId, node]));
   graph.edges.forEach((edge) => issues.push(...validateEdge(edge, nodesById)));

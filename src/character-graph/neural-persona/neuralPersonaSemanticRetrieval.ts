@@ -14,6 +14,10 @@ import type {
 import type { NeuralPersonaContextInput } from './neuralPersonaTypes';
 import { isNeuralPersonaAnchorNode } from './neuralPersonaAnchor';
 import { isNeuralPersonaStructuralNode } from './neuralPersonaGeneratedHierarchy';
+import {
+  neuralPersonaNodeContent,
+  neuralPersonaNodeRetrievalSummary,
+} from './neuralPersonaContentLayers';
 
 function parseProviderResult(value: unknown) {
   if (!value || typeof value !== 'object') return { reason: 'semantic-result-invalid', status: 'invalid' as const };
@@ -40,9 +44,9 @@ export function createNeuralPersonaSemanticDocuments(
     && !isNeuralPersonaStructuralNode(node)
     && canReadNeuralPersonaNode(node, input)
     && canShareNeuralPersonaScopeWithProvider(node.scope, dataPolicy)).map((node) => ({
-    nodeId: node.nodeId,
+    content: neuralPersonaNodeContent(node), nodeId: node.nodeId,
     scope: node.scope,
-    summary: node.influenceSummary,
+    summary: neuralPersonaNodeRetrievalSummary(node),
     tagLabels: node.tags.filter((tag) => tag.status === 'active').map((tag) => tag.label),
     type: node.type,
   }));

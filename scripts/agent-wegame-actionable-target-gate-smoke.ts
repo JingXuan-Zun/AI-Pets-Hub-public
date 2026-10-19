@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  resolveAgentVisualExecutionStrategy,
-  type AgentChatCommand,
-  type AgentChatCommandResult,
-} from '../src/agent/index.ts';
+import { resolveAgentVisualExecutionStrategy } from '../src/agent/agentExecutionStrategy';
+import { type AgentChatCommand, type AgentChatCommandResult } from '../src/agent/agentChatCommand';
 
 function createWeGameLocateCommand(): AgentChatCommand {
   return {

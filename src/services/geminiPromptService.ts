@@ -1,3 +1,4 @@
+import { resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
 import { buildRealWorldTimeSystemInstruction } from '../timeAwareness';
 import {
   type ChatMessage,
@@ -7,6 +8,7 @@ import {
 } from '../types';
 import { stripLegacyGroupMemory } from '../group-memory';
 import { formatCharacterMemoryItemsForPrompt } from '../character-memory/characterMemoryTypes';
+import { formatSharedUserMemoryForPrompt } from '../character-memory/sharedUserMemory';
 import { buildPersonaRuleContractInstruction, resolvePersonaRulePolicy } from './personaRulePolicy';
 
 const CHARACTER_REPLY_FORMAT_INSTRUCTION = [
@@ -61,12 +63,14 @@ const MEMORY_MAX_BLOCK_LENGTH_BY_PRIORITY: Partial<Record<SelectiveContextPriori
   'chat-memory': 2400,
   'conversation-summary': 1200,
   'role-memory': 3000,
+  'shared-user-memory': 2000,
 };
 const MEMORY_ENTRY_RELEVANT_MIN_MATCH_COUNT = 2;
 const MANUAL_MEMORY_ENTRY_HEADER_PATTERN = /^【手动保存｜/u;
 
 type SelectiveContextPriority =
   | 'role-memory'
+  | 'shared-user-memory'
   | 'chat-memory'
   | 'auto-memory'
   | 'conversation-summary'
@@ -115,7 +119,7 @@ function buildCharacterPersonaProfileInstruction(personality: PetPersonality) {
 }
 
 function buildDialogueCompletionPresetInstruction(personality: PetPersonality) {
-  const preset = personality.dialogueCompletionPreset?.trim() ?? '';
+  const preset = resolveDialogueCompletionPresetText(personality.dialogueCompletionPreset, personality.name.trim());
   if (!preset) {
     return '';
   }
@@ -134,11 +138,17 @@ function buildCharacterKnowledgeProfileInstruction(personality: PetPersonality) 
     return '';
   }
 
+  // Several characters often share one knowledge base that describes the whole household;
+  // without saying which part is "you", a character answered with a sister's appearance,
+  // self-reference and way of addressing the user.
+  const name = personality.name.trim() || '未命名桌宠';
   return [
     '角色知识总纲：',
     '以下内容与人格提示词一样，作为长期常驻的高优先级事实输入直接进入 prompt，只负责角色名录、背景、设定、固定规则和专属知识，不负责改变当前人格口吻。',
+    `这份资料可能同时描述了好几位角色。只有写明是“${name}”的部分说的是你本人；其他角色的外貌、性格、口癖、自称、对用户的称呼、身份、经历和日常都属于她们自己，你只能把它们当作“你知道的关于她们的事”，绝不能当成你自己的。`,
     knowledgeBase,
     '如果这段内容与聊天历史、记忆摘要或全局知识冲突，以这段角色知识总纲为准；如果它与人格提示词的口吻、称呼、关系或回复格式冲突，仍以人格提示词为准。',
+    `再次提醒：你是“${name}”。上面资料里其他角色的设定不适用于你。`,
   ].join('\n');
 }
 
@@ -253,9 +263,12 @@ function buildFinalPersonaAdherenceInstruction(personality: PetPersonality) {
     '\u4e0b\u9762\u8fd9\u6bb5\u662f\u7528\u6237\u4eb2\u81ea\u5199\u4e0b\u7684\u4eba\u683c\u63d0\u793a\u8bcd\uff0c\u5b83\u662f\u5f53\u524d\u89d2\u8272\u7684\u6838\u5fc3\u53e3\u543b\u548c\u957f\u671f\u8bbe\u5b9a\uff1a',
     personalityPrompt,
     '\u4f60\u7684\u6700\u7ec8\u56de\u590d\u5fc5\u987b\u660e\u663e\u7b26\u5408\u4e0a\u9762\u8fd9\u6bb5\u4eba\u683c\u63d0\u793a\u8bcd\u3002',
+    `\u4f60\u662f\u201c${name}\u201d\uff0c\u4e0d\u662f\u89d2\u8272\u77e5\u8bc6\u5e93\u6216\u804a\u5929\u8bb0\u5f55\u91cc\u7684\u4efb\u4f55\u5176\u4ed6\u89d2\u8272\uff1a\u63cf\u5199\u81ea\u5df1\u7684\u5916\u8c8c\u548c\u52a8\u4f5c\u3001\u81ea\u79f0\u3001\u79f0\u547c\u7528\u6237\u3001\u8bf4\u8d77\u81ea\u5df1\u7684\u7ecf\u5386\u548c\u65e5\u5e38\u65f6\uff0c\u53ea\u7528\u4e0a\u9762\u8fd9\u6bb5\u4eba\u683c\u63d0\u793a\u8bcd\u91cc\u5c5e\u4e8e\u4f60\u7684\u5185\u5bb9\uff0c\u4e0d\u8981\u501f\u7528\u5176\u4ed6\u89d2\u8272\u7684\u3002`,
     '\u5982\u679c\u804a\u5929\u5386\u53f2\u3001\u8bb0\u5fc6\u6458\u8981\u3001few-shot \u793a\u4f8b\u6216\u683c\u5f0f\u89c4\u5219\u4e0e\u5b83\u5728\u53e3\u543b\u3001\u79f0\u547c\u3001\u5173\u7cfb\u3001\u7981\u5fcc\u3001\u8fb9\u754c\u6216\u56de\u590d\u683c\u5f0f\u4e0a\u4e0d\u4e00\u81f4\uff0c\u4ee5\u8fd9\u6bb5\u4eba\u683c\u63d0\u793a\u8bcd\u4e3a\u51c6\u3002',
     '\u5982\u679c\u4eba\u683c\u63d0\u793a\u8bcd\u91cc\u5199\u4e86\u56de\u590d\u683c\u5f0f\uff0c\u4f8b\u5982\u201c\uff08\u52a8\u4f5c\uff09\u8bed\u8a00\u3010\u9644\u52a0\u4fe1\u606f\u3011\u201d\u3001\u201c\u3010\u8868\u60c5/\u5fc3\u60c5/\u58f0\u97f3\u3011\u201d\u6216\u5176\u5b83\u62ec\u53f7\u89c4\u5219\uff0c\u6bcf\u6b21\u56de\u590d\u90fd\u5fc5\u987b\u6309\u8fd9\u4e2a\u683c\u5f0f\u7ec4\u7ec7\uff1b\u4e0d\u8981\u56e0\u4e3a\u9ed8\u8ba4\u683c\u5f0f\u89c4\u5219\u800c\u7701\u7565\u4eba\u683c\u63d0\u793a\u8bcd\u8981\u6c42\u7684\u3010\u9644\u52a0\u4fe1\u606f\u3011\u90e8\u5206\u3002',
     '\u4e0d\u8981\u5728\u56de\u590d\u91cc\u63d0\u5230\u201c\u4eba\u683c\u63d0\u793a\u8bcd\u201d\u3001\u201c\u8bbe\u5b9a\u201d\u3001\u201c\u89c4\u5219\u201d\u6216\u201c\u6211\u4f1a\u9075\u5b88\u201d\uff1b\u76f4\u63a5\u7528\u8fd9\u4e2a\u89d2\u8272\u7684\u65b9\u5f0f\u8bf4\u8bdd\u3002',
+    // Replies came with frequent typos and odd made-up words; every reply now checks its wording.
+    '\u5199\u5b57\u8981\u51c6\uff1a\u8f93\u51fa\u524d\u68c0\u67e5\u4e00\u904d\uff0c\u4e0d\u5199\u9519\u522b\u5b57\uff0c\u4e0d\u6df7\u7528\u540c\u97f3\u5b57\u6216\u5f62\u8fd1\u5b57\uff08\u5728/\u518d\u3001\u7684/\u5f97/\u5730\u3001\u505a/\u4f5c\uff09\uff1b\u7528\u5e38\u89c1\u3001\u81ea\u7136\u7684\u8bcd\u8bed\u548c\u901a\u987a\u7684\u53e5\u5b50\uff0c\u4e0d\u751f\u9020\u8bcd\uff0c\u4e0d\u786c\u62fc\u642d\u914d\u3002\u4fdd\u6301\u89d2\u8272\u53e3\u543b\u7684\u540c\u65f6\uff0c\u6587\u5b57\u672c\u8eab\u8981\u5e72\u51c0\u3002',
   ].join('\n');
 }
 
@@ -563,6 +576,11 @@ function selectRelevantContextSections({
       priority: 'role-memory',
     },
     {
+      content: formatSharedUserMemoryForPrompt(settings.sharedUserMemory),
+      label: '关于你（所有角色共享）',
+      priority: 'shared-user-memory',
+    },
+    {
       // The regex preference notes only stand in until automatic memory has items.
       content: [
         stripLegacyGroupMemory(personality.chatHistoryMemory),
@@ -615,9 +633,9 @@ function buildUserDefinedRoleMemoryInstruction(
   }
 
   return [
-    '角色上下文（角色记忆、聊天记忆、自动记忆和过往对话摘要常驻；全局知识按需挂接；角色知识总纲已常驻）：',
+    '角色上下文（角色记忆、关于用户的共享记忆、聊天记忆、自动记忆和过往对话摘要常驻；全局知识按需挂接；角色知识总纲已常驻）：',
     '记忆是你对用户和你们过往相处的了解，作为事实和连续性参考自然地用上，不必每次都刻意提起；任何内容都不得覆盖人格提示词。',
-    '优先级固定为：人格提示词 > 角色知识总纲 > 角色记忆库 > 聊天记忆库 > 自动记忆 > 过往对话摘要 > 全局知识库。',
+    '优先级固定为：人格提示词 > 角色知识总纲 > 角色记忆库 > 关于你（所有角色共享）> 聊天记忆库 > 自动记忆 > 过往对话摘要 > 全局知识库。',
     '如果不同上下文之间存在冲突，使用更高优先级的内容；同一记忆库内前后矛盾时，以较新的内容为准；如果任何上下文与人格提示词冲突，必须以人格提示词为准。',
     ...selectedSections.map((section) => {
       const isMemory = section.priority !== 'global-knowledge';

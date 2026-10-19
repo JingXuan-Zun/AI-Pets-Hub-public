@@ -8,7 +8,7 @@ assert.match(progressSource, /Product Feature Progress/u);
 assert.match(progressSource, /Life companion foundation/u);
 assert.match(progressSource, /43%/u);
 assert.match(progressSource, /Proactive interaction scheduler/u);
-assert.match(progressSource, /65%/u);
+assert.match(progressSource, /Proactive interaction scheduler \| 70%/u);
 assert.match(progressSource, /Proactive text prompt path/u);
 assert.match(progressSource, /48%/u);
 assert.match(progressSource, /Character growth/u);
@@ -25,6 +25,9 @@ assert.match(progressSource, /src\/life-companion\/lifeCompanionInteractionRunne
 assert.match(progressSource, /src\/life-companion\/lifeCompanionLlmBackoff\.ts/u);
 assert.match(progressSource, /src\/life-companion\/lifeCompanionRuntimeOverride\.ts/u);
 assert.match(progressSource, /src\/life-companion\/lifeCompanionRuntimeStatus\.ts/u);
+assert.match(progressSource, /src\/life-companion\/lifeCompanionRuntimeScheduler\.ts/u);
+assert.match(progressSource, /LLM failure retry timing, backoff runtime visibility/u);
+assert.match(progressSource, /runtime status row/u);
 assert.match(progressSource, /src\/hooks\/useLifeCompanionScheduler\.ts/u);
 assert.match(progressSource, /SettingsLifeCompanionGrowthStatusRow/u);
 assert.match(progressSource, /SettingsLifeCompanionRuntimeControls/u);

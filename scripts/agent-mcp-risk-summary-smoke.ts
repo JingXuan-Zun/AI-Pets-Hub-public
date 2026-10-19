@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { executeListMcpTools } from '../src/agent';
+import { executeListMcpTools } from '../src/agent/agentRuntimeSkillTools';
 import {
   createAgentMcpToolRiskLine,
   summarizeAgentMcpToolRisk,
@@ -161,15 +161,20 @@ async function assertRuntimeRiskOutput() {
     name: 'list_mcp_tools',
   });
   assert.equal(result.ok, true);
-  assert.match(result.responseText, /external-fake\/echo/u);
-  assert.match(result.responseText, /reversible-write, confirm, external/u);
-  assert.match(result.responseText, /external-fake\/search_docs/u);
-  assert.match(result.responseText, /read, confirm, external/u);
-  assert.match(result.responseText, /external-fake\/project_action/u);
-  assert.match(result.responseText, /destructive-like, confirm, external/u);
-  assert.match(result.responseText, /schema:execution-arguments/u);
-  assert.match(result.responseText, /external-fake\/resource_action/u);
-  assert.match(result.responseText, /annotation:destructive/u);
+  // The character reads one short line per tool; the detailed risk reasoning goes to the log.
+  assert.match(result.responseText, /【external-fake】/u);
+  assert.match(result.responseText, /- echo\([^)]*\) 需确认/u);
+  assert.match(result.responseText, /- search_docs\([^)]*\) 需确认/u, 'read-looking by name only still asks');
+  assert.match(result.responseText, /- catalog_entry\(id\) 只读/u, 'declared read-only runs without a card');
+  assert.match(result.responseText, /- project_action\([^)]*\) 需确认/u);
+  const riskLog = result.observations.join('\n');
+  assert.match(riskLog, /external-fake\/echo: reversible-write, confirm, external/u);
+  assert.match(riskLog, /external-fake\/search_docs: read, confirm, external/u);
+  assert.match(riskLog, /external-fake\/catalog_entry: read, silent, external/u);
+  assert.match(riskLog, /external-fake\/project_action: destructive-like, confirm, external/u);
+  assert.match(riskLog, /schema:execution-arguments/u);
+  assert.match(riskLog, /external-fake\/resource_action/u);
+  assert.match(riskLog, /annotation:destructive/u);
   assert.ok(result.observations.some((line) => /MCP tool risk: external-fake\/echo/u.test(line)));
   setAgentExternalMcpRuntimeOverride(null);
 }

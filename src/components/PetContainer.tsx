@@ -48,6 +48,7 @@ import {
   PET_HUNGER_TRIGGER_THRESHOLD,
 } from './pet/petStatsMath';
 import { type PetDragVisualPreviewSurface } from '../pet-runtime/interactions/petDragVisualPreview';
+import { publishQuickMenuDragOffset } from './pet/quickMenuDragFollow';
 import { usePetContainerGameCompanionLoopState } from './pet/usePetContainerGameCompanionLoopState';
 import { usePetContainerNativeDragInterop } from './pet/usePetContainerNativeDragInterop';
 import { usePetContainerNativeShapeSyncState } from './pet/usePetContainerNativeShapeSyncState';
@@ -132,6 +133,9 @@ export default function PetContainer({
   onPetVisualSizeChange,
 }: PetContainerProps) {
   const [petPos, setPetPos] = useState(config.position);
+  // The committed place; the quick menu offsets from it while a drag is only being previewed.
+  const committedPetPosRef = useRef(petPos);
+  committedPetPosRef.current = petPos;
   const [isPrimaryMovementInteractionPaused, setIsPrimaryMovementInteractionPaused] = useState(false);
   const sceneRef = useRef<HTMLDivElement>(null);
   const activityCenterRef = useRef({ x: 0, y: 0 });
@@ -217,6 +221,7 @@ export default function PetContainer({
     chatPanelResizeState,
     chatPanelSize,
     closeAllPetPanels,
+    closePetMenu,
     groupChatContinuationMode,
     groupUserAttention,
     inputValue,
@@ -443,6 +448,11 @@ export default function PetContainer({
         preview.position,
         preview.previousPosition,
       );
+      publishQuickMenuDragOffset({
+        petId: PRIMARY_DESKTOP_PET_SLOT_ID,
+        x: preview.position.x - committedPetPosRef.current.x,
+        y: preview.position.y - committedPetPosRef.current.y,
+      });
     },
     openChatPanel,
     openInteractiveDialogue,
@@ -552,7 +562,6 @@ export default function PetContainer({
     setCompanionRenderSlotsForNativeDrag,
   });
   const {
-    activePanelLatestPetMessage,
     activePanelPetAnchorPosition,
     activePanelPetVisualBounds,
     activePanelPetVisualSize,
@@ -563,7 +572,6 @@ export default function PetContainer({
     interactiveDialogueShellSize,
     interactiveDialogueStageFrame,
     interactiveDialogueVisualSize,
-    isActivePanelPetTyping,
     petAnchorPosition,
     petVisualSize,
     petOptions,
@@ -734,11 +742,15 @@ export default function PetContainer({
 
   const panelsLayerProps = createPetPanelsLayerProps({
     activePetId: panelPetId, activityViewport, chatMode, chatPanelBasePosition, chatPanelDragState,
-    chatPanelOffset, chatPanelSize, closeAllPetPanels, config, groupChatContinuationMode, groupUserAttention, inputValue, interactiveDialogueChatPanelPosition, isAgentSelectorOpen, isChatSelectorOpen,
+    chatPanelOffset, chatPanelSize, closeAllPetPanels, closePetMenu, config, groupChatContinuationMode, groupUserAttention, inputValue, interactiveDialogueChatPanelPosition, isAgentSelectorOpen, isChatSelectorOpen,
     gameCompanionLoopStatus, gameCompanionSourcePreference, isChatOpen, isGroupChatRunning, isInteractiveDialogueActive, isListening, isPetActionSelectorOpen,
-    isSettingsOpen, isSpeaking, isTyping, isPrimaryTyping: isActivePanelPetTyping,
-    latestPetMessage: activePanelLatestPetMessage, logs, messages, petOptions, runtimeSummaryByPetId, speakingPetId, typingPetName,
-    webSearchStatusMessage,
+    isSettingsOpen, isSpeaking, isTyping,
+    // The head bubble belongs to the primary pet; companions draw their own
+    // bubble, so it must not follow the selected pet (that duplicated replies).
+    isPrimaryTyping,
+    latestPetMessage: primaryLatestPetMessage, logs, messages, petOptions, runtimeSummaryByPetId, speakingPetId, typingPetName,
+    headBubbleAnchorPosition: petAnchorPosition, headBubbleVisualBounds: petVisualBounds,
+    webSearchStatusMessage: panelPetId === PRIMARY_DESKTOP_PET_SLOT_ID ? webSearchStatusMessage : '',
     onActivePetChange: selectPanelPet, onChatModeChange: setChatMode, onInputChange: setInputValue,
     isDesktopOrganizationRunning: desktopOrganizationShowcase.isRunning,
     onOpenChatPanel: handleOpenSingleChatPanel, onOpenControlsPanel: handleOpenControlsPanel,
@@ -762,6 +774,8 @@ export default function PetContainer({
     voiceEnabled: config.settings.voiceEnabled, voiceInputEnabled: config.settings.voiceInputEnabled,
   });
   const companionRuntimeLayerItems = createCompanionRuntimeLayerItems({
+    chatBubbleEnabled: config.settings.chatBubbleEnabled,
+    chatBubbleTextColor: config.settings.chatBracketOuterTextColor,
     active3DSceneCount, activityArea, activityCenter, addLog, avatar3dRuntimeBackend: config.settings.avatar3dRuntimeBackend, clampCompanionPosition, companionDragDelta, companionRenderSlots,
     configRef, createCompanionRoamTarget, draggingCompanionPetId, draggingCompanionPetIdRef, getScaledCompanionCollisionBounds, getScaledCompanionVisualBounds, handleCompanionPetContextMenu,
     handleCompanionRenderedPositionChange, handleCompanionVisualBoundsChange, handleCompanionWheelScale, handleStartCompanionPetDrag,

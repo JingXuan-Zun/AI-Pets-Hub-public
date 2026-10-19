@@ -10,6 +10,12 @@ import { prepareGeneratedNodeRelationships } from './neuralPersonaNodeBatchRelat
 import type { CommitNeuralPersonaGeneratedNodesCommand } from './neuralPersonaNodeBatchCommandTypes';
 import { isNeuralPersonaGeneratedNodeType } from './neuralPersonaNodeGenerationRecovery';
 import {
+  createNeuralPersonaBatchSourceDocument,
+  createNeuralPersonaCandidateSourceReference,
+  mergeNeuralPersonaSourceReferences,
+  neuralPersonaSourceDocumentAlreadyLinked,
+} from './neuralPersonaContentLayers';
+import {
   NEURAL_PERSONA_SCHEMA_VERSION,
   type NeuralPersonaGraphSnapshot,
   type NeuralPersonaNode,
@@ -62,6 +68,19 @@ export function assembleNodeBatchGraph(options: {
   timestamp: number;
 }) {
   const prepared = prepareHierarchy(options);
+  const sourceDocument = createNeuralPersonaBatchSourceDocument(options.command.batch);
+  const existingSource = options.current?.sources?.find(
+    (source) => source.sourceId === sourceDocument.sourceId,
+  );
+  if (existingSource && existingSource.contentFingerprint !== sourceDocument.contentFingerprint) {
+    return { issue: 'generated-node-source-id-conflict' } as const;
+  }
+  const sourceAlreadyLinked = neuralPersonaSourceDocumentAlreadyLinked(
+    sourceDocument.sourceId, options.current?.nodes ?? [],
+  );
+  const sources = existingSource || sourceAlreadyLinked
+    ? options.current?.sources ?? []
+    : [...(options.current?.sources ?? []), sourceDocument];
   const relationships = prepareGeneratedNodeRelationships({
     batchId: options.command.batch.batchId,
     candidates: options.command.batch.relationshipAnalysis?.status === 'complete'
@@ -76,6 +95,7 @@ export function assembleNodeBatchGraph(options: {
         ...relationships.edges],
       graphVersion: `neural-graph.r${options.revision}`, nodes: prepared.nodes,
       roleId: options.command.roleId, schemaVersion: NEURAL_PERSONA_SCHEMA_VERSION,
+      sources,
   };
   return {
     graph,
@@ -104,9 +124,24 @@ function prepareHierarchy(options: {
     roleId: options.command.roleId, targets, timestamp: options.timestamp,
   });
   const parent = hierarchy.parentByNodeId;
-  const updatedExisting = options.content.existingNodes.map((node) => parent.has(node.nodeId)
-    && node.parentNodeId !== parent.get(node.nodeId)
-    ? { ...node, parentNodeId: parent.get(node.nodeId), updatedAt: options.timestamp } : node);
+  const candidateByNodeId = new Map(targets.map((target) => [target.node.nodeId, target.candidate]));
+  const updatedExisting = options.content.existingNodes.map((node) => {
+    const candidate = candidateByNodeId.get(node.nodeId);
+    if (!candidate) return node;
+    const sourceReference = candidate
+      ? createNeuralPersonaCandidateSourceReference(options.command.batch, candidate) : null;
+    const sourceReferences = mergeNeuralPersonaSourceReferences(
+      node.sourceReferences, sourceReference,
+    );
+    const parentNodeId = parent.get(node.nodeId) ?? node.parentNodeId;
+    const changed = parentNodeId !== node.parentNodeId || sourceReferences !== node.sourceReferences;
+    return changed ? {
+      ...node,
+      parentNodeId,
+      sourceReferences,
+      updatedAt: options.timestamp,
+    } : node;
+  });
   const updatedNew = options.content.newNodes.map((node) => ({
     ...node, parentNodeId: parent.get(node.nodeId),
   }));

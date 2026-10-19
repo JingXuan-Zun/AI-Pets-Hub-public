@@ -10,6 +10,8 @@ export function resolveChatMessageMode(message: ChatMessage): DesktopPetChatMode
 }
 
 export function resolveChatMessagePetId(message: ChatMessage) {
+  // A helper's message belongs to the conversation it was posted in (see ChatMessage.scopePetId).
+  if (message.scopePetId) return message.scopePetId;
   if (message.role !== 'model') {
     return message.petId ?? null;
   }

@@ -5,7 +5,9 @@ const PREFERRED_MIN_CHARACTERS = 80;
 
 export interface NeuralPersonaSourceBlock {
   content: string;
+  endOffset: number;
   sourceId: string;
+  startOffset: number;
 }
 
 function preferredBoundary(window: string, pattern: RegExp) {
@@ -34,10 +36,18 @@ function splitLongParagraph(value: string) {
 export function createNeuralPersonaSourceBlocks(sourceText: string) {
   const paragraphs = sourceText.split(/\r?\n\s*\r?\n+/u)
     .map((paragraph) => paragraph.trim()).filter(Boolean);
-  return paragraphs.flatMap(splitLongParagraph).map((content, index) => ({
-    content,
-    sourceId: `source-block-${index + 1}`,
-  } satisfies NeuralPersonaSourceBlock));
+  let cursor = 0;
+  return paragraphs.flatMap(splitLongParagraph).map((content, index) => {
+    const startOffset = sourceText.indexOf(content, cursor);
+    const resolvedStart = startOffset >= 0 ? startOffset : sourceText.indexOf(content);
+    const safeStart = Math.max(0, resolvedStart);
+    const endOffset = safeStart + content.length;
+    cursor = endOffset;
+    return {
+      content, endOffset, sourceId: `source-block-${index + 1}`,
+      startOffset: safeStart,
+    } satisfies NeuralPersonaSourceBlock;
+  });
 }
 
 export function inferNeuralPersonaSourceBlockType(

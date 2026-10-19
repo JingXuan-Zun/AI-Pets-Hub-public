@@ -1,5 +1,5 @@
 import { useRef, type MutableRefObject } from 'react';
-import { type PetConfig } from '../../types';
+import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
 import { type VoicePlaybackSession } from '../../voice/types';
 import { useDirectChatVoicePlayback } from './useDirectChatVoicePlayback';
 import { type QueuedVoicePreparationWaiter } from './queuedReplyVoicePlaybackTypes';
@@ -7,7 +7,7 @@ import { useQueuedReplyVoicePlayback } from './useQueuedReplyVoicePlayback';
 
 interface UsePetChatVoicePlaybackOptions {
   configRef: MutableRefObject<PetConfig>;
-  onUpdateConfig: (config: PetConfig) => void;
+  onUpdateConfig: PetConfigUpdateHandler;
   publishStatusMessage: (message: string) => void;
 }
 

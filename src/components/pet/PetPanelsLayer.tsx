@@ -1,5 +1,6 @@
 import { Suspense, lazy, memo, type PointerEvent as ReactPointerEvent } from 'react';
 import { Gamepad2, Monitor, StopCircle } from 'lucide-react';
+import { useSteadyQuickMenuPosition } from './useSteadyQuickMenuPosition';
 import { type DesktopPetChatSendOptions, type DesktopPetGroupChatContinuationMode } from '../../chatState';
 import { type ChatAgentApprovalDecision, type ChatMessage, type DesktopPetChatMode, type PetAction, type PetConfig, type PetConfigUpdateHandler, type PetModelMotionBinding, type PetVisualSize } from '../../types';
 import { type ChatMemorySaveHandler } from '../chat/chatMemorySaveUtils';
@@ -51,6 +52,7 @@ interface PetPanelsLayerProps {
   chatPanelOffset: Position;
   chatPanelSize: { width: number; height: number };
   closeAllPetPanels: () => void;
+  closePetMenu: () => void;
   config: PetConfig;
   gameCompanionLoopStatus: GameCompanionLoopStatusSnapshot;
   gameCompanionSourcePreference: GameCompanionSourcePreference | null;
@@ -70,6 +72,9 @@ interface PetPanelsLayerProps {
   isTyping: boolean;
   isPrimaryTyping: boolean;
   interactiveDialogueChatPanelPosition: Position;
+  /** The head bubble always sits over the primary pet, whichever pet is selected. */
+  headBubbleAnchorPosition: Position;
+  headBubbleVisualBounds: { top: number };
   latestPetMessage: string;
   logs: string[];
   runtimeSummaryByPetId: AvatarRuntimeEventSummaryByPetId;
@@ -145,7 +150,8 @@ const SIDE_PANEL_MARGIN = 20;
 const GAME_COMPANION_BADGE_MAX_WIDTH = 240;
 const GAME_COMPANION_BADGE_ESTIMATED_HEIGHT = 78;
 const GAME_COMPANION_BADGE_GAP = 10;
-const WATCH_PILL_GAP = 44;
+/** Gap between the drawn model's feet and the pills under it (screen watch / mic). */
+const PILL_BELOW_FEET_GAP = 10;
 
 function clampPanelCoordinate(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -230,6 +236,7 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
   chatPanelOffset,
   chatPanelSize,
   closeAllPetPanels,
+  closePetMenu,
   config,
   gameCompanionLoopStatus,
   gameCompanionSourcePreference,
@@ -249,6 +256,8 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
   isTyping,
   isPrimaryTyping,
   interactiveDialogueChatPanelPosition,
+  headBubbleAnchorPosition,
+  headBubbleVisualBounds,
   latestPetMessage,
   logs,
   runtimeSummaryByPetId,
@@ -313,7 +322,8 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
   const activePetSlot = resolveActiveChatSlot(config, activePetId);
   // Pills under slot 1 line up with its drawn model, below the game companion badge when shown.
   const primaryPillCenterShift = ((petVisualBounds.right ?? 0) - (petVisualBounds.left ?? 0)) / 2;
-  const primaryPillOffsetBelowTop = petVisualBounds.bottom + WATCH_PILL_GAP
+  // Visual bounds are measured from the pet anchor (shell center), same as the game companion badge.
+  const primaryPillOffsetBelowCenter = petVisualBounds.bottom + PILL_BELOW_FEET_GAP
     + (gameCompanionLoopStatus.running ? GAME_COMPANION_BADGE_ESTIMATED_HEIGHT + GAME_COMPANION_BADGE_GAP : 0);
   const activePetModelType = activePetSlot?.modelType ?? config.modelType;
   const activePetModelUrl = activePetSlot?.modelUrl ?? config.modelUrl;
@@ -336,13 +346,14 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
   const quickMenuReservedRightWidth = quickSubPanelWidth > 0
     ? quickSubPanelWidth + QUICK_ACTION_PANEL_GAP
     : 0;
-  const adjustedQuickMenuPosition = resolveQuickMenuPosition(
+  const placedQuickMenuPosition = resolveQuickMenuPosition(
     shellViewport,
     petAnchorPosition,
     petVisualBounds,
     petVisualSize,
     quickMenuReservedRightWidth,
   );
+  const adjustedQuickMenuPosition = useSteadyQuickMenuPosition(placedQuickMenuPosition, petAnchorPosition, showPetActions);
   const gameCompanionLoopBadgePosition = resolveGameCompanionBadgePosition(
     shellViewport,
     petAnchorPosition,
@@ -398,7 +409,7 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
         gameCompanionLoopStatus={gameCompanionLoopStatus}
         gameCompanionSourcePreference={gameCompanionSourcePreference}
         position={adjustedQuickMenuPosition}
-        onClose={closeAllPetPanels}
+        onClose={closePetMenu}
         onOpenChat={onOpenChatPanel}
         onOpenControls={onOpenControlsPanel}
         onOpenInteractiveDialogue={onOpenInteractiveDialogue}
@@ -419,13 +430,13 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
       {/* Under the model, below the game companion badge when both are shown. */}
       <LifeCompanionScreenWatchPill
         centerShift={primaryPillCenterShift}
-        offsetBelowTop={primaryPillOffsetBelowTop}
+        offsetBelowCenter={primaryPillOffsetBelowCenter}
         ownerId="primary"
       />
       <VoiceMicStatusPill
         ownerId={activePetId}
         centerShift={activePetId === 'primary' ? primaryPillCenterShift : undefined}
-        offsetBelowTop={activePetId === 'primary' ? primaryPillOffsetBelowTop : undefined}
+        offsetBelowCenter={activePetId === 'primary' ? primaryPillOffsetBelowCenter : undefined}
         onDisableWake={() => onUpdateConfig({ ...config, settings: { ...config.settings, voiceWakeEnabled: false } })}
       />
       {gameCompanionLoopStatus.running && (
@@ -466,7 +477,7 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
                 : gameCompanionLoopStatus.lastObservationSummary
                 ? `${gameCompanionLoopStatus.lastObservationSummary} · `
                 : `${gameCompanionLoopStatus.isTicking ? '正在分析' : '低频观察'} · `}
-              {gameCompanionLoopStatus.sampleCount}/{gameCompanionLoopStatus.maxSamples}
+              观察 {gameCompanionLoopStatus.sampleCount}
               {' · '}
               评论 {gameCompanionLoopStatus.commentCount}
             </span>
@@ -517,8 +528,8 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
             panelOffset={resolvedChatPanelOffset}
             panelPosition={resolvedChatPanelPosition}
             panelSize={chatPanelSize}
-            petAnchorPosition={petAnchorPosition}
-            petVisualBounds={petVisualBounds}
+            petAnchorPosition={headBubbleAnchorPosition}
+            petVisualBounds={headBubbleVisualBounds}
             petOptions={petOptions}
             personalityName={chatMode === 'group' ? '群聊' : chatMode === 'story' ? '故事' : activePetName}
             showEmbeddedPanel={showEmbeddedChatPanel}

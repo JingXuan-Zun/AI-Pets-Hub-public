@@ -19,6 +19,7 @@ import {
   type Supported3DModelFormat,
 } from '../../model3dFormatSupport';
 import { normalizePetModel3DMaterialPresentation } from '../../components/pet/pet3DMaterialPresentation';
+import { createMmdIdleClip, createMmdPhysics, createMmdPoseSolver, hideMmdLogo, installMmdMaterialExtensions } from './avatar3dMmdRuntime';
 import {
   createAvatar3DRuntimeInstance,
   summarizeAvatar3DObjectForDebug,
@@ -103,6 +104,7 @@ const objAssetRequestCache = new Map<string, Promise<THREE.Group>>();
 const stlAssetRequestCache = new Map<string, Promise<THREE.BufferGeometry>>();
 const pmxAssetRequestCache = new Map<string, Promise<THREE.SkinnedMesh>>();
 const VRMA_MOTION_ASSET_FORMAT = 'vrma' satisfies PetContentMotionAssetFormat;
+const VMD_MOTION_ASSET_FORMAT = 'vmd' satisfies PetContentMotionAssetFormat;
 const EXTERNAL_MOTION_DOWNSAMPLE_MAX_FPS = 30;
 const EXTERNAL_MOTION_DOWNSAMPLE_MIN_TOTAL_KEYFRAMES = 12000;
 const EXTERNAL_MOTION_DOWNSAMPLE_MIN_TRACK_SAMPLE_RATE = 40;
@@ -610,6 +612,38 @@ function loadMotionClipsFromVrmaSource(sourceUrl: string, vrm: VRM) {
   });
 }
 
+// VMD motions are keyed by MMD bone names and baked against one model's skeleton.
+function loadMotionClipsFromVmdSource(sourceUrl: string, mesh: THREE.SkinnedMesh) {
+  return new Promise<LoadedAvatar3DMotionAssetClips>((resolve, reject) => {
+    const loader = new MMDLoader(new THREE.LoadingManager());
+    configure3DAssetLoader(loader, sourceUrl);
+    loader.loadAnimation(
+      sourceUrl,
+      mesh,
+      (clip) => {
+        const motionClip = clip as THREE.AnimationClip;
+        motionClip.name = resolveMotionFileBaseName(sourceUrl);
+        resolve({ clips: [motionClip], format: VMD_MOTION_ASSET_FORMAT, sourceUrl });
+      },
+      undefined,
+      (error) => {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
+}
+
+function resolveMotionFileBaseName(sourceUrl: string) {
+  const fileName = sourceUrl.replace(/[?#].*$/u, '').replace(/\\/g, '/').split('/').pop() ?? '';
+  let decodedFileName = fileName;
+  try {
+    decodedFileName = decodeURIComponent(fileName);
+  } catch {
+    // Keep the raw name when it is not URI-encoded.
+  }
+  return decodedFileName.replace(/\.[^.]+$/u, '').trim() || 'vmd-motion';
+}
+
 function isVRMLookAtQuaternionProxyLike(object: THREE.Object3D) {
   const candidate = object as THREE.Object3D & {
     _applyToLookAt?: unknown;
@@ -705,6 +739,7 @@ function removeVRMLookAtQuaternionProxyNodes(vrm: VRM) {
 function loadAvatar3DMotionAssetClips(
   source: ResolvedPetContentMotionAssetSource,
   options?: {
+    mmdMesh?: THREE.SkinnedMesh | null;
     vrm?: VRM | null;
   },
 ) {
@@ -718,6 +753,14 @@ function loadAvatar3DMotionAssetClips(
     }
 
     return loadMotionClipsFromVrmaSource(source.sourceUrl, options.vrm);
+  }
+
+  if (source.format === VMD_MOTION_ASSET_FORMAT) {
+    if (!options?.mmdMesh) {
+      return Promise.reject(new Error(`VMD motion source requires a loaded MMD model: ${source.sourceUrl}`));
+    }
+
+    return loadMotionClipsFromVmdSource(source.sourceUrl, options.mmdMesh);
   }
 
   if (source.format === 'motion3') {
@@ -777,12 +820,14 @@ function mergeLoadedAvatar3DExternalMotionClipsResults(
 export async function loadAvatar3DExternalMotionClips({
   contentManifest,
   contentManifestSourceUrl,
+  mmdMesh = null,
   modelUrl,
   supportedFormats = null,
   vrm = null,
 }: {
   contentManifest?: PetContentManifest | null;
   contentManifestSourceUrl?: string | null;
+  mmdMesh?: THREE.SkinnedMesh | null;
   modelUrl: string;
   supportedFormats?: PetContentMotionAssetFormat[] | null;
   vrm?: VRM | null;
@@ -821,8 +866,12 @@ export async function loadAvatar3DExternalMotionClips({
         continue;
       }
 
+      if (motionSource.format === VMD_MOTION_ASSET_FORMAT && !mmdMesh) {
+        continue;
+      }
+
       try {
-        const loadedAsset = await loadAvatar3DMotionAssetClips(motionSource, { vrm });
+        const loadedAsset = await loadAvatar3DMotionAssetClips(motionSource, { mmdMesh, vrm });
         const selectedClips = filterAnimationClipsByNames(
           loadedAsset.clips,
           motionSource.clipNames,
@@ -1115,6 +1164,7 @@ function loadPmxAsset(sourceUrl: string) {
   const requestPromise = new Promise<THREE.SkinnedMesh>((resolve, reject) => {
     const loader = new MMDLoader(new THREE.LoadingManager());
     configure3DAssetLoader(loader, sourceUrl);
+    installMmdMaterialExtensions(loader);
     loader.load(
       sourceUrl,
       (mesh) => {
@@ -1197,27 +1247,53 @@ async function loadStlRuntimeInstance(sourceUrl: string) {
   });
 }
 
-async function loadPmxRuntimeInstance(
+async function loadMmdRuntimeInstance(
   sourceUrl: string,
   contentManifest: PetContentManifest | null,
+  contentManifestSourceUrl: string | null,
   externalMotionClips: THREE.AnimationClip[],
+  sourceLabel: 'pmd' | 'pmx',
 ) {
   const mesh = await loadPmxAsset(sourceUrl);
+  const object = createPreparedSkeletonClone(mesh) as THREE.SkinnedMesh;
+  hideMmdLogo(object);
+  // VMD clips are built against this model's own bones, so they load after the model.
+  const vmdMotions = await loadAvatar3DExternalMotionClips({
+    contentManifest,
+    contentManifestSourceUrl,
+    mmdMesh: object,
+    modelUrl: sourceUrl,
+    supportedFormats: [VMD_MOTION_ASSET_FORMAT],
+  });
+  const idleClip = createMmdIdleClip(object);
   const combinedClips = dedupeAnimationClipsByName([
+    ...vmdMotions.clips,
     ...externalMotionClips,
     ...mesh.animations,
+    ...(idleClip ? [idleClip] : []),
   ]);
-  const object = createPreparedSkeletonClone(mesh);
+  const physics = await createMmdPhysics(object).catch(() => null);
+  const poseSolver = createMmdPoseSolver(object, physics);
 
-  return createAnimatedAvatar3DRuntimeInstance({
+  const instance = createAnimatedAvatar3DRuntimeInstance({
     clips: combinedClips,
+    dispose: physics?.dispose,
     object,
-    sourceLabel: 'pmx',
+    sourceLabel,
     update: composeAvatar3DFrameUpdaters(
+      poseSolver.solve,
       createMorphTargetRuntimeFrameUpdater(object, contentManifest),
       createGenericAvatar3DLookAtFrameUpdater(object),
     ),
   });
+
+  return {
+    ...instance,
+    update: (delta: number, frameState?: Parameters<NonNullable<Avatar3DRuntimeInstance['update']>>[1]) => {
+      poseSolver.restore();
+      instance.update?.(delta, frameState);
+    },
+  } satisfies Avatar3DRuntimeInstance;
 }
 
 export async function loadAvatar3DRuntimeInstanceByFormat({
@@ -1255,8 +1331,9 @@ export async function loadAvatar3DRuntimeInstanceByFormat({
       return loadObjRuntimeInstance(sourceUrl);
     case 'stl':
       return loadStlRuntimeInstance(sourceUrl);
+    case 'pmd':
     case 'pmx':
-      return loadPmxRuntimeInstance(sourceUrl, contentManifest, externalMotionClips);
+      return loadMmdRuntimeInstance(sourceUrl, contentManifest, contentManifestSourceUrl, externalMotionClips, format);
     default:
       throw new Error(`Unsupported 3D model format: ${format satisfies never}`);
   }

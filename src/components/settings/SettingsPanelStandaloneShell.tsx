@@ -1,8 +1,28 @@
 import { lazy, Suspense, useState, type CSSProperties, type ReactNode } from 'react';
-import { Bot, Heart, LayoutGrid, Plus, Radio, Sparkles, Trash2 } from 'lucide-react';
+import { Bot, GripVertical, Heart, LayoutGrid, Plus, Radio, Sparkles, Trash2 } from 'lucide-react';
 import { type DesktopPetSlot } from '../../multiPetRoster';
+import { usePetSlotListDrag } from './usePetSlotListDrag';
+import { resolve3DModelFormatFromUrl } from '../../model3dFormatSupport';
 import { type PetConfig, type PetVisualSize } from '../../types';
 const PetVisualRenderer = lazy(() => import('../pet/PetVisualRenderer'));
+
+function resolveModelFileName(modelUrl: string) {
+  const fileName = modelUrl.replace(/[?#].*$/u, '').split(/[\\/]/u).pop() ?? '';
+  try {
+    return decodeURIComponent(fileName);
+  } catch {
+    return fileName;
+  }
+}
+
+// What the selected slot actually runs, e.g. “Three.js · PMX”, rather than a fixed setting.
+function describeModelEngine(slot: DesktopPetSlot, engineLabel: string) {
+  if (slot.modelType === 'live2d') return 'Live2D';
+  if (slot.modelType !== '3d') return '2D';
+  if (engineLabel.startsWith('Unity')) return engineLabel;
+  const format = resolve3DModelFormatFromUrl(slot.modelUrl);
+  return format ? `Three.js · ${format.toUpperCase()}` : 'Three.js';
+}
 import { Slider } from '../../../components/ui/slider';
 import {
   getSettingsControlCenterModule,
@@ -38,6 +58,8 @@ export interface SettingsPanelStandaloneShellProps {
   onSelectPetSlot: (slotId: string) => void;
   onAddPetSlot: () => void;
   onRemovePetSlot: (slotId: string) => void;
+  /** Drag-to-reorder: moves one character to where another one is (never the main pet). */
+  onMovePetSlot: (movedId: string, targetId: string) => void;
   onSetPetSlotAutoMovementEnabled: (slotId: string, enabled: boolean) => void;
   onSetPetSlotEnabled: (slotId: string, enabled: boolean) => void;
   onSetPetSlotModelVisible: (slotId: string, visible: boolean) => void;
@@ -70,6 +92,7 @@ export function SettingsPanelStandaloneShell({
   onSelectPetSlot,
   onAddPetSlot,
   onRemovePetSlot,
+  onMovePetSlot,
   onSetPetSlotAutoMovementEnabled,
   onSetPetSlotEnabled,
   onSetPetSlotModelVisible,
@@ -78,7 +101,9 @@ export function SettingsPanelStandaloneShell({
   onUpdateStat,
   renderTabContent,
 }: SettingsPanelStandaloneShellProps) {
-  const modelFileName = config.modelUrl ? config.modelUrl.split('/').pop() : '未选择模型';
+  // The selected slot's model, not the primary pet's.
+  const modelFileName = selectedPetSlot.modelUrl ? resolveModelFileName(selectedPetSlot.modelUrl) : '未选择模型';
+  const modelEngineLabel = describeModelEngine(selectedPetSlot, engineLabel);
   const selectedModelPreset = config.customModelPresets.find((preset) => (
     preset.type === selectedPetSlot.modelType && preset.url === selectedPetSlot.modelUrl
   )) ?? config.customModelPresets.find((preset) => preset.url === selectedPetSlot.modelUrl);
@@ -92,7 +117,7 @@ export function SettingsPanelStandaloneShell({
           ? (config.settings.customModelName?.trim() || config.settings.llmModel)
           : config.settings.llmModel)
         : metric.value === '$petModel'
-          ? (selectedPetSlot.modelType === '3d' ? engineLabel : 'Live2D')
+          ? modelEngineLabel
           : metric.value === '$action'
             ? config.currentAction
             : metric.value;
@@ -123,6 +148,11 @@ export function SettingsPanelStandaloneShell({
     },
   ];
   const [workspaceView, setWorkspaceView] = useState<SettingsWorkspaceViewId>('workspace');
+  const { draggedSlotId, getRowProps, ghostStyle, listRef } = usePetSlotListDrag({
+    movableIds: desktopPetSlots.filter((slot) => !slot.isPrimary).map((slot) => slot.id),
+    onMove: onMovePetSlot,
+  });
+  const draggedSlot = draggedSlotId ? desktopPetSlots.find((slot) => slot.id === draggedSlotId) ?? null : null;
 
   return (
     <div
@@ -171,7 +201,7 @@ export function SettingsPanelStandaloneShell({
         </div>
 
         {/* 实体停靠区:宠物槽位 */}
-        <div className="flex max-h-[38%] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="relative flex max-h-[38%] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
               <LayoutGrid className="h-3.5 w-3.5 text-primary" />
@@ -190,19 +220,50 @@ export function SettingsPanelStandaloneShell({
               </button>
             </div>
           </div>
-          <div className="custom-scrollbar min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
+          {draggedSlot ? (
+            <div
+              aria-hidden="true"
+              style={ghostStyle}
+              className="pointer-events-none absolute inset-x-2 z-20 flex items-center gap-2.5 rounded-md border border-primary bg-card px-2.5 shadow-xl ring-2 ring-primary/30"
+            >
+              <GripVertical className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                {draggedSlot.personality.name.trim().slice(0, 1) || '宠'}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold text-foreground">{draggedSlot.personality.name}</span>
+                <span className="mt-0.5 flex items-center gap-1 text-2xs text-muted-foreground">
+                  <StatusDot className={draggedSlot.enabled ? 'bg-success' : 'bg-border'} />
+                  {draggedSlot.enabled ? '已启用' : '已停用'} · {draggedSlot.modelType === '3d' ? '3D' : '2D'}
+                </span>
+              </span>
+            </div>
+          ) : null}
+          <div ref={listRef} className="custom-scrollbar relative min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
             {desktopPetSlots.map((slot) => {
               const isActive = slot.id === selectedPetSlot.id;
               return (
                 <div key={slot.id} className="space-y-1.5">
                 <div
+                  {...getRowProps(slot.id)}
                   className={[
                     'group relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-colors',
                     isActive
                       ? 'border-primary bg-primary/10'
                       : 'border-border bg-background/40 hover:bg-muted',
+                    draggedSlotId === slot.id ? 'invisible' : '',
+                    slot.isPrimary ? '' : 'select-none',
                   ].join(' ')}
                 >
+                  {!slot.isPrimary ? (
+                    <span
+                      aria-hidden="true"
+                      title="拖动调整顺序"
+                      className="-ml-1 flex shrink-0 cursor-grab items-center text-muted-foreground/50 group-hover:text-muted-foreground active:cursor-grabbing"
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => onSelectPetSlot(slot.id)}
@@ -227,6 +288,7 @@ export function SettingsPanelStandaloneShell({
                   {!slot.isPrimary ? (
                     <button
                       type="button"
+                      data-no-slot-drag
                       onClick={() => onRemovePetSlot(slot.id)}
                       aria-label={`删除${slot.label}`}
                       title={`删除${slot.label}`}
@@ -321,12 +383,17 @@ export function SettingsPanelStandaloneShell({
             </span>
             <span className="flex items-center gap-1.5 text-2xs text-muted-foreground">
               <StatusDot className="bg-success" />
-              静态预览
+              待机动作
             </span>
           </div>
           <div
-            className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-muted/40"
-            style={{ backgroundImage: 'radial-gradient(#E4E7EB 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+            className="relative flex aspect-[4/3] items-center justify-center overflow-hidden"
+            // A light, nearly opaque backdrop: the frosted window behind a see-through one greyed the model.
+            style={{
+              backgroundColor: 'rgba(255, 246, 251, 0.92)',
+              backgroundImage: 'radial-gradient(rgba(214, 160, 196, 0.35) 1px, transparent 1px), radial-gradient(circle at 50% 35%, #ffffff, rgba(246, 228, 240, 0.9) 70%)',
+              backgroundSize: '20px 20px, 100% 100%',
+            }}
           >
             {selectedPetSlot.modelUrl ? (
               <div className="pointer-events-none absolute inset-0">
@@ -342,7 +409,6 @@ export function SettingsPanelStandaloneShell({
                     modelUrl={selectedPetSlot.modelUrl}
                     renderKind={selectedModelPreset?.renderKind}
                     scale={1}
-                    staticPreview
                     updatePriority="companion"
                     // 右侧是配置预览，不复用桌面端的显示/启用开关。
                     // 只要槽位配有模型，预览始终展示该模型，方便检查配置。
@@ -362,7 +428,7 @@ export function SettingsPanelStandaloneShell({
           </div>
           <div className="flex items-center justify-between border-t border-border px-3 py-2 text-2xs text-muted-foreground">
             <span className="truncate pr-2">{modelFileName}</span>
-            <span className="shrink-0 font-mono">{engineLabel}</span>
+            <span className="shrink-0 font-mono">{modelEngineLabel}</span>
           </div>
         </div>
 

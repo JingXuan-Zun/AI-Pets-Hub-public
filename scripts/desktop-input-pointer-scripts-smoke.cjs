@@ -58,7 +58,7 @@ for (const name of Object.keys(api)) for (const field of fields) {
   hash.update(JSON.stringify(actual)); cases++;
 }
 const fingerprint = hash.digest('hex');
-assert.equal(fingerprint, '799eb1104a5e8c5f73ecc8399fa7b244ceb6b1b1cf33ce98229c15183d451706', 'Reviewed pointer scripts and reading/error trace');
+assert.equal(fingerprint, 'a40661c4c0c6200426c164054f98ce159cbf8663fa90859826898d084542e8f2', 'Reviewed pointer scripts and reading/error trace');
 assert.equal(api.createMoveMouseScript({}), null);
 assert.ok(api.createMoveMouseScript({ nativeScreenX: null, nativeScreenY: 2.5 }).includes('SetCursorPos(0, 3)'));
 const points = { fromNativeScreenX: -20, fromNativeScreenY: 30, toNativeScreenX: 100, toNativeScreenY: -40 };

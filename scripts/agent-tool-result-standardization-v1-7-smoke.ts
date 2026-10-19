@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
-import {
-  assessAgentCommandResult,
-  createAgentContextFromResult,
-  createAgentToolStateSummary,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { assessAgentCommandResult } from '../src/agent/agentResultAssessment';
+import { createAgentContextFromResult } from '../src/agent/agentChatContext';
+import { createAgentToolStateSummary } from '../src/agent/resultAssessment/resultEvidenceAssessment';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 import { readProjectSources } from './smokeTestHarness.ts';
 
 const {

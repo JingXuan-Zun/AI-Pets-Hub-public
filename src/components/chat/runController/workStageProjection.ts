@@ -1,5 +1,7 @@
 import { type ChatAgentWorkStage, type ChatAgentWorkStageId, type ChatAgentWorkStageStatus } from '../../../types';
-import { type AgentChatCommandResult, resolveAgentResultFollowUpActions, createAgentDecisionSummary } from '../../../agent';
+import { type AgentChatCommandResult } from '../../../agent/agentChatCommand';
+import { resolveAgentResultFollowUpActions } from '../../../agent/resultAssessment/resultEvidenceAssessment';
+import { createAgentDecisionSummary } from '../../../agent/agentResultAssessment';
 import { type AgentRunControllerAutoContinuationStartEvent } from './controllerTypes';
 import { resolveAgentReceiptStatus } from './executionReceipt';
 import { AGENT_STOPPED_DETAIL_TEXT } from './stoppedText';

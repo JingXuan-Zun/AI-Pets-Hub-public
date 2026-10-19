@@ -1,3 +1,4 @@
+import { delegatedScopeFields } from './runController/chatDelegation';
 import { desktopPetChatStore } from '../../chatStore';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type ChatMessage, type ChatMessageImageAttachment, type DesktopPetChatMode, type PetConfig } from '../../types';
@@ -62,6 +63,8 @@ export async function requestPetResponseStream(options: {
   participantNames: string[];
   promptText: string;
   targetSlot: ChatResponseTargetSlot;
+  /** Native tool calling for the conversation loop (OpenAI-compatible providers). */
+  toolTurn?: import('../../agent/conversation/conversationToolTypes').ConversationToolTurn;
   userAttachments?: ChatMessageImageAttachment[];
 }) {
   const { getPetResponseStream, resolveRoleKnowledgeAttachment } = await import('../../services/geminiService');
@@ -136,6 +139,7 @@ export async function requestPetResponseStream(options: {
     browserSearchMode,
     userAttachments,
     controller.signal,
+    options.toolTurn,
   );
     } finally { clearInterval(timer); controller.abort(); }
   })();
@@ -171,6 +175,7 @@ export function syncStreamingReplyMessage(options: {
       chatMode,
       petId: targetSlot.id,
       petName: targetSlot.personality.name,
+      ...delegatedScopeFields(targetSlot.id),
       replyToPetId: groupInteractionPlan?.replyToPetId ?? null,
       replyToPetName: groupInteractionPlan?.replyToPetName ?? null,
       replyToPetIds: groupInteractionPlan?.replyToPetIds ?? [],
@@ -226,6 +231,7 @@ export function finalizeStreamingReplyMessage(options: {
       chatMode,
       petId: targetSlot.id,
       petName: targetSlot.personality.name,
+      ...delegatedScopeFields(targetSlot.id),
       replyToPetId: groupInteractionPlan?.replyToPetId ?? null,
       replyToPetName: groupInteractionPlan?.replyToPetName ?? null,
       replyToPetIds: groupInteractionPlan?.replyToPetIds ?? [],

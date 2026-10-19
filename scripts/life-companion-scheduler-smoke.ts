@@ -121,7 +121,7 @@ const {
 
 assert.match(runtimeSource, /useLifeCompanionScheduler/u);
 assert.match(runtimeSource, /startupGreetingEnabled/u);
-assert.match(runtimeSource, /enqueueStartupGreeting\(\)/u);
+assert.match(runtimeSource, /enqueueStartupGreeting\(getDesktopPetSlots\(configRef\.current\)/u, 'every character on the desktop greets in turn');
 assert.doesNotMatch(runtimeSource, /personality\.greeting\.trim/u);
 assert.match(runtimeSource, /startupGreetingTimerRef/u);
 assert.match(runtimeSource, /1200/u);

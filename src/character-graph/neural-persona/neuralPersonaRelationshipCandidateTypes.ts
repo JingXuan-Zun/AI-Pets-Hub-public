@@ -45,6 +45,7 @@ export interface NeuralPersonaRelationshipCandidateBatch {
 
 export interface NeuralPersonaRelationshipCandidateRequest {
   edges: NeuralPersonaEdge[];
+  focusNodeIds?: string[];
   nodes: NeuralPersonaNode[];
   requestId: string;
   roleId: string;

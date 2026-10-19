@@ -100,15 +100,6 @@ export function SettingsGameCompanionTab({ config, noDragRegionStyle, onApplyCon
 
   return (
     <section className="space-y-4 rounded-sm border border-border bg-secondary/20 p-4">
-      <details className="rounded-sm border border-border bg-background/30 p-3">
-        <summary className="cursor-pointer text-2xs font-bold uppercase tracking-widest text-muted-foreground">高级：桌面活动感知</summary>
-        <div className="mt-3 space-y-2">
-          <button type="button" onClick={() => onApplyConfig({ ...config, settings: { ...config.settings, lifeCompanion: { ...config.settings.lifeCompanion, desktopActivityAwarenessEnabled: !config.settings.lifeCompanion.desktopActivityAwarenessEnabled } } })} className={`flex w-full items-center justify-between rounded-sm border px-3 py-2 text-left text-xs ${config.settings.lifeCompanion.desktopActivityAwarenessEnabled ? 'border-primary/60 bg-primary/10 text-primary' : 'border-border bg-secondary/30 text-muted-foreground'}`}>
-            <span>感知前台应用类型并主动互动</span><span>{config.settings.lifeCompanion.desktopActivityAwarenessEnabled ? '已开启' : '已关闭'}</span>
-          </button>
-          <p className="text-2xs leading-5 text-muted-foreground">只识别浏览器、视频软件、办公软件等应用类别，不读取网页正文、文档内容或屏幕画面。</p>
-        </div>
-      </details>
       <div>
         <div className="text-2xs font-bold uppercase tracking-widest text-primary">游戏陪玩</div>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">

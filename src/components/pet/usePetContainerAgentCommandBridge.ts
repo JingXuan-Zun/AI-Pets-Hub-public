@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
-import {
-  executeAgentChatCommand,
-  type AgentChatCommand,
-  type AgentChatCommandHandlerContext,
-  type AgentChatCommandResult,
-  type AgentRuntimeGameCompanionLoopController,
-  type DesktopIconArrangementPlan,
-} from '../../agent';
+import { executeAgentChatCommand, type AgentRuntimeGameCompanionLoopController } from '../../agent/agentRuntimeExecutor';
+import { type AgentChatCommand, type AgentChatCommandHandlerContext, type AgentChatCommandResult } from '../../agent/agentChatCommand';
+import { type DesktopIconArrangementPlan } from '../../agent/desktopIconArrangementPlan';
 import {
   type AgentDesktopOrganizationAdapter,
   type AgentRuntimeDesktopIconPlacementResult,

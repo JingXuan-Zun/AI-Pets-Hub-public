@@ -1,3 +1,4 @@
+import { executeUsePlatformCapability } from './agentRuntimePlatformCapabilityTools';
 import { isAgentRuntimeCancellationRequested } from './agentRuntimeCancellation';
 import { createDesktopObservationExecutor } from './executor/desktopObservationExecution';
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
@@ -252,6 +253,7 @@ const AGENT_RUNTIME_TOOL_HANDLERS: Record<AgentToolCallName, AgentRuntimeToolHan
   ),
   get_pet_settings: ({ runtime, toolCall }) => executeGetPetSettings(runtime, toolCall),
   update_pet_settings: ({ runtime, toolCall }) => executeUpdatePetSettings(runtime, toolCall),
+  use_platform_capability: ({ runtime, toolCall }) => executeUsePlatformCapability(runtime, toolCall),
   get_voice_status: ({ runtime, toolCall }) => executeGetVoiceStatus(runtime, toolCall),
   inspect_local_project: ({ command, runtime, toolCall }) => (
     executeInspectLocalProject(runtime, toolCall, command.sourceText)

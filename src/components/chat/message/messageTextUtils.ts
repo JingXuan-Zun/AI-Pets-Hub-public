@@ -1,8 +1,10 @@
 import { PRIMARY_DESKTOP_PET_SLOT_ID } from '../../../multiPetRoster';
 import { type ChatMessage, type PetConfig } from '../../../types';
 import { resolveChatUserDisplayName } from '../chatAppearanceUtils';
+import { CLOSING_ACTION_BRACKETS, endsActionBracketLine, OPENING_ACTION_BRACKETS } from '../actionBrackets';
 
 type MessageTextSegment = {
+  bold?: boolean;
   isBracketContent: boolean;
   text: string;
 };
@@ -12,9 +14,6 @@ export type MemoryMenuPosition = {
   y: number;
 };
 
-const OPENING_BRACKETS = new Set(['(', '（', '[', '【']);
-
-const CLOSING_BRACKETS = new Set([')', '）', ']', '】']);
 
 const MEMORY_MENU_WIDTH = 188;
 
@@ -22,36 +21,62 @@ const MEMORY_MENU_HEIGHT = 44;
 
 const MEMORY_MENU_OFFSET = 10;
 
+// Models write markdown bold (**名字**) even when told not to; the bubble shows it as bold
+// instead of literal asterisks. Unclosed markers (mid-stream) stay as typed.
+const BOLD_PATTERN = /\*\*(?=\S)([\s\S]*?\S)\*\*/gu;
+
+function splitBoldRuns(text: string) {
+  const runs: Array<{ bold: boolean; text: string }> = [];
+  let last = 0;
+  for (const match of text.matchAll(BOLD_PATTERN)) {
+    const index = match.index ?? 0;
+    if (index > last) runs.push({ bold: false, text: text.slice(last, index) });
+    runs.push({ bold: true, text: match[1] });
+    last = index + match[0].length;
+  }
+  if (last < text.length) runs.push({ bold: false, text: text.slice(last) });
+  return runs;
+}
+
 export function splitMessageTextByBrackets(text: string) {
   const segments: MessageTextSegment[] = [];
   let buffer = '';
   let bracketDepth = 0;
+  let bold = false;
 
   const pushBuffer = (isBracketContent: boolean) => {
     if (!buffer) {
       return;
     }
 
-    segments.push({ isBracketContent, text: buffer });
+    segments.push({ isBracketContent, text: buffer, ...(bold ? { bold: true } : {}) });
     buffer = '';
   };
 
-  for (const character of text) {
-    if (OPENING_BRACKETS.has(character)) {
-      pushBuffer(bracketDepth > 0);
-      bracketDepth += 1;
-      buffer += character;
-      continue;
-    }
+  for (const run of splitBoldRuns(text)) {
+    pushBuffer(bracketDepth > 0);
+    bold = run.bold;
+    for (const character of run.text) {
+      if (endsActionBracketLine(character) && bracketDepth > 0) {
+        pushBuffer(true);
+        bracketDepth = 0;
+      }
+      if (OPENING_ACTION_BRACKETS.has(character)) {
+        pushBuffer(bracketDepth > 0);
+        bracketDepth += 1;
+        buffer += character;
+        continue;
+      }
 
-    if (CLOSING_BRACKETS.has(character)) {
-      buffer += character;
-      pushBuffer(true);
-      bracketDepth = Math.max(0, bracketDepth - 1);
-      continue;
-    }
+      if (CLOSING_ACTION_BRACKETS.has(character)) {
+        buffer += character;
+        pushBuffer(true);
+        bracketDepth = Math.max(0, bracketDepth - 1);
+        continue;
+      }
 
-    buffer += character;
+      buffer += character;
+    }
   }
 
   pushBuffer(bracketDepth > 0);

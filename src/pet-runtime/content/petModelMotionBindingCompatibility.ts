@@ -5,7 +5,7 @@ import {
 } from '../../types';
 
 const LIVE2D_MOTION_FORMATS = new Set<PetModelMotionAssetFormat>(['motion3', 'exp3']);
-const THREE_D_MOTION_FORMATS = new Set<PetModelMotionAssetFormat>(['vrma', 'fbx', 'glb', 'gltf']);
+const THREE_D_MOTION_FORMATS = new Set<PetModelMotionAssetFormat>(['vrma', 'vmd', 'fbx', 'glb', 'gltf']);
 
 export function isPetModelMotionBindingCompatibleWithModelType(
   modelType: ModelType,

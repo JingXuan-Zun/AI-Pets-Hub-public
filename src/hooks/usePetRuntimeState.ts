@@ -1,3 +1,5 @@
+import { getDesktopPetSlots } from '../multiPetRoster';
+import { useCompanionNeedSpeech } from './useCompanionNeedSpeech';
 import { startTransition, useCallback, useEffect, useRef, useState, type SetStateAction } from 'react';
 import { desktopPetChatStore } from '../chatStore';
 import { loadPersistedPetConfig } from '../persistentPetConfig';
@@ -14,6 +16,7 @@ import { usePetRuntimeSpeechController } from './usePetRuntimeSpeechController';
 import { useGptSovitsAutoWarmup } from './useGptSovitsAutoWarmup';
 import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
 import { useLifeCompanionScheduler } from './useLifeCompanionScheduler';
+import { useProductivityScheduler } from '../productivity/useProductivityScheduler';
 import { usePersistedChatHistory } from './usePersistedChatHistory';
 import { useDesktopActivityAwareness } from './useDesktopActivityAwareness';
 import { useLifeCompanionScreenWatch } from './useLifeCompanionScreenWatch';
@@ -103,6 +106,7 @@ export function usePetRuntimeState() {
     setStatReactionAction,
     statReactionTimerRef,
   });
+  useCompanionNeedSpeech({ config, enqueueTriggeredPetSpeech });
   usePassivePetStatsTicker({
     addLog,
     applyConfigStateUpdate,
@@ -138,7 +142,10 @@ export function usePetRuntimeState() {
         return;
       }
 
-      enqueueStartupGreeting();
+      // Every character on the desktop says hello, one after another.
+      enqueueStartupGreeting(getDesktopPetSlots(configRef.current)
+        .filter((slot) => slot.isPrimary || slot.enabled)
+        .map((slot) => slot.id));
     }, 1200);
 
     return () => {
@@ -159,6 +166,7 @@ export function usePetRuntimeState() {
     highHungerPromptedRef,
     scheduleHighHungerCoaxTimer,
   });
+  useProductivityScheduler({ configRef, onUpdateConfig: handleUpdateConfig });
 
   useEffect(() => {
     return () => {

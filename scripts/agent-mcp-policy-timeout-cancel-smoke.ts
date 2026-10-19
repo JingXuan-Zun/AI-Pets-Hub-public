@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { callAvailableAgentMcpTool } from '../src/agent';
+import { callAvailableAgentMcpTool } from '../src/agent/agentMcpRegistry';
 import { setAgentExternalMcpRuntimeOverride } from '../src/agent/agentExternalMcpBridge';
 
 const cancelledRequestIds: string[] = [];

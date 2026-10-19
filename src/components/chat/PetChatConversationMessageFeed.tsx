@@ -3,10 +3,23 @@ import { PRIMARY_DESKTOP_PET_SLOT_ID } from '../../multiPetRoster';
 import { PetChatConversationActivityStates } from './PetChatConversationActivityStates';
 import { PetChatConversationMessageBubble } from './PetChatConversationMessageBubble';
 import { buildConversationEmptyState, filterConversationMessages } from './petChatConversationMessageUtils';
+import { resolveChatAvatarDisplaySize, resolveChatPetAvatarUrl } from './chatAppearanceUtils';
 import type { PetChatConversationMessagesProps } from './petChatConversationMessageTypes';
 import { StoryTurnContentCard } from './story/StoryTurnContentCard';
 
 type ConversationMessage = PetChatConversationMessagesProps['messages'][number];
+
+/** 「正在输入」气泡旁显示的角色头像；聊天外观关闭头像时不显示。 */
+function resolveTypingAvatar(conversation: PetChatConversationMessagesProps) {
+  if (!conversation.config.settings.chatAvatarsEnabled) return null;
+  const typingPetName = conversation.typingPetName?.trim() || conversation.activePetName;
+  const typingPetId = conversation.petOptions.find((option) => option.name === typingPetName)?.id ?? conversation.activePetId;
+  return {
+    url: resolveChatPetAvatarUrl(conversation.config, typingPetId),
+    fallbackText: typingPetName,
+    size: resolveChatAvatarDisplaySize(conversation.config),
+  };
+}
 
 function findLatestStoryNarrationIndex(messages: ConversationMessage[]) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -131,7 +144,7 @@ export function PetChatConversationMessageFeed({ conversation }: PetChatConversa
   const narrationIndex = storySession ? findLatestStoryNarrationIndex(visibleMessages) : -1;
   return (
     <div className="space-y-4 px-5 pb-5 pt-5">
-      {visibleMessages.length === 0 ? (
+      {visibleMessages.length === 0 && emptyState ? (
         <div className="flex justify-center py-8">
           <div className="glass-card max-w-xl rounded-full px-4 py-2 text-center text-xs leading-relaxed text-sky-800">
             {emptyState}
@@ -154,6 +167,7 @@ export function PetChatConversationMessageFeed({ conversation }: PetChatConversa
       ))}
       <PetChatConversationActivityStates
         activePetName={conversation.activePetName}
+        typingAvatar={resolveTypingAvatar(conversation)}
         isListening={conversation.isListening}
         isTyping={conversation.isTyping}
         showStatusMessage={conversation.showStatusMessage}

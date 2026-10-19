@@ -1,9 +1,5 @@
 import { strict as assert } from 'node:assert';
-import {
-  createAgentMcpPolicyLine,
-  parseAgentMcpPolicyConfig,
-  resolveAgentMcpPolicy,
-} from '../src/agent';
+import { createAgentMcpPolicyLine, parseAgentMcpPolicyConfig, resolveAgentMcpPolicy } from '../src/agent/agentMcpPolicy';
 import { executeMcpCallWithPolicy } from '../src/agent/agentMcpPolicyRuntime';
 
 const config = parseAgentMcpPolicyConfig({

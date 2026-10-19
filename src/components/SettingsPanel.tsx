@@ -3,6 +3,8 @@ import { type ReactNode } from 'react';
 import { SettingsTabErrorBoundary } from './settings/SettingsTabErrorBoundary';
 import { type CSSProperties } from 'react';
 import { buildShellBackdropStyle } from './chat/chatAppearanceUtils';
+import { resolveUiGlassStyle } from '../chatAppearanceSettings';
+import { consumeSettingsPageRequest, subscribeSettingsPageRequests } from './chat/hub/settingsPageRequest';
 import { normalizePetConfig } from '../petConfigNormalization';
 import {
   type PetAction,
@@ -195,6 +197,7 @@ export default function SettingsPanel({
     handleCloseWithoutSaving,
     handleAddPetSlot,
     handleRemovePetSlot,
+    handleMovePetSlot,
     handleSaveAndClose,
     handleSetCustomApiDraft,
     handleSetTraitsDraft,
@@ -249,15 +252,16 @@ export default function SettingsPanel({
   });
   const isEmbeddedMinimized = !standalone && embeddedFrameMode === 'minimized';
   const shellBackdropStyle = useMemo(() => buildShellBackdropStyle(config), [config]);
+  const uiGlassStyle = resolveUiGlassStyle(config.settings.uiGlassTransparency) as CSSProperties;
   const resolvedRootStyle = standalone
-    ? { ...rootStyle, ...shellBackdropStyle }
+    ? { ...rootStyle, ...shellBackdropStyle, ...uiGlassStyle }
     : isEmbeddedMinimized
         ? ({
             ...rootStyle,
             height: EMBEDDED_SETTINGS_COMPACT_HEIGHT,
             width: EMBEDDED_SETTINGS_COMPACT_WIDTH,
           } as CSSProperties)
-        : { ...rootStyle, ...shellBackdropStyle };
+        : { ...rootStyle, ...shellBackdropStyle, ...uiGlassStyle };
   const handleMinimizeFrame = () => {
     if (standalone) {
       standaloneWindowFrame.minimizeWindow();
@@ -472,6 +476,18 @@ export default function SettingsPanel({
     setActiveControlCenterPageId(pageId);
     setActiveTab(page.runtimeTab);
   };
+  // 聊天 Hub 的「记忆 / 插件 / 换装」等入口会请求打开某个指定页面。
+  useEffect(() => {
+    const goToRequestedPage = (pageId: SettingsControlCenterPageId) => {
+      setActiveControlCenterPageId(pageId);
+      setActiveTab(getSettingsControlCenterPage(pageId).runtimeTab);
+    };
+    if (isOpen) {
+      const requestedPageId = consumeSettingsPageRequest();
+      if (requestedPageId) goToRequestedPage(requestedPageId);
+    }
+    return subscribeSettingsPageRequests(goToRequestedPage);
+  }, [isOpen, resetToken, setActiveTab]);
 
   const renderSettingsTabContent = () => (
       <Suspense fallback={<SettingsTabFallback />}>
@@ -680,7 +696,7 @@ export default function SettingsPanel({
           : activeControlCenterPageId === 'platform-skills-api'
             ? <SettingsPlatformSkillApiTab localConfig={localConfig} currentPetId={selectedPetSlot.id} />
             : activeControlCenterPageId === 'platform-workflow'
-              ? <SettingsComfyUiWorkflowTab />
+              ? <SettingsComfyUiWorkflowTab localConfig={localConfig} onCommit={commitModelConfig} />
       : renderSettingsTabContent()
   );
 
@@ -787,6 +803,7 @@ export default function SettingsPanel({
             onSelectPetSlot={setSelectedPetSlotId}
             onAddPetSlot={handleAddPetSlot}
             onRemovePetSlot={handleRemovePetSlot}
+            onMovePetSlot={handleMovePetSlot}
             onSetActivePage={handleSetControlCenterPage}
             onSetPetSlotAutoMovementEnabled={handleUpdatePetAutoMovementEnabled}
             onSetPetSlotEnabled={handleSetPetSlotEnabled}

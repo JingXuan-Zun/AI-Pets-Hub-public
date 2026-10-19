@@ -210,8 +210,18 @@ export function usePetPanelController({
     setShowPetActions(false);
   }, [onRequestCloseChatWindow, onSetSettingsOpen, useExternalChatWindow, useExternalSettingsWindow]);
 
+  // 收起 on the quick menu: only the menu and its own sub-panels. It used to run
+  // closeAllPetPanels, which also shut the chat window, settings and interactive dialogue.
+  const closePetMenu = useCallback(() => {
+    setIsPetActionSelectorOpen(false);
+    setIsChatSelectorOpen(false);
+    setIsAgentSelectorOpen(false);
+    setShowPetActions(false);
+  }, []);
+
   return {
     closeAllPetPanels,
+    closePetMenu,
     handleOpenChatFromSession,
     isAgentSelectorOpen,
     isChatOpen,

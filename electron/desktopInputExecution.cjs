@@ -7,7 +7,7 @@ async function executeDesktopInput(dependencies, request = {}) {
     return {
       ok: false,
       error: 'Unsupported desktop input action.',
-      supportedActions: ['move_mouse', 'click', 'double_click', 'right_click', 'type_text', 'send_keys', 'hotkey', 'drag'],
+      supportedActions: ['move_mouse', 'click', 'double_click', 'right_click', 'type_text', 'send_keys', 'hotkey', 'drag', 'scroll'],
     };
   }
 

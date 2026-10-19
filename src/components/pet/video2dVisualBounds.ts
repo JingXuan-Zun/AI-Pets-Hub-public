@@ -1,4 +1,5 @@
 import { type PetVisualBounds } from './petVisualBounds';
+import { FULL_VIDEO_CONTENT_BOX, type VideoContentBox } from './video2dContentBox';
 
 type Rect = {
   height: number;
@@ -9,6 +10,8 @@ type Rect = {
 
 type ResolveVideo2DVisualBoundsOptions = {
   containerRect: Rect;
+  /** Opaque part of the frame (fractions); defaults to the whole frame. */
+  contentBox?: VideoContentBox | null;
   sourceHeight: number;
   sourceWidth: number;
   videoRect: Rect;
@@ -27,6 +30,7 @@ function hasPositiveFiniteSize(width: number, height: number) {
  */
 export function resolveVideo2DVisualBounds({
   containerRect,
+  contentBox,
   sourceHeight,
   sourceWidth,
   videoRect,
@@ -41,10 +45,16 @@ export function resolveVideo2DVisualBounds({
     videoRect.width / sourceWidth,
     videoRect.height / sourceHeight,
   );
-  const visibleWidth = sourceWidth * containedScale;
-  const visibleHeight = sourceHeight * containedScale;
-  const visibleLeft = videoRect.left + (videoRect.width - visibleWidth) / 2;
-  const visibleTop = videoRect.top + (videoRect.height - visibleHeight) / 2;
+  const frameWidth = sourceWidth * containedScale;
+  const frameHeight = sourceHeight * containedScale;
+  const frameLeft = videoRect.left + (videoRect.width - frameWidth) / 2;
+  const frameTop = videoRect.top + (videoRect.height - frameHeight) / 2;
+  // Narrow the drawn frame to where the character actually is.
+  const box = contentBox ?? FULL_VIDEO_CONTENT_BOX;
+  const visibleLeft = frameLeft + frameWidth * box.left;
+  const visibleTop = frameTop + frameHeight * box.top;
+  const visibleWidth = frameWidth * Math.max(0, box.right - box.left);
+  const visibleHeight = frameHeight * Math.max(0, box.bottom - box.top);
   const centerX = containerRect.left + containerRect.width / 2;
   const centerY = containerRect.top + containerRect.height / 2;
 

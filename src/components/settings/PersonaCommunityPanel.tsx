@@ -2,9 +2,9 @@ import { Download, FileText, LoaderCircle, Plus, RefreshCw, Search } from 'lucid
 import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { PublicPersonaEntry } from '../../persona-community/personaCommunityTypes';
 import { usePersonaCommunity } from './usePersonaCommunity';
+import { PERSONA_COMMUNITY_API_URL } from '../../persona-community/personaCommunityApiUrl';
 
-const DEFAULT_PERSONA_COMMUNITY_API_URL = '';
-const apiUrl = import.meta.env.VITE_PERSONA_COMMUNITY_API_URL?.trim() || DEFAULT_PERSONA_COMMUNITY_API_URL;
+const apiUrl = PERSONA_COMMUNITY_API_URL;
 const acceptedFileTypes = '.txt,.md,.json,text/plain,text/markdown,application/json';
 
 function PersonaCard({ entry, downloading, onDownload }: {

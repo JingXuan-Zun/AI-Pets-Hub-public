@@ -11,6 +11,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import { publishPrimaryPetDragPreviewOffset } from './primaryPetDragPreviewOffset';
 import { MessageCircle, Settings as SettingsIcon } from 'lucide-react';
 import { type DesktopPetAnimationToolTrigger } from '../../chatState';
 import { PRIMARY_DESKTOP_PET_SLOT_ID } from '../../multiPetRoster';
@@ -429,6 +430,8 @@ function PetAvatarLayerComponent({
     selectionScoreAreaAttributes,
     windowShapeProxyStyle,
   } = renderShellSurface;
+  const renderedPositionRef = useRef(renderedPosition);
+  renderedPositionRef.current = renderedPosition;
   const runtimeViewport = useMemo(() => (
     resolvePetRuntimeViewport({
       activityCenter,
@@ -536,6 +539,8 @@ function PetAvatarLayerComponent({
   useLayoutEffect(() => {
     if (!isDragging) {
       latestDragPreviewPositionRef.current = null;
+      // 松手时正式位置已经更新，跟随浮层回到按正式位置定位。
+      publishPrimaryPetDragPreviewOffset(null);
       return;
     }
 
@@ -546,7 +551,13 @@ function PetAvatarLayerComponent({
     }
 
     avatarShell.style.transform = `translate3d(${latestPreviewPosition.x}px, ${latestPreviewPosition.y}px, 0)`;
+    publishPrimaryPetDragPreviewOffset({
+      x: latestPreviewPosition.x - renderedPosition.x,
+      y: latestPreviewPosition.y - renderedPosition.y,
+    });
   }, [isDragging, renderedPosition.x, renderedPosition.y, shellSize]);
+
+  useEffect(() => () => publishPrimaryPetDragPreviewOffset(null), []);
 
   useEffect(() => {
     if (!dragVisualPreviewSurfaceRef) {
@@ -566,6 +577,11 @@ function PetAvatarLayerComponent({
         }
 
         avatarShell.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
+        // 头顶气泡等跟随浮层平移同样的距离（不经过 React 渲染）。
+        publishPrimaryPetDragPreviewOffset({
+          x: position.x - renderedPositionRef.current.x,
+          y: position.y - renderedPositionRef.current.y,
+        });
       },
     };
     dragVisualPreviewSurfaceRef.current = previewSurface;

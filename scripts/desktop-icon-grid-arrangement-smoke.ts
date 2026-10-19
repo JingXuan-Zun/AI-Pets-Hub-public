@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createDesktopIconArrangementPlan } from '../src/agent/index.ts';
+import { createDesktopIconArrangementPlan } from '../src/agent/desktopIconArrangementPlan';
 
 const viewport = {
   height: 1380,

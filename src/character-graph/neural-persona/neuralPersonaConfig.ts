@@ -2,7 +2,6 @@ export interface NeuralPersonaConfig {
   candidateThreshold: number;
   configVersion: string;
   maxCandidateNodes: number;
-  maxInfluenceSummaryCharacters: number;
   maxPropagationDepth: number;
   maxSelectedNodes: number;
   maxTagsPerNode: number;
@@ -16,7 +15,6 @@ export const DEFAULT_NEURAL_PERSONA_CONFIG: Readonly<NeuralPersonaConfig> = Obje
   candidateThreshold: 0.2,
   configVersion: 'neural-persona-config.v1',
   maxCandidateNodes: 12,
-  maxInfluenceSummaryCharacters: 240,
   maxPropagationDepth: 2,
   maxSelectedNodes: 5,
   maxTagsPerNode: 12,
@@ -33,7 +31,6 @@ export type NeuralPersonaConfigIssueCode =
   | 'propagation-threshold-invalid'
   | 'repeat-penalty-invalid'
   | 'selected-limit-invalid'
-  | 'summary-limit-invalid'
   | 'tag-limit-invalid'
   | 'tag-record-limit-invalid'
   | 'token-budget-invalid';
@@ -52,9 +49,6 @@ export function validateNeuralPersonaConfig(config: NeuralPersonaConfig) {
     || config.maxPropagationDepth > 2) issues.push('propagation-depth-invalid');
   if (!Number.isInteger(config.maxTokenBudget) || config.maxTokenBudget < 1
     || config.maxTokenBudget > 400) issues.push('token-budget-invalid');
-  if (!Number.isInteger(config.maxInfluenceSummaryCharacters)
-    || config.maxInfluenceSummaryCharacters < 1
-    || config.maxInfluenceSummaryCharacters > 240) issues.push('summary-limit-invalid');
   if (!Number.isInteger(config.maxTagsPerNode) || config.maxTagsPerNode < 0
     || config.maxTagsPerNode > 12) issues.push('tag-limit-invalid');
   if (!Number.isInteger(config.maxTagRecordsPerNode)

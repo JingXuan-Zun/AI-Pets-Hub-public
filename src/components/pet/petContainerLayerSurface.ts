@@ -37,6 +37,8 @@ type CreateCompanionRuntimeLayerItemOptions = {
   isMovementPausedByPetId: (petId: string) => boolean;
   isSpeaking: boolean;
   isTyping: boolean;
+  chatBubbleEnabled: boolean;
+  chatBubbleTextColor: string;
   animationToolTrigger: CompanionPetRuntimeLayerProps['animationToolTrigger'];
   lastReplayableAnimationToolTrigger: CompanionPetRuntimeLayerProps['lastReplayableAnimationToolTrigger'];
   latestPetMessages: Record<string, string>;
@@ -68,6 +70,8 @@ export function resolvePetInteractiveDialogueLayerSurface(
 
 export function createCompanionRuntimeLayerItem({
   active3DSceneCount,
+  chatBubbleEnabled,
+  chatBubbleTextColor,
   avatar3dRuntimeBackend,
   activityArea,
   activityCenter,
@@ -116,6 +120,8 @@ export function createCompanionRuntimeLayerItem({
     activityArea,
     activityCenter,
     addLog,
+    chatBubbleEnabled,
+    chatBubbleTextColor,
     clampCompanionPosition,
     companionDragDelta,
     configRef,

@@ -206,7 +206,9 @@ export function summarizeAgentMcpToolRisk(tool: AgentMcpToolRiskInput): AgentMcp
   const source = resolveAgentMcpToolSource(tool.serverId);
   const signals = collectAgentMcpRiskSignals(tool);
   const risk = resolveAgentMcpRisk(tool, signals);
-  const approvalMode = source === 'platform' && PLATFORM_READ_ONLY_TOOL_NAMES.has(tool.name) ? 'silent' : 'confirm';
+  // Matches the chat tool: a tool its server declares read-only runs without a card.
+  const declaredReadOnly = risk === 'read' && signals.schemaSignals.includes('annotation:read-only');
+  const approvalMode = declaredReadOnly || (source === 'platform' && PLATFORM_READ_ONLY_TOOL_NAMES.has(tool.name)) ? 'silent' : 'confirm';
   const summary = {
     approvalMode,
     risk,

@@ -1,3 +1,4 @@
+import { formatPlatformCapabilityCatalog } from '../platform-capabilities/platformCapabilityRegistry';
 import {
   type AgentCapabilityId,
   type AgentToolActionKind,
@@ -231,11 +232,11 @@ export const AGENT_TOOL_REGISTRY: AgentToolDefinition[] = [
     toolActions: ['remember-local-app'],
   },
   {
-    argsSchemaText: '{ "action": "list" | "recall" | "remember" | "forget", "query"?: string, "key"?: string, "value"?: string, "category"?: string, "scope"?: "global", "limit"?: number }',
+    argsSchemaText: '{ "action": "list" | "recall" | "remember" | "forget", "query"?: string, "value"?: string, "kind"?: "profile" | "preference" | "promise" | "event" | "other", "limit"?: number }',
     capabilityId: 'agent-memory',
-    description: 'generic Agent memory router for recalling, listing, remembering, or forgetting user-approved long-term facts and preferences',
+    description: 'read or change the shared “关于你” memory: facts about the user that every character knows',
     name: 'execute_memory_action',
-    plannerGuidance: 'Use this for durable user preferences, aliases, and facts that should affect future Agent decisions. Read/list/recall actions are read-only. Remember/forget actions require approval and only operate on global Agent memory in v1. Do not use memory for current local computer facts.',
+    plannerGuidance: 'Use this for durable facts and preferences about the user. list/recall are read-only. remember only proposes the fact: the user approves it in the chat sidebar before it is stored. forget deletes matching facts and requires approval. Do not use memory for current local computer facts.',
     toolActions: ['read-agent-memory', 'remember-agent-memory', 'forget-agent-memory'],
   },
   {
@@ -342,6 +343,14 @@ export const AGENT_TOOL_REGISTRY: AgentToolDefinition[] = [
     name: 'update_pet_settings',
     plannerGuidance: 'Use after the required exact paths and value types are known. changesJson must be a JSON object, for example {"scale":1.2,"settings.autoSpeakResponses":false}. Existing runtime paths are validated dynamically, values must keep the current field type, the result is normalized, saved, and read back. This changes settings and requires confirmation.',
     toolActions: ['update-pet-settings'],
+  },
+  {
+    argsSchemaText: '{ "capability": string, "argsJson"?: string }',
+    capabilityId: 'platform-capabilities',
+    description: `use one of the platform's own features by id. Capabilities: ${formatPlatformCapabilityCatalog().join(' | ')}`,
+    name: 'use_platform_capability',
+    plannerGuidance: 'Prefer this over update_pet_settings whenever a listed capability fits the request. argsJson is a JSON object of the capability args, for example {"capability":"life_companion.quiet_hours","argsJson":"{\\"start\\":\\"23:00\\",\\"end\\":\\"08:00\\"}"}. [read] capabilities run silently; [change] capabilities ask the user first with a plain-language summary.',
+    toolActions: ['read-platform-capability', 'use-platform-capability'],
   },
   {
     argsSchemaText: '{ "includeLocalHealth"?: boolean }',
@@ -673,6 +682,12 @@ export const AGENT_TOOL_LIFECYCLE_METADATA: Record<AgentToolCallName, AgentToolL
     observes: ['pet-configuration-tree'],
     recoversWith: ['get_pet_settings'],
     verifies: ['pet-configuration-value'],
+  },
+  use_platform_capability: {
+    mutates: ['platform-feature-setting'],
+    observes: ['platform-feature-setting'],
+    recoversWith: ['use_platform_capability'],
+    verifies: ['platform-capability-result'],
   },
   update_pet_settings: {
     mutates: ['pet-configuration-tree'],

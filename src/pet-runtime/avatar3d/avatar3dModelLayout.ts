@@ -8,6 +8,38 @@ export type Avatar3DModelLayout = {
   position: [number, number, number];
 };
 
+// MMD models often carry a logo sign hidden by turning its material invisible. Its vertices
+// still counted toward the measured size (康熙 came out 16 units deep instead of ~3), which
+// threw off framing: the settings preview sat low and cut off long hems. Only vertices of
+// visible materials count. Null when nothing on this mesh is hidden (the usual fast path).
+function boundsOfVisibleMaterialGroups(mesh: THREE.Mesh): THREE.Box3 | 'none-visible' | null {
+  const materials = mesh.material;
+  const geometry = mesh.geometry;
+  if (!Array.isArray(materials) || !geometry.groups.length) {
+    return materials && !Array.isArray(materials) && materials.visible === false ? 'none-visible' : null;
+  }
+  const visibleGroups = geometry.groups.filter((group) => materials[group.materialIndex ?? 0]?.visible !== false);
+  if (visibleGroups.length === geometry.groups.length) return null;
+  if (!visibleGroups.length) return 'none-visible';
+
+  const position = geometry.getAttribute('position');
+  const index = geometry.getIndex();
+  const box = new THREE.Box3();
+  const vertex = new THREE.Vector3();
+  const seen = new Uint8Array(position.count);
+  for (const group of visibleGroups) {
+    const end = Math.min(group.start + group.count, index ? index.count : position.count);
+    for (let i = group.start; i < end; i += 1) {
+      const vertexIndex = index ? index.getX(i) : i;
+      if (seen[vertexIndex]) continue;
+      seen[vertexIndex] = 1;
+      mesh.getVertexPosition(vertexIndex, vertex);
+      box.expandByPoint(vertex);
+    }
+  }
+  return box;
+}
+
 export function resolveAvatar3DModelLayout(object: THREE.Object3D): Avatar3DModelLayout {
   object.updateMatrixWorld(true);
   const rootInverseMatrix = new THREE.Matrix4().copy(object.matrixWorld).invert();
@@ -25,7 +57,13 @@ export function resolveAvatar3DModelLayout(object: THREE.Object3D): Avatar3DMode
       return;
     }
 
-    if (child instanceof THREE.SkinnedMesh) {
+    const hiddenPartBounds = boundsOfVisibleMaterialGroups(child);
+    if (hiddenPartBounds === 'none-visible') {
+      return;
+    }
+    if (hiddenPartBounds) {
+      nextBounds.copy(hiddenPartBounds);
+    } else if (child instanceof THREE.SkinnedMesh) {
       child.updateMatrixWorld(true);
       child.computeBoundingBox();
       if (!child.boundingBox) {

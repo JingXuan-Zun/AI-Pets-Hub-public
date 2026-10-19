@@ -15,7 +15,9 @@ function preparePowerShellScript(dependencies, script) {
     tempDir = mkdtempSync(join(tmpdir(), 'desktop-pet-input-'));
     try {
       const tempScriptPath = join(tempDir, 'input.ps1');
-      writeFileSync(tempScriptPath, script, 'utf8');
+      // Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which turned
+      // typed Chinese into mojibake (官方 → 瀹樻柟); the BOM makes it read UTF-8.
+      writeFileSync(tempScriptPath, `\uFEFF${script}`, 'utf8');
       args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tempScriptPath];
     } catch (error) {
       cleanupTemporaryScript(dependencies, tempDir);

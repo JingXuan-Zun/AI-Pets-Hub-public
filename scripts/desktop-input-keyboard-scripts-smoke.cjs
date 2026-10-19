@@ -57,7 +57,7 @@ for (const name of Object.keys(api)) for (const field of fields) {
   if (original) assert.deepEqual(actual, outcome(original, name, field, 'unused', true, true));
   hash.update(JSON.stringify(actual)); cases++;
 }
-assert.equal(hash.digest('hex'), 'd9e15e740b8dbf38a50fe3dbad0203de9924172dedcbc2cab37b562ad85ca71c', 'Reviewed keyboard scripts and reading/error trace');
+assert.equal(hash.digest('hex'), '7f026c69d51650d690639094295dcc47aca720290410d3afc2b5f3bafffbd2f1', 'Reviewed keyboard scripts and reading/error trace');
 assert.equal(api.createTextScript({ text: '', value: 'fallback' }), null);
 assert.equal(api.createSendKeysScript({ keys: ' ', sequence: '{ENTER}' }), null);
 assert.equal(api.createHotkeyScript({ hotkey: 'ctrl+unknown' }), null);

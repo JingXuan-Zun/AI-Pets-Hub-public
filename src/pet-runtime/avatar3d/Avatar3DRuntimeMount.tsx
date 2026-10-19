@@ -14,6 +14,7 @@ import {
   type Avatar3DManualMotionSelection,
 } from './avatar3dMotionStateController';
 import { resolveAvatar3DModelLayout } from './avatar3dModelLayout';
+import { usePreviewSelfFraming } from './usePreviewSelfFraming';
 import { type Avatar3DReactionState } from './useAvatar3DReactionState';
 import { type Avatar3DManualOrbitState } from './useAvatar3DManualOrbitController';
 import { type Avatar3DRuntimeInstance } from './avatar3dRuntimeInstance';
@@ -32,7 +33,10 @@ import { type AvatarRuntimePerfStats } from '../avatar-runtime/avatarRuntimeEven
 
 const REALTIME_VISUAL_BOUNDS_SAMPLE_INTERVAL_MS = 320;
 const REALTIME_VISUAL_BOUNDS_EXTENDED_SAMPLE_INTERVAL_MS = 240;
-const REALTIME_VISUAL_BOUNDS_EMIT_THRESHOLD_PX = 12;
+// Pose sway moves the measured box ~20px; 12px let every swing re-run clamp/collision.
+const REALTIME_VISUAL_BOUNDS_EMIT_THRESHOLD_PX = 28;
+/** Fixed 3D presentation scale (the idle profile's peak; see effectivePresentationScale). */
+const AVATAR3D_STABLE_PRESENTATION_SCALE = 1.04;
 
 type FocusTarget = {
   x: number;
@@ -160,14 +164,30 @@ export function Avatar3DRuntimeMount({
   const lastEmittedVisualBoundsRef = useRef<PetVisualBounds | null>(null);
   const visualBoundsSamplerRef = useRef<ReturnType<typeof createAvatar3DCanvasVisualBoundsSampler>>(null);
   const { camera, gl, invalidate, scene, size } = useThree();
+  // The per-action scaleBase/scalePeak are pulse amplitudes for the 2D CSS animations;
+  // the 3D shell turns CSS animation off. Using the current action's peak as the 3D
+  // model scale resized the model by 2-4% on every action change (e.g. growing right
+  // after a drop, then shrinking once it settled back to idle), which read as a twitch.
+  // Keep a fixed size: the idle peak, so the resting size stays what it was.
   const effectivePresentationScale = useMemo(
-    () => scale * Math.max(1, actionState.scalePeak),
-    [actionState.scalePeak, scale],
+    () => scale * AVATAR3D_STABLE_PRESENTATION_SCALE,
+    [scale],
   );
   const modelLayout = useMemo(
     () => resolveAvatar3DModelLayout(runtimeInstance.object),
     [runtimeInstance.object],
   );
+  // Emitting each pose's own box (arms swing ~20px between samples) re-ran the activity
+  // clamp and collision constantly, so a pet resting near an edge kept twitching. Small
+  // changes are ignored; real ones (model swap, rescale, the oversized first-frame
+  // measurement settling) still go through. Not a running union, so an early outlier
+  // cannot stick.
+  const emitStableVisualBounds = (normalizedMeasuredBounds: PetVisualBounds) => {
+    if (!onVisualBoundsChange) return;
+    if (!hasMeaningfulVisualBoundsChange(lastEmittedVisualBoundsRef.current, normalizedMeasuredBounds)) return;
+    lastEmittedVisualBoundsRef.current = normalizedMeasuredBounds;
+    onVisualBoundsChange(normalizedMeasuredBounds);
+  };
   const effectiveScale = effectivePresentationScale;
   const minimumCameraDistance = useMemo(
     () => resolvePetModel3DMinimumCameraDistance(
@@ -191,11 +211,31 @@ export function Avatar3DRuntimeMount({
     // not the fit driver: a T-pose must not shrink the entire character.
     return Number((height * 0.5 / Math.tan(verticalFovRadians / 2) * 1.16 + depth * 0.35).toFixed(3));
   }, [camera, effectiveScale, fitToPreview, modelLayout.boundsSize, modelLayout.normalizedScale]);
+  const previewFraming = usePreviewSelfFraming({
+    baseDistance: previewCameraDistance ?? 0,
+    canvas: gl.domElement,
+    enabled: fitToPreview && previewCameraDistance !== null,
+    label: runtimeDebugLabel ?? 'preview',
+    modelKey: runtimeInstance,
+    verticalFovDegrees: camera instanceof THREE.PerspectiveCamera ? camera.fov : 45,
+    viewportHeight: size.height,
+  });
+  const previewShiftY = fitToPreview ? previewFraming.shiftY : 0;
+  // The preview shows the model only once its framing has settled (it is still drawn and
+  // measured meanwhile, just not visible).
+  useEffect(() => {
+    if (!fitToPreview) return undefined;
+    const canvas = gl.domElement;
+    canvas.style.opacity = previewFraming.settled ? '' : '0';
+    return () => {
+      canvas.style.opacity = '';
+    };
+  }, [fitToPreview, gl, previewFraming.settled]);
   const targetCameraDistance = useMemo(
     () => fitToPreview && previewCameraDistance !== null
-      ? previewCameraDistance
+      ? previewCameraDistance * previewFraming.distanceScale
       : Math.max(baseCameraDistance, minimumCameraDistance),
-    [baseCameraDistance, fitToPreview, minimumCameraDistance, previewCameraDistance],
+    [baseCameraDistance, fitToPreview, minimumCameraDistance, previewCameraDistance, previewFraming.distanceScale],
   );
   const focusY = useMemo(() => {
     const appliedScale = modelLayout.normalizedScale * Math.max(0.01, effectiveScale);
@@ -574,8 +614,7 @@ export function Avatar3DRuntimeMount({
             'model',
             `3d runtime sampled visual bounds pet=${runtimeDebugLabel ?? 'unknown'} measured=${normalizedMeasuredBounds.left}/${normalizedMeasuredBounds.right}/${normalizedMeasuredBounds.top}/${normalizedMeasuredBounds.bottom} projected=${projectedVisualBounds.left}/${projectedVisualBounds.right}/${projectedVisualBounds.top}/${projectedVisualBounds.bottom}`,
           );
-          lastEmittedVisualBoundsRef.current = normalizedMeasuredBounds;
-          onVisualBoundsChange(normalizedMeasuredBounds);
+          emitStableVisualBounds(normalizedMeasuredBounds);
         }
         return;
       }
@@ -631,9 +670,14 @@ export function Avatar3DRuntimeMount({
     }
 
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.18);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraTargetY, 0.18);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCameraDistance, 0.18);
+      if (fitToPreview) {
+        // The preview jumps straight to its framing; easing toward it showed as a zoom.
+        camera.position.set(0, cameraTargetY + previewShiftY, targetCameraDistance);
+      } else {
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.18);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraTargetY + previewShiftY, 0.18);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCameraDistance, 0.18);
+      }
       const targetNear = Math.max(0.05, targetCameraDistance / 60);
       const targetFar = Math.max(180, targetCameraDistance * 14);
       let needsProjectionUpdate = false;
@@ -652,7 +696,7 @@ export function Avatar3DRuntimeMount({
         camera.updateProjectionMatrix();
       }
 
-      camera.lookAt(0, focusY + lookAtYOffset, 0);
+      camera.lookAt(0, focusY + lookAtYOffset + previewShiftY, 0);
     }
 
     const interactionState = reactionState?.interactionState;
@@ -770,6 +814,7 @@ export function Avatar3DRuntimeMount({
     rootRef.current.updateWorldMatrix(true, true);
     if (!runtimeSleeping) {
       runtimeInstance.update?.(delta, {
+        dragVelocity: dragVelocityRef.current,
         focusTarget,
         hoverState,
         motionState,
@@ -801,13 +846,7 @@ export function Avatar3DRuntimeMount({
             measuredBounds,
             actionState.visualIsMoving,
           );
-          if (hasMeaningfulVisualBoundsChange(
-            lastEmittedVisualBoundsRef.current,
-            normalizedMeasuredBounds,
-          )) {
-            lastEmittedVisualBoundsRef.current = normalizedMeasuredBounds;
-            onVisualBoundsChange(normalizedMeasuredBounds);
-          }
+          emitStableVisualBounds(normalizedMeasuredBounds);
         }
       }
     }

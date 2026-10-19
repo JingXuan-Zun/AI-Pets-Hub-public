@@ -8,12 +8,16 @@ import { transcribeLocalVoice } from '../../voice/runtime';
 import { buildVoiceWakeTargets, matchVoiceWakeTarget, type VoiceWakeTarget } from '../../voice/voiceWakeTargets';
 import { desktopPetChatStore } from '../../chatStore';
 import { voiceMicStatusStore } from '../../voice/voiceMicStatus';
-import { isPetVoiceBusy, subscribePetVoiceBusy } from './voiceConversationBusy';
+import { isAwaitingVoiceApproval, isPetVoiceBusy, subscribePetVoiceBusy } from './voiceConversationBusy';
+import { judgeApprovalAnswerWithModel, resolvePendingApprovalBySpeech } from './voiceApproval';
 import { resolveConversationUnavailableReason } from './useVoiceConversationController';
 
 // Wake phrases are short; long monologues are not worth a recognition pass.
 const MAX_WAKE_UTTERANCE_MS = 10000;
 const MAX_CONSECUTIVE_FAILURES = 2;
+const EMPTY_UTTERANCE_MIN_MS = 1500;
+const EMPTY_STREAK_BEFORE_REOPEN = 3;
+const CAPTURE_REOPEN_DELAY_MS = 600;
 
 interface UseVoiceWakeListenerOptions {
   config: PetConfig;
@@ -63,12 +67,37 @@ export function useVoiceWakeListener({
       if (isPetVoiceBusy()) capture.pause();
       else if (capture.isPaused()) capture.resume();
     };
+    // A microphone opened while the previous one was still closing (live conversation ending
+    // into wake listening) delivered silence: a minute and a half of speech all came back as
+    // ".". Several long utterances in a row with nothing in them reopen the microphone.
+    let emptyStreak = 0;
     const onUtterance = async (audioBase64: string, durationMs: number) => {
       if (disposed || !sttSettings || durationMs > MAX_WAKE_UTTERANCE_MS || isPetVoiceBusy()) return;
       try {
         const transcript = await transcribeLocalVoice(audioBase64, sttSettings);
         failures = 0;
+        if (durationMs >= EMPTY_UTTERANCE_MIN_MS && !transcript.replace(/[\s\p{P}]/gu, '')) {
+          emptyStreak += 1;
+          if (emptyStreak >= EMPTY_STREAK_BEFORE_REOPEN && !disposed) {
+            emptyStreak = 0;
+            pushFrontendRuntimeLog('voice', 'wake listener heard only silence; reopening the microphone', {});
+            void reopenCapture();
+          }
+          return;
+        }
+        emptyStreak = 0;
+        // While an approval card waits, a plain "同意"/"拒绝" answers it without the wake word.
+        if (!disposed && await resolvePendingApprovalBySpeech(transcript, judgeApprovalAnswerWithModel(config.settings))) {
+          pushFrontendRuntimeLog('voice', 'approval answered by voice', {});
+          return;
+        }
         const match = disposed ? null : matchVoiceWakeTarget(transcript, targets, desktopPetChatStore.getState().activePetId);
+        if (match?.remainder && await resolvePendingApprovalBySpeech(match.remainder, judgeApprovalAnswerWithModel(config.settings))) {
+          pushFrontendRuntimeLog('voice', 'approval answered by voice', { withWakeWord: true });
+          return;
+        }
+        // The microphone only listens mid-task to hear the answer; nothing else starts a chat then.
+        if (isAwaitingVoiceApproval()) return;
         if (!match) {
           // Local-only diagnostics so misheard wake phrases can be tuned (e.g. add the heard variant).
           pushFrontendRuntimeLog('voice', 'wake phrase not matched', { heard: transcript.slice(0, 24), durationMs });
@@ -88,12 +117,7 @@ export function useVoiceWakeListener({
         }
       }
     };
-    void resolveConversationSttSettings(config.settings)
-      .then((stt) => {
-        if ('error' in stt) throw new Error(stt.error);
-        sttSettings = stt.settings;
-        return startConversationCapture({ onUtterance: (audio, ms) => void onUtterance(audio, ms) });
-      })
+    const openCapture = () => startConversationCapture({ onUtterance: (audio, ms) => void onUtterance(audio, ms) })
       .then((nextCapture) => {
         if (disposed) {
           void nextCapture.stop();
@@ -101,11 +125,30 @@ export function useVoiceWakeListener({
         }
         capture = nextCapture;
         voiceMicStatusStore.setWakeListening(true);
-        unsubscribe = subscribePetVoiceBusy(syncBusy);
+        unsubscribe ??= subscribePetVoiceBusy(syncBusy);
         syncBusy();
         pushFrontendRuntimeLog('voice', 'wake listener started', { phrases: targets.length, sttModelId: sttSettings?.localSttModelId });
-      })
-      .catch((error) => pushFrontendRuntimeError('voice', 'wake listener start failed', error));
-    return shutdown;
+      });
+    const reopenCapture = async () => {
+      const previous = capture;
+      capture = null;
+      await previous?.stop();
+      await new Promise((resolve) => { window.setTimeout(resolve, CAPTURE_REOPEN_DELAY_MS); });
+      if (!disposed) await openCapture().catch((error) => pushFrontendRuntimeError('voice', 'wake listener reopen failed', error));
+    };
+    // Give the microphone that live conversation just released a moment to close first.
+    const startTimer = window.setTimeout(() => {
+      void resolveConversationSttSettings(config.settings)
+        .then((stt) => {
+          if ('error' in stt) throw new Error(stt.error);
+          sttSettings = stt.settings;
+          return openCapture();
+        })
+        .catch((error) => pushFrontendRuntimeError('voice', 'wake listener start failed', error));
+    }, CAPTURE_REOPEN_DELAY_MS);
+    return () => {
+      window.clearTimeout(startTimer);
+      shutdown();
+    };
   }, [enabled, targetsKey]); // config.settings is read once per (re)start; these keys cover what matters
 }

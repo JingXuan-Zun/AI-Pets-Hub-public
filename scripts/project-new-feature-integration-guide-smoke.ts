@@ -10,9 +10,9 @@ const {
 });
 
 assert.match(guideSource, /Current Baseline/u);
-assert.match(guideSource, /official packaged read-only coverage is resolved or explicitly risk-accepted/u);
+assert.match(guideSource, /official packaged read-only coverage is resolved/u);
 assert.match(guideSource, /40\/40/u);
-assert.match(guideSource, /0\/2/u);
+assert.match(guideSource, /read-only coverage is `2\/2`/u);
 assert.match(guideSource, /Choose The Entry Seam/u);
 assert.match(guideSource, /Use an Agent capability/u);
 assert.match(guideSource, /Use a Skill/u);

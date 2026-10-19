@@ -88,6 +88,7 @@ export async function generateNeuralPersonaRelationshipCandidates(options: {
   batchId: string;
   edges: NeuralPersonaEdge[];
   graphVersion: string;
+  focusNodeIds?: string[];
   nodes: NeuralPersonaNode[];
   now: number;
   provider: NeuralPersonaRelationshipCandidateProvider;
@@ -99,7 +100,8 @@ export async function generateNeuralPersonaRelationshipCandidates(options: {
     return { reason: 'relationship-candidate-nodes-insufficient', status: 'invalid' };
   }
   const result = await options.provider.generate({
-    edges: options.edges, nodes: options.nodes, requestId: options.batchId,
+    edges: options.edges, focusNodeIds: options.focusNodeIds,
+    nodes: options.nodes, requestId: options.batchId,
     roleId: options.roleId, signal: options.signal,
   });
   if (result.status !== 'ok') return result;

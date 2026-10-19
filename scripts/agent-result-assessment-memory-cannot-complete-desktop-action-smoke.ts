@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  assessAgentCommandResult,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { assessAgentCommandResult } from '../src/agent/agentResultAssessment';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 
 const command: AgentChatCommand = {
   instruction: '打开 WeGame 应用并登录',

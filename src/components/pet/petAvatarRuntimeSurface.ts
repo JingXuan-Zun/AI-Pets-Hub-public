@@ -167,8 +167,11 @@ export function resolvePetThreeAvatarViewportStyle(
 export function resolvePetThreeAvatarShellStyle(
   presentationState: Avatar3DPresentationState,
 ): CSSProperties {
+  // The 3D shell turns CSS animation off; dropping the wrapper's animationDuration avoids
+  // React's shorthand/longhand conflict warning on every re-render (e.g. while dragging).
+  const { animationDuration: _unusedAnimationDuration, ...wrapperStyle } = presentationState.wrapperStyle;
   return {
-    ...presentationState.wrapperStyle,
+    ...wrapperStyle,
     animation: 'none',
     backfaceVisibility: 'hidden',
     transform: 'translateZ(0)',

@@ -1,10 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { FileText, X } from 'lucide-react';
-import {
-  type DesktopIconArrangementItem,
-  type DesktopIconArrangementRect,
-} from '../../agent';
+import { type DesktopIconArrangementItem, type DesktopIconArrangementRect } from '../../agent/desktopIconArrangementPlan';
 import { type DesktopOrganizationShowcaseRun } from './useDesktopOrganizationShowcase';
 
 const ITEM_ANIMATION_DURATION_MS = 760;

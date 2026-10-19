@@ -1,4 +1,4 @@
-import { type AgentExecutionPlan } from '../../../agent';
+import { type AgentExecutionPlan } from '../../../agent/planning/agentPlanShared';
 import { type ChatAgentRunTraceStatus, type ChatAgentRunTraceItem } from '../../../types';
 
 export function createAgentRunTrace(

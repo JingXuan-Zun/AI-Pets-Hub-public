@@ -1,13 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  createDesktopOrganizationIconPositionSourceSummary,
-  createDesktopOrganizationObservationEvidence,
-  findDesktopOrganizationTargetDisplay,
-  formatDesktopOrganizationIconPositionSourceSummary,
-  normalizeDesktopOrganizationDisplayRect,
-  type DesktopPetDesktopIconLike,
-  type DesktopPetDisplayLike,
-} from '../src/agent/index.ts';
+import { createDesktopOrganizationIconPositionSourceSummary, createDesktopOrganizationObservationEvidence, findDesktopOrganizationTargetDisplay, formatDesktopOrganizationIconPositionSourceSummary, normalizeDesktopOrganizationDisplayRect } from '../src/agent/desktopOrganizationObservation';
 
 const displays: DesktopPetDisplayLike[] = [
   {

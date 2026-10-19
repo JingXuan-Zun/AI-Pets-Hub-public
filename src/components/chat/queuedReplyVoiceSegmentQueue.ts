@@ -7,8 +7,12 @@ import {
   runQueuedReplyVoiceSegmentTask,
 } from './queuedReplyVoiceSegmentTask';
 import { type EnqueueQueuedReplyVoiceSegmentOptions } from './queuedReplyVoiceSegmentQueueTypes';
+import { beginVoiceOutputJob } from '../../voice/voiceOutputActivity';
 
 const MAX_PARALLEL_QUEUED_VOICE_PREPARATIONS = 8;
+// A long reply queues many sentences; each one waits for those before it, so its job may
+// legitimately last minutes (every sentence still ends within its own length plus a margin).
+const QUEUED_SEGMENT_JOB_WATCHDOG_MS = 10 * 60_000;
 
 function releaseQueuedVoicePreparationSlot({
   epoch,
@@ -135,6 +139,10 @@ export function enqueueQueuedReplyVoiceSegment({
   }
 
   const queueDepth = beginQueuedReplyVoiceSegment(targetPetId, queuedVoiceSegmentCountRef);
+  // A queued sentence is voice output from the moment it is queued, not only once its audio
+  // is being made: a sentence still waiting its turn looked like silence, so a spoken
+  // permission question (which stops other synthesis) cut her off mid-reply.
+  const endQueuedJob = beginVoiceOutputJob(QUEUED_SEGMENT_JOB_WATCHDOG_MS);
   const preparedPlaybackPromise = prepareQueuedReplyVoiceSegmentWithConcurrency({
     configRef,
     queuedVoicePreparationActiveCountRef,
@@ -159,7 +167,8 @@ export function enqueueQueuedReplyVoiceSegment({
       segmentText,
       targetPetId,
       voicePlaybackTokenRef,
-    }));
+    }))
+    .finally(endQueuedJob);
 
   queuedVoicePlaybackTaskRef.current = queueTask;
 }

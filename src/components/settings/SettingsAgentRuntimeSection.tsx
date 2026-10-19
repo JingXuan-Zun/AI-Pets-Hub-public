@@ -94,22 +94,6 @@ export function SettingsAgentRuntimeSection({ config, noDragRegionStyle, onApply
         </p>
       </div>
 
-      <div className="flex items-start justify-between gap-3 rounded-sm border border-border bg-background/60 px-3 py-2">
-        <div className="min-w-0">
-          <div className="text-xs font-medium text-foreground">桌面操作使用新版 Agent 循环</div>
-          <p className="mt-0.5 text-2xs leading-5 text-muted-foreground">
-            打开应用、点击、登录、切换窗口等任务走新循环：先读窗口文字和控件，编号定位，开始时批准一次；输入、发送、删除、付款仍单独询问。
-          </p>
-        </div>
-        <SettingsToggleSwitch
-          checked={settings.agentDesktopLoopEnabled}
-          hideLabel
-          label="桌面操作使用新版 Agent 循环"
-          onChange={(checked) => apply({ agentDesktopLoopEnabled: checked })}
-          style={noDragRegionStyle}
-        />
-      </div>
-
       <select
         value={settings.agentRuntimeProvider}
         onChange={(event) => apply({ agentRuntimeProvider: event.target.value as PetConfig['settings']['agentRuntimeProvider'] })}
@@ -172,7 +156,7 @@ export function SettingsAgentRuntimeSection({ config, noDragRegionStyle, onApply
             </div>
             <div>
               <Label className="text-2xs text-muted-foreground">Harness 模型</Label>
-              <Input value={settings.deepseekHarnessModel} onChange={(event) => apply({ deepseekHarnessModel: event.target.value })} placeholder="例如 deepseek-v4-flash" style={noDragRegionStyle} />
+              <Input value={settings.deepseekHarnessModel} onChange={(event) => apply({ deepseekHarnessModel: event.target.value })} placeholder="例如 deepseek-flash" style={noDragRegionStyle} />
             </div>
             <div>
               <Label className="text-2xs text-muted-foreground">DeepSeek 兼容 Base URL（可选）</Label>

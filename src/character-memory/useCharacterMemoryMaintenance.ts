@@ -1,4 +1,5 @@
 import { useCallback, useRef, type MutableRefObject } from 'react';
+import { listSharedUserMemory } from './sharedUserMemory';
 import { desktopPetChatStore } from '../chatStore';
 import { buildScopedChatHistory } from '../components/chat/chatScopedContextUtils';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
@@ -157,7 +158,10 @@ export function useCharacterMemoryMaintenance(options: {
         const state = shouldExtract ? readMemoryState(configRef.current, event.roleId) : null;
         if (state) {
           const prompt = buildAutoMemoryExtractionPrompt({
-            items: state.items, messages: roleHistory(), roleName: event.roleName,
+            items: state.items,
+            messages: roleHistory(),
+            roleName: event.roleName,
+            sharedMemories: listSharedUserMemory(configRef.current).map((item) => item.text),
           });
           if (prompt.dialogue.length) {
             const output = await getConfiguredCognitionResponse(

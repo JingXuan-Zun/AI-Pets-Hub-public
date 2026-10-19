@@ -1,3 +1,6 @@
+import { streamConversationWithTools } from '../../agent/conversation/conversationToolStream';
+import type { ConversationToolRuntime } from '../../agent/conversation/conversationTools';
+import type { ConversationToolTurn } from '../../agent/conversation/conversationToolTypes';
 import { useCallback, useRef, type MutableRefObject } from 'react';
 import { desktopPetChatStore } from '../../chatStore';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
@@ -49,6 +52,10 @@ import {
   endReplyTextMouthActivity,
   writeReplyTextMouthActivity,
 } from '../../pet-runtime/performance/replyMouthSignalRuntime';
+
+const STREAMING_SYNC_INTERVAL_MS = 50;
+// How long the reply text must pause before its buffered last words are spoken anyway.
+const SPEECH_IDLE_FLUSH_MS = 900;
 
 async function queueModelAnimationTriggers(options: {
   config: PetConfig;
@@ -280,6 +287,8 @@ export function usePetChatResponseTurn({
       userAttachments?: ChatMessageImageAttachment[];
       userAnimationIntentText?: string;
       groupInteractionPlan?: GroupChatInteractionPlan;
+      /** When set, the model may call platform tools during this reply (conversation loop). */
+      conversationTools?: ConversationToolRuntime | null;
     },
   ) => {
     const {
@@ -307,7 +316,7 @@ export function usePetChatResponseTurn({
     beginReplyTextMouthActivity(targetSlot.id, mouthTextSourceId);
 
     try {
-      const responseStream = await requestPetResponseStream({
+      const requestReplyStream = (toolTurn?: ConversationToolTurn) => requestPetResponseStream({
         isCurrentRequest,
         // Group and infinite-group turns must never trigger external browser
         // search. Search is only available in a private chat when the user
@@ -321,8 +330,12 @@ export function usePetChatResponseTurn({
         participantNames,
         promptText,
         targetSlot,
+        toolTurn,
         userAttachments: options.userAttachments ?? [],
       });
+      const responseStream = options.conversationTools
+        ? streamConversationWithTools({ requestRound: requestReplyStream, runtime: options.conversationTools })
+        : await requestReplyStream();
 
       if (!isCurrentRequest()) {
         return { cancelled: true, finalResponse: '' };
@@ -333,8 +346,43 @@ export function usePetChatResponseTurn({
       let pendingSpeechBuffer = '';
       let hasModelMessage = Boolean(outputMessageId);
       let hasQueuedSpeechSegment = false;
+      // The last words of a burst wait in the buffer for more text. In a task the stream then
+      // pauses (tools run, a permission question is asked), so a line like "我再开一个给你！"
+      // went unspoken while the question took the floor. Once the text pauses, it is spoken.
+      let speechIdleTimer: ReturnType<typeof setTimeout> | null = null;
+      const clearSpeechIdleTimer = () => {
+        if (speechIdleTimer) clearTimeout(speechIdleTimer);
+        speechIdleTimer = null;
+      };
       const speechBracketFilterState = createSpeechBracketFilterState();
+      // Streamed text reaches the chat store at most once per interval. A network read often
+      // carries dozens of chunks at once; writing each one re-rendered the whole pet scene
+      // back to back until React gave up with "Maximum update depth exceeded" and the reply
+      // stopped mid-sentence.
+      let pendingSyncChunk = '';
+      let pendingSyncTimer: ReturnType<typeof setTimeout> | null = null;
+      const flushStreamingSync = () => {
+        if (pendingSyncTimer) {
+          clearTimeout(pendingSyncTimer);
+          pendingSyncTimer = null;
+        }
+        if (!pendingSyncChunk) {
+          return;
+        }
+        const nextChunk = pendingSyncChunk;
+        pendingSyncChunk = '';
+        hasModelMessage = syncStreamingReplyMessage({
+          chatMode: currentChatMode,
+          groupInteractionPlan,
+          hasModelMessage,
+          modelMessageId,
+          nextChunk,
+          responseText,
+          targetSlot,
+        });
+      };
       const cancelStreamingReply = (partialResponse: string) => {
+        flushStreamingSync();
         const visiblePartialResponse = resolveVisibleCharacterResponse(
           partialResponse.trim(),
           currentChatMode,
@@ -375,20 +423,22 @@ export function usePetChatResponseTurn({
           continue;
         }
 
+        clearSpeechIdleTimer();
         responseText += nextChunk;
         writeReplyTextMouthActivity(targetSlot.id, mouthTextSourceId, nextChunk);
 
-        hasModelMessage = syncStreamingReplyMessage({
-          chatMode: currentChatMode,
-          groupInteractionPlan,
-          hasModelMessage,
-          modelMessageId,
-          nextChunk,
-          responseText,
-          targetSlot,
-        });
+        pendingSyncChunk += nextChunk;
+        if (!hasModelMessage) {
+          flushStreamingSync();
+        } else if (!pendingSyncTimer) {
+          pendingSyncTimer = setTimeout(flushStreamingSync, STREAMING_SYNC_INTERVAL_MS);
+        }
 
         if (!shouldAutoSpeakReply) {
+          continue;
+        }
+        // A request error is shown in the chat but never read out in the character's voice.
+        if (/^\s*聊天请求失败/u.test(nextChunk)) {
           continue;
         }
 
@@ -408,7 +458,23 @@ export function usePetChatResponseTurn({
           enqueueReplyVoiceSegment(segment, playbackToken, targetSlot.id);
           hasQueuedSpeechSegment = true;
         });
+        if (pendingSpeechBuffer.trim()) {
+          speechIdleTimer = setTimeout(() => {
+            speechIdleTimer = null;
+            if (!isCurrentRequest() || !pendingSpeechBuffer.trim()) return;
+            flushStreamingReplySpeechTail({
+              enqueueReplyVoiceSegment,
+              pendingSpeechBuffer,
+              playbackToken,
+              targetPetId: targetSlot.id,
+            });
+            pendingSpeechBuffer = '';
+            hasQueuedSpeechSegment = true;
+          }, SPEECH_IDLE_FLUSH_MS);
+        }
       }
+      clearSpeechIdleTimer();
+      flushStreamingSync();
 
       if (!isCurrentRequest()) {
         return cancelStreamingReply(responseText);

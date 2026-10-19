@@ -86,7 +86,7 @@ function createFixture() {
     return module.exports;
   }
   const api = load(path.join(productionRoot, 'mcpStdioClientService.cjs'));
-  assert.equal(modules.size, 32, 'Full root production dependency graph must load');
+  assert.equal(modules.size, 33, 'Full root production dependency graph must load (32 stdio modules + the remote HTTP client)');
   const history = {
     recordSessionEvent: value => events.push(['session', value]),
     recordToolCallStart: value => events.push(['start', value]),
@@ -266,7 +266,7 @@ async function main() {
     try { await run(fixture); fixture.cleanup(); }
     catch (error) { throw new Error(name, { cause: error }); }
   }
-  console.log(`MCP root integration passed: ${scenarios.length} scenarios using all 32 actual production modules; only configuration, process, environment and clock boundaries controlled.`);
+  console.log(`MCP root integration passed: ${scenarios.length} scenarios using all 33 actual production modules; only configuration, process, environment and clock boundaries controlled.`);
 }
 // A referenced real watchdog makes unresolved promises fail instead of silently exiting successfully.
 const watchdog = setTimeout(() => { console.error('MCP root integration did not complete'); process.exit(1); }, 15000);

@@ -1,4 +1,4 @@
-import type { AgentRuntimeProgressEvent } from '../../agent';
+import type { AgentRuntimeProgressEvent } from '../../agent/runtime/agentRuntimeContract';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { markRendererDiagnosticContext } from '../../rendererEventLoopDiagnostics';
 import type { ChatAgentApprovalStatus, ChatAgentRunStatus, ChatMessage } from '../../types';

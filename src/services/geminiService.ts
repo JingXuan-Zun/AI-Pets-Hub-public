@@ -17,6 +17,9 @@ import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
 import { getGeminiClient } from './geminiClient';
 import { requestModelFetch } from './modelTransport';
 import { readOpenAITextStream } from './openAITextStream';
+import { CONVERSATION_TOOL_RULES, type ConversationToolTurn } from '../agent/conversation/conversationToolTypes';
+import { formatLocalNow } from '../productivity/productivityTime';
+import { buildGeminiFunctionDeclarations, buildGeminiToolContents, readGeminiFunctionCalls } from './geminiToolTurn';
 import {
   applyGeminiModelRequestParams,
   normalizeOpenAICompatibleUrl,
@@ -304,6 +307,7 @@ async function* requestOpenAICompatibleResponseStream(
   userAttachments: ChatMessageImageAttachment[] = [],
   signal?: AbortSignal,
   maxTokensOverride?: number,
+  toolTurn?: ConversationToolTurn,
 ) {
   if (!settings.customApiUrl.trim() || !settings.customModelName.trim()) throw new Error('请先配置模型名称和接口地址。');
   const controller = new AbortController();
@@ -317,11 +321,15 @@ async function* requestOpenAICompatibleResponseStream(
         model: settings.customModelName.trim(), stream: true,
         messages: [{ role: 'system', content: systemInstruction },
           ...history.map((msg) => ({ role: mapOpenAICompatibleRole(msg.role), content: buildOpenAICompatibleMessageContent(buildHistoryMessagePromptText(msg)) })),
-          { role: 'user', content: buildOpenAICompatibleMessageContent(userInput, userAttachments, true) }],
+          // Right before the user message so it outweighs the persona's habit of acting things out.
+          ...(toolTurn?.tools.length ? [{ role: 'system', content: `${CONVERSATION_TOOL_RULES}\n现在是 ${formatLocalNow(Date.now())}。` }] : []),
+          { role: 'user', content: buildOpenAICompatibleMessageContent(userInput, userAttachments, true) },
+          ...(toolTurn?.extraMessages ?? [])],
+        ...(toolTurn?.tools.length ? { tools: toolTurn.tools } : {}),
       }),
       signal: combined,
     }, settings.customApiKey);
-    yield* readOpenAITextStream(response);
+    yield* readOpenAITextStream(response, toolTurn?.sink);
   } finally { clearTimeout(timeout); controller.abort(); }
 }
 
@@ -335,7 +343,7 @@ async function requestGeminiResponse(
   signal?: AbortSignal | null,
   maxTokensOverride?: number,
 ) {
-  const aiClient = await getGeminiClient(settings.geminiApiKey);
+  const aiClient = await getGeminiClient(settings.geminiApiKey, settings.geminiApiUrl);
   const config: Record<string, unknown> = {
     systemInstruction,
   };
@@ -379,16 +387,21 @@ async function* requestGeminiResponseStream(
   userAttachments: ChatMessageImageAttachment[] = [],
   signal?: AbortSignal,
   maxTokensOverride?: number,
+  toolTurn?: ConversationToolTurn,
 ) {
-  const aiClient = await getGeminiClient(settings.geminiApiKey);
+  const aiClient = await getGeminiClient(settings.geminiApiKey, settings.geminiApiUrl);
+  const withTools = Boolean(toolTurn?.tools.length);
   const config: Record<string, unknown> = {
-    systemInstruction,
+    systemInstruction: withTools ? `${systemInstruction}\n\n${CONVERSATION_TOOL_RULES}\n现在是 ${formatLocalNow(Date.now())}。` : systemInstruction,
   };
   applyGeminiModelRequestParams(config, settings);
   if (signal) config.abortSignal = signal;
   if (maxTokensOverride) config.maxOutputTokens = maxTokensOverride;
 
-  if (
+  if (toolTurn && withTools) {
+    // Function calling replaces built-in Google Search here; the loop has its own web_search tool.
+    config.tools = buildGeminiFunctionDeclarations(toolTurn.tools);
+  } else if (
     settings.webSearchEnabled
     && settings.llmProvider === 'gemini'
     && settings.webSearchProvider === 'gemini'
@@ -407,10 +420,12 @@ async function* requestGeminiResponseStream(
         role: 'user',
         parts: buildGeminiMessageParts(userInput, userAttachments, true),
       },
+      ...(toolTurn ? buildGeminiToolContents(toolTurn.extraMessages) : []),
     ],
   });
 
   for await (const chunk of response) {
+    if (toolTurn) toolTurn.sink.toolCalls.push(...readGeminiFunctionCalls(chunk, toolTurn.sink.toolCalls.length));
     const text = typeof chunk?.text === 'string' ? chunk.text : '';
     if (text) {
       yield text;
@@ -616,6 +631,7 @@ async function* requestPetResponseStreamInternal(
   browserSearchMode: BrowserSearchMode = 'allow',
   userAttachments: ChatMessageImageAttachment[] = [],
   signal?: AbortSignal,
+  toolTurn?: ConversationToolTurn,
 ) {
   const imageVisionPrompt = await buildChatImageVisionPrompt({
     attachments: userAttachments,
@@ -660,6 +676,8 @@ async function* requestPetResponseStreamInternal(
       settings,
       chatModelAttachments,
       signal,
+      undefined,
+      toolTurn,
     );
     return;
   }
@@ -672,6 +690,8 @@ async function* requestPetResponseStreamInternal(
     settings,
     chatModelAttachments,
     signal,
+    undefined,
+    toolTurn,
   );
 }
 
@@ -721,14 +741,32 @@ export async function* getPetResponseStream(
   browserSearchMode: BrowserSearchMode = 'allow',
   userAttachments: ChatMessageImageAttachment[] = [],
   signal?: AbortSignal,
+  toolTurn?: ConversationToolTurn,
 ) {
   try {
-    if (settings.chatStreamingEnabled === false) {
+    if (settings.chatStreamingEnabled === false && !toolTurn) {
       const response = await requestPetResponseInternal(history, userInput, personality, settings, browserSearchMode, userAttachments, signal);
       if (!signal?.aborted && response) yield response;
       return;
     }
-    yield* requestPetResponseStreamInternal(history, userInput, personality, settings, browserSearchMode, userAttachments, signal);
+    // A connection dropped before anything arrived (seen mid-task with DeepSeek: "模型响应读取失败")
+    // is retried once; tool calls collected by the failed attempt are cleared first. Once text
+    // has been shown a retry would repeat it, so the error stands.
+    let yielded = false;
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        for await (const chunk of requestPetResponseStreamInternal(history, userInput, personality, settings, browserSearchMode, userAttachments, signal, toolTurn)) {
+          yielded = true;
+          yield chunk;
+        }
+        return;
+      } catch (error) {
+        if (signal?.aborted || yielded || attempt >= 2) throw error;
+        console.warn('Chat stream failed before any content, retrying once:', error);
+        if (toolTurn) toolTurn.sink.toolCalls.length = 0;
+        await new Promise((resolve) => { setTimeout(resolve, 1000); });
+      }
+    }
   } catch (error) {
     if (signal?.aborted) return;
     console.error('Chat API Error:', error);

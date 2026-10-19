@@ -1,5 +1,5 @@
 import type { ChatMessage } from '../../../types';
-import type { AgentRuntimeContinuation } from '../../../agent';
+import type { AgentRuntimeContinuation } from '../../../agent/runtime/agentRuntimeContract';
 import { isStoppableAgentRunStatus, isStoppableAgentApprovalStatus } from '../agentProgressMessageProjection';
 import { AGENT_STOPPED_VISIBLE_TEXT, AGENT_STOPPED_DETAIL_TEXT } from './stoppedText';
 import { createStoppedAgentExecutionReceipt } from './executionReceipt';

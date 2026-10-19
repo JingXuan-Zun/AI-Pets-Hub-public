@@ -5,7 +5,7 @@ const ts = require('typescript');
 const root = path.resolve(__dirname, '../electron');
 const expected = [
   'mcpArgumentSchemaValidation.cjs', 'mcpChildEnvironment.cjs', 'mcpFieldPolicy.cjs',
-  'mcpFieldPolicyRules.cjs', 'mcpFieldPolicyResolvedRule.cjs',
+  'mcpFieldPolicyRules.cjs', 'mcpFieldPolicyResolvedRule.cjs', 'mcpHttpClient.cjs',
   'mcpServerConfigLoader.cjs', 'mcpStdioCallPreflight.cjs', 'mcpStdioCallRequest.cjs',
   'mcpStdioCallResults.cjs', 'mcpStdioCallSchema.cjs', 'mcpStdioCancellation.cjs',
   'mcpStdioClientRules.cjs', 'mcpStdioClientService.cjs', 'mcpStdioIdleEviction.cjs',
@@ -50,5 +50,5 @@ function visit(file) {
 }
 visit(path.join(root, 'mcpStdioClientService.cjs'));
 assert.deepEqual([...visited].map(file => path.relative(root, file)).sort(), expected, 'Review all added or removed production dependencies');
-assert.equal(allFunctions.length, 176, 'Review changed production function inventory');
+assert.equal(allFunctions.length, 199, 'Review changed production function inventory'); // +23: remote HTTP client, its runner branch, bare Windows command check
 console.log(`MCP structure passed: ${visited.size} reachable modules, ${allFunctions.length} functions, no circular dependencies, all files <=300, all functions <=50, no budget exceptions.`);

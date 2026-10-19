@@ -42,7 +42,7 @@ async function run(script, timeout, mode, stdout, original, cleanupThrows = fals
     },
     mkdtempSync(prefix) { trace.push(['mkdir', prefix]); if (mode === 'mkdir') throw failure; return 'C:\\controlled\\desktop-pet-input-fixture'; },
     writeFileSync(target, value, encoding) {
-      trace.push(['write', target, digest(value), encoding]); assert.strictEqual(value, script); assert.equal(encoding, 'utf8');
+      trace.push(['write', target, digest(value), encoding]); assert.strictEqual(value, original ? script : '\uFEFF' + script, 'Temp script starts with a BOM so PowerShell 5.1 reads it as UTF-8'); assert.equal(encoding, 'utf8');
       if (mode === 'write') throw failure;
     },
     rmSync(target, options) {

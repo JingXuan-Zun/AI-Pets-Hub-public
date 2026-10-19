@@ -1,12 +1,27 @@
+import {
+  accumulateToolCallDeltas,
+  finishToolCalls,
+  type ConversationToolCall,
+  type ConversationToolSink,
+} from '../agent/conversation/conversationToolTypes';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
 
 /** Decode SSE across arbitrary UTF-8/network boundaries; never expose reasoning deltas. */
-export async function* readOpenAITextStream(response: Response): AsyncGenerator<string> {
+export async function* readOpenAITextStream(response: Response, toolSink?: ConversationToolSink): AsyncGenerator<string> {
   if (!response.ok) throw new Error(`聊天接口请求失败 (${response.status})：${await response.text()}`);
+  const pendingToolCalls = new Map<number, ConversationToolCall>();
+  const hasToolCalls = () => Boolean(toolSink) && pendingToolCalls.size > 0;
+  const flushToolCalls = () => { if (toolSink) toolSink.toolCalls = finishToolCalls(pendingToolCalls); };
   if (response.headers.get('content-type')?.includes('application/json')) {
     const payload = await response.json();
     if (payload.error) throw new Error(payload.error.message || '模型接口返回错误');
+    if (toolSink) accumulateToolCallDeltas(pendingToolCalls, payload?.choices?.[0]?.message?.tool_calls);
+    flushToolCalls();
     const text = extractText(payload);
+    if (hasToolCalls()) {
+      if (text) yield text;
+      return;
+    }
     if (!text) throw createMissingResponseTextError({
       finishReason: resolveFinishReason(payload),
       sawReasoning: hasReasoningContent(payload),
@@ -30,6 +45,7 @@ export async function* readOpenAITextStream(response: Response): AsyncGenerator<
     if (payload.error) throw new Error(payload.error.message || '模型流式请求失败');
     sawReasoning = sawReasoning || hasReasoningContent(payload);
     lastFinishReason = resolveFinishReason(payload) || lastFinishReason;
+    if (toolSink) accumulateToolCallDeltas(pendingToolCalls, payload?.choices?.[0]?.delta?.tool_calls);
     return { done: false, text: extractText(payload) };
   }
   try {
@@ -46,14 +62,16 @@ export async function* readOpenAITextStream(response: Response): AsyncGenerator<
         const event = parseEvent();
         if (event.text) { hasText = true; textLength += event.text.length; yield event.text; }
         if (event.done) {
-          if (!hasText) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
+          flushToolCalls();
+          if (!hasText && !hasToolCalls()) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
           logUnusualStreamEnd(lastFinishReason, textLength, true);
           return;
         }
       }
       if (done) break;
     }
-    if (!hasText) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
+    flushToolCalls();
+    if (!hasText && !hasToolCalls()) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
     logUnusualStreamEnd(lastFinishReason, textLength, false);
   } finally {
     await reader.cancel().catch(() => undefined);

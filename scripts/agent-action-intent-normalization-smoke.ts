@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
 
-import {
-  hasAgentDirectActionIntent,
-  hasAgentExplicitDirectActionIntent,
-} from '../src/agent/index.ts';
+import { hasAgentDirectActionIntent, hasAgentExplicitDirectActionIntent } from '../src/agent/runtime/actionCoverage/requestedActionCoverage';
 import { createAgentRequestedActionCoverage } from '../src/agent/runtime/agentActionCoverage.ts';
 
 assert.equal(

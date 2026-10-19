@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
-import {
-  assessAgentCommandResult,
-  createAgentToolStateSummary,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { assessAgentCommandResult } from '../src/agent/agentResultAssessment';
+import { createAgentToolStateSummary } from '../src/agent/resultAssessment/resultEvidenceAssessment';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 
 const launchCommand: AgentChatCommand = {
   instruction: 'open launcher',

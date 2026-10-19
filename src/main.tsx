@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { installRendererRuntimeLogging } from './frontendRuntimeLogger';
+import { installRendererRuntimeLogging, pushFrontendRuntimeLog } from './frontendRuntimeLogger';
+import { setVoiceOutputJobExpiredListener } from './voice/voiceOutputActivity';
 import { installRendererEventLoopDiagnostics } from './rendererEventLoopDiagnostics';
 import { initializeControlCenterUsageTracking } from './controlCenterUsage';
 import './index.css';
@@ -84,6 +85,7 @@ if (panelMode) {
 }
 
 installRendererRuntimeLogging();
+setVoiceOutputJobExpiredListener(() => pushFrontendRuntimeLog('voice', 'voice output job never ended; released by watchdog'));
 installRendererEventLoopDiagnostics();
 initializeControlCenterUsageTracking();
 

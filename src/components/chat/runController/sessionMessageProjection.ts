@@ -1,4 +1,6 @@
-import { type AgentChatCommand, type AgentExecutionPlan, type AgentRuntimeProgressEvent } from '../../../agent';
+import { type AgentChatCommand } from '../../../agent/agentChatCommand';
+import { type AgentExecutionPlan } from '../../../agent/planning/agentPlanShared';
+import { type AgentRuntimeProgressEvent } from '../../../agent/runtime/agentRuntimeContract';
 import { type ChatMessage } from '../../../types';
 import { type PreparedChatSendRequest } from '../chatMessageSendFlowUtils';
 import { createChatMessageId } from '../multiPetChat';

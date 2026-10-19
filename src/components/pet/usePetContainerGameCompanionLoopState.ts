@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type MutableRefObject } from 'react';
-import { type AgentRuntimeGameCompanionLoopController } from '../../agent';
+import { type AgentRuntimeGameCompanionLoopController } from '../../agent/agentRuntimeExecutor';
 import { type PetConfig } from '../../types';
 import {
   STOPPED_GAME_COMPANION_LOOP_STATUS,

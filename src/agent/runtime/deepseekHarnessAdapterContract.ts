@@ -54,7 +54,7 @@ export function createDeepSeekHarnessRuntimeRequest(options: {
     baseUrl: options.baseUrl ?? '',
     capabilityBridgeReady: options.capabilityBridgeReady === true,
     dshHome: options.dshHome ?? '',
-    model: options.model ?? 'deepseek-v4-flash',
+    model: options.model ?? 'deepseek-flash',
     protocolVersion: DEEPSEEK_HARNESS_ADAPTER_PROTOCOL_VERSION,
     pythonPath: options.pythonPath ?? '',
     sessionId: options.sessionId ?? `ai-pets-${Date.now()}`,

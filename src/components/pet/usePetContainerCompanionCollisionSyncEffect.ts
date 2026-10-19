@@ -1,3 +1,4 @@
+import { markCompanionSettling } from './companionSettleSignal';
 import { useEffect, type MutableRefObject } from 'react';
 import {
   PRIMARY_DESKTOP_PET_SLOT_ID,
@@ -87,6 +88,8 @@ export function usePetContainerCompanionCollisionSyncEffect({
         return;
       }
 
+      // Slide the pushed-aside pet out smoothly instead of snapping (see companionSettleSignal).
+      markCompanionSettling(pet.id);
       nextConfig = applyDesktopPetSlotChanges(nextConfig, pet.id, {
         position: nextPosition,
       });

@@ -12,14 +12,18 @@ import { screenWatchStore, useScreenWatchState } from '../../life-companion/scre
 export function LifeCompanionScreenWatchPill(props: {
   /** Horizontal shift from the shell center to the drawn model's center. */
   centerShift: number;
-  /** From the shell's top edge to just below the drawn model's feet (the visual box is taller). */
-  offsetBelowTop: number;
+  /**
+   * From the shell's center (the pet anchor, which visual bounds are measured from) to just
+   * below the drawn model's feet. Measuring from the center keeps the pill under the feet at
+   * any scale; the shell box itself does not grow with the model.
+   */
+  offsetBelowCenter: number;
   ownerId: string;
 }) {
   const state = useScreenWatchState();
   const ref = useRef<HTMLDivElement>(null);
   const visible = state.asking || state.watching;
-  const { centerShift, offsetBelowTop, ownerId } = props;
+  const { centerShift, offsetBelowCenter, ownerId } = props;
   useEffect(() => {
     if (!visible) return undefined;
     let frame = 0;
@@ -30,14 +34,14 @@ export function LifeCompanionScreenWatchPill(props: {
       if (pill && shell && parent) {
         const box = shell.getBoundingClientRect();
         pill.style.left = `${box.left - parent.left + box.width / 2 + centerShift}px`;
-        pill.style.top = `${box.top - parent.top + offsetBelowTop}px`;
+        pill.style.top = `${box.top - parent.top + box.height / 2 + offsetBelowCenter}px`;
         pill.style.visibility = 'visible';
       }
       frame = requestAnimationFrame(follow);
     };
     frame = requestAnimationFrame(follow);
     return () => cancelAnimationFrame(frame);
-  }, [centerShift, offsetBelowTop, ownerId, visible]);
+  }, [centerShift, offsetBelowCenter, ownerId, visible]);
   if (!visible) return null;
   return (
     <div

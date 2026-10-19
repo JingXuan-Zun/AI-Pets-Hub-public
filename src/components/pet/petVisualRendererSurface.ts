@@ -102,15 +102,22 @@ function constrain3DInteractiveHitVisualBoundsWidth(
   } satisfies PetVisualBounds;
 }
 
+/** Max 3D hit-area height, as a multiple of the fallback extents. */
+const HIT_HEIGHT_FALLBACK_CEILING = 3;
+
 function resolve3DInteractiveHitVisualBounds(
   interactiveVisualBounds: PetVisualBounds,
   fallbackInteractiveVisualBounds: PetVisualBounds,
 ) {
+  // Width stays capped (a T-pose or a raised arm must not cover nearby pets), but height
+  // follows the measured model: capping it at the fallback (about half the shell) cut the
+  // hit area off at the knees, so legs/feet could not be grabbed and the mic pill sat
+  // mid-body. A loose ceiling still guards against the oversized first-frame measurement.
   const cappedVisualBounds = {
-    bottom: Math.min(interactiveVisualBounds.bottom, fallbackInteractiveVisualBounds.bottom),
+    bottom: Math.min(interactiveVisualBounds.bottom, fallbackInteractiveVisualBounds.bottom * HIT_HEIGHT_FALLBACK_CEILING),
     left: Math.min(interactiveVisualBounds.left, fallbackInteractiveVisualBounds.left),
     right: Math.min(interactiveVisualBounds.right, fallbackInteractiveVisualBounds.right),
-    top: Math.min(interactiveVisualBounds.top, fallbackInteractiveVisualBounds.top),
+    top: Math.min(interactiveVisualBounds.top, fallbackInteractiveVisualBounds.top * HIT_HEIGHT_FALLBACK_CEILING),
   } satisfies PetVisualBounds;
 
   return constrain3DInteractiveHitVisualBoundsWidth(

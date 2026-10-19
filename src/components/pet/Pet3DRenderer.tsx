@@ -378,6 +378,7 @@ const Pet3DRenderer = memo(function Pet3DRenderer({
     <Suspense fallback={<div className="h-full w-full" />}>
       <PetModel3D
         bridgeRenderState={bridgeState}
+        fitToPreview={fitToPreview}
         modelRuntimeUrl={runtimeModelUrl}
         onExpressionStateChange={handleExpressionStateChange}
         onMotionStateChange={handleMotionStateChange}

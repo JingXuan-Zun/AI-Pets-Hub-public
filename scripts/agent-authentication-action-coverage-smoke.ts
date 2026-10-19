@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
-import {
-  createAgentAttemptedActionCoverage,
-  createAgentRequestedActionCoverage,
-  createAgentToolCommand,
-} from '../src/agent/index.ts';
+import { createAgentAttemptedActionCoverage } from '../src/agent/runtime/actionCoverage/attemptedActionCoverage';
+import { createAgentRequestedActionCoverage } from '../src/agent/runtime/actionCoverage/requestedActionCoverage';
+import { createAgentToolCommand } from '../src/agent/runtime/agentToolCommandFactory';
 
 const dependencies = {
   getPostActionState: (entry: any) => entry.result.stateSummary?.structuredEvidence?.postActionState ?? '',

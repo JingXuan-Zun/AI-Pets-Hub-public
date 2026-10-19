@@ -15,10 +15,12 @@ export interface NeuralPersonaNodeDraft {
   expiresAt?: number;
   groupId?: string;
   influenceSummary: string;
+  normalizedContent?: string;
   nodeId: string;
   parentNodeId?: string;
   plasticity: number;
   protected: boolean;
+  retrievalSummary?: string;
   scope: NeuralPersonaScope;
   sourceRef?: string;
   stability: number;

@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { callAvailableAgentMcpTool, listAvailableAgentMcpTools } from '../src/agent';
+import { callAvailableAgentMcpTool, listAvailableAgentMcpTools } from '../src/agent/agentMcpRegistry';
 import { setAgentExternalMcpRuntimeOverride } from '../src/agent/agentExternalMcpBridge';
 import { applyMcpPolicyPresetToConfigText } from '../src/components/settings/settingsMcpPolicyBulkUtils';
 

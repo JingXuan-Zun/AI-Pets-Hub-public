@@ -1,22 +1,17 @@
-import type {
-  AgentChatCommand,
-  AgentChatFollowUpAction,
-  AgentChatResultAssessment,
-  AgentActionRisk,
-  AgentDesktopObservationStats,
-  AgentExecutionPlan,
-  AgentPermissionRouteStatus,
-  AgentPlannerCommandStep,
-  AgentRuntimeContinuation,
-  AgentToolStateSummary,
-} from './agent';
+import type { AgentChatCommand, AgentChatFollowUpAction, AgentChatResultAssessment, AgentDesktopObservationStats, AgentPlannerCommandStep, AgentToolStateSummary } from './agent/agentChatCommand';
+import type { AgentActionRisk } from './agent/agentCapabilityTypes';
+import type { AgentExecutionPlan } from './agent/planning/agentPlanShared';
+import type { AgentPermissionRouteStatus } from './agent/agentPermissionRouter';
+import type { AgentRuntimeContinuation } from './agent/runtime/agentRuntimeContract';
 import type { PetLifeCompanionSettings } from './life-companion/lifeCompanionSettings';
+import type { ProductivitySettings } from './productivity/productivityTypes';
+import type { ComfyUiSettings } from './comfyui/comfyUiSettings';
 import type { Live2DRuntimeProfileConfigV1 } from './pet-runtime/live2d/live2dRuntimeProfile';
 import type { GroupMemoryRepositoryData } from './group-memory';
 import type { GroupTopicRepositoryData } from './group-topic';
 import type { DirectedRelationshipRepositoryData } from './character-relationship';
 import type { NeuralMemoryProposal } from './neural-memory/neuralMemoryProposalTypes';
-import type { CharacterMemoryState } from './character-memory/characterMemoryTypes';
+import type { CharacterMemoryItem, CharacterMemoryState } from './character-memory/characterMemoryTypes';
 import type { ExpressionReplySettings } from './expression/expressionSettings';
 
 export type ModelType = '2d' | '3d' | 'live2d';
@@ -165,7 +160,7 @@ export type PetModelMotionKey =
   | 'hover-hand-left'
   | 'hover-hand-right';
 
-export type PetModelMotionAssetFormat = 'exp3' | 'fbx' | 'glb' | 'gltf' | 'motion3' | 'vrma';
+export type PetModelMotionAssetFormat = 'exp3' | 'fbx' | 'glb' | 'gltf' | 'motion3' | 'vmd' | 'vrma';
 
 export type PetModelMotionBindingKind = 'expression' | 'motion';
 
@@ -352,8 +347,6 @@ export interface PetConfig {
     engineType: string;
     llmProvider: LlmProvider;
     agentRuntimeProvider: AgentRuntimeProviderId;
-    /** Desktop operation tasks use the new observe→decide→act→verify loop (src/agent/loop). */
-    agentDesktopLoopEnabled: boolean;
     deepseekHarnessPythonPath: string;
     deepseekHarnessWorkspace: string;
     deepseekHarnessHome: string;
@@ -362,6 +355,8 @@ export interface PetConfig {
     deepseekHarnessApiKey: string;
     llmModel: string;
     geminiApiKey: string;
+    /** Optional Gemini relay endpoint; empty uses the official one. */
+    geminiApiUrl: string;
     customApiUrl: string;
     customApiKey: string;
     customModelName: string;
@@ -383,6 +378,14 @@ export interface PetConfig {
     gameCompanionGameName: string;
     gameCompanionGameDescription: string;
     globalKnowledgeBase: string;
+    /** “关于你”：所有角色共享的用户记忆，只有用户批准或手动编辑后才写入。 */
+    sharedUserMemory: CharacterMemoryItem[];
+    /** Reminders, pomodoro and todos (the productivity plugin). */
+    productivity: ProductivitySettings;
+    /** ComfyUI connection and imported workflows (the character's drawing plugin). */
+    comfyUi: ComfyUiSettings;
+    /** Optional access token for a protected or cloud ComfyUI server. */
+    comfyUiApiKey: string;
     webSearchEnabled: boolean;
     webLearningEnabled: boolean;
     webSearchProvider: WebSearchProvider;
@@ -465,6 +468,8 @@ export interface PetConfig {
     chatFontWeight: number;
     chatFontSize: number;
     chatBubbleTransparency: number;
+    /** 界面玻璃透明度（0–100），越大越透明，100 = 完全透明。 */
+    uiGlassTransparency: number;
     chatBubbleEnabled: boolean;
     chatStreamingEnabled: boolean;
     groupChatTurnDelayMs: number;
@@ -656,8 +661,11 @@ export interface ChatAgentApproval {
 export interface ChatAgentLoopRun {
   durationMs?: number | null;
   goal: string;
+  /** A step waiting for the user's yes/no, answered on this card (button, typed or spoken). */
+  pendingApproval?: { detail: string; id: string; title: string } | null;
+  startedAt?: number | null;
   status: 'running' | 'done' | 'needs-user' | 'failed' | 'cancelled' | 'budget';
-  steps: Array<{ changed: boolean | null; index: number; result?: string | null; text: string }>;
+  steps: Array<{ changed: boolean | null; index: number; key?: string; result?: string | null; status?: 'running' | 'done' | 'failed' | 'waiting'; text: string }>;
   summary?: string | null;
 }
 
@@ -744,6 +752,12 @@ export interface ChatMessage {
   createdAt?: number;
   petId?: string | null;
   petName?: string | null;
+  /**
+   * The private conversation this message belongs to when someone else speaks in it: a
+   * character the user handed a task to ("让小玲去…") answers inside the chatting
+   * character's conversation. Defaults to petId.
+   */
+  scopePetId?: string | null;
   replyToPetId?: string | null;
   replyToPetName?: string | null;
   replyToPetIds?: string[];
@@ -756,7 +770,7 @@ export interface ChatMessage {
   storyMessageKind?: 'character' | 'narration';
 }
 
-export type PetAutoSpeechTrigger =
+export type PetAutoSpeechTrigger = (
   | {
       kind: 'affection-milestone';
       milestone: number;
@@ -771,4 +785,8 @@ export type PetAutoSpeechTrigger =
       kind: 'high-hunger-coax';
       hungryDurationMs: number;
       stats: PetStats;
-    };
+    }
+) & {
+  /** Which character speaks (default: the main character). */
+  petId?: string | null;
+};

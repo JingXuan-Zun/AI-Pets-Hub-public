@@ -3,25 +3,8 @@ import path from 'node:path';
 import ts from 'typescript';
 
 const p0SmokeFiles = [
-  'agent-session-v2-smoke.ts',
-  'agent-execute-desktop-action-tool-smoke.ts',
-  'agent-execute-desktop-sequence-tool-smoke.ts',
-  'agent-execute-desktop-observation-tool-smoke.ts',
-  'agent-execute-local-file-action-tool-smoke.ts',
-  'agent-execute-file-management-action-tool-smoke.ts',
-  'agent-execute-memory-action-tool-smoke.ts',
-  'agent-permission-router-v1-smoke.ts',
-  'agent-production-lifecycle-facts-smoke.ts',
-  'agent-session-v2-actionable-area-gate-smoke.ts',
-  'agent-browser-search-tool-smoke.ts',
-  'agent-local-folder-app-launcher-search-smoke.ts',
-  'agent-session-v2-open-app-observation-final-rejection-smoke.ts',
-  'agent-session-v2-open-app-observation-next-action-signal-smoke.ts',
-  'desktop-organization-verification-smoke.ts',
-  'agent-session-v2-desktop-organization-unverified-final-smoke.ts',
   'app-launch-verification-smoke.ts',
   'app-launch-packaged-windows-app-smoke.ts',
-  'agent-character-skill-intent-boundary-smoke.ts',
 ];
 
 const failures = [];

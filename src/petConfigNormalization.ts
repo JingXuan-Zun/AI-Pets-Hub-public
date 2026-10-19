@@ -17,12 +17,16 @@ import { normalizeGroupTopicRepository } from './group-topic';
 import { normalizeDirectedRelationshipRepository } from './character-relationship';
 import { normalizeNeuralMemoryProposals } from './neural-memory/neuralMemoryProposalTypes';
 import { normalizeCharacterMemoryState } from './character-memory/characterMemoryTypes';
+import { migrateAgentMemoryLines } from './character-memory/sharedUserMemory';
+import { normalizeProductivitySettings } from './productivity/productivitySettings';
+import { normalizeComfyUiSettings } from './comfyui/comfyUiSettings';
 import {
   clampChatAvatarDisplaySize,
   clampChatBackgroundImageSize,
   clampChatBackgroundImageVisibility,
   clampChatFontSize,
   clampChatBubbleTransparency,
+  clampUiGlassTransparency,
   clampChatFontWeight,
 } from './chatAppearanceSettings';
 import {
@@ -337,6 +341,7 @@ const VALID_PET_MODEL_MOTION_FORMATS = new Set<PetModelMotionAssetFormat>([
   'glb',
   'gltf',
   'motion3',
+  'vmd',
   'vrma',
 ]);
 const MAX_NORMALIZED_MOTION_DURATION_MS = 120000;
@@ -484,17 +489,32 @@ function normalizeCompanionPets(
   customModelPresets: PetModelPreset[],
 ) {
   const rawCompanionPets = Array.isArray(input) ? input : DEFAULT_CONFIG.companionPets;
-  const companionPetCount = Math.min(
-    MAX_COMPANION_PET_COUNT,
-    rawCompanionPets.length,
-  );
+  // Pets are matched by id, never by position: after deleting pet 2, positional matching
+  // turned [3, 4, 5] into [3, 3, 4], so pet 5 vanished and pet 3 could not be deleted.
+  const rawId = (pet: CompanionPetConfig | null | undefined) => (typeof pet?.id === 'string' ? pet.id.trim() : '');
+  const seenIds = new Set<string>();
+  const uniqueCompanionPets = rawCompanionPets.filter((pet) => {
+    const id = rawId(pet);
+    if (!id) return true;
+    if (seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  }).slice(0, MAX_COMPANION_PET_COUNT);
+  const createUnusedDefaultPet = (index: number) => {
+    for (let slotNumber = 2; ; slotNumber += 1) {
+      const candidate = createDefaultCompanionPet(slotNumber, index);
+      if (!seenIds.has(candidate.id)) {
+        seenIds.add(candidate.id);
+        return candidate;
+      }
+    }
+  };
 
-  return Array.from({ length: companionPetCount }, (_, index) => {
-    const fallbackPet = DEFAULT_CONFIG.companionPets[index]
-      ?? createDefaultCompanionPet(index + 2, index);
-    const nextPet = rawCompanionPets.find((pet) => pet?.id === fallbackPet.id)
-      ?? rawCompanionPets[index]
-      ?? fallbackPet;
+  return uniqueCompanionPets.map((rawPet, index) => {
+    const id = rawId(rawPet);
+    const fallbackPet = (id ? DEFAULT_CONFIG.companionPets.find((pet) => pet.id === id) : undefined)
+      ?? (id ? { ...createDefaultCompanionPet(Number(/^companion-pet-(\d+)$/u.exec(id)?.[1] ?? index + 2), index), id } : createUnusedDefaultPet(index));
+    const nextPet = rawPet ?? fallbackPet;
     const nextModelType = VIDEO_MODEL_URL_PATTERN.test(typeof nextPet.modelUrl === 'string' ? nextPet.modelUrl.trim() : '')
       ? '2d'
       : normalizeModelType(nextPet.modelType);
@@ -547,6 +567,14 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
     : normalizeModelType(nextConfig.modelType);
   const normalizedCustomModelPresets = normalizeCustomModelPresets(nextConfig.customModelPresets);
   const rawSettings = (nextConfig.settings ?? {}) as Partial<PetConfig['settings']> & Record<string, unknown>;
+  // The retired Agent global memory lived as "Agent memory ..." lines in the global
+  // knowledge base; it now belongs to the shared “关于你” memory.
+  const sharedMemoryMigration = migrateAgentMemoryLines({
+    globalKnowledgeBase: typeof rawSettings.globalKnowledgeBase === 'string'
+      ? rawSettings.globalKnowledgeBase
+      : DEFAULT_CONFIG.settings.globalKnowledgeBase,
+    sharedUserMemory: rawSettings.sharedUserMemory,
+  });
   const {
     activeSettings: activeRawSettings,
     legacyAgentRuntimeMode,
@@ -634,13 +662,14 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       agentRuntimeProvider: rawSettings.agentRuntimeProvider === 'deepseek-harness'
         ? 'deepseek-harness'
         : 'native',
-      agentDesktopLoopEnabled: typeof rawSettings.agentDesktopLoopEnabled === 'boolean'
-        ? rawSettings.agentDesktopLoopEnabled
-        : DEFAULT_CONFIG.settings.agentDesktopLoopEnabled,
       deepseekHarnessPythonPath: normalizeTrimmedSettingString(rawSettings.deepseekHarnessPythonPath, ''),
       deepseekHarnessWorkspace: normalizeTrimmedSettingString(rawSettings.deepseekHarnessWorkspace, ''),
       deepseekHarnessHome: normalizeTrimmedSettingString(rawSettings.deepseekHarnessHome, ''),
-      deepseekHarnessModel: normalizeTrimmedSettingString(rawSettings.deepseekHarnessModel, 'deepseek-v4-flash') || 'deepseek-v4-flash',
+      // DeepSeek's API now names its flash model `deepseek-flash` (V4.1 Flash); the old default
+      // `deepseek-v4-flash` is an alias that may be dropped, so a saved old default moves over.
+      deepseekHarnessModel: ((value) => (value === 'deepseek-v4-flash' ? 'deepseek-flash' : value))(
+        normalizeTrimmedSettingString(rawSettings.deepseekHarnessModel, 'deepseek-flash') || 'deepseek-flash',
+      ),
       deepseekHarnessBaseUrl: normalizeTrimmedSettingString(rawSettings.deepseekHarnessBaseUrl, ''),
       deepseekHarnessApiKey: normalizeTrimmedSettingString(rawSettings.deepseekHarnessApiKey, ''),
       avatar3dRuntimeBackend: rawSettings.avatar3dRuntimeBackend === 'unity'
@@ -658,12 +687,18 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       desktopMouseInteractionEnabled: typeof rawSettings.desktopMouseInteractionEnabled === 'boolean'
         ? rawSettings.desktopMouseInteractionEnabled
         : DEFAULT_CONFIG.settings.desktopMouseInteractionEnabled,
-      globalKnowledgeBase: typeof rawSettings.globalKnowledgeBase === 'string'
-        ? rawSettings.globalKnowledgeBase
-        : DEFAULT_CONFIG.settings.globalKnowledgeBase,
+      globalKnowledgeBase: sharedMemoryMigration.globalKnowledgeBase,
+      sharedUserMemory: sharedMemoryMigration.sharedUserMemory,
+      productivity: normalizeProductivitySettings(rawSettings.productivity),
+      comfyUi: normalizeComfyUiSettings(rawSettings.comfyUi),
+      comfyUiApiKey: typeof rawSettings.comfyUiApiKey === 'string' ? rawSettings.comfyUiApiKey : '',
       geminiApiKey: normalizeTrimmedSettingString(
         rawSettings.geminiApiKey,
         DEFAULT_CONFIG.settings.geminiApiKey,
+      ),
+      geminiApiUrl: normalizeTrimmedSettingString(
+        rawSettings.geminiApiUrl,
+        DEFAULT_CONFIG.settings.geminiApiUrl,
       ),
       customModelCapabilities: normalizeModelCapabilities(rawSettings.customModelCapabilities),
       customModelRequestParams: normalizeModelRequestParams(rawSettings.customModelRequestParams),
@@ -813,6 +848,7 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       chatFontWeight: normalizeChatFontWeight(rawSettings.chatFontWeight),
       chatFontSize: normalizeChatFontSize(rawSettings.chatFontSize),
       chatBubbleTransparency: clampChatBubbleTransparency(rawSettings.chatBubbleTransparency),
+      uiGlassTransparency: clampUiGlassTransparency(rawSettings.uiGlassTransparency),
       chatBubbleEnabled: rawSettings.chatBubbleEnabled !== false,
       chatStreamingEnabled: rawSettings.chatStreamingEnabled !== false,
       expressionReply: normalizeExpressionReplySettings(rawSettings.expressionReply),

@@ -2,14 +2,12 @@ import { type AgentChatCommandResult, type AgentToolCallCommand } from './agentC
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
 import { type PetConfig } from '../types';
 import {
-  mergeCharacterAnimationSkillResult,
-  runCharacterAnimationSkill,
-} from './agentCharacterSkillRuntime';
-import {
   callAvailableAgentMcpTool,
+  isDeclaredReadOnlyMcpTool,
   listAvailableAgentMcpServers,
   listAvailableAgentMcpTools,
 } from './agentMcpRegistry';
+import { parseAgentMcpPolicyConfig, resolveAgentMcpPolicy } from './agentMcpPolicy';
 import { loadExternalAgentMcpConfig } from './agentExternalMcpBridge';
 import { createAgentMcpExecutionReceipt } from './agentMcpExecutionReceipt';
 import {
@@ -17,16 +15,17 @@ import {
   createAgentMcpToolRiskLine,
 } from './agentMcpRiskSummary';
 import {
-  listAgentSkills,
-  resolveAgentSkillExecution,
-} from './agentSkillRegistry';
-import {
-  getToolBooleanInput,
   getToolNumberInput,
   getToolStringInput,
 } from './agentRuntimeToolPreparation';
 import { createAgentRuntimeResult } from './agentRuntimeToolResult';
-import { loadEnabledAgentImportedSkills, matchesAgentImportedSkillQuery, resolveAgentImportedSkillInstructions, type AgentImportedSkillScope } from './agentImportedSkillRuntime';
+import {
+  describeAgentImportedSkill,
+  loadEnabledAgentImportedSkills,
+  matchesAgentImportedSkillQuery,
+  resolveAgentImportedSkillInstructions,
+  type AgentImportedSkillScope,
+} from './agentImportedSkillRuntime';
 
 interface AgentSkillRuntimeContext extends AgentImportedSkillScope {
   configRef: { current: PetConfig };
@@ -63,81 +62,48 @@ function registerMcpAbortCancel(signal: AbortSignal | null | undefined, requestI
   return () => signal.removeEventListener('abort', cancelMcpToolCall);
 }
 
+// Skills are the ones the user imported and turned on for the character: instruction documents
+// the character reads and then follows with its normal tools. (The old built-in "skills" only
+// named tools the conversation loop now offers directly, and were removed.)
 export function executeListAgentSkills(toolCall: AgentToolCallCommand, scope: AgentImportedSkillScope = {}) {
   const query = getToolStringInput(toolCall, ['query']);
   const limit = Math.max(1, Math.min(100, Math.round(getToolNumberInput(toolCall, 'limit') ?? 100)));
-  const skills = [
-    ...listAgentSkills({ query }),
-    ...loadEnabledAgentImportedSkills(scope).filter((skill) => matchesAgentImportedSkillQuery(skill, query))
-      .map((skill) => ({ ...skill, stage: 'imported' })),
-  ].slice(0, limit);
-  const lines = skills.map((skill) => (
-    `- ${skill.id}: ${skill.title} (${skill.stage}, ${skill.risk})`
-  ));
-
+  const skills = loadEnabledAgentImportedSkills(scope)
+    .filter((skill) => matchesAgentImportedSkillQuery(skill, query))
+    .slice(0, limit);
+  if (!skills.length) {
+    return createSkillResult(
+      [query ? `没有找到和“${query}”相关的技能。` : '这个角色还没有启用技能，可以在设置的技能页导入并给角色启用。'],
+      ['Listed Agent skills: none'],
+    );
+  }
   return createSkillResult(
-    [`找到 ${skills.length} 个 Agent Skill。`, ...lines],
-    [`Listed Agent skills: ${skills.map((skill) => skill.id).join(', ') || 'none'}`],
+    [`找到 ${skills.length} 个技能：`, ...skills.map((skill) => `- ${skill.id}：${describeAgentImportedSkill(skill)}`)],
+    [`Listed Agent skills: ${skills.map((skill) => skill.id).join(', ')}`],
   );
-}
-
-function createAgentSkillInput(toolCall: AgentToolCallCommand) {
-  return {
-    dryRun: getToolBooleanInput(toolCall, 'dryRun') ?? true,
-    inputJson: getToolStringInput(toolCall, ['inputJson']),
-    intent: getToolStringInput(toolCall, ['intent']),
-    skillId: getToolStringInput(toolCall, ['skillId']),
-    target: getToolStringInput(toolCall, ['target']),
-  };
-}
-
-async function resolveRuntimeCharacterMotionBindings() {
-  const module = await import('../pet-runtime/content/petModelMotionBindings');
-  return module.resolvePetModelMotionBindingsForModel;
 }
 
 export async function executeAgentSkill(
   runtime: AgentSkillRuntimeContext,
   toolCall: AgentToolCallCommand,
 ) {
-  const skillInput = createAgentSkillInput(toolCall);
+  const skillInput = {
+    inputJson: getToolStringInput(toolCall, ['inputJson']),
+    intent: getToolStringInput(toolCall, ['intent']),
+    skillId: getToolStringInput(toolCall, ['skillId']),
+  };
   const importedResult = resolveAgentImportedSkillInstructions(runtime, skillInput);
   if (importedResult) return createAgentRuntimeResult(importedResult);
-  const baseResult = resolveAgentSkillExecution(skillInput);
-  const resolveMotionBindings = baseResult.ok && baseResult.skill?.id === 'character.animation'
-    ? await resolveRuntimeCharacterMotionBindings()
-    : null;
-  const result = baseResult.ok && baseResult.skill?.id === 'character.animation'
-    ? mergeCharacterAnimationSkillResult(
-        baseResult,
-        runCharacterAnimationSkill({
-          config: runtime.configRef.current,
-          dryRun: skillInput.dryRun,
-          input: baseResult.input,
-          intent: skillInput.intent,
-          resolveMotionBindings: ({ customModelPresets, modelType, modelUrl }) => (
-            resolveMotionBindings?.(modelType, modelUrl, customModelPresets) ?? []
-          ),
-          target: skillInput.target,
-        }),
-      )
-    : baseResult;
-  const lines = [
-    result.ok ? `Skill 已解析：${result.skill?.id}` : result.summary,
-    result.marker ? `标记：${result.marker}` : '',
-    `推荐工具：${result.preferredToolNames.length ? result.preferredToolNames.join(', ') : '暂无'}`,
-    `输入：${formatJson(result.input)}`,
-  ].filter(Boolean);
+  const message = `没有找到技能“${skillInput.skillId}”，或它没有给这个角色启用。先用 list 看看有哪些。`;
+  return createAgentRuntimeResult({ errorText: message, observations: [], ok: false, responseText: message, verification: null });
+}
 
-  return createAgentRuntimeResult({
-    errorText: result.ok ? null : result.summary,
-    observations: result.observations,
-    ok: result.ok,
-    responseText: lines.join('\n'),
-    verification: result.ok
-      ? 'Skill execution was resolved locally; character.animation can queue existing animation triggers when dryRun is false.'
-      : null,
-  });
+// One short line per tool, grouped by server, so a long list still fits what the character reads:
+// name(parameters, * = required), read-only or asks first, and a trimmed description.
+function describeMcpToolParameters(inputSchema: Record<string, unknown>) {
+  const properties = inputSchema.properties && typeof inputSchema.properties === 'object' ? Object.keys(inputSchema.properties as object) : [];
+  const required = new Set(Array.isArray(inputSchema.required) ? inputSchema.required.filter((key): key is string => typeof key === 'string') : []);
+  return properties.slice(0, 8).map((key) => `${key}${required.has(key) ? '*' : ''}`).join(', ');
 }
 
 export async function executeListMcpTools(toolCall: AgentToolCallCommand) {
@@ -145,13 +111,22 @@ export async function executeListMcpTools(toolCall: AgentToolCallCommand) {
   const tools = await listAvailableAgentMcpTools(serverId || null);
   const servers = await listAvailableAgentMcpServers();
   const mcpConfig = await loadExternalAgentMcpConfig();
-  const serverText = serverId || 'all servers';
-  const lines = tools.map((tool) => (
-    `- ${tool.serverId}/${tool.name}: ${tool.title} [${createAgentMcpToolPolicyRiskLine(tool, mcpConfig)}]`
-  ));
+  const policyConfig = parseAgentMcpPolicyConfig(mcpConfig);
+  const shownServers = servers.filter((server) => !serverId || server.id === serverId);
+  const lines = shownServers.flatMap((server) => {
+    const serverTools = tools.filter((tool) => tool.serverId === server.id);
+    if (!serverTools.length) return [`【${server.id}】没有可用的工具（可能没启动成功）`];
+    return [`【${server.id}】`, ...serverTools.map((tool) => {
+      const access = !resolveAgentMcpPolicy(policyConfig, { serverId: tool.serverId, toolName: tool.name }).allowed
+        ? '已禁用'
+        : isDeclaredReadOnlyMcpTool(tool.serverId, tool.name) ? '只读' : '需确认';
+      const description = (tool.description || tool.title || '').replace(/\s+/gu, ' ').trim().slice(0, 80);
+      return `- ${tool.name}(${describeMcpToolParameters(tool.inputSchema ?? {})}) ${access}${description ? ` — ${description}` : ''}`;
+    })];
+  });
 
   return createSkillResult(
-    [`找到 ${tools.length} 个 MCP 工具（${serverText}）。`, ...lines],
+    [`找到 ${tools.length} 个 MCP 工具（${serverId || '全部扩展'}）。调用时 server_id 用【】里的名字，tool_name 用工具名。`, ...lines],
     [
       `MCP servers: ${servers.map((server) => server.id).join(', ')}`,
       `MCP tools listed: ${tools.map((tool) => `${tool.serverId}/${tool.name}`).join(', ') || 'none'}`,

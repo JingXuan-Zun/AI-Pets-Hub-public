@@ -5,6 +5,7 @@ const {
   initializeMcpSession,
   sendRpc,
 } = require('./mcpStdioSession.cjs');
+const { callHttpMcpTool } = require('./mcpHttpClient.cjs');
 
 function createActiveToolCall(activeToolCalls, requestId, serverId, name, close) {
   if (!requestId) {
@@ -46,7 +47,20 @@ async function runWithOneShotSession(options) {
   }, options.server.timeoutMs);
 }
 
+async function runWithHttp(options) {
+  const controller = new AbortController();
+  options.clearActiveToolCallRef.current = createActiveToolCall(
+    options.activeToolCalls,
+    options.requestId,
+    options.serverId,
+    options.name,
+    () => controller.abort(new Error('MCP call cancelled')),
+  );
+  return callHttpMcpTool(options.server, options.name, parseJsonObject(options.arguments), controller.signal);
+}
+
 async function runMcpStdioToolCall(options) {
+  if (options.server.transport === 'http') return runWithHttp(options);
   return options.sessionPool
     ? runWithPooledSession(options)
     : runWithOneShotSession(options);

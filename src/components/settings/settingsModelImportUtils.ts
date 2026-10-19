@@ -11,12 +11,13 @@ import {
   resolveLive2DExpressionFormatFromFileName,
   resolveLive2DMotionFormatFromFileName,
 } from '../../pet-runtime/live2d/live2dModelSupport';
+import { readVmdDurationMs } from '../../pet-runtime/avatar3d/avatar3dMmdRuntime';
 
 export const MAX_CUSTOM_PET_MODELS = 20;
 export const MAX_CUSTOM_2D_MODEL_EDGE = 1024;
 export const MAX_CUSTOM_3D_MODEL_FILE_SIZE_BYTES = 2 * 1024 * 1024;
-const SUPPORTED_CUSTOM_MOTION_FILE_FORMATS = ['vrma', 'fbx', 'glb', 'gltf'] as const satisfies PetModelMotionAssetFormat[];
-const SUPPORTED_CUSTOM_MOTION_ACCEPT_ATTRIBUTE = '.vrma,.fbx,.glb,.gltf,.motion3.json,.exp3.json';
+const SUPPORTED_CUSTOM_MOTION_FILE_FORMATS = ['vrma', 'vmd', 'fbx', 'glb', 'gltf'] as const satisfies PetModelMotionAssetFormat[];
+const SUPPORTED_CUSTOM_MOTION_ACCEPT_ATTRIBUTE = '.vrma,.vmd,.fbx,.glb,.gltf,.motion3.json,.exp3.json';
 const LIVE2D_MOTION_IMPORT_HELPER_ACCEPT_ATTRIBUTE = '.can3,.cdi3.json,.vtube.json';
 type SupportedCustom3DMotionFormat = (typeof SUPPORTED_CUSTOM_MOTION_FILE_FORMATS)[number];
 
@@ -262,6 +263,14 @@ export async function inspectCustomMotionMetadata(
         durationMs: format === 'motion3' && Number.isFinite(durationSeconds) && durationSeconds > 0
           ? Math.round(durationSeconds * 1000)
           : null,
+      };
+    }
+
+    if (format === 'vmd') {
+      // Matches the clip name the 3D runtime gives a loaded VMD file.
+      return {
+        clipNames: normalizeMotionClipNames([file.name.replace(/\.vmd$/iu, '').trim()]),
+        durationMs: readVmdDurationMs(await file.arrayBuffer()),
       };
     }
 

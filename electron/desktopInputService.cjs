@@ -6,11 +6,12 @@ const { renderScriptFragments } = require('./desktopInputScriptFragments.cjs');
 const { createMouseInputPreflight } = require('./desktopInputMousePreflight.cjs');
 const { createMouseInputPositionCheck, createMouseInputPositionRecovery } = require('./desktopInputMousePosition.cjs');
 const { prepareMouseInput } = require('./desktopInputMousePreparation.cjs');
-const { createMoveMouseScript, createDragScript } = require('./desktopInputPointerScripts.cjs');
+const { createMoveMouseScript, createDragScript, createScrollScript } = require('./desktopInputPointerScripts.cjs');
 const { createTextScript, createSendKeysScript, createHotkeyScript } = require('./desktopInputKeyboardScripts.cjs');
 const { createBaseInputPowerShell } = require('./desktopInputBaseScript.cjs');
 const { createDesktopInputPowerShellRunner } = require('./desktopInputPowerShellRunner.cjs');
 const { createDesktopInputCoordinateAdapter } = require('./desktopInputCoordinates.cjs');
+const { normalizeDesktopInputAction } = require('./desktopInputRules.cjs');
 
 const { execFile } = require('child_process');
 const { mkdtempSync, rmSync, writeFileSync } = require('fs');
@@ -57,6 +58,8 @@ function createDesktopInputScript(action, request) {
       });
     case 'drag':
       return createDragScript(request);
+    case 'scroll':
+      return createScrollScript(request);
     case 'type_text':
       return createTextScript(request);
     case 'send_keys':
@@ -68,12 +71,19 @@ function createDesktopInputScript(action, request) {
   }
 }
 
-function createDesktopInputService({ log, screen } = {}) {
+function createDesktopInputService({ log, screen, elevatedBroker } = {}) {
   const createNativeScreenInputRequest = createDesktopInputCoordinateAdapter({ log, screen });
 
-  const executeDesktopInput = createDesktopInputExecutor({
+  const executeUnelevatedInput = createDesktopInputExecutor({
     log, process, createNativeScreenInputRequest, createDesktopInputScript, runPowerShellScript, DESKTOP_INPUT_TIMEOUT_MS,
   });
+  // While the user-approved elevated helper runs, input goes through it, so windows that run
+  // as administrator receive it too.
+  const executeDesktopInput = async (request = {}) => {
+    const action = normalizeDesktopInputAction(request?.action ?? request?.inputAction ?? request?.operation);
+    if (!action || !elevatedBroker?.isActive()) return executeUnelevatedInput(request);
+    return elevatedBroker.execute(action, createNativeScreenInputRequest(action, request));
+  };
 
   return {
     executeDesktopInput,

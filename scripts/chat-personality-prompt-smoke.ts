@@ -82,7 +82,18 @@ const memoryPrompt = buildCharacterReplySystemInstruction(
 );
 
 assert.ok(memoryPrompt.includes('角色上下文'), 'memory-related chat should include the updated selective context heading');
-assert.ok(memoryPrompt.includes('人格提示词 > 角色知识总纲 > 角色记忆库 > 聊天记忆库 > 自动记忆 > 过往对话摘要 > 全局知识库'));
+assert.ok(memoryPrompt.includes('人格提示词 > 角色知识总纲 > 角色记忆库 > 关于你（所有角色共享）> 聊天记忆库 > 自动记忆 > 过往对话摘要 > 全局知识库'));
+assert.ok(!memoryPrompt.includes('【关于你（所有角色共享）】'), 'an empty shared memory adds no section');
+const sharedMemoryPrompt = buildCharacterReplySystemInstruction(
+  personality,
+  {
+    ...settings,
+    sharedUserMemory: [{ createdAt: 1, id: 'shared-1', kind: 'profile', source: 'manual', text: '用户对芒果过敏', updatedAt: 1 }],
+  },
+  history,
+  '今天吃点什么好？',
+);
+assert.ok(sharedMemoryPrompt.includes('【关于你（所有角色共享）】\n- 用户对芒果过敏'), 'every character sees the shared memory');
 assert.ok(memoryPrompt.includes('【角色记忆库】'), 'memory-related chat should include relevant role memory');
 assert.ok(memoryPrompt.includes('【聊天记忆库】'), 'memory-related chat should include relevant chat memory');
 assert.ok(!memoryPrompt.includes('【全局知识库】'), 'memory-related chat should not include unrelated global knowledge');
@@ -267,6 +278,21 @@ assert.ok(
 assert.ok(
   formatPrompt.includes('【动作:开心】'),
   'tool protocol should expose role-driven action marker',
+);
+
+// A knowledge base shared by several characters is marked as such, and the final check says
+// whose traits are this character's own (a character used to answer as a sister).
+const sharedKnowledgePrompt = buildCharacterReplySystemInstruction(
+  { ...personality, knowledgeBase: '铃音：短发，自称“我”。\n星灯：长发，自称“妾身”。' },
+  settings,
+  history,
+  '你今天穿了什么',
+);
+assert.match(sharedKnowledgePrompt, /只有写明是“铃音”的部分说的是你本人/u);
+assert.match(sharedKnowledgePrompt, /你是“铃音”，不是角色知识库或聊天记录里的任何其他角色/u);
+assert.ok(
+  sharedKnowledgePrompt.lastIndexOf('不是角色知识库或聊天记录里的任何其他角色') > sharedKnowledgePrompt.indexOf('星灯：长发'),
+  'the identity reminder comes after the shared knowledge',
 );
 
 console.log('chat personality prompt smoke ok');

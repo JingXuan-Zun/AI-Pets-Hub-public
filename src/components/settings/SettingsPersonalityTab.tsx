@@ -1,3 +1,4 @@
+import { SettingsPresetEntryToggles } from './SettingsPresetEntryToggles';
 import { ChevronDown } from 'lucide-react';
 import { lazy, useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { type DesktopPetSlot } from '../../multiPetRoster';
@@ -9,6 +10,7 @@ import { SettingsGroupMemorySection } from './SettingsGroupMemorySection';
 import { SettingsGroupTopicTimeline } from './SettingsGroupTopicTimeline';
 import { SettingsDirectedRelationshipSection } from './SettingsDirectedRelationshipSection';
 import { SettingsModelProviderTools } from './SettingsModelProviderTools';
+import { SettingsGeminiApiFields } from './SettingsGeminiApiFields';
 import { SettingsOpenAIModelPicker } from './SettingsOpenAIModelPicker';
 import { SettingsSocialEventTimeline } from './SettingsSocialEventTimeline';
 import { SettingsSocialTrendPanel } from './SettingsSocialTrendPanel';
@@ -19,6 +21,7 @@ import { DEFAULT_NEURAL_PERSONA_FEATURE_FLAGS } from '../../character-graph/neur
 import { resolveNeuralPersonaSettingsPreviewEnabled } from './neuralPersonaPreviewGate';
 import { NeuralMemoryChatToggle } from './NeuralMemoryChatToggle';
 import { SettingsCharacterMemorySection } from './SettingsCharacterMemorySection';
+import { SettingsSharedUserMemorySection } from './SettingsSharedUserMemorySection';
 import { inputClassName, selectClassName } from './settingsVoiceUtils';
 
 const SettingsNeuralPersonaGraphSection = lazy(async () => {
@@ -350,6 +353,11 @@ export function SettingsPersonalityTab({
             onChange={(event) => onUpdatePersonality({ dialogueCompletionPreset: event.target.value })}
             placeholder="例如：始终用第一人称回应；保持指定的输出格式；不要解释系统规则；每次回复都遵守这些固定协议。"
           />
+          <SettingsPresetEntryToggles
+            noDragRegionStyle={noDragRegionStyle}
+            onChange={(dialogueCompletionPreset) => onUpdatePersonality({ dialogueCompletionPreset })}
+            preset={selectedPetSlot.personality.dialogueCompletionPreset ?? ''}
+          />
           <div className="mt-2 text-2xs leading-4 text-muted-foreground">
             这部分只服务于角色正式回复，不会进入神经记忆图谱。
           </div>
@@ -496,6 +504,12 @@ export function SettingsPersonalityTab({
             placeholder="例如：上次聊到用户正在调整桌宠聊天 UI，希望回复更短、更像角色本人。"
           />
         </CollapsibleSection> : null}
+
+        {isWorkspacePage('memory') ? <SettingsSharedUserMemorySection
+          applySettings={applySettings}
+          noDragRegionStyle={noDragRegionStyle}
+          settings={settings}
+        /> : null}
 
         {isWorkspacePage('memory') ? <SettingsCharacterMemorySection
           noDragRegionStyle={noDragRegionStyle}
@@ -662,31 +676,11 @@ export function SettingsPersonalityTab({
         </div>
 
          {settings.llmProvider === 'gemini' ? (
-           <div className="space-y-3">
-             <select
-               value={settings.llmModel}
-               onChange={(event) => applySettings({ llmModel: event.target.value })}
-               className={selectClassName()}
-               style={noDragRegionStyle}
-             >
-               <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-               <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-               <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
-               <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
-             </select>
-             <Input
-               type="password"
-               className={inputClassName()}
-               style={noDragRegionStyle}
-               value={settings.geminiApiKey}
-               onChange={(event) => applySettings({ geminiApiKey: event.target.value })}
-               placeholder="Gemini API Key（由用户填写）"
-               autoComplete="off"
-             />
-             <div className="rounded-sm border border-border bg-background/30 px-3 py-2 text-2xs text-muted-foreground">
-               当前使用 Gemini 协议。API Key 只保存在本机。
-             </div>
-           </div>
+           <SettingsGeminiApiFields
+             noDragRegionStyle={noDragRegionStyle}
+             onApplySettings={applySettings}
+             settings={settings}
+           />
          ) : (
           <div className="space-y-3">
             <SettingsOpenAIModelPicker

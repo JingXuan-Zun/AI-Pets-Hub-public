@@ -142,6 +142,18 @@ export function normalizePetModel3DMaterialPresentation(material: THREE.Material
 
   nextMaterial.alphaHash = false;
 
+  // MMD cuts eyelashes, blush and hair tips out with the texture's own alpha at opacity 1;
+  // forcing those opaque draws them as solid patches. Keep MMD's depth writes too.
+  if (nextMaterial.userData?.desktopPetKeepTextureAlpha === true) {
+    nextMaterial.transparent = true;
+    nextMaterial.depthTest = true;
+    nextMaterial.depthWrite = true;
+    nextMaterial.alphaToCoverage = false;
+    nextMaterial.premultipliedAlpha = false;
+    nextMaterial.needsUpdate = true;
+    return;
+  }
+
   if (nextMaterial.transparent && isEffectivelyOpaqueMaterial(nextMaterial)) {
     nextMaterial.transparent = false;
     nextMaterial.opacity = 1;

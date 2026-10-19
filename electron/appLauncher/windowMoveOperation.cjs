@@ -31,8 +31,9 @@ function createWindowMoveOperation({ createMoveWindowNativeDisplayHint, runPower
     const hasPid = Number.isFinite(requestedPid) && requestedPid > 0;
     const hasHwnd = Number.isFinite(requestedHwnd) && requestedHwnd > 0;
     const targetHint = createMoveWindowNativeDisplayHint(request);
-    const position = String(request?.position || request?.placement || 'center').trim().toLowerCase() === 'top-left'
-      ? 'top-left'
+    const requestedPosition = String(request?.position || request?.placement || 'center').trim().toLowerCase();
+    const position = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(requestedPosition)
+      ? requestedPosition
       : 'center';
     const preserveSize = request?.preserveSize !== false;
     const fallbackToActiveWindow = request?.fallbackToActiveWindow !== false;

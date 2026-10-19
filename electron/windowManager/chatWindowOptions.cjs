@@ -25,6 +25,8 @@ function createChatWindowOptionsBuilder({
       title: 'AI Desktop Pet Chat',
       webPreferences: {
         preload: path.join(baseDirectory, 'preload.cjs'),
+        // Like the settings window: keep painting even when Windows thinks it is covered.
+        backgroundThrottling: false,
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: false,

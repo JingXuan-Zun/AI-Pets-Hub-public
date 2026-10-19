@@ -1,4 +1,4 @@
-export const SUPPORTED_3D_MODEL_FORMATS = ['glb', 'gltf', 'vrm', 'fbx', 'obj', 'stl', 'pmx'] as const;
+export const SUPPORTED_3D_MODEL_FORMATS = ['glb', 'gltf', 'vrm', 'fbx', 'obj', 'stl', 'pmx', 'pmd'] as const;
 const LOCAL_3D_MODEL_PROTOCOL = 'desktop-pet-file://local';
 
 export type Supported3DModelFormat = (typeof SUPPORTED_3D_MODEL_FORMATS)[number];

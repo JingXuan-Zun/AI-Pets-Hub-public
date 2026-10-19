@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type PetAction } from '../../../types';
 import { type PetHoverState } from '../../interactions/petHoverController';
 import { usePetHoverInteractionState } from '../../interactions/usePetHoverInteractionState';
@@ -262,8 +262,24 @@ export function useThreeAvatarRuntimeBridgeState({
     return unsubscribe;
   }, [session]);
 
+  // React StrictMode (dev) runs every effect mount → cleanup → mount. Disposing right
+  // in the cleanup killed the memoized session for good: later 'ready' events were
+  // dropped and 3D models stayed on their loading placeholder. Defer the dispose and
+  // skip it when the same session is still in use after the re-mount.
+  const currentSessionRef = useRef(session);
+  currentSessionRef.current = session;
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   useEffect(() => () => {
-    session.dispose();
+    window.setTimeout(() => {
+      if (isMountedRef.current && currentSessionRef.current === session) return;
+      session.dispose();
+    }, 0);
   }, [session]);
 
   useEffect(() => {

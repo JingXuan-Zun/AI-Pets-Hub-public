@@ -25,7 +25,7 @@ function NeuralMemoryProposalCard({
   return (
     <article data-neural-memory-proposal={proposal.id} className="space-y-1.5 rounded-xl border border-white/80 bg-white/70 p-2 text-[10px] leading-4 text-sky-950">
       <span className="inline-flex rounded-full bg-primary/10 px-1.5 text-[9px] text-primary">
-        {NEURAL_MEMORY_PROPOSAL_TYPE_LABELS[proposal.type]}
+        {proposal.scope === 'shared' ? '关于你 · 所有角色都会知道' : NEURAL_MEMORY_PROPOSAL_TYPE_LABELS[proposal.type]}
       </span>
       {editing ? (
         <textarea

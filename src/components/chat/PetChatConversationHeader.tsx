@@ -30,6 +30,7 @@ interface PetChatConversationHeaderProps {
   onViewStory: () => void;
   petOptions: ChatTargetOption[];
   showSidebarToggle?: boolean;
+  hideModeSelector?: boolean;
   /** Rendered under the private-chat role list. */
   memoryProposalPanel?: ReactNode;
   pendingMemoryProposalCountByPetId?: Record<string, number>;
@@ -92,6 +93,7 @@ export function PetChatConversationHeader({
   onViewStory,
   petOptions,
   showSidebarToggle = true,
+  hideModeSelector = false,
   memoryProposalPanel,
   pendingMemoryProposalCountByPetId = {},
 }: PetChatConversationHeaderProps) {
@@ -118,7 +120,7 @@ export function PetChatConversationHeader({
       ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 pr-1">
-        <ChatModeSelector chatMode={chatMode} onChange={onChatModeChange} />
+        {hideModeSelector ? null : <ChatModeSelector chatMode={chatMode} onChange={onChatModeChange} />}
 
         {chatMode === 'single' ? (
           <div className="flex min-h-0 flex-1 flex-col gap-3">

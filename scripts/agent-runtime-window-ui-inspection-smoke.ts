@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { executeInspectWindowUi } from '../src/agent/agentRuntimeDesktopObservationTools.ts';
-import { type AgentToolCallCommand } from '../src/agent/index.ts';
+import { type AgentToolCallCommand } from '../src/agent/agentChatCommand';
 import { desktopPetShellRuntime } from '../src/desktopShellRuntime.ts';
 
 const originalInspectWindowUi = desktopPetShellRuntime.inspectWindowUi;

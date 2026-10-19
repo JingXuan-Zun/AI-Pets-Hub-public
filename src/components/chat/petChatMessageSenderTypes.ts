@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react';
-import type { AgentChatCommandHandler } from '../../agent';
+import type { AgentChatCommandHandler } from '../../agent/agentChatCommand';
 import type { PetConfig, PetConfigUpdateHandler } from '../../types';
 import type { VoiceInputSession } from '../../voice/types';
 import type { PlayVoiceTextOptions } from './chatVoicePlaybackTypes';
@@ -30,6 +30,7 @@ export interface UsePetChatMessageSenderOptions {
       requestToken: number;
       browserSearchMode?: 'allow' | 'block' | 'force';
       groupInteractionPlan?: GroupChatInteractionPlan;
+      conversationTools?: import('../../agent/conversation/conversationTools').ConversationToolRuntime | null;
     },
   ) => Promise<{ cancelled: boolean; finalResponse: string; groupRoleTurnOutput?: GroupRoleTurnOutput }>;
   stopGroupChat: (options?: { immediate?: boolean; announce?: boolean }) => void;

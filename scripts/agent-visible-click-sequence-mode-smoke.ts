@@ -1,12 +1,10 @@
-﻿import { readProjectSources } from './smokeTestHarness.ts';
+import { readProjectSources } from './smokeTestHarness.ts';
 
 import assert from 'node:assert/strict';
 
-import {
-  buildAgentPermissionRoute,
-  prepareAgentToolInput,
-  type AgentChatCommand,
-} from '../src/agent/index.ts';
+import { buildAgentPermissionRoute } from '../src/agent/agentPermissionRouter';
+import { prepareAgentToolInput } from '../src/agent/agentToolInputSchema';
+import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 
 const {
   registry,

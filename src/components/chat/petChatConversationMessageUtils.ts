@@ -47,6 +47,7 @@ export function buildConversationEmptyState(greeting: string, chatMode: DesktopP
 }
 
 function resolveDisplayPetId(message: ChatMessage) {
+  if (message.scopePetId) return message.scopePetId;
   if (message.role === 'model') {
     return message.petId ?? PRIMARY_DESKTOP_PET_SLOT_ID;
   }

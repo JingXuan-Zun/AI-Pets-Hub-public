@@ -948,147 +948,36 @@ interface DesktopPetMcpSoakReadinessResultLike {
   version: 1;
 }
 
-interface DesktopPetExternalSkillReleaseAdmissionCheckLike {
-  detail: string;
-  id: string;
-  status: 'fail' | 'not-applicable' | 'pass' | 'warning';
-}
-
-interface DesktopPetExternalSkillReleaseAdmissionRowLike {
-  artifactDigest: string | null;
-  checks: DesktopPetExternalSkillReleaseAdmissionCheckLike[];
-  compatibilityIssueCodes: string[];
-  controlledRuntimeStatus: 'blocked' | 'controlled-runtime-eligible' | 'review-required';
-  marketReleaseAllowed: false;
-  marketReleaseIssueCodes: string[];
-  marketReleaseStatus: 'disabled';
-  marketplaceChecks: DesktopPetExternalSkillReleaseAdmissionCheckLike[];
-  marketplacePublisherIdentity: {
-    catalogSequence: number | null;
-    issueCodes: string[];
-    keyFingerprint: string | null;
-    keyId: string | null;
-    kind: 'external-skill-marketplace-publisher-assessment.v1';
-    publisherId: string | null;
-    registryStatus: 'expired' | 'invalid' | 'missing' | 'ready' | 'unavailable';
-    rootKeyId: string | null;
-    status: 'blocked' | 'verified';
-  };
-  packageId: string;
-  runtimeKind: string;
-}
-
-interface DesktopPetExternalSkillReleaseAdmissionReportLike {
-  error?: string;
-  generatedAt?: string;
-  host?: {
-    arch: string;
-    electronVersion: string | null;
-    nodeVersion: string;
-    packaged: boolean;
-    platform: string;
-  };
-  kind?: 'external-skill-release-admission-report.v1';
-  marketReleaseEnabled?: false;
-  ok: boolean;
-  rows: DesktopPetExternalSkillReleaseAdmissionRowLike[];
-  summary?: {
-    blocked: number;
-    eligible: number;
-    marketplacePublisherBlocked: number;
-    marketplacePublisherVerified: number;
-    'review-required': number;
-    total: number;
-  };
-  version?: 1;
-}
-
-interface DesktopPetExternalSkillMarketplaceProductionReadinessReportLike {
-  activeCatalog: {
-    expiresAt: string | null;
-    publisherCount: number;
-    rootKeyId: string | null;
-    sequence: number | null;
-    status: string;
-  };
-  checks: Array<{
-    detail: string;
-    id: string;
-    status: 'fail' | 'pass' | 'warning';
-  }>;
-  configSource: 'bundled-default' | 'packaged-production';
-  delivery: {
-    enabled: boolean;
-    maxResponseBytes: number | null;
-    requestTimeoutMs: number | null;
-    status: string;
-    transportOrigin: string | null;
-  };
-  generatedAt: string;
-  issueCodes: string[];
-  kind: 'external-skill-marketplace-production-readiness-report.v1';
-  marketReleaseAllowed: false;
-  marketReleaseStatus: 'disabled';
-  ok: true;
-  operationalConfigurationReady: boolean;
-  rootRegistry: {
-    activeKeyCount: number;
-    minimumSequence: number;
-    revokedKeyCount: number;
-    status: string;
-    totalKeyCount: number;
-  };
-  status: 'incomplete' | 'invalid' | 'not-configured' | 'ready-disabled';
-  version: 1;
-}
-
-interface DesktopPetExternalSkillJsonExportLike {
-  error?: string;
-  fileName?: string;
-  mimeType?: 'application/json';
-  ok: boolean;
-  text?: string;
-}
-
-interface DesktopPetExternalSkillPackageUninstallSnapshotCleanupLike {
-  artifactCleanupSkips?: Array<{ packageId: string; reason: string }>;
-  deletedArtifactCount?: number;
-  error?: string;
-  invalidSnapshotCount?: number;
-  invalidSnapshotIds?: string[];
-  ok: boolean;
-  policy?: { maxAgeDays: number; maxSnapshotsPerPackage: number };
-  receipt?: DesktopPetExternalSkillPackageLifecycleReceiptLike;
-  removedSnapshotCount?: number;
-  removedSnapshotIds?: string[];
-  skippedSnapshotCount?: number;
-  skippedSnapshotIds?: string[];
-  status: 'completed' | 'completed-with-skips' | 'failed';
-}
-
-interface DesktopPetExternalSkillPackageLifecycleReceiptLike {
-  action: 'cleanup-uninstall-snapshots' | 'restore-quarantine' | 'rollback-uninstall' | 'uninstall';
-  at: string;
-  cleanup: {
-    deletedArtifactCount: number;
-    invalidSnapshotCount: number;
-    removedSnapshotCount: number;
-    skippedSnapshotCount: number;
-    status: string;
-  } | null;
-  grantRevoked: boolean;
-  healthReset: boolean;
-  kind: 'external-skill-package-lifecycle-receipt.v1';
-  packageId: string;
-  receiptId: string;
-  snapshotId: string | null;
-  status: 'failed' | 'succeeded';
-}
-
 interface Window {
   SpeechRecognition?: SpeechRecognitionConstructorLike;
   webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
   desktopPetShell?: {
+    /** ComfyUI workflows, called from the main process (no CORS; the token stays out of page requests). */
+    comfyUi?: {
+      run: (request: { apiKey?: string; serverUrl: string; timeoutMs?: number; workflow: Record<string, unknown> }) => Promise<{
+        durationMs?: number;
+        error?: string;
+        images?: Array<{ dataUrl: string; mimeType: string; name: string; sizeBytes: number }>;
+        ok: boolean;
+      }>;
+      test: (request: { apiKey?: string; serverUrl: string }) => Promise<{ device?: string; error?: string; ok: boolean; version?: string }>;
+    };
+    /** Private-data backups in the app's own backups folder (no API keys). */
+    dataBackup?: {
+      list: () => Promise<{ backups?: Array<{ modifiedAt: string; name: string; sizeBytes: number }>; error?: string; ok: boolean }>;
+      openFolder: () => Promise<{ error?: string; ok: boolean }>;
+      read: (name: string) => Promise<{ error?: string; ok: boolean; text?: string }>;
+      save: (text: string) => Promise<{ error?: string; name?: string; ok: boolean; sizeBytes?: number }>;
+    };
+    elevatedInput?: {
+      start: () => Promise<{ declined?: boolean; error?: string; ok: boolean }>;
+      status: () => Promise<{ active: boolean; ok: boolean }>;
+      stop: () => Promise<{ ok: boolean }>;
+    };
+    knownFolders?: {
+      list: () => Promise<{ drives?: string[]; error?: string; folders?: Array<{ label: string; path: string }>; ok: boolean }>;
+      reveal: (path: string) => Promise<{ error?: string; kind?: 'directory' | 'file'; ok: boolean; path?: string }>;
+    };
     platform: string;
     packaged: boolean;
     desktopMode: boolean;
@@ -1142,272 +1031,6 @@ interface Window {
       matched: boolean;
       ok: boolean;
     }>;
-    runSkillSandboxSupervisorProbe?: (request: {
-      bootstrapPlanId: string;
-      packageId: string;
-      requestId: string;
-      timeoutMs?: number;
-    }) => Promise<unknown>;
-    runSkillSandboxPackage?: (request: {
-      input: Record<string, unknown>;
-      packageId: string;
-      permissionScopes?: string[];
-      requestId: string;
-      timeoutMs?: number;
-    }) => Promise<{
-      error?: string;
-      capabilityDecision?: {
-        allowedScopes: string[];
-        artifactDigest: string | null;
-        issueCodes: string[];
-        packageId: string;
-        requestedScopes: string[];
-        status: 'allowed' | 'denied';
-      };
-      capabilityReceipt?: {
-        artifactDigest: string | null;
-        decision: string;
-        grantedScopes: string[];
-        kind: 'external-skill-capability-receipt.v1';
-        packageId: string;
-        rateLimit: {
-          allowed: boolean;
-          kind: 'external-skill-capability-rate-limit.v1';
-          limit: number;
-          packageId: string;
-          remaining: number;
-          retryAfterMs: number;
-          scope: 'storage.read';
-          windowMs: number;
-        } | null;
-        reason: string;
-        receiptId: string;
-        requestId: string;
-        requestedScopes: string[];
-        status: string;
-        usedScopes: string[];
-      };
-      capabilityFlow?: {
-        calls: number;
-        maxCalls: number;
-        status: string;
-      };
-      capabilityReceipts?: Array<{
-        kind: 'external-skill-capability-receipt.v1';
-        status: string;
-        usedScopes: string[];
-      }>;
-      executionKind?: 'wasm-pure-i32-v1' | 'wasm-pure-json-v1';
-      executionPhase?: 'primary' | 'capability-response';
-      output?: Record<string, unknown>;
-      packageCodeLoaded?: boolean;
-      packageHealth?: {
-        allowed: boolean;
-        artifactDigest: string | null;
-        backoffUntil: number;
-        blocked?: boolean;
-        classification?: 'failure' | 'ignored' | 'success';
-        consecutiveFailures: number;
-        error?: string;
-        kind: 'external-skill-package-health-result.v1';
-        packageId: string;
-        quarantineApplied?: boolean;
-        quarantineError?: string | null;
-        reason: string;
-        retryAfterMs: number;
-        statePersisted?: boolean;
-        status: 'backoff' | 'healthy' | 'quarantined' | 'untracked';
-        totalFailures: number;
-      };
-      status: string;
-      workerRequestIds?: string[];
-    }>;
-    listSkillCapabilityGrants?: () => Promise<{
-      grants: Array<{ artifactDigest: string | null; packageId: string; reviewedAt: string; scopes: string[]; skillId: string }>;
-      kind: 'external-skill-capability-grants.v1';
-      path: string;
-    }>;
-    listSkillCapabilityReceipts?: (request?: { limit?: number; packageId?: string; status?: string }) => Promise<{
-      kind: 'external-skill-capability-receipt-history.v1';
-      limit: number;
-      ok: boolean;
-      path: string;
-      receipts: Array<{
-        artifactDigest: string | null;
-        decision: string;
-        grantedScopes: string[];
-        kind: 'external-skill-capability-receipt.v1';
-        packageId: string;
-        rateLimit: {
-          allowed: boolean;
-          kind: 'external-skill-capability-rate-limit.v1';
-          limit: number;
-          packageId: string;
-          remaining: number;
-          retryAfterMs: number;
-          scope: 'storage.read';
-          windowMs: number;
-        } | null;
-        reason: string;
-        receiptId: string;
-        requestId: string;
-        requestedScopes: string[];
-        status: string;
-        usedScopes: string[];
-        writtenAt: string;
-      }>;
-      retentionLimit: number;
-      totalCount: number;
-    }>;
-    clearSkillCapabilityReceipts?: (request?: { packageId?: string }) => Promise<{
-      ok: boolean;
-      removedCount: number;
-      totalCount: number;
-    }>;
-    listExternalSkillPackageHealth?: (request?: { packageId?: string }) => Promise<{
-      entries: Array<{
-        artifactDigest: string;
-        backoffUntil: number;
-        consecutiveFailures: number;
-        lastError: string;
-        lastFailureAt: string | null;
-        lastSuccessAt: string | null;
-        packageId: string;
-        quarantinedAt: string | null;
-        status: 'backoff' | 'healthy' | 'quarantined';
-        totalFailures: number;
-      }>;
-      kind: 'external-skill-package-health-state.v1';
-      ok: boolean;
-      path: string;
-      totalCount: number;
-    }>;
-    resetExternalSkillPackageHealth?: (request: { packageId: string }) => Promise<{
-      error?: string;
-      ok: boolean;
-      packageId?: string;
-      reset?: boolean;
-    }>;
-    createExternalSkillReleaseAdmissionReport?: (request?: { packageIds?: string[] }) => Promise<DesktopPetExternalSkillReleaseAdmissionReportLike>;
-    exportExternalSkillReleaseAdmissionReport?: (request?: { packageIds?: string[] }) => Promise<DesktopPetExternalSkillJsonExportLike>;
-    exportExternalSkillPackageHealthDiagnostics?: (request?: { packageId?: string }) => Promise<DesktopPetExternalSkillJsonExportLike>;
-    getExternalSkillMarketplaceProductionReadiness?: () => Promise<DesktopPetExternalSkillMarketplaceProductionReadinessReportLike>;
-    exportExternalSkillMarketplaceProductionReadiness?: () => Promise<DesktopPetExternalSkillJsonExportLike>;
-    setSkillCapabilityGrant?: (request: { packageId: string; scopes: string[] }) => Promise<{
-      error?: string;
-      grant?: { artifactDigest: string | null; packageId: string; reviewedAt: string; scopes: string[]; skillId: string };
-      ok: boolean;
-    }>;
-    revokeSkillCapabilityGrant?: (request: { packageId: string }) => Promise<{
-      error?: string;
-      ok: boolean;
-      revoked?: boolean;
-    }>;
-    decideSkillCapabilityRequest?: (request: { packageId: string; permissionScopes?: string[] }) => Promise<{
-      allowedScopes: string[];
-      issueCodes: string[];
-      packageId: string;
-      requestedScopes: string[];
-      status: 'allowed' | 'denied';
-    }>;
-    readSkillCapabilityStorage?: (request: {
-      key: string;
-      packageId: string;
-      permissionScopes?: string[];
-      requestId: string;
-    }) => Promise<{
-      capabilityDecision?: { artifactDigest: string | null; issueCodes: string[]; status: 'allowed' | 'denied' };
-      capabilityReceipt?: { kind: 'external-skill-capability-receipt.v1'; status: string; usedScopes: string[] };
-      capabilityRateLimit?: {
-        allowed: boolean;
-        kind: 'external-skill-capability-rate-limit.v1';
-        limit: number;
-        packageId: string;
-        remaining: number;
-        retryAfterMs: number;
-        scope: 'storage.read';
-        windowMs: number;
-      };
-      capabilityValue?: unknown;
-      error?: string;
-      status: string;
-    }>;
-    cancelSkillSandboxSupervisorProbe?: (request: { requestId: string }) => Promise<unknown>;
-    stageSkillPackageArtifact?: (request: {
-      packageId: string;
-      rawPackageJson: string;
-      trustedKeyRegistry?: unknown;
-    }) => Promise<{
-      error?: string;
-      ok: boolean;
-      package?: { artifactDigest?: string };
-      replaced?: boolean;
-    }>;
-    stageSignedSkillPackageArchive?: (request: {
-      archiveBase64: string;
-      trustedKeyRegistry?: unknown;
-    }) => Promise<{
-      archiveDigest?: string;
-      error?: string;
-      identity?: {
-        packageId: string;
-        publisherId: string;
-        skillId: string;
-        version: string;
-      };
-      migration?: {
-        fromVersion: string | null;
-        kind: 'install' | 'update';
-        toVersion: string;
-      };
-      ok: boolean;
-      packageJson?: string;
-      status?: 'installed' | 'updated';
-    }>;
-    auditSkillPackageArtifacts?: (request: { packages: Array<{ packageId: string; rawPackageJson: string }> }) => Promise<{
-      error?: string;
-      ok: boolean;
-      rows: Array<{ artifactDigest: string | null; expectedDigest: string; packageId: string; status: 'missing' | 'mismatched' | 'quarantined' | 'ready' }>;
-    }>;
-    quarantineSkillPackageArtifact?: (request: { packageId: string; reason: string }) => Promise<{ error?: string; ok: boolean }>;
-    restoreQuarantinedExternalSkillPackage?: (request: {
-      packageId: string;
-      rawPackageJson: string;
-      trustedKeyRegistry: unknown;
-    }) => Promise<{
-      error?: string;
-      ok: boolean;
-      receipt?: DesktopPetExternalSkillPackageLifecycleReceiptLike;
-    }>;
-    uninstallExternalSkillPackage?: (request: { packageId: string }) => Promise<{
-      error?: string;
-      ok: boolean;
-      receipt?: DesktopPetExternalSkillPackageLifecycleReceiptLike;
-      retentionCleanup?: DesktopPetExternalSkillPackageUninstallSnapshotCleanupLike;
-      snapshot?: { packageId: string; snapshotId: string; uninstalledAt: string };
-    }>;
-    rollbackExternalSkillPackageUninstall?: (request: { packageId: string; snapshotId: string }) => Promise<{
-      error?: string;
-      ok: boolean;
-      receipt?: DesktopPetExternalSkillPackageLifecycleReceiptLike;
-    }>;
-    listExternalSkillPackageUninstallSnapshots?: (request?: { packageId?: string }) => Promise<{
-      error?: string;
-      invalidSnapshotCount: number;
-      invalidSnapshotIds: string[];
-      ok: boolean;
-      policy: { maxAgeDays: number; maxSnapshotsPerPackage: number };
-      snapshots: Array<{ packageId: string; snapshotId: string; uninstalledAt: string }>;
-      totalCount: number;
-    }>;
-    cleanupExternalSkillPackageUninstallSnapshots?: (request?: { packageId?: string }) => Promise<DesktopPetExternalSkillPackageUninstallSnapshotCleanupLike>;
-    listExternalSkillPackageLifecycleReceipts?: (request?: { packageId?: string }) => Promise<{
-      kind: 'external-skill-package-lifecycle-receipts.v1';
-      ok: boolean;
-      receipts: DesktopPetExternalSkillPackageLifecycleReceiptLike[];
-      totalCount: number;
-    }>;
-    exportExternalSkillPackageLifecycleReceipts?: (request?: { packageId?: string }) => Promise<DesktopPetExternalSkillJsonExportLike>;
     onOpenSettings?: (callback: () => void) => () => void;
     setSettingsOpen?: (isOpen: boolean) => void;
     openSettingsWindow?: () => void;
@@ -1415,6 +1038,7 @@ interface Window {
     isSettingsWindowOpen?: () => Promise<boolean>;
     onSettingsWindowState?: (callback: (isOpen: boolean) => void) => () => void;
     openChatWindow?: () => void;
+    nudgeChatWindow?: () => void;
     closeChatWindow?: () => void;
     setAgentDesktopExecutionActive?: (active: boolean) => Promise<{ active: boolean } | void>;
     setCurrentWindowBounds?: (bounds: { x: number; y: number; width: number; height: number }) => void;

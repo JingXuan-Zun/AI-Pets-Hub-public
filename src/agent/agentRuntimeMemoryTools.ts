@@ -1,4 +1,18 @@
-import { type PetConfig } from '../types';
+import {
+  appendNeuralMemoryProposals,
+} from '../neural-memory/neuralMemoryProposalConfig';
+import {
+  NEURAL_MEMORY_PROPOSAL_MAX_CONTENT_LENGTH,
+  type NeuralMemoryProposal,
+} from '../neural-memory/neuralMemoryProposalTypes';
+import { isCharacterMemoryKind } from '../character-memory/characterMemoryTypes';
+import {
+  hasSharedUserMemory,
+  listSharedUserMemory,
+  removeSharedUserMemoryItems,
+  searchSharedUserMemory,
+} from '../character-memory/sharedUserMemory';
+import { PRIMARY_DESKTOP_PET_SLOT_ID } from '../multiPetRoster';
 import {
   type AgentChatCommandResult,
   type AgentChatExecutionReceipt,
@@ -46,22 +60,6 @@ function normalizeExecuteMemoryAction(value: string) {
   }
 }
 
-function compactAgentMemoryText(value: string, maxLength = 500) {
-  const compactValue = value.replace(/\s+/gu, ' ').trim();
-  if (compactValue.length <= maxLength) {
-    return compactValue;
-  }
-
-  return `${compactValue.slice(0, Math.max(0, maxLength - 3))}...`;
-}
-
-function getAgentGlobalKnowledgeLines(config: PetConfig) {
-  return config.settings.globalKnowledgeBase
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
 function getAgentMemoryLimit(toolCall: AgentToolCallCommand) {
   const rawLimit = getToolNumberInput(toolCall, 'limit') ?? AGENT_MEMORY_DEFAULT_LIMIT;
   if (!Number.isFinite(rawLimit)) {
@@ -69,67 +67,6 @@ function getAgentMemoryLimit(toolCall: AgentToolCallCommand) {
   }
 
   return Math.min(AGENT_MEMORY_MAX_LIMIT, Math.max(1, Math.round(rawLimit)));
-}
-
-function isAgentManagedMemoryLine(line: string) {
-  return /^Agent memory(?: \[[^\]]+\])?:/u.test(line.trim());
-}
-
-function createAgentMemoryLine(options: {
-  category?: string | null;
-  key?: string | null;
-  value: string;
-}) {
-  const category = compactAgentMemoryText(options.category || 'general', 80) || 'general';
-  const key = compactAgentMemoryText(options.key || '', 120);
-  const value = compactAgentMemoryText(options.value, 1000);
-  return key
-    ? `Agent memory [${category}]: ${key} = ${value}`
-    : `Agent memory [${category}]: ${value}`;
-}
-
-function isSameAgentMemoryKey(line: string, category: string | null, key: string) {
-  const normalizedLine = line.trim().toLowerCase();
-  const normalizedKey = compactAgentMemoryText(key, 120).toLowerCase();
-  if (!normalizedKey) {
-    return false;
-  }
-
-  if (category) {
-    const normalizedCategory = compactAgentMemoryText(category, 80).toLowerCase();
-    return normalizedLine.startsWith(`agent memory [${normalizedCategory}]: ${normalizedKey} =`);
-  }
-
-  return /^agent memory(?: \[[^\]]+\])?:/u.test(normalizedLine)
-    && normalizedLine.includes(`: ${normalizedKey} =`);
-}
-
-function doesAgentMemoryLineMatch(
-  line: string,
-  options: {
-    category?: string | null;
-    key?: string | null;
-    query?: string | null;
-  },
-) {
-  const normalizedLine = line.toLowerCase();
-  const normalizedCategory = compactAgentMemoryText(options.category || '', 80).toLowerCase();
-  const normalizedKey = compactAgentMemoryText(options.key || '', 120).toLowerCase();
-  const normalizedQuery = compactAgentMemoryText(options.query || '', 240).toLowerCase();
-
-  if (normalizedCategory && !normalizedLine.includes(`[${normalizedCategory}]`) && !normalizedLine.includes(normalizedCategory)) {
-    return false;
-  }
-
-  if (normalizedKey && !normalizedLine.includes(normalizedKey)) {
-    return false;
-  }
-
-  if (normalizedQuery && !normalizedLine.includes(normalizedQuery)) {
-    return false;
-  }
-
-  return Boolean(normalizedCategory || normalizedKey || normalizedQuery);
 }
 
 function createAgentMemoryReceipt(options: {
@@ -148,21 +85,10 @@ function createAgentMemoryReceipt(options: {
   };
 }
 
-function updateAgentGlobalKnowledge(
-  context: AgentRuntimeExecutorContext,
-  lines: string[],
-) {
-  const currentConfig = context.configRef.current;
-  const nextConfig = {
-    ...currentConfig,
-    settings: {
-      ...currentConfig.settings,
-      globalKnowledgeBase: lines.join('\n'),
-    },
-  };
-
-  context.onUpdateConfig(nextConfig);
-  return nextConfig;
+let sharedProposalSequence = 0;
+function createSharedProposalId(now: number) {
+  sharedProposalSequence += 1;
+  return `shared-proposal-${now.toString(36)}-agent-${sharedProposalSequence}`;
 }
 
 export async function executeMemoryAction(
@@ -171,13 +97,12 @@ export async function executeMemoryAction(
 ): Promise<AgentChatCommandResult> {
   const rawAction = getToolStringInput(toolCall, ['action', 'memoryAction', 'operation']);
   const action = normalizeExecuteMemoryAction(rawAction);
-  const scope = getToolStringInput(toolCall, ['scope']) || 'global';
-  const query = getToolStringInput(toolCall, ['query', 'keyword', 'keywords', 'target']);
-  const key = getToolStringInput(toolCall, ['key', 'name', 'preferenceKey']);
-  const category = getToolStringInput(toolCall, ['category', 'type', 'topic']);
+  const query = getToolStringInput(toolCall, ['query', 'keyword', 'keywords', 'target', 'key']);
   const value = getToolStringInput(toolCall, ['value', 'content', 'text', 'fact', 'preference'])
     || (action === 'remember' ? query : '');
-  const currentLines = getAgentGlobalKnowledgeLines(context.configRef.current);
+  const rawKind = getToolStringInput(toolCall, ['kind', 'category', 'type']);
+  const kind = isCharacterMemoryKind(rawKind) ? rawKind : 'other';
+  const items = listSharedUserMemory(context.configRef.current);
   const limit = getAgentMemoryLimit(toolCall);
 
   if (!action) {
@@ -191,50 +116,32 @@ export async function executeMemoryAction(
     };
   }
 
-  if (scope !== 'global') {
-    return {
-      errorText: 'Unsupported Agent memory scope.',
-      observations: [`Memory scope requested: ${scope}`],
-      ok: false,
-      responseText: 'execute_memory_action v1 only supports scope "global".',
-    };
-  }
-
   if (action === 'recall') {
-    const hasFilter = Boolean(query || key || category);
-    const matchedLines = hasFilter
-      ? currentLines.filter((line) => doesAgentMemoryLineMatch(line, { category, key, query }))
-      : currentLines;
-    const visibleLines = matchedLines.slice(0, limit);
-    const hiddenCount = Math.max(0, matchedLines.length - visibleLines.length);
-    const responseText = visibleLines.length
-      ? [
-          hasFilter ? '查到这些相关记忆：' : '当前全局记忆里有这些内容：',
-          ...visibleLines.map((line, index) => `${index + 1}. ${line}`),
-          hiddenCount ? `还有 ${hiddenCount} 条未显示。` : '',
-        ].filter(Boolean).join('\n')
-      : '没有找到匹配的 Agent 记忆。';
-
+    const matched = searchSharedUserMemory(items, query);
+    const visible = matched.slice(0, limit).map((item) => item.text);
+    const hiddenCount = Math.max(0, matched.length - visible.length);
+    const verification = `已读取「关于你」里的 ${matched.length} 条匹配记忆。`;
     return {
       observations: [
-        `Memory action: recall`,
-        `Memory scope: ${scope}`,
-        hasFilter ? `Memory filter: ${[category, key, query].filter(Boolean).join(' | ')}` : 'Memory filter: none',
-        `Matched memory lines: ${matchedLines.length}`,
+        'Memory action: recall',
+        query ? `Memory filter: ${query}` : 'Memory filter: none',
+        `Matched memory items: ${matched.length}`,
       ],
       ok: true,
       receipt: createAgentMemoryReceipt({
-        evidenceLines: visibleLines,
+        evidenceLines: visible,
         status: 'success',
-        summaryLines: [
-          '调用：execute_memory_action',
-          '动作：recall',
-          `匹配：${matchedLines.length} 条`,
-        ],
-        verification: `已读取全局知识库中的 ${matchedLines.length} 条匹配记忆。`,
+        summaryLines: ['调用：execute_memory_action', '动作：recall', `匹配：${matched.length} 条`],
+        verification,
       }),
-      responseText,
-      verification: `已读取全局知识库中的 ${matchedLines.length} 条匹配记忆。`,
+      responseText: visible.length
+        ? [
+            query ? '查到这些相关记忆：' : '「关于你」里记着这些：',
+            ...visible.map((text, index) => `${index + 1}. ${text}`),
+            hiddenCount ? `还有 ${hiddenCount} 条未显示。` : '',
+          ].filter(Boolean).join('\n')
+        : '「关于你」里没有找到相关的记忆。',
+      verification,
     };
   }
 
@@ -244,104 +151,78 @@ export async function executeMemoryAction(
         errorText: 'Missing memory value.',
         observations: ['Memory action: remember'],
         ok: false,
-        responseText: '要写入记忆，需要提供 value/content/fact/preference，或在 query 中给出要记住的内容。',
+        responseText: '要记住的内容是空的，需要在 value 里写清楚要记什么。',
       };
     }
-
-    const nextLine = createAgentMemoryLine({ category, key, value });
-    const replacedLines = key
-      ? currentLines.filter((line) => isAgentManagedMemoryLine(line) && isSameAgentMemoryKey(line, category || null, key))
-      : [];
-    const preservedLines = replacedLines.length
-      ? currentLines.filter((line) => !replacedLines.includes(line))
-      : currentLines;
-    const nextLines = preservedLines.includes(nextLine)
-      ? preservedLines
-      : [...preservedLines, nextLine];
-
-    if (nextLines.join('\n') !== currentLines.join('\n')) {
-      updateAgentGlobalKnowledge(context, nextLines);
-    }
-
-    return {
-      observations: [
-        'Memory action: remember',
-        `Memory scope: ${scope}`,
-        category ? `Memory category: ${category}` : '',
-        key ? `Memory key: ${key}` : '',
-        replacedLines.length ? `Replaced memory lines: ${replacedLines.length}` : '',
-        `Stored memory: ${nextLine}`,
-      ].filter(Boolean),
-      ok: true,
-      receipt: createAgentMemoryReceipt({
-        evidenceLines: [nextLine],
-        status: 'success',
-        summaryLines: [
-          '调用：execute_memory_action',
-          '动作：remember',
-          key ? `键：${key}` : '键：未指定',
-          category ? `分类：${category}` : '分类：general',
-        ],
-        verification: '已把用户授权的长期记忆写入全局知识库。',
-      }),
-      responseText: `已经记住：${nextLine}`,
-      verification: '已把用户授权的长期记忆写入全局知识库。',
-    };
-  }
-
-  if (action === 'forget') {
-    if (!query && !key && !category) {
+    if (hasSharedUserMemory(items, value)) {
       return {
-        errorText: 'Missing memory forget filter.',
-        observations: ['Memory action: forget'],
-        ok: false,
-        responseText: '要忘记记忆，需要提供 query、key 或 category，避免误删全局知识库内容。',
+        observations: ['Memory action: remember', 'Already remembered.'],
+        ok: true,
+        responseText: `这件事已经记着了：${value}`,
+        verification: '「关于你」里已有相同内容，没有重复提议。',
       };
     }
-
-    const removedLines = currentLines.filter((line) => (
-      isAgentManagedMemoryLine(line)
-      && doesAgentMemoryLineMatch(line, { category, key, query })
-    ));
-    const nextLines = currentLines.filter((line) => !removedLines.includes(line));
-
-    if (removedLines.length > 0) {
-      updateAgentGlobalKnowledge(context, nextLines);
-    }
-
+    const now = Date.now();
+    const proposal: NeuralMemoryProposal = {
+      content: value.slice(0, NEURAL_MEMORY_PROPOSAL_MAX_CONTENT_LENGTH),
+      createdAt: now,
+      id: createSharedProposalId(now),
+      reason: '你让我记住的',
+      roleId: context.petId || PRIMARY_DESKTOP_PET_SLOT_ID,
+      scope: 'shared',
+      sharedKind: kind,
+      sourceExcerpt: value.slice(0, 240),
+      sourceMessageIds: [],
+      type: kind === 'preference' ? 'preference' : 'experience',
+    };
+    context.onUpdateConfig(appendNeuralMemoryProposals(context.configRef.current, [proposal]));
+    const verification = '已在聊天侧栏提交「关于你」的记忆提议，等用户批准后才会记住。';
     return {
-      observations: [
-        'Memory action: forget',
-        `Memory scope: ${scope}`,
-        `Removed memory lines: ${removedLines.length}`,
-        ...(removedLines.slice(0, limit).map((line) => `Removed: ${line}`)),
-      ],
+      observations: ['Memory action: remember', `Proposed shared memory: ${proposal.content}`],
       ok: true,
       receipt: createAgentMemoryReceipt({
-        evidenceLines: removedLines.slice(0, limit),
+        evidenceLines: [proposal.content],
         status: 'success',
-        summaryLines: [
-          '调用：execute_memory_action',
-          '动作：forget',
-          `删除：${removedLines.length} 条`,
-        ],
-        verification: removedLines.length
-          ? '已从 Agent 管理的全局记忆中删除匹配条目。'
-          : '没有找到可删除的 Agent 管理记忆。',
+        summaryLines: ['调用：execute_memory_action', '动作：remember（待批准）'],
+        verification,
       }),
-      responseText: removedLines.length
-        ? `已经忘记 ${removedLines.length} 条匹配的 Agent 记忆。`
-        : '没有找到可删除的 Agent 管理记忆；我没有改动全局知识库。',
-      verification: removedLines.length
-        ? '已从 Agent 管理的全局记忆中删除匹配条目。'
-        : '没有找到可删除的 Agent 管理记忆。',
+      responseText: `我把这条放到侧栏了，你点“记住”后所有角色都会知道：${proposal.content}`,
+      verification,
     };
   }
 
+  if (!query) {
+    return {
+      errorText: 'Missing memory forget filter.',
+      observations: ['Memory action: forget'],
+      ok: false,
+      responseText: '要忘掉哪条记忆？需要在 query 里写出关键词，避免误删。',
+    };
+  }
+
+  const removed = searchSharedUserMemory(items, query);
+  if (removed.length > 0) {
+    context.onUpdateConfig(removeSharedUserMemoryItems(context.configRef.current, removed.map((item) => item.id)));
+  }
+  const verification = removed.length
+    ? `已从「关于你」里删除 ${removed.length} 条记忆。`
+    : '「关于你」里没有找到匹配的记忆，没有删除任何内容。';
   return {
-    errorText: 'Unsupported execute_memory_action action.',
-    observations: [`Unsupported memory action: ${rawAction}`],
-    ok: false,
-    responseText: `execute_memory_action does not support action "${rawAction}".`,
+    observations: [
+      'Memory action: forget',
+      `Removed memory items: ${removed.length}`,
+      ...removed.slice(0, limit).map((item) => `Removed: ${item.text}`),
+    ],
+    ok: true,
+    receipt: createAgentMemoryReceipt({
+      evidenceLines: removed.slice(0, limit).map((item) => item.text),
+      status: 'success',
+      summaryLines: ['调用：execute_memory_action', '动作：forget', `删除：${removed.length} 条`],
+      verification,
+    }),
+    responseText: removed.length
+      ? `已经忘掉了：${removed.map((item) => item.text).join('；')}`
+      : '「关于你」里没有找到这条，我没有删除任何内容。',
+    verification,
   };
 }

@@ -1,5 +1,6 @@
 const { normalizeMcpTool } = require('./mcpServerConfigLoader.cjs');
 const { sendRpc, withMcpSession } = require('./mcpStdioSession.cjs');
+const { listHttpMcpTools } = require('./mcpHttpClient.cjs');
 
 function recordListFailure(history, server, startedAt, error) {
   history?.recordDiagnostic?.({
@@ -20,7 +21,9 @@ async function listToolsForServer(server, log, history, health, sessionPool = nu
 
   const startedAt = Date.now();
   try {
-    const result = sessionPool
+    const result = server.transport === 'http'
+      ? await listHttpMcpTools(server)
+      : sessionPool
       ? await listToolsWithPooledSession(sessionPool, server)
       : await withMcpSession(server, log, (session) => (
         sendRpc(session, 'tools/list', {}, server.timeoutMs)

@@ -61,6 +61,7 @@ export type AgentToolCallName =
   | 'get_display_info'
   | 'get_pet_settings'
   | 'update_pet_settings'
+  | 'use_platform_capability'
   | 'get_voice_status'
   | 'switch_tts_provider'
   | 'warmup_local_voice'

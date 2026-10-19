@@ -86,7 +86,7 @@ export function useSettingsPanelModelAssetsState({
       throw new Error(
         matchedPreset.type === 'live2d'
           ? '当前 Live2D 模型只支持导入 .motion3.json 动作文件或 .exp3.json 表情文件。'
-          : '当前 3D 模型只支持导入 VRMA / FBX / GLB / GLTF 动作文件。',
+          : '当前 3D 模型只支持导入 VRMA / VMD / FBX / GLB / GLTF 动作文件（VMD 只用于 MMD 模型）。',
       );
     }
 

@@ -31,6 +31,9 @@ export function resolveAgentCapabilityId(toolName: AgentToolCallName): AgentCapa
   if (toolName === 'execute_memory_action') {
     return 'agent-memory';
   }
+  if (toolName === 'use_platform_capability') {
+    return 'platform-capabilities';
+  }
   if ([
     'get_active_window_info',
     'observe_windows_and_apps',

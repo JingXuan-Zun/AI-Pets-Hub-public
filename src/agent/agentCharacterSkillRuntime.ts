@@ -20,7 +20,6 @@ import {
   type AgentCharacterAnimationTimelineStep,
 } from './agentCharacterAnimationTimeline';
 import { resolveAgentCharacterAnimationTriggerAudio } from './agentCharacterAnimationAudioLibrary';
-import { type AgentSkillExecutionResult } from './agentSkillRegistry';
 import { CHARACTER_ANIMATION_TRIGGER_ID_LIMIT } from '../characterAnimationChoreographyLimits';
 
 export type AgentCharacterMotionBindingResolver = (options: {
@@ -250,20 +249,5 @@ export function runCharacterAnimationSkill(
       ? `Resolved ${animationIds.length} animation(s) for ${targetSlot.id}.`
       : `Queued ${animationIds.length} animation(s) for ${targetSlot.id}.`,
     timelineSteps,
-  };
-}
-
-export function mergeCharacterAnimationSkillResult(
-  skillResult: AgentSkillExecutionResult,
-  animationResult: AgentCharacterAnimationSkillResult,
-): AgentSkillExecutionResult {
-  return {
-    ...skillResult,
-    observations: [
-      ...skillResult.observations,
-      ...animationResult.observations,
-    ],
-    ok: skillResult.ok && animationResult.ok,
-    summary: animationResult.summary,
   };
 }

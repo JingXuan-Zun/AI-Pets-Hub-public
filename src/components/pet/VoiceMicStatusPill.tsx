@@ -17,8 +17,8 @@ export function VoiceMicStatusPill(props: {
   ownerId: string;
   /** Horizontal shift from the shell center to the drawn model's center (slot 1 only). */
   centerShift?: number;
-  /** From the shell's top to just below the model's feet (slot 1 only); else the shell bottom is used. */
-  offsetBelowTop?: number;
+  /** From the shell's center (pet anchor) to just below the model's feet (slot 1 only); else the shell bottom is used. */
+  offsetBelowCenter?: number;
   onDisableWake: () => void;
 }) {
   const mic = useVoiceMicStatus();
@@ -27,7 +27,7 @@ export function VoiceMicStatusPill(props: {
   const ref = useRef<HTMLDivElement>(null);
   const visible = mic.conversationActive || mic.wakeListening;
   const watchPillShown = props.ownerId === 'primary' && (watch.asking || watch.watching);
-  const { centerShift = 0, offsetBelowTop, ownerId } = props;
+  const { centerShift = 0, offsetBelowCenter, ownerId } = props;
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -38,16 +38,30 @@ export function VoiceMicStatusPill(props: {
       const parent = pill?.offsetParent?.getBoundingClientRect();
       if (pill && shell && parent) {
         const box = shell.getBoundingClientRect();
-        const below = (offsetBelowTop ?? box.height + SHELL_BOTTOM_GAP) + (watchPillShown ? WATCH_PILL_HEIGHT : 0);
-        pill.style.left = `${box.left - parent.left + box.width / 2 + centerShift}px`;
-        pill.style.top = `${box.top - parent.top + below}px`;
+        const watchShift = watchPillShown ? WATCH_PILL_HEIGHT : 0;
+        // Without measured bounds (companions), go under the pet's hit area: it is sized to
+        // the drawn model, while the shell is a fixed box (a 3D model can be far taller).
+        const hitArea = offsetBelowCenter === undefined
+          ? document.querySelector<HTMLElement>(`[data-desktop-pet-id="${ownerId}"]`)
+          : null;
+        if (hitArea) {
+          const hit = hitArea.getBoundingClientRect();
+          pill.style.left = `${hit.left - parent.left + hit.width / 2}px`;
+          pill.style.top = `${hit.bottom - parent.top + SHELL_BOTTOM_GAP + watchShift}px`;
+        } else {
+          const below = (offsetBelowCenter === undefined
+            ? box.height + SHELL_BOTTOM_GAP
+            : box.height / 2 + offsetBelowCenter) + watchShift;
+          pill.style.left = `${box.left - parent.left + box.width / 2 + centerShift}px`;
+          pill.style.top = `${box.top - parent.top + below}px`;
+        }
         pill.style.visibility = 'visible';
       }
       frame = requestAnimationFrame(follow);
     };
     frame = requestAnimationFrame(follow);
     return () => cancelAnimationFrame(frame);
-  }, [centerShift, offsetBelowTop, ownerId, visible, watchPillShown]);
+  }, [centerShift, offsetBelowCenter, ownerId, visible, watchPillShown]);
 
   if (!visible) return null;
   const listening = mic.conversationActive && isListening;

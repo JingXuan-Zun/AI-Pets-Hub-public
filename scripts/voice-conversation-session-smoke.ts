@@ -152,6 +152,66 @@ function setup(idleTimeoutMs = 60000) {
   await flush();
   check([e.session.isActive(), e.log.ended, e.log.sent.length], [true, [], 3], 'reply errors keep the conversation open');
 
+  // A reply that runs a task can wait on the user's spoken answer: its send does not finish,
+  // yet the microphone must come back so "同意" is heard (it used to wait for the send).
+  {
+    let handlers: ConversationCaptureHandlers | null = null;
+    const capture = { paused: false };
+    const sent: string[] = [];
+    const session = createVoiceConversationSession({
+      startCapture: async (h) => {
+        handlers = h;
+        return { isPaused: () => capture.paused, pause: () => { capture.paused = true; }, resume: () => { capture.paused = false; }, stop: async () => undefined };
+      },
+      recognize: async (audio) => `heard:${audio}`,
+      send: (text) => { sent.push(text); return text === 'heard:close-the-emulator' ? new Promise<void>(() => undefined) : Promise.resolve(); },
+      isBusy: () => false, // the task waits on a question and the pet is silent
+      subscribeBusy: () => () => undefined,
+      onListeningChange: () => undefined,
+      onEnd: () => undefined,
+      idleTimeoutMs: 60000,
+      setTimer,
+      clearTimer,
+      now: () => now,
+    });
+    await session.start();
+    (handlers as ConversationCaptureHandlers | null)?.onUtterance('close-the-emulator', 1200);
+    await flush();
+    advance(CONVERSATION_RESUME_GRACE_MS + 10);
+    check(capture.paused, false, 'microphone listens again while the task still waits');
+    (handlers as ConversationCaptureHandlers | null)?.onUtterance('agree', 600);
+    await flush();
+    check(sent, ['heard:close-the-emulator', 'heard:agree'], 'the spoken answer reaches the task');
+    session.stop();
+  }
+
+  // A question waiting for the user's answer holds the idle countdown; once it is answered the
+  // session may close as usual (it used to close 20 s into a question).
+  {
+    let waitingForAnswer = true;
+    const ended: string[] = [];
+    const session = createVoiceConversationSession({
+      startCapture: async () => ({ isPaused: () => false, pause: () => undefined, resume: () => undefined, stop: async () => undefined }),
+      recognize: async () => '',
+      send: async () => undefined,
+      isBusy: () => false,
+      subscribeBusy: () => () => undefined,
+      onListeningChange: () => undefined,
+      onEnd: (reason) => ended.push(reason),
+      idleTimeoutMs: 20000,
+      holdIdle: () => waitingForAnswer,
+      setTimer,
+      clearTimer,
+      now: () => now,
+    });
+    await session.start();
+    advance(65000);
+    check(ended, [], 'no idle stop while a question waits');
+    waitingForAnswer = false;
+    advance(21000);
+    check(ended, ['idle'], 'idle stop once nothing waits');
+  }
+
   console.log(`voice conversation session passed: ${cases} cases`);
 })().catch((error) => {
   console.error(error);

@@ -6,30 +6,28 @@ import { readProjectSources } from './smokeTestHarness.ts';
 
 const {
   activityState: activityStateSource,
-  agentRunController: agentRunControllerSource,
   messageSender: messageSenderSource,
   responseTurn: responseTurnSource,
 } = readProjectSources({
   activityState: 'src/components/chat/PetChatConversationActivityStates.tsx',
-  agentRunController: 'src/components/chat/agentRunController.ts',
   messageSender: 'src/components/chat/usePetChatMessageSender.ts',
   responseTurn: 'src/components/chat/usePetChatResponseTurn.ts',
 });
 
 assert.match(
   activityStateSource,
-  /\{isTyping && \([\s\S]*className="flex gap-1"[\s\S]*rounded-full bg-primary/u,
+  /\{isTyping && \([\s\S]*\[0, 1, 2\]\.map[\s\S]*rounded-full bg-primary/u,
   'the three-dot bubble should be driven by the global isTyping state',
 );
 
 const sendExecution = readModuleProjectFunction('src/components/chat/petChatMessageSendExecution.ts', 'executePetChatMessageSend');
 const preparedExecution = readModuleProjectFunction('src/components/chat/petChatMessageSendExecution.ts', 'executePreparedRequest');
 assert.match(messageSenderSource, /await executePetChatMessageSend\(contextRef\.current/u);
-assert.match(sendExecution, /try \{\s*await executePreparedRequest\(context, input, preparedRequest\);\s*\} finally \{\s*finalizeChatSendRequest\(/u);
-assert.match(preparedExecution, /await executePreparedAgentSession\(context, input, preparedRequest, instruction\)/u);
+assert.match(sendExecution, /try \{\s*await executePreparedRequest\(context, preparedRequest\);\s*\} finally \{\s*finalizeChatSendRequest\(/u);
 assert.match(preparedExecution, /await runPreparedChatSendRequest\(\{ \.\.\.context, preparedRequest \}\)/u);
 
-for (const route of ['agent', 'chat', 'story']) for (const fail of [false, true]) {
+// 'single' goes through the conversation loop, 'story' through its narrator; both must clean up.
+for (const route of ['single', 'story']) for (const fail of [false, true]) {
   const effects: string[] = [];
   const expectedError = new Error(`${route} failed`);
   const senderContext = { activeChatRequestTokenRef: { current: 7 }, groupChatContinuationEnabledRef: { current: false } };
@@ -44,10 +42,8 @@ for (const route of ['agent', 'chat', 'story']) for (const fail of [false, true]
     resolveSendInput: () => ({ outgoingText: 'message' }),
     desktopPetChatStore: { getState: () => ({ chatMode: 'single', isTyping: false }) },
     prepareSendRequest: async () => ({ requestToken: 7, currentChatState: { chatMode: route } }),
-    resolveInitialAgentInstruction: () => route === 'agent' ? 'goal' : '',
-    resolveAnimationAgentInstruction: (_input: unknown, instruction: string) => instruction,
-    resolveRoutedAgentInstruction: async (_context: unknown, _input: unknown, _request: unknown, instruction: string) => instruction,
-    executePreparedAgentSession: async () => dispatch('agent'),
+    createConversationToolActorGate: () => () => true,
+    createConversationChatRuntime: () => null,
     runPreparedChatSendRequest: async () => dispatch(route),
     finalizeChatSendRequest: (token: number, tokenRef: unknown, continuationRef: unknown) => {
       assert.equal(token, 7);
@@ -65,12 +61,6 @@ assert.doesNotMatch(
   messageSenderSource,
   /resolveAgentChatCommandWithPlanner|shouldUseAgentPlanner|runPreparedAgentChatCommand/u,
   'the old fixed planner entry should not be wired into the message sender',
-);
-
-assert.match(
-  agentRunControllerSource,
-  /activeChatRequestTokenRef\.current = requestToken;[\s\S]*stopGroupChat\(\{ immediate: true, cancelActiveRequest: false \}\);/u,
-  'Approved Agent runs should stop group chat without invalidating their own request token',
 );
 
 assert.match(

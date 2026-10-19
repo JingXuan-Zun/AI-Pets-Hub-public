@@ -87,7 +87,7 @@ function createDeepSeekHarnessRuntimeService({ localFileSystemService, log, runn
       const initProbe = await execPython(python, ['-c', [
         'from deepseek_harness import DeepSeekHarness',
         'import os,sys',
-        "h=DeepSeekHarness(provider='deepseek-official',model=os.environ.get('DSH_MODEL','deepseek-v4-flash'),cwd=os.environ['DSH_WORKSPACE'],dsh_home=os.environ['DSH_HOME'],profile='sdk-minimal',patches=(os.environ['DSH_CAPABILITY_PROFILE_PATCH'],),env={'AI_PETS_HARNESS_BRIDGE_TOKEN':'setup-probe','AI_PETS_HARNESS_BRIDGE_URL':'http://127.0.0.1:1'},initialize_timeout_seconds=12)",
+        "h=DeepSeekHarness(provider='deepseek-official',model=os.environ.get('DSH_MODEL','deepseek-flash'),cwd=os.environ['DSH_WORKSPACE'],dsh_home=os.environ['DSH_HOME'],profile='sdk-minimal',patches=(os.environ['DSH_CAPABILITY_PROFILE_PATCH'],),env={'AI_PETS_HARNESS_BRIDGE_TOKEN':'setup-probe','AI_PETS_HARNESS_BRIDGE_URL':'http://127.0.0.1:1'},initialize_timeout_seconds=12)",
         'h.start()',
         "print('HARNESS_INIT_OK')",
         'h.close()',
@@ -97,7 +97,7 @@ function createDeepSeekHarnessRuntimeService({ localFileSystemService, log, runn
           ...process.env,
           DSH_CAPABILITY_PROFILE_PATCH: profile.profilePath,
           DSH_HOME: dshHome.path,
-          DSH_MODEL: String(request.model || 'deepseek-v4-flash'),
+          DSH_MODEL: String(request.model || 'deepseek-flash'),
           DSH_WORKSPACE: workspace.path,
           AI_PETS_HARNESS_RUNNER_PATH: runnerPath,
         },
@@ -126,7 +126,7 @@ function createDeepSeekHarnessRuntimeService({ localFileSystemService, log, runn
     const bridge = await createDeepSeekHarnessCapabilityBridge({ localFileSystemService, workspace: workspace.path });
     try {
       const python = resolvePythonCommand(request.pythonPath);
-      const environment = { ...process.env, AI_PETS_HARNESS_BRIDGE_TOKEN: bridge.token, AI_PETS_HARNESS_BRIDGE_URL: bridge.url, DEEPSEEK_API_KEY: String(request.apiKey || ''), DSH_CAPABILITY_PROFILE_PATCH: profile.profilePath, DSH_HOME: dshHome.path, DSH_MODEL: String(request.model || 'deepseek-v4-flash'), DSH_WORKSPACE: workspace.path, ...(request.baseUrl ? { DEEPSEEK_BASE_URL: String(request.baseUrl) } : {}) };
+      const environment = { ...process.env, AI_PETS_HARNESS_BRIDGE_TOKEN: bridge.token, AI_PETS_HARNESS_BRIDGE_URL: bridge.url, DEEPSEEK_API_KEY: String(request.apiKey || ''), DSH_CAPABILITY_PROFILE_PATCH: profile.profilePath, DSH_HOME: dshHome.path, DSH_MODEL: String(request.model || 'deepseek-flash'), DSH_WORKSPACE: workspace.path, ...(request.baseUrl ? { DEEPSEEK_BASE_URL: String(request.baseUrl) } : {}) };
       const processRun = runDeepSeekHarnessProcess({ command: python.command, commandArgs: python.args, cwd: workspace.path, env: environment, runnerPath: getRunnerPath(), timeoutMs: DEFAULT_TIMEOUT_MS, userGoal: request.userGoal });
       const runId = String(request.requestId || request.sessionId || '').trim();
       if (runId && typeof processRun.cancel === 'function') activeRuns.set(runId, processRun.cancel);

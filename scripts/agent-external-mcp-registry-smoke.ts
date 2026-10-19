@@ -1,10 +1,6 @@
 import { strict as assert } from 'node:assert';
-import {
-  callAvailableAgentMcpTool,
-  executeCallMcpTool,
-  executeListMcpTools,
-  listAvailableAgentMcpTools,
-} from '../src/agent';
+import { callAvailableAgentMcpTool, listAvailableAgentMcpTools } from '../src/agent/agentMcpRegistry';
+import { executeCallMcpTool, executeListMcpTools } from '../src/agent/agentRuntimeSkillTools';
 import { setAgentExternalMcpRuntimeOverride } from '../src/agent/agentExternalMcpBridge';
 
 let activeMcpConfig: Record<string, unknown> = {};
@@ -46,7 +42,8 @@ setAgentExternalMcpRuntimeOverride({
 });
 
 const listedTools = await listAvailableAgentMcpTools();
-assert.ok(listedTools.some((tool) => tool.serverId === 'platform' && tool.name === 'skills.list'));
+// The built-in "platform" server (old built-in skills over MCP) was removed; only configured servers list.
+assert.ok(!listedTools.some((tool) => tool.serverId === 'platform'));
 assert.ok(listedTools.some((tool) => tool.serverId === 'external-fake' && tool.name === 'echo'));
 
 const filteredTools = await listAvailableAgentMcpTools('external-fake');
@@ -84,7 +81,7 @@ const listRuntimeResult = await executeListMcpTools({
   name: 'list_mcp_tools',
 });
 assert.equal(listRuntimeResult.ok, true);
-assert.match(listRuntimeResult.responseText, /external-fake\/echo/u);
+assert.match(listRuntimeResult.responseText, /【external-fake】\n- echo\(/u);
 
 const callRuntimeResult = await executeCallMcpTool({
   input: {

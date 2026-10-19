@@ -153,8 +153,9 @@ export function useSettingsPanelDraftState({
   const commitModelConfig = (
     buildLocalConfig: (baseConfig: PetConfig) => PetConfig,
     buildCommittedConfig = buildLocalConfig,
+    adjustBaseConfig: (baseConfig: PetConfig) => PetConfig = (baseConfig) => baseConfig,
   ) => {
-    const committedBaseConfig = resolveCommittedConfigBase();
+    const committedBaseConfig = adjustBaseConfig(resolveCommittedConfigBase());
     const nextLocalConfig = normalizePetConfig(buildLocalConfig(localConfigRef.current));
     const nextCommittedConfig = normalizePetConfig(buildCommittedConfig(committedBaseConfig));
     const nextOpenedConfigSnapshot = hasUnsavedChangesRef.current
@@ -171,9 +172,21 @@ export function useSettingsPanelDraftState({
     return nextLocalConfig;
   };
 
+  // Add and remove name the exact pet. The saved snapshot can be older than what the panel
+  // shows (unsaved edits, pets created from chat), so rebuilding the change from it gave the
+  // new pet a different id, or made a delete a no-op that the next sync undid.
   const handleAddPetSlot = () => {
-    const nextLocalConfig = commitModelConfig(addDesktopPetSlot);
-    const nextSlot = getDesktopPetSlots(nextLocalConfig).at(-1);
+    const addedPet = addDesktopPetSlot(localConfigRef.current).companionPets.at(-1);
+    if (!addedPet || localConfigRef.current.companionPets.some((pet) => pet.id === addedPet.id)) {
+      return;
+    }
+    const withAddedPet = (baseConfig: PetConfig) => (
+      baseConfig.companionPets.some((pet) => pet.id === addedPet.id)
+        ? baseConfig
+        : { ...baseConfig, companionPets: [...baseConfig.companionPets, addedPet] }
+    );
+    const nextLocalConfig = commitModelConfig(withAddedPet);
+    const nextSlot = getDesktopPetSlot(nextLocalConfig, addedPet.id);
 
     if (nextSlot) {
       setSelectedPetSlotId(nextSlot.id);
@@ -186,11 +199,27 @@ export function useSettingsPanelDraftState({
     if (slotId === PRIMARY_DESKTOP_PET_SLOT_ID) {
       return;
     }
+    // One click used to delete a whole character (persona, model, voice) with no way back
+    // short of a data backup; every delete button now asks first.
+    const removedName = getDesktopPetSlot(localConfigRef.current, slotId)?.personality.name?.trim() || '这个角色';
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function'
+      && !window.confirm(`确定要删除「${removedName}」吗？\n她的人设、模型和声音设置会一起删除，删除后不能撤销。`)) {
+      return;
+    }
 
     const fallbackSlotId = selectedPetSlotId === slotId
       ? PRIMARY_DESKTOP_PET_SLOT_ID
       : selectedPetSlotId;
-    const nextLocalConfig = commitModelConfig((baseConfig) => removeDesktopPetSlot(baseConfig, slotId));
+    const removedPet = localConfigRef.current.companionPets.find((pet) => pet.id === slotId)
+      ?? normalizePetConfig(config).companionPets.find((pet) => pet.id === slotId);
+    const nextLocalConfig = commitModelConfig(
+      (baseConfig) => removeDesktopPetSlot(baseConfig, slotId),
+      undefined,
+      // The diff base must contain the pet, or removing it changes nothing.
+      (baseConfig) => (removedPet && !baseConfig.companionPets.some((pet) => pet.id === slotId)
+        ? { ...baseConfig, companionPets: [...baseConfig.companionPets, removedPet] }
+        : baseConfig),
+    );
     desktopPetChatStore.removePetRuntimeState(slotId, PRIMARY_DESKTOP_PET_SLOT_ID);
     if (desktopPetShellRuntime.isDesktopMode()) {
       desktopPetShellRuntime.dispatch({
@@ -207,6 +236,29 @@ export function useSettingsPanelDraftState({
       setTraitsDraft(nextSelectedSlot.personality.traits.join(', '));
       setIsEditingTraits(false);
     }
+  };
+
+  // Drag-to-reorder in the slot list. The main pet always stays first (it lives outside the
+  // companion list); the others move by id, so the saved copy follows the shown order even
+  // when it holds pets the panel has not seen.
+  const handleMovePetSlot = (movedId: string, targetId: string) => {
+    if (movedId === targetId || movedId === PRIMARY_DESKTOP_PET_SLOT_ID || targetId === PRIMARY_DESKTOP_PET_SLOT_ID) {
+      return;
+    }
+    const ids = localConfigRef.current.companionPets.map((pet) => pet.id);
+    const from = ids.indexOf(movedId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, movedId);
+    const rank = (id: string) => {
+      const index = ids.indexOf(id);
+      return index < 0 ? ids.length : index;
+    };
+    commitModelConfig((baseConfig) => ({
+      ...baseConfig,
+      companionPets: [...baseConfig.companionPets].sort((a, b) => rank(a.id) - rank(b.id)),
+    }));
   };
 
   const handleSetTraitsDraft = (value: string) => {
@@ -327,6 +379,7 @@ export function useSettingsPanelDraftState({
     handleCloseWithoutSaving,
     handleAddPetSlot,
     handleRemovePetSlot,
+    handleMovePetSlot,
     handleSaveAndClose,
     handleSetCustomApiDraft,
     handleSetTraitsDraft,

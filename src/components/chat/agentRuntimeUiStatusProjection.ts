@@ -1,4 +1,4 @@
-import type { AgentProductionSessionResult } from '../../agent';
+import type { AgentProductionSessionResult } from '../../agent/agentProductionSessionContract';
 import type { ChatAgentApprovalStatus, ChatAgentRunStatus } from '../../types';
 
 export function isAgentTaskRuntimeWaitingApproval(result: AgentProductionSessionResult) {

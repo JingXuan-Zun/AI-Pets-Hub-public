@@ -43,6 +43,7 @@ function migrateGraph(value: JsonObject): NeuralPersonaGraphSnapshot | null {
     edges,
     nodes,
     schemaVersion: NEURAL_PERSONA_SCHEMA_VERSION,
+    sources: Array.isArray(value.sources) ? value.sources : [],
   } as unknown as NeuralPersonaGraphSnapshot;
 }
 

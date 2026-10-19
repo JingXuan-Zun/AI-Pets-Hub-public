@@ -1,6 +1,6 @@
 const SECRET_FIELDS = ['deepseekHarnessApiKey', 'geminiApiKey', 'customApiKey',
   'visionCustomApiKey', 'tavilyApiKey', 'serperApiKey', 'braveSearchApiKey',
-  'customWebSearchApiKey', 'browserTtsApiKey', 'customVoiceApiKey', 'customSpeechApiKey'];
+  'customWebSearchApiKey', 'browserTtsApiKey', 'customVoiceApiKey', 'customSpeechApiKey', 'comfyUiApiKey'];
 const MODEL_FIELDS = ['geminiApiKey', 'customApiKey', 'visionCustomApiKey'];
 const PREFIX = 'desktop-pet-credential:';
 
@@ -35,7 +35,8 @@ function createConfigCredentialCodec(safeStorage) {
           throw new Error('credential-reference-unavailable');
         }
         const urlField = field === 'customApiKey' ? 'customApiUrl'
-          : field === 'visionCustomApiKey' ? 'visionCustomApiUrl' : null;
+          : field === 'visionCustomApiKey' ? 'visionCustomApiUrl'
+            : field === 'geminiApiKey' ? 'geminiApiUrl' : null;
         if (urlField && String(config.settings[urlField] || '').trim() !== String(previous.settings[urlField] || '').trim()) {
           throw new Error('credential-endpoint-changed-reenter-key');
         }

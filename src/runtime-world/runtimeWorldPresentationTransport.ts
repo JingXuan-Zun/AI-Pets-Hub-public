@@ -19,6 +19,8 @@ function isRuntimeWorldPresentationIntent(
 export function publishRuntimeWorldPresentationIntent(
   intent: RuntimeWorldPresentationIntent,
 ) {
+  // No window outside the renderer (e.g. tests driving the conversation loop).
+  if (typeof window === 'undefined') return;
   desktopPetShellBridge.publishRuntimeWorldPresentationIntent(intent);
 }
 

@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  createDesktopOrganizationObservationEvidence,
-  findDesktopOrganizationTargetDisplay,
-  formatDisplayResolutionSummary,
-  normalizeDesktopOrganizationDisplayRect,
-} from '../src/agent/index.ts';
+import { createDesktopOrganizationObservationEvidence, findDesktopOrganizationTargetDisplay, normalizeDesktopOrganizationDisplayRect } from '../src/agent/desktopOrganizationObservation';
+import { formatDisplayResolutionSummary } from '../src/agent/displayMetrics';
 import { readProjectSources } from './smokeTestHarness.ts';
 
 const {

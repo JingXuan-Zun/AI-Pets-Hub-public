@@ -80,6 +80,13 @@ function resolveContent(sourceText: string, requested: unknown) {
     ))[0] ?? null;
 }
 
+function matchingSourceBlock(sourceText: string, content: string) {
+  const target = comparable(content);
+  return createNeuralPersonaSourceBlocks(sourceText).find((block) => (
+    comparable(block.content) === target
+  ));
+}
+
 type CandidateParseResult =
   | { candidate: NeuralPersonaNodeGenerationCandidate }
   | { reason: string };
@@ -100,11 +107,18 @@ function parseCandidate(
   const content = requestedContent === undefined
     ? evidence : resolveContent(sourceText, requestedContent);
   if (!content) return { reason: 'generated-node-content-not-found' };
+  const sourceBlock = matchingSourceBlock(sourceText, content)
+    ?? matchingSourceBlock(sourceText, evidence);
   return { candidate: {
     baseWeight: unitValue(item.baseWeight, 0.7),
     candidateId: `candidate-${index + 1}`,
     confidence: unitValue(item.confidence, 0.7),
-    enabled: true, evidence, influenceSummary: content, origin: 'model' as const,
+    enabled: true, evidence, influenceSummary: content,
+    originalContent: sourceBlock?.content ?? evidence, origin: 'model' as const,
+    retrievalSummary: content,
+    sourceBlockId: sourceBlock?.sourceId,
+    sourceEndOffset: sourceBlock?.endOffset,
+    sourceStartOffset: sourceBlock?.startOffset,
     tags: normalizedTags(item.tags), topic: normalizedTopic(item.topic) || undefined,
     type: item.type as NeuralPersonaGeneratedNodeType,
   } satisfies NeuralPersonaNodeGenerationCandidate };
@@ -149,7 +163,10 @@ export function createNeuralPersonaSourceFallbackCandidates(sourceText: string) 
     return [{
       baseWeight: 0.65, candidateId: `source-fallback-${index + 1}`,
       confidence: 0.6, enabled: true, evidence, influenceSummary: evidence,
-      origin: 'model' as const, tags: [], type: inferNeuralPersonaSourceBlockType(evidence),
+      originalContent: evidence, origin: 'model' as const,
+      retrievalSummary: evidence, sourceBlockId: block.sourceId,
+      sourceEndOffset: block.endOffset, sourceStartOffset: block.startOffset,
+      tags: [], type: inferNeuralPersonaSourceBlockType(evidence),
     } satisfies NeuralPersonaNodeGenerationCandidate];
   });
 }

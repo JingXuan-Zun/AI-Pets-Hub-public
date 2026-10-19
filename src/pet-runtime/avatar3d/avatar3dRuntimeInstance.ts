@@ -5,6 +5,11 @@ import { type Avatar3DMotionState } from './avatar3dMotionStateController';
 import { type Avatar3DVisualMode } from './avatar3dActionPresentationProfile';
 
 export type Avatar3DRuntimeFrameState = {
+  /** Smoothed drag speed in screen pixels per pointer move; zero when the pet is not dragged. */
+  dragVelocity?: {
+    x: number;
+    y: number;
+  };
   focusTarget?: {
     x: number;
     y: number;

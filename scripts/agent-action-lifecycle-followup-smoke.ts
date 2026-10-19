@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
-import {
-  assessAgentCommandResult,
-  resolveAgentResultFollowUpActions,
-  type AgentChatCommand,
-  type AgentChatCommandResult,
-} from '../src/agent/index.ts';
+import { assessAgentCommandResult } from '../src/agent/agentResultAssessment';
+import { resolveAgentResultFollowUpActions } from '../src/agent/resultAssessment/resultEvidenceAssessment';
+import { type AgentChatCommand, type AgentChatCommandResult } from '../src/agent/agentChatCommand';
 
 const command: AgentChatCommand = {
   instruction: 'launch game',

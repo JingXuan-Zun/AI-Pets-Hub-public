@@ -71,7 +71,7 @@ for (const button of ['left', 'right', 'middle']) {
   hash.update(JSON.stringify(actual)); cases++;
 }
 const fingerprint = hash.digest('hex');
-assert.equal(fingerprint, '49d56c932cca5c474b23dac3aaf55ec9b918ec7ba9ddf6733f478355aa011a97', 'Reviewed complete mouse script and reading/error trace');
+assert.equal(fingerprint, '834be3105b4f3e81184144f19acd144c2cc95da99e9594ac954ae30152f03102', 'Reviewed complete mouse script and reading/error trace');
 assert.equal(prepareMouseInput({ nativeScreenX: undefined, nativeScreenY: 3 }), null);
 const normal = prepareMouseInput({ nativeScreenX: null, nativeScreenY: 2.5 });
 assert.equal(normal.x, 0); assert.equal(normal.y, 3); assert.equal(normal.clicks, 1);

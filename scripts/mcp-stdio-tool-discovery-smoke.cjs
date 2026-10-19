@@ -82,6 +82,8 @@ async function scenario(text, pooled, gate, payload, observer) {
   const module = { exports: {} };
   new Function('require', 'module', 'Date', text)(name => {
     if (name === './mcpServerConfigLoader.cjs') return { normalizeMcpTool };
+    // Remote (HTTP) servers have their own client; the fixture server is local, so it must not be used.
+    if (name === './mcpHttpClient.cjs') return { listHttpMcpTools() { throw new Error('stdio fixture used the HTTP client'); } };
     assert.equal(name, './mcpStdioSession.cjs'); return host;
   }, module, { now: () => { calls.push(['now']); now += 10; return now; } });
   let result;

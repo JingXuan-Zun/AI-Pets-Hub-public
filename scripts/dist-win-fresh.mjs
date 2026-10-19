@@ -8,11 +8,6 @@ import {
   formatBaselineLines,
 } from './dist-win-package-guards.mjs';
 import { copyUnityRuntimeIfPresent } from './unity-runtime-assets.mjs';
-import {
-  assertMarketplaceProductionPackagingMode,
-  createMarketplaceProductionExtraResources,
-  loadMarketplaceProductionPackagingConfig,
-} from './marketplace-production-packaging-config.mjs';
 
 const projectRoot = process.cwd();
 const releaseRoot = path.join(projectRoot, 'release');
@@ -27,14 +22,6 @@ const packagingConfigPath = path.join(packagingInputRoot, 'electron-builder.json
 const windowsIconPath = path.join(projectRoot, 'build', 'icon.ico');
 const windowsIconSignaturePath = path.join(projectRoot, 'build', 'icon.png');
 const execFileAsync = promisify(execFile);
-const isMarketplaceProductionBuild = process.argv.includes('--require-marketplace-production');
-const marketplaceProductionConfig = await loadMarketplaceProductionPackagingConfig({
-  required: isMarketplaceProductionBuild,
-});
-assertMarketplaceProductionPackagingMode(
-  marketplaceProductionConfig,
-  isMarketplaceProductionBuild ? 'production-fresh' : 'ordinary-fresh',
-);
 
 process.env.ELECTRON_CACHE = process.env.ELECTRON_CACHE || localElectronCache;
 process.env.ELECTRON_BUILDER_CACHE = process.env.ELECTRON_BUILDER_CACHE || localElectronBuilderCache;
@@ -90,7 +77,12 @@ async function prepareFreshPackagingInput() {
   // public/models-3d is a local development library containing user-owned
   // models, archives, and installers. It must never enter a distributable EXE.
   await rm(path.join(packagingAppDir, 'dist', 'models-3d'), { force: true, recursive: true });
-  await cp(path.join(projectRoot, 'electron'), path.join(packagingAppDir, 'electron'), { recursive: true });
+  // Python bytecode caches carry local build paths and are rebuilt on demand; leave them out
+  // of staging so the archive check and the package agree.
+  await cp(path.join(projectRoot, 'electron'), path.join(packagingAppDir, 'electron'), {
+    filter: (source) => !source.split(path.sep).includes('__pycache__') && !source.endsWith('.pyc'),
+    recursive: true,
+  });
   await cp(path.join(projectRoot, 'resources', 'system-expressions'), path.join(packagingAppDir, 'resources', 'system-expressions'), { recursive: true });
   await copyFile(path.join(projectRoot, 'package.json'), path.join(packagingAppDir, 'package.json'));
   const packageInfo = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'));
@@ -133,7 +125,6 @@ async function copyFreshExtraResources(context) {
   const entries = [
     { from: windowsIconPath, to: 'icon.ico' },
     { from: windowsIconSignaturePath, to: 'icon.png' },
-    ...createMarketplaceProductionExtraResources(marketplaceProductionConfig),
   ];
   for (const entry of entries) {
     await copyFileWithRetry(entry.from, path.join(resourcesPath, entry.to));
@@ -310,7 +301,8 @@ await buildElectronApp({
       {
         from: projectRelative(packagingAppDir),
         to: '.',
-        filter: ['dist/**/*', 'electron/**/*', 'resources/**/*', 'package.json', 'build-info.json'],
+        // Python bytecode caches carry local build paths and are rebuilt on demand.
+        filter: ['dist/**/*', 'electron/**/*', 'resources/**/*', 'package.json', 'build-info.json', '!**/__pycache__/**', '!**/*.pyc'],
       },
     ],
     forceCodeSigning: false,
@@ -359,9 +351,6 @@ await writeFile(
 
 if (copiedUnityRuntimeDir) {
   console.log(`Unity runtime resources: ${copiedUnityRuntimeDir}`);
-}
-if (marketplaceProductionConfig.enabled) {
-  console.log(`Marketplace production config: ${marketplaceProductionConfig.summary.transportOrigin}`);
 }
 
 console.log('');

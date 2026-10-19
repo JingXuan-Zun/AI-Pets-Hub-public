@@ -34,7 +34,8 @@ export function validateNeuralPersonaNodeGenerationCandidate(
   }
   if (typeof candidate.influenceSummary !== 'string'
     || !candidate.influenceSummary.trim()) return 'generated-node-summary-empty';
-  if (candidate.influenceSummary.length > 240) return 'generated-node-summary-too-long';
+  if (candidate.retrievalSummary !== undefined
+    && !candidate.retrievalSummary.trim()) return 'generated-node-retrieval-summary-empty';
   if (!isNeuralPersonaGeneratedNodeType(candidate.type)) return 'generated-node-type-invalid';
   if (candidate.origin !== 'model' && candidate.origin !== 'user') {
     return 'generated-node-origin-invalid';
@@ -48,10 +49,22 @@ export function validateNeuralPersonaNodeGenerationCandidate(
   if (!validTags(candidate.tags)) return 'generated-node-tags-invalid';
   if (candidate.topic !== undefined && (typeof candidate.topic !== 'string'
     || candidate.topic.length > 40)) return 'generated-node-topic-invalid';
+  const hasStart = candidate.sourceStartOffset !== undefined;
+  const hasEnd = candidate.sourceEndOffset !== undefined;
+  if (hasStart !== hasEnd || (hasStart && (!Number.isSafeInteger(candidate.sourceStartOffset)
+    || !Number.isSafeInteger(candidate.sourceEndOffset)
+    || candidate.sourceStartOffset! < 0
+    || candidate.sourceEndOffset! < candidate.sourceStartOffset!))) {
+    return 'generated-node-source-range-invalid';
+  }
   if (candidate.origin === 'model') {
     if (!candidate.evidence.trim()) return 'generated-node-evidence-missing';
     if (sourceText !== undefined && (typeof sourceText !== 'string' || !normalizedText(sourceText)
       .includes(normalizedText(candidate.evidence)))) return 'generated-node-evidence-not-found';
+    if (candidate.originalContent !== undefined && sourceText !== undefined
+      && !sourceText.includes(candidate.originalContent)) {
+      return 'generated-node-original-content-not-found';
+    }
   }
   return null;
 }
@@ -97,6 +110,7 @@ function successResult(
       generatedAt: options.request.now, personaName: options.request.personaName.trim(),
       providerId: options.provider.providerId,
       roleId: options.request.roleId, sourceText,
+      sourceDocumentId: `persona-source:${options.request.batchId}`,
       version: NEURAL_PERSONA_NODE_GENERATION_VERSION,
     },
     recovery,
