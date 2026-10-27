@@ -997,6 +997,8 @@ interface Window {
       /** The first-start WebUI login SnowLuma printed (only until the user changes the password). */
       initialCredentials: () => Promise<{ ok: boolean; password?: string; user?: string }>;
       openWebui: (dir: string) => Promise<{ error?: string; ok: boolean; url?: string }>;
+      /** Opens the official download page of SnowLuma or desktop QQ. */
+      openDownload: (target: 'qq' | 'snowluma') => Promise<{ error?: string; ok: boolean; url?: string }>;
       inspect: (dir: string) => Promise<{ error?: string; ok: boolean }>;
       openLog: () => Promise<{ error?: string; ok: boolean }>;
       status: () => Promise<{ logPath: string; ownedRunning: boolean }>;

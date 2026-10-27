@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     fetchImage: (url) => ipcRenderer.invoke('desktop-pet:qq-fetch-image', String(url ?? '')),
     initialCredentials: () => ipcRenderer.invoke('desktop-pet:snowluma-initial-credentials'),
     openWebui: (dir) => ipcRenderer.invoke('desktop-pet:snowluma-open-webui', String(dir ?? '')),
+    openDownload: (target) => ipcRenderer.invoke('desktop-pet:snowluma-open-download', String(target ?? '')),
     inspect: (dir) => ipcRenderer.invoke('desktop-pet:snowluma-inspect', dir),
     openLog: () => ipcRenderer.invoke('desktop-pet:snowluma-open-log'),
     status: () => ipcRenderer.invoke('desktop-pet:snowluma-status'),
