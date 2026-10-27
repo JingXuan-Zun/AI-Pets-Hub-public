@@ -4,6 +4,7 @@ import { createProductivityId, normalizeProductivitySettings } from '../../../pr
 import { formatDueTime, localDateKey, REPEAT_LABELS } from '../../../productivity/productivityTime';
 import type { ProductivitySettings } from '../../../productivity/productivityTypes';
 import type { PetConfig, PetConfigUpdateHandler } from '../../../types';
+import { ChatHubWorkTaskCard } from './ChatHubWorkTaskCard';
 
 const PANEL_CLASS = 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/80 hub-glass-panel shadow-[0_18px_48px_rgba(158,84,140,0.16)]';
 const CARD_CLASS = 'rounded-2xl border border-white/80 hub-glass-card px-4 py-3';
@@ -66,10 +67,12 @@ export function ChatHubTasksPage({ config, onUpdateConfig }: { config: PetConfig
         </span>
         <div className="min-w-0">
           <h2 className="text-lg font-bold text-foreground">任务</h2>
-          <p className="truncate text-xs text-muted-foreground">角色帮你记下的提醒、待办和番茄钟。直接跟角色说也可以。</p>
+          <p className="truncate text-xs text-muted-foreground">角色帮你记下的进度卡、提醒、待办和番茄钟。直接跟角色说也可以。</p>
         </div>
       </header>
       <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+        <ChatHubWorkTaskCard config={config} onUpdateConfig={onUpdateConfig} />
+
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2 text-xs font-semibold text-primary"><Timer className="h-3.5 w-3.5" />番茄钟</div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

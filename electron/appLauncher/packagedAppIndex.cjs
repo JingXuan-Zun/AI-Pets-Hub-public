@@ -1,5 +1,6 @@
 const { PACKAGED_APP_INDEX_TIMEOUT_MS } = require('./appLauncherConstants.cjs');
 const { normalizeAliasList } = require('./appSearchMatching.cjs');
+const { resolveChineseAppAliases } = require('./windowsAppChineseAliases.cjs');
 
 function createPackagedAppIndex({ runPowerShellScript, logMessage, packagedAppProvider }) {
   function parsePackagedAppRows(value) {
@@ -58,7 +59,7 @@ Get-StartApps |
 
         seenAppIds.add(appIdKey);
         return {
-          aliases: normalizeAliasList([name, appId]),
+          aliases: normalizeAliasList([name, appId, ...resolveChineseAppAliases(appId, name)]),
           appId,
           category: 'packaged-app',
           name,

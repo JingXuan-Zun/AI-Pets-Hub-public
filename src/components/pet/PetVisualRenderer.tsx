@@ -210,6 +210,7 @@ const PetVisualRenderer = memo(function PetVisualRenderer({
         onVisualBoundsChange={onVisualBoundsChange}
         pointerLookTarget={pointerLookTarget}
         scale={scale}
+        stageFollowsViewport={fitToPreview && Boolean(viewport)}
         viewport={viewport}
         visible={visible}
       />

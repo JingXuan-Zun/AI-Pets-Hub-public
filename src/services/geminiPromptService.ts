@@ -1,4 +1,5 @@
 import { resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
+import { buildWorkTaskInstruction } from '../work-tasks/workTaskPrompt';
 import { buildRealWorldTimeSystemInstruction } from '../timeAwareness';
 import {
   type ChatMessage,
@@ -66,6 +67,26 @@ const MEMORY_MAX_BLOCK_LENGTH_BY_PRIORITY: Partial<Record<SelectiveContextPriori
   'shared-user-memory': 2000,
 };
 const MEMORY_ENTRY_RELEVANT_MIN_MATCH_COUNT = 2;
+// The global knowledge base can be a whole design document; only the sections the
+// user is asking about are attached, up to this many characters.
+const GLOBAL_KNOWLEDGE_MAX_LENGTH = 4000;
+const GLOBAL_KNOWLEDGE_HEADING_PATTERN = /^#{1,6}\s/u;
+// A top-level "# title" starts a separate document inside the knowledge base.
+const GLOBAL_KNOWLEDGE_BOOK_HEADING_PATTERN = /^#\s+/u;
+const GLOBAL_KNOWLEDGE_MIN_SECTION_SCORE = 8;
+// Sections longer than this are cut into pieces that can be attached on their own.
+const GLOBAL_KNOWLEDGE_CHUNK_LENGTH = 1800;
+// Words too common to say which document a question is about ("你们对整个游戏…" names the game, not "你们自己的世界").
+const GLOBAL_KNOWLEDGE_OUTLINE_IGNORED_WORDS = ['你们', '我们', '她们', '他们', '自己', '什么', '怎么', '这个', '那个', '一个', '整个', '看法', '觉得'];
+// A section whose heading carries this marker holds standing instructions for the characters
+// (how to read the rest of the document); it rides along whenever the knowledge base attaches.
+const GLOBAL_KNOWLEDGE_PINNED_MARKER = '给角色看的说明';
+const GLOBAL_KNOWLEDGE_MENTION_CAP = 5;
+const GLOBAL_KNOWLEDGE_HEADING_WEIGHT = 4;
+// Group turns wrap the user's words in turn instructions; retrieval matches the words themselves.
+const GROUP_TURN_USER_INPUT_PATTERN = /^(?:本轮用户消息|用户最近一次的话题是)：(.+)$/mu;
+// The character a group turn is answering; their own knowledge section rides along.
+const GROUP_TURN_LATEST_SPEAKER_PATTERN = /^群里上一句是 (.+?)：/mu;
 const MANUAL_MEMORY_ENTRY_HEADER_PATTERN = /^【手动保存｜/u;
 
 type SelectiveContextPriority =
@@ -372,7 +393,12 @@ function collectContextKeywords(text: string) {
 }
 
 function buildSelectiveContextQuery(userInput: string) {
-  return userInput;
+  return GROUP_TURN_USER_INPUT_PATTERN.exec(userInput)?.[1]?.trim() || userInput;
+}
+
+function extractGroupTurnSpeakerNames(userInput: string) {
+  const name = GROUP_TURN_LATEST_SPEAKER_PATTERN.exec(userInput)?.[1]?.trim();
+  return name ? [name] : [];
 }
 
 function hasQuestionLikeIntent(userInput: string) {
@@ -408,6 +434,7 @@ function resolveSelectiveContextAttachment(
   section: SelectiveContextSection,
   keywords: string[],
   userInput: string,
+  speakerNames: string[] = [],
 ) {
   const normalizedContent = normalizeContextMatchText(section.content);
   if (!normalizedContent) {
@@ -427,25 +454,256 @@ function resolveSelectiveContextAttachment(
     };
   }
 
-  if (hasGlobalKnowledgeIntent(userInput)) {
-    return {
-      ...section,
-      matchCount,
-      strongMatchCount,
-      triggerReason: '用户正在询问全局知识库、资料或文档',
-    };
+  if (hasGlobalOverviewIntent(userInput)) {
+    const outline = buildGlobalKnowledgeOutline(section.content, keywords);
+    if (outline) {
+      return {
+        ...section,
+        content: outline,
+        matchCount,
+        strongMatchCount,
+        triggerReason: '用户在问整体的看法，挂接目录和各节开头',
+      };
+    }
   }
 
-  if (matchCount >= 6 && strongMatchCount >= 3) {
-    return {
-      ...section,
-      matchCount,
-      strongMatchCount,
-      triggerReason: '当前话题与全局知识库有强实体重合',
-    };
+  const asksForKnowledge = hasGlobalKnowledgeIntent(userInput);
+  const selected = selectGlobalKnowledgeSections(section.content, keywords, asksForKnowledge, speakerNames);
+  if (!selected) {
+    return null;
   }
 
-  return null;
+  return {
+    ...section,
+    content: selected,
+    matchCount,
+    strongMatchCount,
+    triggerReason: asksForKnowledge ? '用户正在询问全局知识库、资料或文档' : '当前话题与全局知识库的章节有重合',
+  };
+}
+
+/** "What do you think of the whole game / the outline of the plan" and the like. */
+function hasGlobalOverviewIntent(userInput: string) {
+  return /(整个|整体|总体|全部|全貌|大纲|总览|概览|概述|整份|全文)/u.test(userInput)
+    && /(游戏|项目|文档|资料|设定|故事|世界观|方案|设计|计划)/u.test(userInput);
+}
+
+/**
+ * The skeleton of a long knowledge base: every heading plus the opening of its section,
+ * shared out evenly within the budget, so the whole thing can be talked about at once.
+ * Empty when the text is short (it is attached whole anyway) or has no headings.
+ */
+function buildGlobalKnowledgeOutline(content: string, keywords: string[] = []) {
+  const trimmedContent = content.trim();
+  if (trimmedContent.length <= GLOBAL_KNOWLEDGE_MAX_LENGTH) {
+    return trimmedContent;
+  }
+  if (!trimmedContent.split(/\r?\n/u).some((line) => GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(line))) {
+    return '';
+  }
+
+  const { pinned, rest } = splitPinnedGlobalKnowledgeSections(trimmedContent);
+  // With several documents ("# title"), outline the ones the question names (the whole
+  // game -> the game design); when it names none, outline them all.
+  const bookOf = (entry: { book: string; text: string }) => entry.book
+    || ((entry.text.split(/\r?\n/u)[0] ?? '').match(GLOBAL_KNOWLEDGE_BOOK_HEADING_PATTERN) ? (entry.text.split(/\r?\n/u)[0] ?? '').replace(GLOBAL_KNOWLEDGE_BOOK_HEADING_PATTERN, '').trim() : '');
+  const books = [...new Set(rest.map(bookOf).filter(Boolean))];
+  const namedBooks = books.filter((title) => {
+    const normalizedTitle = normalizeContextMatchText(title);
+    return keywords.some((keyword) => (
+      !GLOBAL_KNOWLEDGE_OUTLINE_IGNORED_WORDS.some((word) => keyword.includes(word))
+      && normalizedTitle.includes(keyword)
+    ));
+  });
+  const outlined = namedBooks.length && namedBooks.length < books.length
+    ? rest.filter((entry) => namedBooks.includes(bookOf(entry)))
+    : rest;
+  // Continuation pieces of a long section add no new heading to the outline.
+  const sections = outlined.filter(({ text }) => !(text.split(/\r?\n/u)[0] ?? '').endsWith('（续）')).map(({ text }) => {
+    const [firstLine = '', ...lines] = text.split(/\r?\n/u);
+    const hasHeading = GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(firstLine);
+    return {
+      body: (hasHeading ? lines.join(' ') : text).replace(/\s+/gu, ' ').trim(),
+      heading: hasHeading ? firstLine.trim() : '',
+    };
+  });
+  const note = '（以下是目录和每一节的开头，不是全文；想细聊某一部分，可以请用户再问那一部分。）';
+  const fixedLength = pinned.reduce((total, text) => total + text.length + 1, note.length);
+  const headingsLength = sections.reduce((total, entry) => total + entry.heading.length + 1, fixedLength);
+  const perBody = Math.max(0, Math.floor((GLOBAL_KNOWLEDGE_MAX_LENGTH - headingsLength) / Math.max(1, sections.length)) - 2);
+
+  return [
+    ...pinned,
+    note,
+    ...sections.map(({ body, heading }) => {
+      const opening = body.length > perBody ? `${body.slice(0, Math.max(0, perBody - 1))}…` : body;
+      return [heading, opening].filter(Boolean).join('\n');
+    }),
+  ].join('\n');
+}
+
+function countOccurrences(text: string, keyword: string) {
+  let count = 0;
+  for (let index = text.indexOf(keyword); index >= 0; index = text.indexOf(keyword, index + keyword.length)) {
+    count += 1;
+  }
+  return count;
+}
+
+/**
+ * How much a section is about the user's words: repeated mentions count (capped), longer
+ * keywords count double, and a keyword in the section's heading counts most — the heading
+ * says what the section is about, a passing mention in a long list does not.
+ */
+function scoreGlobalKnowledgeSection(text: string, keywords: string[]) {
+  const [firstLine = '', ...rest] = text.split(/\r?\n/u);
+  const hasHeading = GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(firstLine);
+  const heading = hasHeading ? normalizeContextMatchText(firstLine) : '';
+  const body = normalizeContextMatchText(hasHeading ? rest.join('\n') : text);
+  return keywords.reduce((score, keyword) => {
+    const weight = keyword.length >= 3 ? 2 : 1;
+    const mentions = Math.min(countOccurrences(body, keyword), GLOBAL_KNOWLEDGE_MENTION_CAP);
+    const inHeading = heading.includes(keyword) ? GLOBAL_KNOWLEDGE_HEADING_WEIGHT : 0;
+    return score + weight * (mentions + inHeading);
+  }, 0);
+}
+
+/** Splits the knowledge base at Markdown headings (or paragraphs when it has none). */
+function splitGlobalKnowledgeSections(content: string) {
+  const lines = content.split(/\r?\n/u);
+  if (!lines.some((line) => GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(line))) {
+    return splitMemoryEntries(content);
+  }
+  const sections: string[] = [];
+  let current: string[] = [];
+  lines.forEach((line) => {
+    if (GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(line) && current.some((entry) => entry.trim())) {
+      sections.push(current.join('\n').trim());
+      current = [];
+    }
+    current.push(line);
+  });
+  if (current.some((entry) => entry.trim())) sections.push(current.join('\n').trim());
+  return sections;
+}
+
+/**
+ * The sections that match the user's words, best first until the budget is used, kept in
+ * document order. Asking about the documents in general attaches the opening sections.
+ */
+function selectGlobalKnowledgeSections(
+  content: string,
+  keywords: string[],
+  asksForKnowledge: boolean,
+  speakerNames: string[] = [],
+) {
+  const trimmedContent = content.trim();
+  if (trimmedContent.length <= GLOBAL_KNOWLEDGE_MAX_LENGTH) {
+    const stats = getSelectiveContextMatchStats(normalizeContextMatchText(trimmedContent), keywords);
+    return asksForKnowledge || (stats.matchCount >= 6 && stats.strongMatchCount >= 3) ? trimmedContent : '';
+  }
+
+  const { pinned, rest } = splitPinnedGlobalKnowledgeSections(trimmedContent);
+  const sections = rest.map((entry, index) => {
+    const heading = entry.text.split(/\r?\n/u)[0] ?? '';
+    return {
+      index,
+      // The character being answered in a group turn: her own section comes first.
+      isSpeaker: GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(heading) && speakerNames.some((name) => heading.includes(name)),
+      score: scoreGlobalKnowledgeSection(entry.text, keywords),
+      text: labelGlobalKnowledgeSection(truncateContextBlock(entry.text, GLOBAL_KNOWLEDGE_MAX_LENGTH), entry.book),
+    };
+  });
+  const relevant = sections
+    .filter((entry) => !entry.isSpeaker && entry.score >= GLOBAL_KNOWLEDGE_MIN_SECTION_SCORE)
+    .sort((left, right) => right.score - left.score || left.index - right.index);
+  const speakers = sections.filter((entry) => entry.isSpeaker);
+  const candidates = speakers.length || relevant.length
+    ? [...speakers, ...relevant]
+    : (asksForKnowledge ? sections : []);
+  if (!candidates.length) {
+    return '';
+  }
+  const selected: typeof sections = [];
+  let usedLength = pinned.reduce((total, text) => total + text.length + 2, 0);
+  candidates.forEach((entry) => {
+    const cost = entry.text.length + 2;
+    if (usedLength + cost > GLOBAL_KNOWLEDGE_MAX_LENGTH) return;
+    selected.push(entry);
+    usedLength += cost;
+  });
+
+  return [
+    ...pinned,
+    ...selected.sort((left, right) => left.index - right.index).map((entry) => entry.text),
+  ].join('\n\n');
+}
+
+/** Names the document ("# title") a section comes from, so excerpts of different documents are not mixed up. */
+function labelGlobalKnowledgeSection(text: string, book: string) {
+  return book ? `（出自《${book}》）\n${text}` : text;
+}
+
+/**
+ * Sections marked as standing instructions for the characters, and everything else with the
+ * title of the document ("# title") each one sits in.
+ */
+function splitPinnedGlobalKnowledgeSections(content: string) {
+  const pinned: string[] = [];
+  const rest: Array<{ book: string; text: string }> = [];
+  let book = '';
+  splitGlobalKnowledgeSections(content).forEach((text) => {
+    const firstLine = text.split(/\r?\n/u)[0] ?? '';
+    if (GLOBAL_KNOWLEDGE_BOOK_HEADING_PATTERN.test(firstLine)) {
+      book = firstLine.replace(GLOBAL_KNOWLEDGE_BOOK_HEADING_PATTERN, '').trim();
+    }
+    const isPinned = GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(firstLine) && firstLine.includes(GLOBAL_KNOWLEDGE_PINNED_MARKER);
+    if (isPinned) {
+      pinned.push(truncateContextBlock(text, GLOBAL_KNOWLEDGE_MAX_LENGTH / 2));
+    } else {
+      const sectionBook = GLOBAL_KNOWLEDGE_BOOK_HEADING_PATTERN.test(firstLine) ? '' : book;
+      splitLongGlobalKnowledgeSection(text).forEach((chunk) => rest.push({ book: sectionBook, text: chunk }));
+    }
+  });
+  return { pinned, rest };
+}
+
+/**
+ * A section longer than a chunk is cut at paragraph (then line) boundaries into pieces that
+ * each repeat the heading, so one part of a long section can be picked without the rest.
+ */
+function splitLongGlobalKnowledgeSection(text: string) {
+  if (text.length <= GLOBAL_KNOWLEDGE_CHUNK_LENGTH) {
+    return [text];
+  }
+  const [firstLine = '', ...lines] = text.split(/\r?\n/u);
+  const heading = GLOBAL_KNOWLEDGE_HEADING_PATTERN.test(firstLine) ? firstLine.trim() : '';
+  const body = heading ? lines.join('\n') : text;
+  const pieces = body.split(/\r?\n\s*\r?\n/u).flatMap((paragraph) => (
+    paragraph.length <= GLOBAL_KNOWLEDGE_CHUNK_LENGTH ? [paragraph] : paragraph.split(/\r?\n/u)
+  )).flatMap((piece) => {
+    const parts: string[] = [];
+    for (let index = 0; index < piece.length; index += GLOBAL_KNOWLEDGE_CHUNK_LENGTH) {
+      parts.push(piece.slice(index, index + GLOBAL_KNOWLEDGE_CHUNK_LENGTH));
+    }
+    return parts;
+  }).filter((piece) => piece.trim());
+
+  const chunks: string[] = [];
+  let current = '';
+  pieces.forEach((piece) => {
+    if (current && current.length + piece.length + 2 > GLOBAL_KNOWLEDGE_CHUNK_LENGTH) {
+      chunks.push(current);
+      current = '';
+    }
+    current = current ? `${current}\n\n${piece}` : piece;
+  });
+  if (current) chunks.push(current);
+
+  return chunks.map((chunk, index) => {
+    const chunkHeading = heading && index > 0 ? `${heading}（续）` : heading;
+    return chunkHeading ? `${chunkHeading}\n${chunk.trim()}` : chunk.trim();
+  });
 }
 
 export function resolveRoleKnowledgeAttachment(
@@ -608,7 +866,7 @@ function selectRelevantContextSections({
 
   return sections
     .filter((section) => section.content)
-    .map((section) => resolveSelectiveContextAttachment(section, keywords, userInput))
+    .map((section) => resolveSelectiveContextAttachment(section, keywords, queryText, extractGroupTurnSpeakerNames(userInput)))
     .filter((section): section is SelectiveContextMatch => section !== null)
     .slice(0, SELECTIVE_CONTEXT_MATCH_LIMIT);
 }
@@ -642,7 +900,7 @@ function buildUserDefinedRoleMemoryInstruction(
       return [
         `【${section.label}】`,
         isMemory ? '' : `挂接原因：${section.triggerReason}`,
-        isMemory ? section.content : truncateContextBlock(section.content),
+        section.content,
       ].filter(Boolean).join('\n');
     }),
   ].join('\n\n');
@@ -771,6 +1029,7 @@ export function buildCharacterReplySystemInstruction(
       buildCharacterKnowledgeProfileInstruction(personality),
       buildCharacterFewShotInstruction(personality),
       buildUserDefinedRoleMemoryInstruction(personality, settings, autoMemorySummary, userInput, history),
+      buildWorkTaskInstruction(settings.workTasks),
       buildWebLearningInstruction(personality, settings),
       CHARACTER_TOOL_PROTOCOL_INSTRUCTION,
       personaRulePolicy.mode === 'default' ? CHARACTER_REPLY_FORMAT_INSTRUCTION : '',

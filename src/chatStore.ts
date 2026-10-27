@@ -22,6 +22,7 @@ import {
 import { normalizeAnimationToolTriggerAudio } from './components/pet/animationToolTriggerAudio';
 import { type ChatMessage, type ChatMessageContentSegment, type ChatMessageImageAttachment, type DesktopPetChatMode } from './types';
 import { createStorySession, restoreStorySession } from './components/chat/story/storyDefaults';
+import { saveChatTargetSnapshot } from './chatTargetSnapshot';
 import { applyStoryTurnPlan } from './components/chat/story/storyCastState';
 import type { StoryDefinition, StorySessionState, StoryTurnPlan } from './components/chat/story/storyTypes';
 import {
@@ -353,6 +354,7 @@ function createDesktopPetChatStore() {
       ));
     },
     setChatMode(chatMode: DesktopPetChatMode) {
+      saveChatTargetSnapshot({ chatMode });
       setState((currentState) => (
         currentState.chatMode === chatMode
           ? currentState
@@ -437,6 +439,7 @@ function createDesktopPetChatStore() {
       });
     },
     setActivePetId(activePetId: string) {
+      saveChatTargetSnapshot({ activePetId });
       setState((currentState) => {
         if (currentState.activePetId === activePetId) {
           return currentState;

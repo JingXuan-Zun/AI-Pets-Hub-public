@@ -23,6 +23,7 @@ function describeModel(modelsRoot, id) {
   const problems = [...parsed.errors];
   if (parsed.gptPath && !pathExists(parsed.gptPath)) problems.push('gpt-file');
   if (parsed.sovitsPath && !pathExists(parsed.sovitsPath)) problems.push('sovits-file');
+  if (parsed.blendPaths.some((blendPath) => !pathExists(blendPath))) problems.push('blend-file');
   const emotions = [];
   for (const [key, entry] of Object.entries(parsed.emotions)) {
     if (pathExists(entry.wavPath)) {

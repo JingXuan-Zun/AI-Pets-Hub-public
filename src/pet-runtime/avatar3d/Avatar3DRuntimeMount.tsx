@@ -95,6 +95,7 @@ export interface Avatar3DRuntimeMountProps {
   dragMotionState?: Avatar3DDragMotionState;
   focusTarget?: FocusTarget | null;
   fitToPreview?: boolean;
+  onPreviewCanvasSize?: (size: { height: number; width: number }) => void;
   hoverState?: PetHoverState;
   pointerLookTarget?: FocusTarget | null;
   lookAtYOffset: number;
@@ -128,6 +129,7 @@ export function Avatar3DRuntimeMount({
   dragMotionState,
   focusTarget,
   fitToPreview = false,
+  onPreviewCanvasSize,
   hoverState,
   pointerLookTarget = null,
   lookAtYOffset,
@@ -164,6 +166,10 @@ export function Avatar3DRuntimeMount({
   const lastEmittedVisualBoundsRef = useRef<PetVisualBounds | null>(null);
   const visualBoundsSamplerRef = useRef<ReturnType<typeof createAvatar3DCanvasVisualBoundsSampler>>(null);
   const { camera, gl, invalidate, scene, size } = useThree();
+  // Previews cap their pixel count by canvas size; the scene sets the resolution from this.
+  useEffect(() => {
+    if (fitToPreview) onPreviewCanvasSize?.({ height: size.height, width: size.width });
+  }, [fitToPreview, onPreviewCanvasSize, size.height, size.width]);
   // The per-action scaleBase/scalePeak are pulse amplitudes for the 2D CSS animations;
   // the 3D shell turns CSS animation off. Using the current action's peak as the 3D
   // model scale resized the model by 2-4% on every action change (e.g. growing right

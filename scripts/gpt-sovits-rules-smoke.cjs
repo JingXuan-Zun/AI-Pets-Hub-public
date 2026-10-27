@@ -38,6 +38,9 @@ for (const [patch, error] of [
   [{ emotions: { neutral: good.emotions.neutral, Bad: { wav: 'b.wav', text: 'x' } } }, 'emotion:Bad'],
 ]) check(rules.parseGptSovitsManifest({ ...good, ...patch }, modelDir).errors.includes(error), true, `manifest ${error}`);
 check(rules.parseGptSovitsManifest(null, modelDir).ok, false, 'null manifest');
+// Optional timbre blend clips stay inside the pack too.
+check(rules.parseGptSovitsManifest({ ...good, timbreBlend: ['refs/b.wav'] }, modelDir).blendPaths, [path.join(modelDir, 'refs', 'b.wav')], 'timbre blend');
+check(rules.parseGptSovitsManifest({ ...good, timbreBlend: ['../b.wav'] }, modelDir).errors, ['timbreBlend'], 'timbre blend traversal');
 // Lite pack: no weights at all runs on the shared base model; naming only one weight file is an error.
 const { gpt: _gpt, sovits: _sovits, ...liteManifest } = good;
 const lite = rules.parseGptSovitsManifest({ ...liteManifest, name: '  轻量  ', description: 'd'.repeat(300) }, modelDir);

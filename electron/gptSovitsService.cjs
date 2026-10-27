@@ -42,6 +42,7 @@ function createGptSovitsService({ app, log, projectRoot }) {
     paths, getModelsRoot, getCandidate: python.getCandidate, getSharedEnv: createPythonEnv, writeLog,
     ensureServerScript: () => {
       ensureRuntimeScript('gpt_sovits_synthesis.py');
+      ensureRuntimeScript('gpt_sovits_voice_style.py');
       return ensureRuntimeScript(SERVER_SCRIPT_NAME);
     },
   });

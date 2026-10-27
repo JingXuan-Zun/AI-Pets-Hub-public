@@ -19,10 +19,10 @@ import {
   createPetPanelsLayerProps,
   createPrimaryPetAvatarLayerProps,
 } from './pet/petContainerRenderProps';
+import { normalizeInteractiveDialogueSettings } from '../interactiveDialogueSettings';
 import {
   createPetContainerSceneProps,
   createPetEnvironmentLayerProps,
-  createPetInteractiveDialogueOverlayProps,
 } from './pet/petContainerSceneSurface';
 import { usePetContainerRenderCollections } from './pet/usePetContainerRenderCollections';
 import { usePetContainerPresentationAssemblies } from './pet/usePetContainerPresentationAssemblies';
@@ -570,7 +570,6 @@ export default function PetContainer({
     interactiveDialogueChatPanelPosition,
     interactiveDialoguePosition,
     interactiveDialogueShellSize,
-    interactiveDialogueStageFrame,
     interactiveDialogueVisualSize,
     petAnchorPosition,
     petVisualSize,
@@ -773,6 +772,10 @@ export default function PetContainer({
     shellViewport, showEmbeddedChatPanel: !useExternalChatWindow, showPetActions, useExternalSettingsWindow,
     voiceEnabled: config.settings.voiceEnabled, voiceInputEnabled: config.settings.voiceInputEnabled,
   });
+  // 互动对话时桌面上隐藏谁：默认全部隐藏（null），关掉开关就只隐藏正在通话的角色。
+  const interactiveDialoguePetId = normalizeInteractiveDialogueSettings(config.settings.interactiveDialogue).hideDesktopPets
+    ? null
+    : chatActivePetId;
   const companionRuntimeLayerItems = createCompanionRuntimeLayerItems({
     chatBubbleEnabled: config.settings.chatBubbleEnabled,
     chatBubbleTextColor: config.settings.chatBracketOuterTextColor,
@@ -792,6 +795,7 @@ export default function PetContainer({
     ),
     animationToolTriggersByPetId, lastReplayableAnimationToolTriggersByPetId,
     latestPetMessages, manualCompanionEatingUntilByPetIdRef, onUpdateConfig, panelPetId,
+    interactiveDialoguePetId,
     onRuntimeEvent: handleAvatarRuntimeEvent,
     onSelectPet: selectPanelPet,
     onStartOverlappedPetDrag: handleStartOverlappedPetDrag,
@@ -820,6 +824,7 @@ export default function PetContainer({
     onSelectPet: selectPanelPet,
     onStartOverlappedPetDrag: handleStartOverlappedPetDrag,
     onStartPetDrag: handleStartPrimaryPetDrag, onWheelPetScale: handlePetWheelScale, panelPetId,
+    interactiveDialoguePetId,
     petPos, primaryPetId: PRIMARY_DESKTOP_PET_SLOT_ID, sequenceFrameDurationMultiplier,
     selectedPetId: panelPetId,
     showPetActions: false, visionTarget,
@@ -832,6 +837,7 @@ export default function PetContainer({
     folderDragPreview,
     folders: folderRenderItems,
     isActivityRegionDragging: Boolean(activityRegionDragState),
+    hideActivityBorder: isInteractiveDialogueActive,
     folderRenderOffset,
     onFolderVisualMetricsChange: handleFolderVisualMetricsChange,
     onStartActivityRegionDrag: startActivityRegionDrag,
@@ -839,10 +845,6 @@ export default function PetContainer({
     onCreateFood: handleCreateFood,
     onStartFolderDrag: startFolderDrag,
     onUpdateStat: updateStat,
-  });
-  const interactiveDialogueOverlayProps = createPetInteractiveDialogueOverlayProps({
-    interactiveDialogueStageFrame,
-    isVisible: isInteractiveDialogueActive,
   });
   const sceneProps = createPetContainerSceneProps({
     companionRuntimeLayerItems,
@@ -853,7 +855,6 @@ export default function PetContainer({
       shellViewport,
     },
     environmentLayerProps,
-    interactiveDialogueOverlayProps,
     panelsLayerProps,
     primaryPetAvatarLayerProps,
     sceneRef,

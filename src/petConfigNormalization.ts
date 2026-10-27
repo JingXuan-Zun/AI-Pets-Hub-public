@@ -20,6 +20,9 @@ import { normalizeCharacterMemoryState } from './character-memory/characterMemor
 import { migrateAgentMemoryLines } from './character-memory/sharedUserMemory';
 import { normalizeProductivitySettings } from './productivity/productivitySettings';
 import { normalizeComfyUiSettings } from './comfyui/comfyUiSettings';
+import { normalizeQqBridgeSettings } from './qq-bridge/qqBridgeSettings';
+import { normalizeWorkTaskSettings } from './work-tasks/workTaskSettings';
+import { normalizeDevAgentSettings } from './dev-agent/devAgentSettings';
 import {
   clampChatAvatarDisplaySize,
   clampChatBackgroundImageSize,
@@ -45,10 +48,12 @@ import {
   normalizeVisionModelProvider,
 } from './visionModelSettings';
 import { normalizeLifeCompanionSettings } from './life-companion/lifeCompanionSettings';
+import { normalizeInteractiveDialogueSettings } from './interactiveDialogueSettings';
 import { normalizeGameCompanionObservationInterval } from './gameCompanionSettings';
 import { normalizeGroupChatSpeedDelay } from './components/chat/group/groupChatSpeed';
 import { migrateLegacyAgentRuntimeSettings } from './legacyPetConfigMigration';
 import { clampSpeechPlaybackRate } from './voice/speechPlaybackRate';
+import { normalizeGptSovitsSeed } from './voice/gptSovitsDefaults';
 import { normalizeLive2DRuntimeProfileConfig } from './pet-runtime/live2d/live2dRuntimeProfile';
 import { normalizeVideoEmotionFolderAliases } from './pet-runtime/video2d/videoLibraryEmotionFolders';
 import { normalizeExpressionReplySettings } from './expression/expressionSettings';
@@ -690,8 +695,13 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       globalKnowledgeBase: sharedMemoryMigration.globalKnowledgeBase,
       sharedUserMemory: sharedMemoryMigration.sharedUserMemory,
       productivity: normalizeProductivitySettings(rawSettings.productivity),
+      workTasks: normalizeWorkTaskSettings(rawSettings.workTasks),
+      devAgent: normalizeDevAgentSettings(rawSettings.devAgent),
+      devAgentApiKey: typeof rawSettings.devAgentApiKey === 'string' ? rawSettings.devAgentApiKey : '',
       comfyUi: normalizeComfyUiSettings(rawSettings.comfyUi),
       comfyUiApiKey: typeof rawSettings.comfyUiApiKey === 'string' ? rawSettings.comfyUiApiKey : '',
+      qqBridge: normalizeQqBridgeSettings(rawSettings.qqBridge),
+      qqBridgeAccessToken: typeof rawSettings.qqBridgeAccessToken === 'string' ? rawSettings.qqBridgeAccessToken : '',
       geminiApiKey: normalizeTrimmedSettingString(
         rawSettings.geminiApiKey,
         DEFAULT_CONFIG.settings.geminiApiKey,
@@ -811,6 +821,7 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
             && /^\d+$/.test(rawSettings.interactiveDialogueDisplayId.trim())
             ? (rawSettings.interactiveDialogueDisplayId.trim() as ActivityDisplayId)
             : DEFAULT_CONFIG.settings.interactiveDialogueDisplayId,
+      interactiveDialogue: normalizeInteractiveDialogueSettings(rawSettings.interactiveDialogue),
       lifeCompanion: normalizeLifeCompanionSettings(rawSettings.lifeCompanion),
       speechExpressivePunctuationEnabled: typeof rawSettings.speechExpressivePunctuationEnabled === 'boolean'
         ? rawSettings.speechExpressivePunctuationEnabled
@@ -833,6 +844,7 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
         ? rawSettings.gptSovitsDevice
         : DEFAULT_CONFIG.settings.gptSovitsDevice,
       gptSovitsApiUrl: normalizeTrimmedSettingString(rawSettings.gptSovitsApiUrl, '') || DEFAULT_CONFIG.settings.gptSovitsApiUrl,
+      gptSovitsSeed: normalizeGptSovitsSeed(rawSettings.gptSovitsSeed),
       apiTtsProtocol: rawSettings.apiTtsProtocol === 'gemini' ? 'gemini' : DEFAULT_CONFIG.settings.apiTtsProtocol,
       apiSttProtocol: rawSettings.apiSttProtocol === 'gemini' ? 'gemini' : DEFAULT_CONFIG.settings.apiSttProtocol,
       browserTtsApiUrl: typeof rawSettings.browserTtsApiUrl === 'string'

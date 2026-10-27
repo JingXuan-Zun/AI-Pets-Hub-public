@@ -2,6 +2,7 @@ import { desktopPetChatStore } from '../../chatStore';
 import { isPetAudible } from './voiceConversationBusy';
 import { type ChatAgentApprovalDecision, type PetConfig } from '../../types';
 import { latestPendingAgentLoopApprovalId, resolveAgentLoopApproval } from './runController/agentLoopApprovalRegistry';
+import { AGENT_APPROVAL_APPROVE_TASK_TEXTS } from './runController/approvalDecisionText';
 
 // Answering an approval card by voice ("同意" / "拒绝"), so hands-free use does not need a
 // click for every step. Only clear, whole-utterance words count — never a bare "嗯", and
@@ -13,10 +14,12 @@ import { latestPendingAgentLoopApprovalId, resolveAgentLoopApproval } from './ru
 // microphone only listens for this while a question waits.
 const APPROVE_WORDS = new Set(['同意', '我同意', '允许', '可以', '确认', '批准', '执行', '没问题', '同意了', '可以了', '好', '行', '准了', '准许', '去', '做', '开始']);
 const DENY_WORDS = new Set(['拒绝', '不同意', '我不同意', '不允许', '不可以', '不行', '不要', '取消', '算了', '别', '不', '不用', '不用了', '先别', '别了', '不好']);
+const APPROVE_TASK_WORDS = AGENT_APPROVAL_APPROVE_TASK_TEXTS;
 const FILLER = /[\s，。,.!！?？~～、…吧啊呀呢哦嘛的]/gu;
 
 export function classifyVoiceApproval(text: string): ChatAgentApprovalDecision | null {
   const words = text.replace(FILLER, '');
+  if (APPROVE_TASK_WORDS.has(words)) return 'approve-task';
   if (!words || words.length > 5) return null;
   if (DENY_WORDS.has(words)) return 'deny';
   if (APPROVE_WORDS.has(words)) return 'approve';

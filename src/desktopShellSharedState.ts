@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reuseUnchangedSharedState } from './sharedStateReuse';
 import { DEFAULT_DESKTOP_PET_CHAT_STATE, type DesktopPetChatSendOptions, type DesktopPetChatState, type GroupUserAttentionDecision } from './chatState';
 import { DEFAULT_CONFIG } from './constants';
 import { normalizePetConfig } from './petConfigNormalization';
@@ -159,7 +160,8 @@ export function useDesktopPetSharedState() {
         return;
       }
 
-      setSharedState(normalizeSharedState(nextState));
+      const normalized = normalizeSharedState(nextState);
+      setSharedState((previous) => reuseUnchangedSharedState(previous, normalized));
     });
 
     return () => {

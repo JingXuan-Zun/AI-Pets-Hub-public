@@ -36,9 +36,13 @@ import { SettingsPanelStandaloneShell } from './settings/SettingsPanelStandalone
 import { SettingsOverviewDashboard } from './settings/SettingsOverviewDashboard';
 import { SettingsPlatformMcpTab, SettingsPlatformSkillApiTab } from './settings/SettingsPlatformCapabilityTabs';
 import { SettingsComfyUiWorkflowTab } from './settings/SettingsComfyUiWorkflowTab';
+import { SettingsQqBridgeTab } from './settings/SettingsQqBridgeTab';
+import { SettingsHealthTab } from './settings/SettingsHealthTab';
+import { SettingsDevAgentTab } from './settings/SettingsDevAgentTab';
 import { SettingsExtensionHubTab } from './settings/SettingsExtensionHubTab';
 import { SettingsAgentRuntimeSection } from './settings/SettingsAgentRuntimeSection';
 import { SettingsGameCompanionTab } from './settings/SettingsGameCompanionTab';
+import { SettingsInteractiveDialogueTab } from './settings/SettingsInteractiveDialogueTab';
 import { SettingsDesktopActivityAwarenessTab } from './settings/SettingsDesktopActivityAwarenessTab';
 import {
   DEFAULT_SETTINGS_CONTROL_CENTER_PAGE_ID,
@@ -497,6 +501,7 @@ export default function SettingsPanel({
             personalityWorkspacePage={activeControlCenterPage.personalityWorkspacePage}
             motionExpressionTab={SettingsMotionExpressionTab}
             motionExpressionTabProps={{
+              onlyActivityArea: activeControlCenterPageId === 'advanced-desktop-activity',
               activityAreaHeightValue,
               activityAreaPreview,
               activityAreaScale,
@@ -595,7 +600,7 @@ export default function SettingsPanel({
               realWorldTimeSnapshot,
               timeAwarenessEnabled,
               onlyWebSearch: activeControlCenterPageId === 'ai-tools-web',
-              onlyChatDisplay: activeControlCenterPageId === 'system-chat',
+              onlyChatDisplay: activeControlCenterPageId === 'advanced-chat-display',
               onUpdateConfig,
             }}
             visionTab={SettingsVisionTab}
@@ -675,6 +680,8 @@ export default function SettingsPanel({
         ? <SettingsGameCompanionTab config={localConfig} noDragRegionStyle={noDragRegionStyle} onApplyConfig={applyConfig} />
       : activeControlCenterPageId === 'advanced-desktop-awareness'
         ? <SettingsDesktopActivityAwarenessTab config={localConfig} noDragRegionStyle={noDragRegionStyle} onApplyConfig={applyConfig} stats={selectedPetSlot.stats} />
+      : activeControlCenterPageId === 'advanced-interactive-dialogue'
+        ? <SettingsInteractiveDialogueTab config={localConfig} noDragRegionStyle={noDragRegionStyle} onApplyConfig={applyConfig} petId={selectedPetSlot.id} petName={selectedPetSlot.personality.name} />
       : activeControlCenterPageId === 'advanced-expression'
         ? (
           <Suspense fallback={<SettingsTabFallback />}>
@@ -697,6 +704,12 @@ export default function SettingsPanel({
             ? <SettingsPlatformSkillApiTab localConfig={localConfig} currentPetId={selectedPetSlot.id} />
             : activeControlCenterPageId === 'platform-workflow'
               ? <SettingsComfyUiWorkflowTab localConfig={localConfig} onCommit={commitModelConfig} />
+            : activeControlCenterPageId === 'platform-qq'
+              ? <SettingsQqBridgeTab localConfig={localConfig} onCommit={commitModelConfig} />
+            : activeControlCenterPageId === 'platform-dev-agent'
+              ? <SettingsDevAgentTab localConfig={localConfig} onCommit={commitModelConfig} />
+            : activeControlCenterPageId === 'system-health'
+              ? <SettingsHealthTab localConfig={localConfig} />
       : renderSettingsTabContent()
   );
 

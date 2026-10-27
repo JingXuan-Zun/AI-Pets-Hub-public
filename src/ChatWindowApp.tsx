@@ -1,25 +1,41 @@
-import { type ComponentProps } from 'react';
+import { type ComponentProps, useMemo, useRef } from 'react';
 import ChatWindow from './components/ChatWindow';
 import { saveChatMessageToMemory } from './components/chat/chatMemorySaveUtils';
 import { useDesktopPetShellStore } from './desktopShellStore';
 
+type ChatWindowProps = ComponentProps<typeof ChatWindow>;
+
 export default function ChatWindowApp() {
   const shellStore = useDesktopPetShellStore();
   const sharedState = shellStore.sharedState;
-  const handleSaveMessageToMemory: ComponentProps<typeof ChatWindow>['onSaveMessageToMemory'] = (
-    message, target, groupId,
-  ) => {
-    shellStore.updateConfig(saveChatMessageToMemory(
-      sharedState.config,
-      sharedState.chatState.activePetId,
-      message,
-      target,
-      groupId,
-    ));
-  };
-  const handleUpdateConfig: ComponentProps<typeof ChatWindow>['onUpdateConfig'] = (config, options) => {
-    shellStore.updateConfig(config, { persist: options?.persist ?? true });
-  };
+  // The store object is rebuilt on every state push (about once a second); handlers read the
+  // latest one through a ref so they stay the same functions and memoized bubbles don't redraw.
+  const storeRef = useRef(shellStore);
+  storeRef.current = shellStore;
+  const handlers = useMemo(() => {
+    const store = () => storeRef.current;
+    return {
+      onActivePetChange: ((petId) => store().setActiveChatPet(petId)) as ChatWindowProps['onActivePetChange'],
+      onChatModeChange: ((mode) => store().setChatMode(mode)) as ChatWindowProps['onChatModeChange'],
+      onClose: () => store().closeChatWindow(),
+      onDeleteStory: ((storyId) => store().deleteStory(storyId)) as ChatWindowProps['onDeleteStory'],
+      onGroupChatContinuationModeChange: ((mode) => store().setGroupChatContinuationMode(mode)) as ChatWindowProps['onGroupChatContinuationModeChange'],
+      onInputChange: ((value) => store().setChatInput(value)) as ChatWindowProps['onInputChange'],
+      onPlayMessageVoice: ((text) => store().playChatMessageVoice(text)) as ChatWindowProps['onPlayMessageVoice'],
+      onResolveAgentApproval: ((messageId, decision) => store().resolveAgentApproval(messageId, decision)) as ChatWindowProps['onResolveAgentApproval'],
+      onResolveGroupUserAttention: ((decision, text) => store().resolveGroupUserAttention(decision, text)) as ChatWindowProps['onResolveGroupUserAttention'],
+      onSaveMessageToMemory: ((message, target, groupId) => {
+        const { sharedState: latest, updateConfig } = store();
+        updateConfig(saveChatMessageToMemory(latest.config, latest.chatState.activePetId, message, target, groupId));
+      }) as ChatWindowProps['onSaveMessageToMemory'],
+      onSendMessage: ((textOverride, options) => store().sendChatMessage(textOverride, options)) as ChatWindowProps['onSendMessage'],
+      onStopAgentRun: ((messageId) => store().stopAgentRun(messageId)) as ChatWindowProps['onStopAgentRun'],
+      onStopGroupChat: (() => store().stopGroupChat()) as ChatWindowProps['onStopGroupChat'],
+      onToggleVoiceEnabled: (() => store().toggleChatVoiceEnabled()) as ChatWindowProps['onToggleVoiceEnabled'],
+      onToggleVoiceInput: (() => store().toggleChatVoiceInput()) as ChatWindowProps['onToggleVoiceInput'],
+      onUpdateConfig: ((config, options) => store().updateConfig(config, { persist: options?.persist ?? true })) as ChatWindowProps['onUpdateConfig'],
+    };
+  }, []);
 
   return (
     <ChatWindow
@@ -37,25 +53,10 @@ export default function ChatWindowApp() {
       messages={sharedState.chatState.messages}
       storyLibrary={sharedState.chatState.storyLibrary}
       storySession={sharedState.chatState.storySession}
-      onDeleteStory={shellStore.deleteStory}
       speakingPetId={sharedState.chatState.speakingPetId}
       statusMessage={sharedState.chatState.statusMessage}
       typingPetId={sharedState.chatState.typingPetId}
-      onUpdateConfig={handleUpdateConfig}
-      onClose={() => shellStore.closeChatWindow()}
-      onActivePetChange={shellStore.setActiveChatPet}
-      onChatModeChange={shellStore.setChatMode}
-      onInputChange={shellStore.setChatInput}
-      onPlayMessageVoice={(text) => shellStore.playChatMessageVoice(text)}
-      onResolveAgentApproval={(messageId, decision) => shellStore.resolveAgentApproval(messageId, decision)}
-      onResolveGroupUserAttention={(decision, text) => shellStore.resolveGroupUserAttention(decision, text)}
-      onSaveMessageToMemory={handleSaveMessageToMemory}
-      onSendMessage={(textOverride, options) => shellStore.sendChatMessage(textOverride, options)}
-      onStopAgentRun={shellStore.stopAgentRun}
-      onStopGroupChat={shellStore.stopGroupChat}
-      onGroupChatContinuationModeChange={shellStore.setGroupChatContinuationMode}
-      onToggleVoiceEnabled={shellStore.toggleChatVoiceEnabled}
-      onToggleVoiceInput={shellStore.toggleChatVoiceInput}
+      {...handlers}
     />
   );
 }

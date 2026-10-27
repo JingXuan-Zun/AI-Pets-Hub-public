@@ -27,6 +27,8 @@ const SECRET_SETTING_KEYS = [
   'customSpeechApiKey',
   'customVoiceApiKey',
   'customWebSearchApiKey',
+  'devAgentApiKey',
+  'qqBridgeAccessToken',
   'serperApiKey',
   'tavilyApiKey',
   'visionCustomApiKey',

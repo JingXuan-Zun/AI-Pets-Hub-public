@@ -6,6 +6,14 @@ import { installRendererEventLoopDiagnostics } from './rendererEventLoopDiagnost
 import { initializeControlCenterUsageTracking } from './controlCenterUsage';
 import './index.css';
 
+// Development builds of React record every component render as a performance measure (with a
+// copy of its props) for the DevTools timeline, and nothing ever clears them: the chat window
+// collected ~500 a second and ran out of memory after about an hour. Production builds don't
+// record them, so only development needs this.
+if (import.meta.env.DEV && typeof performance !== 'undefined' && typeof performance.clearMeasures === 'function') {
+  window.setInterval(() => performance.clearMeasures(), 10_000);
+}
+
 const rootElement = document.getElementById('root');
 const panelMode = typeof window !== 'undefined'
   ? new URLSearchParams(window.location.search).get('panel')

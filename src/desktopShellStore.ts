@@ -47,7 +47,7 @@ export function useDesktopPetShellStore() {
         browserSearchMode: options?.browserSearchMode,
         storyDefinition: options?.storyDefinition,
       }),
-    resolveAgentApproval: (messageId: string, decision: 'approve' | 'deny') =>
+    resolveAgentApproval: (messageId: string, decision: import('./types').ChatAgentApprovalDecision) =>
       desktopPetShellRuntime.dispatch({ type: 'resolve-agent-approval', messageId, decision }),
     resolveGroupUserAttention: (
       decision: import('./chatState').GroupUserAttentionDecision,

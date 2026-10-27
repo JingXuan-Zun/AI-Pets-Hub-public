@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { APP_EXECUTABLE_EXTENSIONS } = require('./appLauncherConstants.cjs');
 const { normalizeAliasList } = require('./appSearchMatching.cjs');
+const { resolveChineseAppAliases } = require('./windowsAppChineseAliases.cjs');
 
 function isSupportedLocalAppPath(appPath) {
   const extension = path.extname(appPath || '').toLowerCase();
@@ -77,6 +78,7 @@ function createLocalAppEntry(name, appPath, type = path.extname(appPath).slice(1
       name,
       path.basename(appPath || '', path.extname(appPath || '')),
       ...(Array.isArray(options.aliases) ? options.aliases : []),
+      ...resolveChineseAppAliases(appPath, name),
     ]),
     category: options.category || undefined,
     name,

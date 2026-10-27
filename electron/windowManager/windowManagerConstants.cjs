@@ -24,15 +24,16 @@ const CHAT_PANEL_WINDOW_BOUNDS = {
   maxWidth: 8192,
   maxHeight: 1248,
 };
+// 互动对话：默认尺寸按屏幕算成 16:9（见 chatPanelBounds），这里是兜底值和最小值。
 const INTERACTIVE_CHAT_PANEL_WINDOW_BOUNDS = {
-  width: 960,
-  height: 300,
-  minWidth: 620,
-  minHeight: 240,
+  width: 1600,
+  height: 900,
+  minWidth: 560,
+  minHeight: 600,
   maxWidth: 8192,
-  maxHeight: 900,
+  maxHeight: 8192,
 };
-const INTERACTIVE_CHAT_PANEL_CENTER_Y_RATIO = 0.69;
+const INTERACTIVE_CHAT_PANEL_CENTER_Y_RATIO = 0.5;
 
 const TOPMOST_WINDOW_LEVEL = 'screen-saver';
 const AREA_PICKER_TOPMOST_WINDOW_LEVEL = 'pop-up-menu';

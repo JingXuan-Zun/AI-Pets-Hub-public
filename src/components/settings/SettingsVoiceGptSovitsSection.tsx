@@ -97,6 +97,31 @@ export function SettingsVoiceGptSovitsSection({ settings, noDragRegionStyle, app
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">固定语气（种子）</Label>
+        <div className="flex gap-2">
+          <input
+            value={settings.gptSovitsSeed}
+            onChange={(event) => applySettings({ gptSovitsSeed: event.target.value.replace(/\D/gu, '').slice(0, 9) })}
+            inputMode="numeric"
+            placeholder="留空：用音色包自带的，没有就每次随机"
+            className="w-full rounded-sm border border-border bg-background/60 px-3 py-2 text-xs text-foreground"
+            style={noDragRegionStyle}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => applySettings({ gptSovitsSeed: String(Math.floor(Math.random() * 1_000_000_000)) })}
+            style={noDragRegionStyle}
+          >
+            换一个
+          </Button>
+        </div>
+        <div className="text-2xs text-muted-foreground">
+          同一个数字，每次说话的语气都一样；换一个数字就换一种语气，听着喜欢就保存下来。
+        </div>
+      </div>
+
       <SettingsGptSovitsVoiceList
         models={readyModels}
         settings={settings}

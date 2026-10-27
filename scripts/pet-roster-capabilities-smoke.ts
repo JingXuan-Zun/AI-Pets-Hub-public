@@ -35,7 +35,8 @@ const context = {
 };
 const run = (capability: string, args: Record<string, unknown> = {}) => runPlatformCapability(context, { args, capability });
 
-check(['models.list', 'pets.set_model', 'pets.create'].map((id) => getPlatformCapability(id)?.risk), ['read', 'change', 'change'], 'changes ask first');
+// Switching a model only changes how she looks (no asking, 2026-10-20); creating a pet still asks.
+check(['models.list', 'pets.set_model', 'pets.create'].map((id) => getPlatformCapability(id)?.risk), ['read', 'personal', 'change'], 'a new pet asks first; a model switch does not');
 assert.match((await run('models.list')).text, /茉莉安-纯白恋羽（3D）：高冷小桃在用[\s\S]*康熙 Kawaii Strike（3D）\n[\s\S]*Ace\.model3（Live2D）/u);
 cases++;
 
@@ -62,5 +63,11 @@ check((await run('pets.create', { name: '小雪' })).ok, false, 'duplicate names
 check((await run('pets.create', { model: '不存在', name: '小雨' })).ok, false, 'unknown model refused before creating');
 check(config.companionPets.length, 3, 'refusals add nothing');
 check(persisted, 4, 'every change is saved');
+
+// Switching the private chat to another character: the one who switched only hands over.
+const handover = await run('chat.set_mode', { mode: 'single', pet: '高冷小桃' });
+check(handover.ok, true, 'switching to another character works');
+assert.match(handover.text, /由高冷小桃和用户单聊[\s\S]*不要扮演高冷小桃/u);
+check((await run('chat.set_mode', { mode: 'group' })).text, '已切换到群聊模式。', 'a plain mode switch needs no hand-over');
 
 console.log(`pet roster capabilities smoke ok: ${cases} checks`);

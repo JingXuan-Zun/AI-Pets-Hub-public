@@ -1,5 +1,6 @@
-import { useMemo, type MutableRefObject } from 'react';
+import { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { resolvePreviewRenderDpr } from './previewRenderDpr';
 import * as THREE from 'three';
 import { type PetVisualBounds } from '../../components/pet/petVisualBounds';
 import { type Avatar3DActionState } from './avatar3dActionState';
@@ -76,6 +77,7 @@ export function Avatar3DScene({
   scale = 1,
   updatePriority = 'companion',
 }: Avatar3DSceneProps) {
+  const [previewCanvasSize, setPreviewCanvasSize] = useState<{ height: number; width: number } | null>(null);
   const sceneQuality = useMemo(() => {
     const safeSceneCount = Math.max(1, Math.round(activeSceneCount || 1));
     const debug = runtimeInstance.debugSummary;
@@ -194,10 +196,16 @@ export function Avatar3DScene({
       targetFrameIntervalMs = isInteractionHot ? 20 : 34;
     }
 
-    const renderDpr = Number(Math.min(
-      maxDpr,
-      Math.max(minDpr, deviceDpr * dprMultiplier * scaleBoost),
-    ).toFixed(2));
+    // A preview (互动对话, the settings preview) shows one model in the foreground, often enlarged:
+    // the desktop's battery-saving cuts (no MSAA and a lower resolution for heavy models, which
+    // VRMs with many expression morphs usually are) showed as jagged edges there.
+    const renderDpr = fitToPreview
+      ? resolvePreviewRenderDpr(deviceDpr, previewCanvasSize?.width, previewCanvasSize?.height)
+      : Number(Math.min(
+        maxDpr,
+        Math.max(minDpr, deviceDpr * dprMultiplier * scaleBoost),
+      ).toFixed(2));
+    if (fitToPreview) antialias = true;
 
     return {
       ambientIntensity,
@@ -229,7 +237,9 @@ export function Avatar3DScene({
     actionState.visualIsMoving,
     activeSceneCount,
     dragMotionState?.active,
+    fitToPreview,
     hoverState?.activeRegion,
+    previewCanvasSize,
     pointerLookTarget,
     presentationMode,
     reactionState?.lipSyncState.isActive,
@@ -238,6 +248,23 @@ export function Avatar3DScene({
     scale,
     updatePriority,
   ]);
+
+  // Cut-out materials (VRM hair, outlines) decide each pixel as drawn or not, so MSAA alone
+  // leaves their edges jagged; alpha-to-coverage turns the cut-out into smooth coverage. Only in
+  // previews, where MSAA is always on.
+  useEffect(() => {
+    if (!fitToPreview || !sceneQuality.antialias) return;
+    runtimeInstance.object.traverse((node) => {
+      const materials = (node as THREE.Mesh).material;
+      if (!materials) return;
+      (Array.isArray(materials) ? materials : [materials]).forEach((material) => {
+        if (material.alphaTest > 0 && !material.transparent && !material.alphaToCoverage) {
+          material.alphaToCoverage = true;
+          material.needsUpdate = true;
+        }
+      });
+    });
+  }, [fitToPreview, runtimeInstance, sceneQuality.antialias]);
 
   return (
     <Canvas
@@ -293,6 +320,7 @@ export function Avatar3DScene({
       ) : null}
       <Avatar3DRuntimeMount
         fitToPreview={fitToPreview}
+        onPreviewCanvasSize={setPreviewCanvasSize}
         actionState={actionState}
         autoRotateSpeed={autoRotateSpeed * sceneQuality.autoRotateSpeedMultiplier}
         baseCameraDistance={baseCameraDistance}

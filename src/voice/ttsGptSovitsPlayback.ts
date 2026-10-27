@@ -64,7 +64,7 @@ async function requestGptSovitsAudio(text: string, settings: VoiceSettings, emot
   const response = await fetch(`${lastBaseUrl}/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'audio/wav, application/json' },
-    body: JSON.stringify({ text, model_id: modelId, emotion }),
+    body: JSON.stringify({ text, model_id: modelId, emotion, ...(settings.gptSovitsSeed ? { seed: Number(settings.gptSovitsSeed) } : {}) }),
     signal,
   });
   if (!response.ok) {
@@ -106,6 +106,22 @@ export async function prepareGptSovitsVoicePlayback(
     throw new Error(getVoiceErrorMessage(error, SERVER_ERROR_MESSAGES.synthesis_failed));
   } finally {
     activeRequests.delete(controller);
+  }
+}
+
+/** The voice as a WAV file, not played here (for sending elsewhere, e.g. a QQ voice message). */
+export async function synthesizeGptSovitsWav(text: string, settings: VoiceSettings, emotion = 'neutral') {
+  // Not in activeRequests: stopping the desktop playback must not cancel a message being sent.
+  const signal = new AbortController().signal;
+  try {
+    return await requestGptSovitsAudio(text, settings, emotion, signal).catch((error: unknown) => {
+      if (!isConnectionError(error)) throw error;
+      readyState = null;
+      return requestGptSovitsAudio(text, settings, emotion, signal);
+    });
+  } catch (error) {
+    if (isConnectionError(error)) readyState = null;
+    throw new Error(getVoiceErrorMessage(error, SERVER_ERROR_MESSAGES.synthesis_failed));
   }
 }
 

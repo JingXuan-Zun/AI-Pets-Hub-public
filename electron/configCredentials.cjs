@@ -1,6 +1,6 @@
 const SECRET_FIELDS = ['deepseekHarnessApiKey', 'geminiApiKey', 'customApiKey',
   'visionCustomApiKey', 'tavilyApiKey', 'serperApiKey', 'braveSearchApiKey',
-  'customWebSearchApiKey', 'browserTtsApiKey', 'customVoiceApiKey', 'customSpeechApiKey', 'comfyUiApiKey'];
+  'customWebSearchApiKey', 'browserTtsApiKey', 'customVoiceApiKey', 'customSpeechApiKey', 'comfyUiApiKey', 'qqBridgeAccessToken', 'devAgentApiKey'];
 const MODEL_FIELDS = ['geminiApiKey', 'customApiKey', 'visionCustomApiKey'];
 const PREFIX = 'desktop-pet-credential:';
 

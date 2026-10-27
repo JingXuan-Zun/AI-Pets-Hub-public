@@ -33,5 +33,7 @@ export interface PetLive2DRendererProps {
   pointerLookTarget?: Position | null;
   scale: number;
   viewport?: AvatarRuntimeViewport | null;
+  /** 互动对话：画框比桌面大得多，舞台跟着画框走，不受桌面的 960 像素上限限制。 */
+  stageFollowsViewport?: boolean;
   visible?: boolean;
 }

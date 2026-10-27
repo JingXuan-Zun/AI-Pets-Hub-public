@@ -4,8 +4,12 @@ import type { AgentExecutionPlan } from './agent/planning/agentPlanShared';
 import type { AgentPermissionRouteStatus } from './agent/agentPermissionRouter';
 import type { AgentRuntimeContinuation } from './agent/runtime/agentRuntimeContract';
 import type { PetLifeCompanionSettings } from './life-companion/lifeCompanionSettings';
+import type { InteractiveDialogueSettings } from './interactiveDialogueSettings';
 import type { ProductivitySettings } from './productivity/productivityTypes';
 import type { ComfyUiSettings } from './comfyui/comfyUiSettings';
+import type { QqBridgeSettings } from './qq-bridge/qqBridgeSettings';
+import type { WorkTaskSettings } from './work-tasks/workTaskSettings';
+import type { DevAgentSettings } from './dev-agent/devAgentSettings';
 import type { Live2DRuntimeProfileConfigV1 } from './pet-runtime/live2d/live2dRuntimeProfile';
 import type { GroupMemoryRepositoryData } from './group-memory';
 import type { GroupTopicRepositoryData } from './group-topic';
@@ -382,10 +386,20 @@ export interface PetConfig {
     sharedUserMemory: CharacterMemoryItem[];
     /** Reminders, pomodoro and todos (the productivity plugin). */
     productivity: ProductivitySettings;
+    /** The task card and per-project decision log the characters keep while the user works. */
+    workTasks: WorkTaskSettings;
+    /** The development assistant (Claude Code) the characters hand coding work to. */
+    devAgent: DevAgentSettings;
+    /** API key of the dev assistant's compatible endpoint (e.g. DeepSeek). */
+    devAgentApiKey: string;
     /** ComfyUI connection and imported workflows (the character's drawing plugin). */
     comfyUi: ComfyUiSettings;
     /** Optional access token for a protected or cloud ComfyUI server. */
     comfyUiApiKey: string;
+    /** Chatting with the characters from phone QQ through a local OneBot v11 service. */
+    qqBridge: QqBridgeSettings;
+    /** Optional access token of that OneBot service. */
+    qqBridgeAccessToken: string;
     webSearchEnabled: boolean;
     webLearningEnabled: boolean;
     webSearchProvider: WebSearchProvider;
@@ -442,6 +456,8 @@ export interface PetConfig {
     gptSovitsModelId: string;
     gptSovitsDevice: GptSovitsDevice;
     gptSovitsApiUrl: string;
+    /** Fixed sampling seed (digits) so lines sound the same each time; '' uses the voice pack's own or random. */
+    gptSovitsSeed: string;
     activityAreaLimitEnabled: boolean;
     desktopIconInteractionEnabled: boolean;
     desktopMouseInteractionEnabled: boolean;
@@ -462,6 +478,7 @@ export interface PetConfig {
     activityOffsetY: number;
     activityDisplayId: ActivityDisplayId;
     interactiveDialogueDisplayId: InteractiveDialogueDisplayId;
+    interactiveDialogue: InteractiveDialogueSettings;
     lifeCompanion: PetLifeCompanionSettings;
     activityBorderVisible: boolean;
     chatBracketOuterTextColor: string;
@@ -495,7 +512,8 @@ export type PetConfigUpdateHandler = (
 
 export type DesktopPetChatMode = 'single' | 'group' | 'story';
 
-export type ChatAgentApprovalDecision = 'approve' | 'deny';
+/** 'approve-task' = yes, and don't ask again for the rest of this task. */
+export type ChatAgentApprovalDecision = 'approve' | 'approve-task' | 'deny';
 export type ChatAgentFollowUpAction = AgentChatFollowUpAction;
 export type ChatAgentApprovalStatus = 'pending' | 'approved' | 'denied' | 'running' | 'awaiting-approval' | 'completed' | 'failed' | 'blocked';
 export type ChatAgentRunStatus = 'planned' | 'running' | 'awaiting-approval' | 'completed' | 'failed' | 'blocked';

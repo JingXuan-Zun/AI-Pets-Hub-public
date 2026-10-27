@@ -10,6 +10,7 @@ export type SettingsControlCenterModuleId =
 
 export type SettingsControlCenterPageId =
   | 'overview'
+  | 'system-health'
   | 'ai-model'
   | 'ai-memory'
   | 'ai-knowledge'
@@ -22,6 +23,8 @@ export type SettingsControlCenterPageId =
   | 'desktop-knowledge-personality'
   | 'platform-mcp'
   | 'platform-workflow'
+  | 'platform-qq'
+  | 'platform-dev-agent'
   | 'platform-skills-api'
   | 'extension-overview'
   | 'extension-plugins'
@@ -33,7 +36,9 @@ export type SettingsControlCenterPageId =
   | 'advanced-game-companion'
   | 'advanced-desktop-awareness'
   | 'advanced-expression'
-  | 'system-chat'
+  | 'advanced-interactive-dialogue'
+  | 'advanced-chat-display'
+  | 'advanced-desktop-activity'
   | 'system-data';
 
 export type SettingsPersonalityWorkspacePage = 'agent' | 'knowledge' | 'memory' | 'model' | 'prompt' | 'multi-agent';
@@ -70,6 +75,7 @@ export const SETTINGS_CONTROL_CENTER_MODULES: SettingsControlCenterModule[] = [
     ],
     pages: [
       { id: 'overview', label: '软件总览', description: '调用、运行、版本与私人数据', runtimeTab: 'system', workspaceTitle: '软件概览' },
+      { id: 'system-health', label: '体检', description: '检查常出问题的地方并自动修复', runtimeTab: 'system', workspaceTitle: '体检' },
     ],
   },
   {
@@ -121,22 +127,27 @@ export const SETTINGS_CONTROL_CENTER_MODULES: SettingsControlCenterModule[] = [
       { id: 'extension-resources', label: '资源包', description: '模型、声音、动作与视觉资源', runtimeTab: 'system', workspaceTitle: '资源包' },
       { id: 'platform-mcp', label: 'MCP 管理', description: '连接工具来源并查看是否可用', runtimeTab: 'system', workspaceTitle: 'MCP 管理' },
       { id: 'platform-workflow', label: '工作流管理', description: 'ComfyUI 工作流接入', runtimeTab: 'system', workspaceTitle: 'ComfyUI 工作流管理' },
+      { id: 'platform-qq', label: 'QQ 连接', description: '在手机 QQ 上跟角色聊天', runtimeTab: 'system', workspaceTitle: 'QQ 连接' },
+      { id: 'platform-dev-agent', label: '开发助手', description: '让角色把写代码的活交给 Claude Code', runtimeTab: 'system', workspaceTitle: '开发助手' },
       { id: 'platform-skills-api', label: 'Skills', description: '导入、启用和管理 Skill', runtimeTab: 'system', workspaceTitle: 'Skills' },
     ],
   },
   {
     id: 'advanced', label: '高级', description: '高级配置',
     headerMetrics: [
-      { label: '功能页', value: '3' },
+      { label: '功能页', value: '7' },
       { label: '表情库', value: '可管理' },
       { label: '文件服务', value: '已接入' },
       { label: '目录模式', value: '2 种' },
     ],
     pages: [
-      { id: 'advanced-multi-agent', label: '多人系统', description: '群体记忆、关系与群聊', runtimeTab: 'personality', personalityWorkspacePage: 'multi-agent', workspaceTitle: '多人关系工作区' },
+      { id: 'advanced-multi-agent', label: '群聊系统', description: '群体记忆、关系与群聊', runtimeTab: 'personality', personalityWorkspacePage: 'multi-agent', workspaceTitle: '多人关系工作区' },
       { id: 'advanced-desktop-awareness', label: '生活陪伴', description: '大致感知你在做什么、主动聊天、看屏幕陪伴', runtimeTab: 'system', workspaceTitle: '生活陪伴' },
       { id: 'advanced-game-companion', label: '陪玩', description: '游戏观察频率与角色回应', runtimeTab: 'system', workspaceTitle: '游戏陪玩工作区' },
       { id: 'advanced-expression', label: '表情包', description: '回复比例、分类语义与图片库', runtimeTab: 'system', workspaceTitle: '表情包工作区' },
+      { id: 'advanced-interactive-dialogue', label: '互动对话', description: '视频通话画面里角色的大小、位置和对话面板', runtimeTab: 'system', workspaceTitle: '互动对话' },
+      { id: 'advanced-chat-display', label: '聊天显示', description: '聊天文字颜色、大小与粗细', runtimeTab: 'system', workspaceTitle: '聊天显示工作区' },
+      { id: 'advanced-desktop-activity', label: '桌面活动范围', description: '活动范围框、物理模拟与载体缩放', runtimeTab: 'motion-expression', workspaceTitle: '桌面活动范围' },
     ],
   },
   {
@@ -148,7 +159,6 @@ export const SETTINGS_CONTROL_CENTER_MODULES: SettingsControlCenterModule[] = [
       { label: '日志', value: '实时' },
     ],
     pages: [
-      { id: 'system-chat', label: '聊天显示', description: '聊天文字颜色、大小与粗细', runtimeTab: 'system', workspaceTitle: '聊天显示工作区' },
       { id: 'system-data', label: '数据与备份', description: '配置、资源与诊断数据', runtimeTab: 'system', workspaceTitle: '数据工作区' },
     ],
   },

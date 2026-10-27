@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type SettingsTabId = 'personality' | 'model' | 'motion-expression' | 'vision' | 'voice' | 'system';
 
@@ -209,6 +209,11 @@ export function usePetPanelController({
     setIsInteractiveDialogueOpen(false);
     setShowPetActions(false);
   }, [onRequestCloseChatWindow, onSetSettingsOpen, useExternalChatWindow, useExternalSettingsWindow]);
+
+  // 互动对话跟着聊天窗口走：窗口关了（含点「挂断」）就结束，桌面上的角色回来。
+  useEffect(() => {
+    if (!isChatOpen) setIsInteractiveDialogueOpen(false);
+  }, [isChatOpen]);
 
   // 收起 on the quick menu: only the menu and its own sub-panels. It used to run
   // closeAllPetPanels, which also shut the chat window, settings and interactive dialogue.

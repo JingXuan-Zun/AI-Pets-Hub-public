@@ -75,7 +75,7 @@ const setPetModel: PlatformCapability = {
   describe: (args) => `把${stringArg(args, 'pet') || '角色'}的模型换成“${stringArg(args, 'model')}”`,
   group: GROUP,
   id: 'pets.set_model',
-  risk: 'change',
+  risk: 'personal',
   run: (context, args) => {
     const config = context.configRef.current;
     const petArg = stringArg(args, 'pet');

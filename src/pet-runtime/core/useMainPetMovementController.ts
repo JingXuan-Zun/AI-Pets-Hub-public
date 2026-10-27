@@ -10,7 +10,6 @@ import {
 import { usePetRuntimeStore } from './petRuntimeStore';
 import { useMainPetAutonomyController } from './useMainPetAutonomyController';
 import { useMainPetMovementStepper } from './useMainPetMovementStepper';
-import { useMainPetVisionController } from './useMainPetVisionController';
 import { type PetRuntimePosition } from './petRuntimeTypes';
 
 interface UseMainPetMovementControllerOptions {
@@ -78,7 +77,6 @@ export function useMainPetMovementController({
     motionTarget,
     resetMovementSyncState,
     setIsAutoMoving,
-    setVisionTarget,
     syncPetPositionDuringMovement,
     syncRenderedPetPositionDuringMovement,
     updateMotionTarget,
@@ -149,11 +147,6 @@ export function useMainPetMovementController({
       clearAutoMove('IDLE');
     }
   }, [clearAutoMove, configRef, isAutoMoving, isMovementPaused, petPosRef, updatePetPosition]);
-
-  useMainPetVisionController({
-    isAutoMoving,
-    setVisionTarget,
-  });
 
   useMainPetAutonomyController({
     autoMovePlanRef,

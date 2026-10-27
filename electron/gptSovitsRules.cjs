@@ -92,6 +92,9 @@ function parseGptSovitsManifest(rawManifest, modelDir) {
   if (kind === 'full' && !sovitsPath) errors.push('sovits');
   const { emotions, errors: emotionErrors } = parseEmotions(manifest.emotions, modelDir);
   errors.push(...emotionErrors);
+  // Optional: extra voice clips mixed into the timbre (see gpt_sovits_voice_style.py).
+  const blendPaths = (Array.isArray(manifest.timbreBlend) ? manifest.timbreBlend : []).map((rel) => resolveInside(modelDir, rel));
+  if (blendPaths.some((blendPath) => !blendPath)) errors.push('timbreBlend');
   return {
     ok: errors.length === 0,
     errors,
@@ -102,6 +105,7 @@ function parseGptSovitsManifest(rawManifest, modelDir) {
     gptPath,
     sovitsPath,
     emotions,
+    blendPaths: blendPaths.filter(Boolean),
   };
 }
 
