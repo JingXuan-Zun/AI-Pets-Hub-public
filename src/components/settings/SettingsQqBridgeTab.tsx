@@ -68,6 +68,24 @@ export function SettingsQqBridgeTab({ localConfig, onCommit }: { localConfig: Pe
     if (result && !result.ok) setFeedback(result.error ?? '打不开日志。');
   };
 
+  const openSnowLumaWebui = async () => {
+    const snowLuma = window.desktopPetShell?.snowLuma;
+    if (!snowLuma?.openWebui) {
+      setFeedback('只能在桌面版里打开。');
+      return;
+    }
+    const result = await snowLuma.openWebui(qq.snowLumaDir);
+    setFeedback(result.ok ? `已在浏览器打开 ${result.url}（SnowLuma 要先启动）` : result.error ?? '打不开管理页。');
+  };
+
+  const [credentials, setCredentials] = useState<string | null>(null);
+  const showInitialCredentials = async () => {
+    const result = await window.desktopPetShell?.snowLuma?.initialCredentials?.();
+    setCredentials(result?.ok && result.password
+      ? `用户名 ${result.user}　密码 ${result.password}`
+      : '没找到初始密码：说明你已经改过密码了，用你自己设的密码登录。（忘了的话，删掉 SnowLuma 文件夹里的 config\\webui.json 再重启 SnowLuma，会重新生成一个。）');
+  };
+
   const inputClass = 'w-full rounded-sm border border-border bg-background/60 px-3 py-2 text-xs text-foreground';
 
   return (
@@ -124,9 +142,25 @@ export function SettingsQqBridgeTab({ localConfig, onCommit }: { localConfig: Pe
           />
         </label>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="rounded-sm border border-primary/50 px-3 py-1.5 text-xs text-primary hover:bg-primary/10" onClick={() => { void openSnowLumaWebui(); }}>打开 SnowLuma 管理页</button>
+          <button type="button" className="rounded-sm border border-border px-3 py-1.5 text-xs hover:bg-secondary" onClick={() => { void showInitialCredentials(); }}>显示初始密码</button>
           <button type="button" className="rounded-sm border border-border px-3 py-1.5 text-xs hover:bg-secondary" onClick={() => { void openSnowLumaLog(); }}>查看 SnowLuma 日志</button>
-          <span className="text-2xs text-muted-foreground">第一次启动时的临时管理员密码也在日志里。</span>
         </div>
+        {credentials ? (
+          <p className="select-text rounded-sm border border-border bg-background/60 px-3 py-2 text-xs text-foreground">
+            {credentials}
+            <span className="mt-1 block text-2xs text-muted-foreground">登录管理页后请马上改密码；不改的话，下次启动 SnowLuma 会换一个新的初始密码。</span>
+          </p>
+        ) : null}
+        <ol className="list-decimal space-y-1 pl-5 text-2xs leading-5 text-muted-foreground">
+          <li>电脑上的 QQ 先用<b>小号</b>登录。</li>
+          <li>选好 SnowLuma 文件夹，打开上面的“开启 QQ 连接”。</li>
+          <li>点“打开 SnowLuma 管理页”，用“显示初始密码”里的账号密码登录，按提示改密码。</li>
+          <li>在管理页里把服务加载到<b>小号</b>的 QQ 上。之后每次重新打开桌面 QQ，都要再加载一次。</li>
+        </ol>
+        <p className="rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-2xs leading-5 text-amber-900">
+          电脑上同时开着你的大号 QQ 时，不要打开 SnowLuma 的“自动加载 / 自动挂钩”，它会挂到所有 QQ 上，包括大号。（就算挂错了，桌宠发现登录的是你自己的 QQ 号也会自动断开。）
+        </p>
       </div>
 
       <div className="space-y-3 rounded-sm border border-border bg-background/30 p-3">

@@ -994,6 +994,9 @@ interface Window {
       ensureRunning: (request: { dir: string; wsUrl?: string }) => Promise<{ error?: string; ok: boolean; owned?: boolean; started?: boolean }>;
       /** Downloads a picture the user sent on QQ (Tencent image hosts only). */
       fetchImage: (url: string) => Promise<{ dataUrl?: string; error?: string; mimeType?: string; ok: boolean; sizeBytes?: number }>;
+      /** The first-start WebUI login SnowLuma printed (only until the user changes the password). */
+      initialCredentials: () => Promise<{ ok: boolean; password?: string; user?: string }>;
+      openWebui: (dir: string) => Promise<{ error?: string; ok: boolean; url?: string }>;
       inspect: (dir: string) => Promise<{ error?: string; ok: boolean }>;
       openLog: () => Promise<{ error?: string; ok: boolean }>;
       status: () => Promise<{ logPath: string; ownedRunning: boolean }>;
