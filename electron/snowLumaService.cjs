@@ -105,7 +105,31 @@ function createSnowLumaService({ logDirectory, log = () => undefined }) {
     return { ok: true, stopped: true };
   }
 
-  return { ensureRunning, inspect: inspectSnowLumaDir, logPath, status, stop };
+  /**
+   * The WebUI login SnowLuma prints on a fresh start (console only, so it lands in our log).
+   * Until the user changes it, every start prints a new one; afterwards there is none.
+   */
+  function readInitialCredentials() {
+    let text = '';
+    try { text = fs.readFileSync(logPath, 'utf8'); } catch { return { ok: false }; }
+    const matches = [...text.matchAll(/initial credentials: user=(\S+) password=(\S+)/gu)];
+    const last = matches.at(-1);
+    return last ? { ok: true, password: last[2], user: last[1] } : { ok: false };
+  }
+
+  return { ensureRunning, inspect: inspectSnowLumaDir, logPath, readInitialCredentials, status, stop };
+}
+
+/** The SnowLuma admin page address, from its config (loopback only). */
+function resolveSnowLumaWebuiUrl(dir) {
+  const inspected = inspectSnowLumaDir(dir);
+  if (!inspected.ok) return inspected;
+  let config = {};
+  try { config = JSON.parse(fs.readFileSync(path.join(inspected.folder, 'config', 'runtime.json'), 'utf8')); } catch { /* defaults */ }
+  const port = Number(config.webuiPort) || 5099;
+  const host = ['127.0.0.1', 'localhost', '::1'].includes(String(config.webuiHost || '127.0.0.1')) ? '127.0.0.1' : null;
+  if (!host) return { ok: false, error: 'SnowLuma 管理页没有只开在本机，请检查它的设置。' };
+  return { ok: true, url: `${config.webuiTls?.enabled ? 'https' : 'http'}://${host}:${port}` };
 }
 
 // A picture the user sent on QQ: SnowLuma only gives Tencent's download address, which the
@@ -133,6 +157,13 @@ async function fetchQqImage(url, fetchImpl = fetch) {
 
 function registerSnowLumaIpcHandlers({ ipcMain, service, dialog, shell }) {
   ipcMain.handle('desktop-pet:qq-fetch-image', (_event, url) => fetchQqImage(url));
+  ipcMain.handle('desktop-pet:snowluma-initial-credentials', () => service.readInitialCredentials());
+  ipcMain.handle('desktop-pet:snowluma-open-webui', async (_event, dir) => {
+    const resolved = resolveSnowLumaWebuiUrl(dir);
+    if (!resolved.ok) return resolved;
+    await shell.openExternal(resolved.url);
+    return { ok: true, url: resolved.url };
+  });
   ipcMain.handle('desktop-pet:snowluma-ensure-running', (_event, request) => service.ensureRunning(request ?? {}));
   ipcMain.handle('desktop-pet:snowluma-stop', () => service.stop());
   ipcMain.handle('desktop-pet:snowluma-status', () => service.status());
@@ -149,4 +180,4 @@ function registerSnowLumaIpcHandlers({ ipcMain, service, dialog, shell }) {
   });
 }
 
-module.exports = { createSnowLumaService, fetchQqImage, inspectSnowLumaDir, isPortOpen, portFromWsUrl, registerSnowLumaIpcHandlers };
+module.exports = { createSnowLumaService, fetchQqImage, inspectSnowLumaDir, isPortOpen, portFromWsUrl, registerSnowLumaIpcHandlers, resolveSnowLumaWebuiUrl };

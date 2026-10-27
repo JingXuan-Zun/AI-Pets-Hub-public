@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
@@ -7,10 +7,12 @@ import path from 'node:path';
 import { normalizeQqBridgeSettings } from '../src/qq-bridge/qqBridgeSettings';
 
 const require = createRequire(import.meta.url);
-const { createSnowLumaService, inspectSnowLumaDir, isPortOpen, portFromWsUrl } = require('../electron/snowLumaService.cjs') as {
+const { createSnowLumaService, inspectSnowLumaDir, isPortOpen, portFromWsUrl, resolveSnowLumaWebuiUrl } = require('../electron/snowLumaService.cjs') as {
+  resolveSnowLumaWebuiUrl: (dir: string) => { error?: string; ok: boolean; url?: string };
   createSnowLumaService: (options: { logDirectory: string }) => {
     ensureRunning: (request: { dir: string; wsUrl?: string }) => Promise<{ error?: string; ok: boolean; owned?: boolean; started?: boolean }>;
     logPath: string;
+    readInitialCredentials: () => { ok: boolean; password?: string; user?: string };
     status: () => { ownedRunning: boolean };
     stop: () => { stopped: boolean };
   };
@@ -74,5 +76,19 @@ const other = createSnowLumaService({ logDirectory: logs });
 assert.deepEqual(await other.ensureRunning({ dir: fake, wsUrl }), { ok: true, owned: false, started: false });
 assert.equal(other.stop().stopped, false, 'a copy started by hand is left alone');
 external.close();
+
+// The first-start WebUI login, read from the console log; the latest one wins.
+writeFileSync(service.logPath, 'x\n[WebUI] initial credentials: user=admin password=Old-1\n...\n[WebUI] initial credentials: user=admin password=New-2\n');
+assert.deepEqual(service.readInitialCredentials(), { ok: true, password: 'New-2', user: 'admin' });
+writeFileSync(service.logPath, 'no password this time\n');
+assert.deepEqual(service.readInitialCredentials(), { ok: false }, 'already changed: nothing to show');
+
+// The admin page address comes from SnowLuma's config and stays on this computer.
+mkdirSync(path.join(fake, 'config'), { recursive: true });
+assert.equal(resolveSnowLumaWebuiUrl(fake).url, 'http://127.0.0.1:5099', 'default port');
+writeFileSync(path.join(fake, 'config', 'runtime.json'), JSON.stringify({ webuiHost: '127.0.0.1', webuiPort: 6000 }));
+assert.equal(resolveSnowLumaWebuiUrl(fake).url, 'http://127.0.0.1:6000');
+writeFileSync(path.join(fake, 'config', 'runtime.json'), JSON.stringify({ webuiHost: '0.0.0.0', webuiPort: 6000 }));
+assert.equal(resolveSnowLumaWebuiUrl(fake).ok, false, 'not opened when exposed beyond this computer');
 
 console.log('snowluma service smoke ok');
