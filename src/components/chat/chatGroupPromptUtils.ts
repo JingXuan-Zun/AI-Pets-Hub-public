@@ -71,6 +71,8 @@ function buildSceneContinuityPromptLines(
   const baseLines = [
     '现场连续性规则：前文已经出现的位置、距离、姿势、动作、表情、情绪、人物关系和群体状态，都是当前群聊现场的一部分。',
     '不要无解释地把最近明确的现场事实改成相反内容；例如已经在身边/围在一起，就不要突然写成离得很远，除非本轮明确发生了移动或变化。',
+    '记录里的“名字：”只是标出谁在说话；你的回复直接从你的话或动作开始，开头不要写自己的名字，也不要写“名字：”。',
+    '自称和说话习惯以你自己的人设为准；不要跟着记录里其他角色改用她们的自称（比如“妾身”“人家”）或口头禅。',
   ];
 
   if (!sceneSummary) {
@@ -207,7 +209,7 @@ export function buildChatUserPrompt(
       ...buildConversationTurnPromptLines(groupInteractionPlan.conversationTurnPlan),
       ...buildGroupInteractionPromptLines(groupInteractionPlan),
       '上面的现场参考只用来保持位置、动作、关系和气氛连续；不要拿旧话题、旧结论或旧角色发言来抢占本轮回答。',
-      '只根据本轮用户消息直接回复用户；回复保持简短自然，只说你自己的这一句。',
+      '只根据本轮用户消息直接回复用户；只说你自己的话；回复长短按你人设里的要求，人设没写就简短自然。',
       `本轮用户消息：${turnUserInput}`,
       ...buildGroupTopicSignalPromptLines(),
       ...buildGroupRelationshipSignalPromptLines(),
@@ -238,8 +240,8 @@ export function buildChatUserPrompt(
     ...buildConversationTurnPromptLines(groupInteractionPlan?.conversationTurnPlan),
     ...buildGroupInteractionPromptLines(groupInteractionPlan),
     ...(groupInteractionPlan?.followsUserAddressedExchange ? [] : buildAntiRepetitionPromptLines(messages, targetSlot)),
-    '只说你自己的这一句。不要代替其他角色发言，不要写旁白，不要总结全场。',
-    '回复保持简短自然，像群里实时互相聊天。不要每次都以用户为唯一对象。',
+    '只说你自己的话，不要替其他角色说话或决定她们的反应，不要总结全场；场景、旁白和动作描写写多少，按你人设里的要求。',
+    '像大家当面你一言我一语地聊；回复长短按你人设里的要求，人设没写就简短自然。不要每次都以用户为唯一对象。',
     `本轮用户消息：${turnUserInput}`,
     ...buildGroupTopicSignalPromptLines(),
     ...buildGroupRelationshipSignalPromptLines(),
@@ -280,8 +282,8 @@ export function buildAutonomousGroupChatPrompt(
     ...buildConversationTurnPromptLines(groupInteractionPlan?.conversationTurnPlan),
     ...buildGroupInteractionPromptLines(groupInteractionPlan),
     ...buildAntiRepetitionPromptLines(messages, targetSlot),
-    '只说你自己的这一句，保持简短自然，给下一位角色留下继续接话的空间。',
-    '可以回应其他桌宠，也可以顺着当前话题继续聊，但不要代替其他角色发言，不要写旁白，不要总结全场。',
+    '只说你自己的话，给下一位角色留下继续接话的空间；回复长短按你人设里的要求，人设没写就简短自然。',
+    '可以回应其他桌宠，也可以顺着当前话题继续聊，但不要替其他角色说话或决定她们的反应，不要总结全场；场景、旁白和动作描写写多少，按你人设里的要求。',
     ...buildGroupTopicSignalPromptLines(),
     ...buildGroupRelationshipSignalPromptLines(),
     ...buildGroupContributionSignalPromptLines(),

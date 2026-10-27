@@ -114,4 +114,25 @@ try {
   rmSync(tempRoot, { force: true, recursive: true });
 }
 
+// Built-in apps registered under English names still answer to their Chinese names
+// (“记事本” matched nothing before, so the character fell back to a shell command).
+{
+  const { createPackagedAppIndex } = require('../electron/appLauncher/packagedAppIndex.cjs');
+  const { scoreIndexedAppMatch } = require('../electron/appLauncher/appSearchMatching.cjs');
+  const entries = await createPackagedAppIndex({
+    logMessage: () => {},
+    packagedAppProvider: () => [
+      { AppID: 'Microsoft.WindowsNotepad_8wekyb3d8bbwe!App', Name: 'Notepad' },
+      { AppID: 'Microsoft.WindowsCalculator_8wekyb3d8bbwe!App', Name: 'Calculator' },
+    ],
+    runPowerShellScript: async () => '[]',
+  }).createPackagedAppEntries();
+  const best = (query: string) => entries
+    .map((entry: { name: string }) => ({ name: entry.name, score: scoreIndexedAppMatch(entry, query) }))
+    .sort((a: { score: number }, b: { score: number }) => b.score - a.score)[0];
+  assert.equal(best('记事本').name, 'Notepad');
+  assert.ok(best('记事本').score > 0);
+  assert.equal(best('计算器').name, 'Calculator');
+}
+
 console.log('app launch packaged Windows app smoke ok');

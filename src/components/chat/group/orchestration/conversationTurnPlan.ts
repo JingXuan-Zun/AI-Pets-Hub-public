@@ -90,13 +90,13 @@ export function createConversationTurnPlan(options: {
 const INTENT_PROMPTS: Record<ConversationTurnIntent, string> = {
   'answer-user': '直接回答用户刚刚交给你的问题或对话意图。',
   'respond-to-character': '回应当前被指定的角色，不要改成面向用户的总结。',
-  'react-to-user-exchange': '围绕用户与被点名角色刚发生的新对话给出简短反应。',
+  'react-to-user-exchange': '围绕用户与被点名角色刚发生的新对话给出反应。',
   'bridge-participants': '回应主要对象，并自然给另一位角色留下接话口。',
   'advance-topic': '面向当前群体推进话题，提供一个新的有效反应点。',
   'resolve-disagreement': '明确当前分歧点，回应关键差异并推动形成可检验的下一步。',
   'request-information': '指出目前缺少的关键信息，不要在证据不足时强行下结论。',
-  'summarize-topic': '给出简短的阶段结论，区分已确认内容与仍未解决的问题。',
-  'close-topic': '用一句自然收束当前话题，不要再次展开新的讨论分支。',
+  'summarize-topic': '给出阶段结论，区分已确认内容与仍未解决的问题。',
+  'close-topic': '自然收束当前话题，不要再次展开新的讨论分支。',
 };
 
 export function buildConversationTurnPromptLines(plan?: ConversationTurnPlan) {

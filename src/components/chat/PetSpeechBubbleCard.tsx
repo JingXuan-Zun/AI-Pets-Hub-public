@@ -20,7 +20,8 @@ export function splitBubbleText(text: string) {
     if (buffer) parts.push({ isBracket, text: buffer });
     buffer = '';
   };
-  for (const character of text) {
+  // The bubble has no bold; markdown bold markers (**…**, ***…***) are just dropped.
+  for (const character of text.replace(/\*{2,}/gu, '')) {
     if (endsActionBracketLine(character) && depth > 0) {
       push(true);
       depth = 0;

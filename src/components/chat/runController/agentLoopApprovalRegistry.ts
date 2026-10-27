@@ -4,7 +4,7 @@ import { type ChatAgentApprovalDecision } from '../../../types';
 // renderer as resolveAgentApproval(messageId, decision); ids registered here are answered by
 // resolving the loop's pending promise instead of the older approval pipeline.
 
-const pending = new Map<string, (approved: boolean) => void>();
+const pending = new Map<string, (decision: ChatAgentApprovalDecision) => void>();
 const listeners = new Set<() => void>();
 
 function notify() {
@@ -23,27 +23,32 @@ export function subscribeAgentLoopApprovals(listener: () => void) {
   };
 }
 
-export function waitForAgentLoopApproval(messageId: string, signal?: AbortSignal | null) {
-  return new Promise<boolean>((resolve) => {
-    const settle = (approved: boolean) => {
+/** Waits for the answer itself, including "allow the rest of this task" ('approve-task'). */
+export function waitForAgentLoopDecision(messageId: string, signal?: AbortSignal | null) {
+  return new Promise<ChatAgentApprovalDecision>((resolve) => {
+    const settle = (decision: ChatAgentApprovalDecision) => {
       pending.delete(messageId);
       signal?.removeEventListener('abort', onAbort);
-      resolve(approved);
+      resolve(decision);
       notify();
     };
-    const onAbort = () => settle(false);
+    const onAbort = () => settle('deny');
     pending.set(messageId, settle);
     notify();
-    if (signal?.aborted) settle(false);
+    if (signal?.aborted) settle('deny');
     else signal?.addEventListener('abort', onAbort, { once: true });
   });
+}
+
+export function waitForAgentLoopApproval(messageId: string, signal?: AbortSignal | null) {
+  return waitForAgentLoopDecision(messageId, signal).then((decision) => decision !== 'deny');
 }
 
 /** True when the message belonged to the loop (and is now answered). */
 export function resolveAgentLoopApproval(messageId: string, decision: ChatAgentApprovalDecision) {
   const settle = pending.get(messageId);
   if (!settle) return false;
-  settle(decision === 'approve');
+  settle(decision);
   return true;
 }
 

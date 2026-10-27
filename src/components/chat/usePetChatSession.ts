@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { type AgentChatCommandHandler } from '../../agent/agentChatCommand';
 import { desktopPetChatStore, useDesktopPetChatStore } from '../../chatStore';
 import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
@@ -18,6 +18,12 @@ import { useCharacterMemoryMaintenance } from '../../character-memory/useCharact
 import { useSharedUserMemoryCapture } from '../../character-memory/useSharedUserMemoryCapture';
 import { useVoiceWakeListener } from './useVoiceWakeListener';
 import { useApprovalVoiceListener } from './useApprovalVoiceListener';
+import { useQqBridge } from '../../qq-bridge/useQqBridge';
+import { loadChatTargetSnapshot } from '../../chatTargetSnapshot';
+import { getDesktopPetSlot } from '../../multiPetRoster';
+
+// Read before anything at startup can change the chat partner.
+const initialChatTarget = loadChatTargetSnapshot();
 import { registerCompanionLineSpeaker } from '../../life-companion/companionLineSpeech';
 
 interface UsePetChatSessionOptions {
@@ -165,12 +171,25 @@ export function usePetChatSession({
     setChatMode('single');
     setActivePetId(petId);
   }, [setActivePetId, setChatMode]);
+  // Carry on with the character and mode of the last session, once the roster is loaded and
+  // she is still there (a removed or disabled character falls back to the default).
+  const chatTargetRestoredRef = useRef(false);
+  useEffect(() => {
+    if (chatTargetRestoredRef.current) return;
+    const { activePetId: savedPetId, chatMode: savedMode } = initialChatTarget;
+    const slot = savedPetId ? getDesktopPetSlot(config, savedPetId) : null;
+    if (savedPetId && !slot) return;
+    chatTargetRestoredRef.current = true;
+    if (slot?.enabled) setActivePetId(slot.id);
+    if (savedMode) setChatMode(savedMode);
+  }, [config, setActivePetId, setChatMode]);
   // Lines the character posts on her own are spoken too; skipped while a reply has the floor.
   useEffect(() => registerCompanionLineSpeaker((text, petId) => {
     const { isTyping, isSpeaking } = desktopPetChatStore.getState();
     if (!isTyping && !isSpeaking) void playVoiceText(text, { petId });
   }), [playVoiceText]);
   useApprovalVoiceListener({ config, conversationActive: voiceInputController.conversation.active });
+  useQqBridge({ config, configRef, sendMessage });
   useVoiceWakeListener({
     config,
     conversationActive: voiceInputController.conversation.active,

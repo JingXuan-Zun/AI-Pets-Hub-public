@@ -48,6 +48,8 @@ type CreateCompanionRuntimeLayerItemOptions = {
   onSelectPet: CompanionPetRuntimeLayerProps['onSelectPet'];
   onStartOverlappedPetDrag: CompanionPetRuntimeLayerProps['onStartOverlappedPetDrag'];
   panelPetId: string;
+  /** 互动对话里正在通话的角色（聊天里选中的那个），它在桌面上先隐藏；null 表示桌面角色全部隐藏。 */
+  interactiveDialoguePetId: string | null;
   satiatedThreshold: CompanionPetRuntimeLayerProps['satiatedThreshold'];
   selectedCustomMotionByPetId: SelectedCustomMotionBindingMap;
   sequenceFrameDurationMultiplier: CompanionPetRuntimeLayerProps['sequenceFrameDurationMultiplier'];
@@ -59,12 +61,14 @@ type CreateCompanionRuntimeLayerItemOptions = {
 
 export function resolvePetInteractiveDialogueLayerSurface(
   isInteractiveDialogueActive: boolean,
-  panelPetId: string,
+  interactiveDialoguePetId: string | null,
   targetPetId: string,
 ): PetInteractiveDialogueLayerSurface {
+  // 互动对话时角色画在聊天窗口里，桌面上同一个角色先隐藏，其他角色照常留在桌面。
   return {
-    isInteractiveDialogueHidden: isInteractiveDialogueActive && panelPetId !== targetPetId,
-    isInteractiveDialogueMode: isInteractiveDialogueActive && panelPetId === targetPetId,
+    isInteractiveDialogueHidden: isInteractiveDialogueActive
+      && (interactiveDialoguePetId === null || interactiveDialoguePetId === targetPetId),
+    isInteractiveDialogueMode: false,
   };
 }
 
@@ -106,6 +110,7 @@ export function createCompanionRuntimeLayerItem({
   onSelectPet,
   onStartOverlappedPetDrag,
   panelPetId,
+  interactiveDialoguePetId,
   satiatedThreshold,
   selectedCustomMotionByPetId,
   sequenceFrameDurationMultiplier,
@@ -158,7 +163,7 @@ export function createCompanionRuntimeLayerItem({
     slot,
     ...resolvePetInteractiveDialogueLayerSurface(
       isInteractiveDialogueActive,
-      panelPetId,
+      interactiveDialoguePetId,
       slot.id,
     ),
   };

@@ -962,6 +962,45 @@ interface Window {
       }>;
       test: (request: { apiKey?: string; serverUrl: string }) => Promise<{ device?: string; error?: string; ok: boolean; version?: string }>;
     };
+    /** The development assistant (Claude Code, headless) working in a project folder. */
+    devAgent?: {
+      login: (request: { executablePath?: string }) => Promise<{ error?: string; ok: boolean }>;
+      openKeyPage: (url: string) => Promise<{ error?: string; ok: boolean }>;
+      run: (request: { allowedCommands?: string[]; env?: Record<string, string>; executablePath?: string; model?: string; prompt: string; resumeSessionId?: string; timeoutMs?: number; workspacePath: string }) => Promise<{
+        costUsd?: number;
+        deniedCount?: number;
+        durationMs?: number;
+        error?: string;
+        ok: boolean;
+        result?: string;
+        /** Continued an earlier session of the same progress card. */
+        resumed?: boolean;
+        /** The earlier session was gone, so it started a fresh one. */
+        resumeLost?: boolean;
+        sessionId?: string;
+        turns?: number;
+      }>;
+      status: (request: { env?: Record<string, string>; executablePath?: string; probeLogin?: boolean }) => Promise<{
+        error?: string;
+        executable?: string;
+        installed?: boolean;
+        loggedIn?: boolean;
+        ok: boolean;
+        version?: string;
+      }>;
+    };
+    /** SnowLuma (OneBot for phone QQ) run in the background by the pet. */
+    snowLuma?: {
+      ensureRunning: (request: { dir: string; wsUrl?: string }) => Promise<{ error?: string; ok: boolean; owned?: boolean; started?: boolean }>;
+      /** Downloads a picture the user sent on QQ (Tencent image hosts only). */
+      fetchImage: (url: string) => Promise<{ dataUrl?: string; error?: string; mimeType?: string; ok: boolean; sizeBytes?: number }>;
+      inspect: (dir: string) => Promise<{ error?: string; ok: boolean }>;
+      openLog: () => Promise<{ error?: string; ok: boolean }>;
+      status: () => Promise<{ logPath: string; ownedRunning: boolean }>;
+      stop: () => Promise<{ ok: boolean; stopped: boolean }>;
+    };
+    /** Native folder picker. */
+    pickDirectory?: (title?: string) => Promise<{ ok: boolean; path?: string }>;
     /** Private-data backups in the app's own backups folder (no API keys). */
     dataBackup?: {
       list: () => Promise<{ backups?: Array<{ modifiedAt: string; name: string; sizeBytes: number }>; error?: string; ok: boolean }>;

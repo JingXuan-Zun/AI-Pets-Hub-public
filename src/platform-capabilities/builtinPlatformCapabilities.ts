@@ -202,7 +202,7 @@ const setPetVoice: PlatformCapability = {
   describe: (args) => `把${stringArg(args, 'pet') || '当前角色'}的声音换成${stringArg(args, 'pack') || '全局语音'}`,
   group: '声音',
   id: 'voice.set_pet_voice',
-  risk: 'change',
+  risk: 'personal',
   run: async (context, args) => {
     const config = context.configRef.current;
     const petArg = stringArg(args, 'pet');
@@ -288,7 +288,7 @@ const setPetPresence: PlatformCapability = {
   },
   group: '角色',
   id: 'pets.set_presence',
-  risk: 'change',
+  risk: 'personal',
   run: (context, args) => {
     const config = context.configRef.current;
     const petArg = stringArg(args, 'pet');
@@ -322,18 +322,28 @@ const setChatMode: PlatformCapability = {
   },
   group: '聊天',
   id: 'chat.set_mode',
-  risk: 'change',
+  risk: 'personal',
   run: (context, args) => {
     const mode = stringArg(args, 'mode') as DesktopPetChatMode;
     if (!(mode in CHAT_MODE_LABELS)) return { ok: false, text: '聊天模式只能是单聊、群聊或剧情。' };
     const config = context.configRef.current;
     const petArg = stringArg(args, 'pet');
+    let handedOverTo: string | null = null;
     if (mode === 'single' && petArg) {
       const slot = resolvePetSlot(config, petArg, null);
       if (!slot) return missingPet(config, petArg);
       desktopPetChatStore.setActivePetId(slot.id);
+      if (context.petId && slot.id !== context.petId) handedOverTo = slot.personality.name;
     }
     desktopPetChatStore.setChatMode(mode);
+    // The rest of this reply is still written by the character who switched: she hands over
+    // in her own voice; the other one answers from the user's next message.
+    if (handedOverTo) {
+      return {
+        ok: true,
+        text: `已切换：从用户的下一条消息开始，由${handedOverTo}和用户单聊。你只用你自己的口吻简单交接一句（比如“好，让${handedOverTo}来陪你”），不要扮演${handedOverTo}，也不要用她的自称和口头禅。`,
+      };
+    }
     return { ok: true, text: `已切换到${CHAT_MODE_LABELS[mode]}模式。` };
   },
   title: '切换聊天模式',

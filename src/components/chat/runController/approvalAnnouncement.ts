@@ -35,6 +35,11 @@ const REMIND_ANGLES = [
   '这次用你人设里最有特点的方式提醒。',
 ];
 
+// The question itself is short and asked straight away (2026-10-20): a line written in the
+// character's manner took ~2.5 s to write, ~7 s to synthesize and ~8 s to say, so every
+// permission question cost 15-20 s before the user could even answer. The in-character line is
+// kept for the reminder after a long silence.
+const FIRST_ASKS = ['{request}，可以吗？', '{request}，行吗？', '{request}，好不好？'];
 const BRIEF_ASKS = ['还要你点个头：{request}。', '这一步也得问问你：{request}。', '{request}，这个也行吗？', '再麻烦你一下——{request}，可以吗？', '还有一步要你同意：{request}。'];
 
 function pick<T>(items: readonly T[], random: () => number) {
@@ -107,9 +112,10 @@ export async function announceApprovalRequest(options: {
   if (options.reminder && typeof window !== 'undefined') window.desktopPetShell?.nudgeChatWindow?.();
   // Within one task only the first question gets a full line in the character's manner; later
   // ones are a short spoken line on top of the card, or every step stacked another paragraph.
-  const text = options.brief
-    ? pick(BRIEF_ASKS, Math.random).replace('{request}', options.request)
-    : await generateLine(options.request, options.reminder, slot.personality, config.settings, slot.id);
+  const request = options.request.replace(/[？?。！!]+$/u, '');
+  const text = options.reminder
+    ? await generateLine(options.request, true, slot.personality, config.settings, slot.id)
+    : pick(options.brief ? BRIEF_ASKS : FIRST_ASKS, Math.random).replace('{request}', request);
   if (!options.isStillWaiting()) return;
   if (!options.brief) desktopPetChatStore.addMessage({
     chatMode: options.chatMode ?? 'single',

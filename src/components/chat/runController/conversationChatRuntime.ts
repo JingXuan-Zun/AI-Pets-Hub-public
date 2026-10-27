@@ -47,6 +47,8 @@ export function createConversationChatRuntime(options: {
   const taskCard = createConversationTaskCard({ chatMode, goal: sourceText.trim().slice(0, 80) || '帮你办一件事', targetSlot });
   let askedInThisTask = false;
   const requestApproval: ConversationToolRuntime['requestApproval'] = async (request) => {
+    // The user said "这次都允许" earlier in this task: go ahead without asking or announcing.
+    if (taskCard.isAllowedForTask()) return taskCard.requestApproval(request);
     publishAgentRuntimeWorldProgress({ continuation: { taskState: { phase: 'approval' } }, stepIndex: 0, taskPhase: 'approval', type: 'model-decision' });
     // One clear order, so nobody talks over anyone: she finishes what she is saying, asks out
     // loud, and only then does the question appear on the card and the microphone listen for

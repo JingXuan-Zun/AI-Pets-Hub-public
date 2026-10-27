@@ -28,6 +28,7 @@ interface CreatePrimaryPetAvatarLayerPropsOptions extends Omit<
 > {
   isInteractiveDialogueActive: boolean;
   panelPetId: string;
+  interactiveDialoguePetId: string | null;
   primaryPetId: string;
 }
 
@@ -69,6 +70,7 @@ interface CreateCompanionRuntimeLayerItemsOptions {
   onSelectPet: CompanionPetRuntimeLayerProps['onSelectPet'];
   onStartOverlappedPetDrag: CompanionPetRuntimeLayerProps['onStartOverlappedPetDrag'];
   panelPetId: string;
+  interactiveDialoguePetId: string | null;
   selectedCustomMotionByPetId: SelectedCustomMotionBindingMap;
   sequenceFrameDurationMultiplier: CompanionPetRuntimeLayerProps['sequenceFrameDurationMultiplier'];
   speakingPetId: string | null;
@@ -89,6 +91,7 @@ export function createPetPanelsLayerProps({
 }
 
 export function createPrimaryPetAvatarLayerProps({
+  interactiveDialoguePetId,
   isInteractiveDialogueActive,
   panelPetId,
   primaryPetId,
@@ -98,7 +101,7 @@ export function createPrimaryPetAvatarLayerProps({
     ...props,
     ...resolvePetInteractiveDialogueLayerSurface(
       isInteractiveDialogueActive,
-      panelPetId,
+      interactiveDialoguePetId,
       primaryPetId,
     ),
   };
@@ -143,6 +146,7 @@ export function createCompanionRuntimeLayerItems({
   onSelectPet,
   onStartOverlappedPetDrag,
   panelPetId,
+  interactiveDialoguePetId,
   satiatedThreshold,
   selectedCustomMotionByPetId,
   sequenceFrameDurationMultiplier,
@@ -188,6 +192,7 @@ export function createCompanionRuntimeLayerItems({
     onSelectPet,
     onStartOverlappedPetDrag,
     panelPetId,
+    interactiveDialoguePetId,
     satiatedThreshold,
     selectedCustomMotionByPetId,
     sequenceFrameDurationMultiplier,

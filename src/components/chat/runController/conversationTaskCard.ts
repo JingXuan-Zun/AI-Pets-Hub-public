@@ -4,7 +4,7 @@ import { type ConversationTaskProgress } from '../../../agent/conversation/conve
 import { desktopPetChatStore } from '../../../chatStore';
 import { createChatMessageId } from '../multiPetChat';
 import { type ChatAgentLoopRun, type ChatMessage } from '../../../types';
-import { resolveAgentLoopApproval, waitForAgentLoopApproval } from './agentLoopApprovalRegistry';
+import { resolveAgentLoopApproval, waitForAgentLoopDecision } from './agentLoopApprovalRegistry';
 
 // One card per task in the chat, like the old agent card: which steps the task took, which
 // one runs now and whether each finished — in plain words, without the internal trace.
@@ -133,13 +133,20 @@ export function createConversationTaskCard(options: {
     },
   };
 
+  // "这次都允许": the rest of this task runs without asking; the next task asks again.
+  let allowedForTask = false;
+
   /** Asks on this card; the step that is running shows "等你确认" until answered. */
   const requestApproval = async ({ detail, title }: { detail: string; title: string }) => {
+    if (allowedForTask) return !controller.signal.aborted;
     const approvalId = createChatMessageId('agent-loop-approval');
     const running = [...run.steps].reverse().find((step) => step.status === 'running');
     // Registered before the card shows the question, so anything that reacts to the card
     // (the microphone, a spoken or typed answer) already finds it waiting.
-    const answer = waitForAgentLoopApproval(approvalId, null);
+    const answer = waitForAgentLoopDecision(approvalId, null).then((decision) => {
+      if (decision === 'approve-task') allowedForTask = true;
+      return decision !== 'deny';
+    });
     write({
       ...run,
       pendingApproval: { detail, id: approvalId, title },
@@ -156,5 +163,5 @@ export function createConversationTaskCard(options: {
     return approved;
   };
 
-  return { progress, requestApproval, signal: controller.signal };
+  return { isAllowedForTask: () => allowedForTask, progress, requestApproval, signal: controller.signal };
 }

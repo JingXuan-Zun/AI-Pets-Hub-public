@@ -18,8 +18,12 @@ assert "".join(chunks) == "".join(paragraphs), "long reply loses no text"
 assert all(len(part) <= 120 for part in chunks), "complete sentences grouped below target"
 assert len(chunks) > len(paragraphs) and all(part.endswith("。") for part in chunks)
 assert split_synthesis_text("一句话有逗号，但不要切成短碎片。") == ["一句话有逗号，但不要切成短碎片。"]
-assert split_synthesis_text("第一段没有句号\n第二段完整。") == ["第一段没有句号", "第二段完整。"]
+assert split_synthesis_text("第一段没有句号\n第二段完整。") == ["第一段没有句号，第二段完整。"], "short paragraphs keep their text, joined"
 assert split_synthesis_text("版本是 1.2，应用是 WeGame，全部保留。") == ["版本是 1.2，应用是 WeGame，全部保留。"]
+# A very short paragraph is spoken with its neighbour: alone, GPT-SoVITS swallowed "一认一个准。".
+assert split_synthesis_text("谁笑的时候尾巴会勾住你手腕……\n一认一个准。") == ["谁笑的时候尾巴会勾住你手腕……一认一个准。"]
+assert split_synthesis_text("好呀！\n那我们现在就出发去吃饭吧。") == ["好呀！那我们现在就出发去吃饭吧。"]
+assert split_synthesis_text("第一段说得很完整很完整\n嗯") == ["第一段说得很完整很完整，嗯"]
 
 class Tts:
     stop_flag = False

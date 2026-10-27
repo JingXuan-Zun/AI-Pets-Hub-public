@@ -11,7 +11,9 @@ export interface PersonaRulePolicy {
 // Conservative signals only.  We do not try to understand arbitrary custom
 // formats; we merely detect when the user is clearly defining output rules so
 // the app's defaults can step aside.
-const EXPLICIT_RULE_SIGNAL = /(?:回复|回答|输出).{0,40}(?:格式|规则|模板|结构|只能|必须|不要|禁止)|(?:格式|模板|结构|括号|方括号|附加信息|动作描写|纯文本|JSON|XML|Markdown|标签).{0,40}(?:必须|只能|不要|禁止|固定|按照|使用|输出)|\b(?:must|only|do not|don't|format|template|json|xml|markdown)\b/iu;
+// Both word orders count: "动作描写不要写" and "不要有任何的动作描写" (the second one used to slip
+// through, so the default format — which shows bracketed actions — was still added).
+const EXPLICIT_RULE_SIGNAL = /(?:回复|回答|输出).{0,40}(?:格式|规则|模板|结构|只能|必须|不要|禁止)|(?:格式|模板|结构|括号|方括号|附加信息|动作描写|纯文本|JSON|XML|Markdown|标签).{0,40}(?:必须|只能|不要|禁止|固定|按照|使用|输出)|(?:不要|禁止|不准|别|不用|不需要|无需).{0,12}(?:动作|神态|描写|旁白|括号)|\b(?:must|only|do not|don't|format|template|json|xml|markdown)\b/iu;
 
 export function resolvePersonaRulePolicy(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset'> & { name?: string }): PersonaRulePolicy {
   const sourceText = [

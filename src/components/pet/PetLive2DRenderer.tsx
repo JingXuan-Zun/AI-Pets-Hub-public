@@ -47,6 +47,7 @@ const PetLive2DRenderer = memo(function PetLive2DRenderer({
   pointerLookTarget = null,
   scale,
   viewport = null,
+  stageFollowsViewport = false,
   visible = true,
 }: PetLive2DRendererProps) {
   const coreRefs = useLive2DRendererCoreRefs();
@@ -67,7 +68,11 @@ const PetLive2DRenderer = memo(function PetLive2DRenderer({
     [live2dRuntimeProfile],
   );
   const onPointerLookDiagnosticFrame = useLive2DDragProbeDiagnosticFrame(containerRef);
-  const stageSize = useMemo(() => resolveLive2DRendererStageSize(viewport), [viewport]);
+  const stageSize = useMemo(() => (
+    stageFollowsViewport && viewport
+      ? Math.max(1, Math.round(Math.max(viewport.width, viewport.height)))
+      : resolveLive2DRendererStageSize(viewport)
+  ), [stageFollowsViewport, viewport]);
   const presentationOptionsRef = useRef<Live2DModelPresentationOptions>({
     contentManifest: contentManifestOverride,
     live2dRuntimeProfile,

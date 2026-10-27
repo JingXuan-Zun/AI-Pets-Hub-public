@@ -47,6 +47,8 @@ interface PetEnvironmentLayerProps {
   folders: FolderRenderItem[];
   folderDragPreview: { folderId: string; position: Position } | null;
   isActivityRegionDragging: boolean;
+  /** 互动对话时不显示活动范围框（角色在聊天窗口里，框只会挡在画面上）。 */
+  hideActivityBorder?: boolean;
   onFolderVisualMetricsChange: (metrics: FolderVisualMetrics) => void;
   onStartActivityRegionDrag: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onStartActivityRegionResize: (event: ReactPointerEvent<HTMLDivElement>, direction: ResizeDirection) => void;
@@ -64,6 +66,7 @@ export const PetEnvironmentLayer = memo(function PetEnvironmentLayer({
   folders,
   folderDragPreview,
   isActivityRegionDragging,
+  hideActivityBorder = false,
   onFolderVisualMetricsChange,
   onStartActivityRegionDrag,
   onStartActivityRegionResize,
@@ -135,7 +138,7 @@ export const PetEnvironmentLayer = memo(function PetEnvironmentLayer({
 
   return (
     <>
-      {config.settings.activityAreaLimitEnabled && config.settings.activityBorderVisible && (
+      {!hideActivityBorder && config.settings.activityAreaLimitEnabled && config.settings.activityBorderVisible && (
         <div
           className="pointer-events-none absolute z-[45] rounded-lg border border-[#2F80ED]/70 bg-transparent shadow-[0_0_18px_rgba(47,128,237,0.18)]"
           style={{

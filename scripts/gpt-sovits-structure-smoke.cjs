@@ -66,6 +66,14 @@ manifest(); out["ok"] = load()
 manifest(gpt="../g.ckpt"); out["traversal"] = load()
 manifest(emotions={"neutral": {"wav": "refs/n.wav", "text": "a"}, "sad": {"wav": "refs/missing.wav", "text": "b"}}); out["missing_emotion_file"] = load()
 out["bad_id"] = load("../m"); out["unknown"] = load("nope")
+def style(**patch):
+    manifest(**patch)
+    try: loaded = srv.load_manifest(root, "m", root); return [loaded["emotions"]["neutral"]["lang"], len(loaded["blend"]), loaded["tail_stretch"], loaded["seed"]]
+    except ValueError as error: return str(error)
+out["style_default"] = style()
+out["style_set"] = style(timbreBlend=["refs/n.wav"], tailStretch=9, seed=1234, emotions={"neutral": {"wav": "refs/n.wav", "text": "a", "lang": "ja"}})
+out["style_missing_blend"] = style(timbreBlend=["refs/none.wav"])
+out["style_bad_lang"] = style(emotions={"neutral": {"wav": "refs/n.wav", "text": "a", "lang": "xx"}})
 print(json.dumps(out))
 `;
 const result = spawnSync(python, ['-c', script], { encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
@@ -77,5 +85,9 @@ assert.deepEqual(JSON.parse(result.stdout.trim().split('\n').pop()), {
   missing_emotion_file: ['neutral'],
   bad_id: 'invalid_model_id',
   unknown: 'model_not_found',
+  style_default: ['zh', 0, 1, null],
+  style_set: ['ja', 1, 2.5, 1234],
+  style_missing_blend: 'invalid_manifest',
+  style_bad_lang: 'invalid_manifest',
 });
 console.log(`GPT-SoVITS structure passed: ${visited.size} modules, ${functions} functions, server helpers ok`);

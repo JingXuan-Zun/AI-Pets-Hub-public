@@ -90,10 +90,19 @@ export function normalizeAgentApprovalDecisionText(text: string) {
     .replace(AGENT_APPROVAL_DECISION_PUNCTUATION_PATTERN, '');
 }
 
+/** Yes to this step and the rest of the task ("这次都允许" on the card); typed, spoken or sent from QQ. */
+export const AGENT_APPROVAL_APPROVE_TASK_TEXTS = new Set([
+  '都同意', '全部同意', '都允许', '全部允许', '都可以', '都行', '都好', '这次都允许', '这次都同意', '后面都同意', '不用再问了', '不用问了', '别问了', '都去做',
+]);
+
 export function resolveAgentApprovalDecisionFromText(text: string): ChatAgentApprovalDecision | null {
   const normalizedText = normalizeAgentApprovalDecisionText(text);
   if (!normalizedText || normalizedText.length > 18) {
     return null;
+  }
+
+  if (AGENT_APPROVAL_APPROVE_TASK_TEXTS.has(normalizedText.replace(/[吧啊呀呢哦嘛的]+$/u, ''))) {
+    return 'approve-task';
   }
 
   if (AGENT_APPROVAL_DENY_TEXTS.has(normalizedText) || AGENT_APPROVAL_DENY_PATTERN.test(normalizedText)) {

@@ -609,7 +609,7 @@ export function SettingsPersonalityTab({
             style={noDragRegionStyle}
             value={settings.globalKnowledgeBase}
             onChange={(event) => applySettings({ globalKnowledgeBase: event.target.value })}
-            placeholder="例如：所有角色都需要知道的世界观、项目资料、固定设定、常用术语、用户偏好或长期规则。"
+            placeholder={'例如：所有角色都需要知道的世界观、项目资料、固定设定、常用术语、用户偏好或长期规则。\n资料很长时，用 # 标题分章节，角色会按问题挑相关的章节来看；标题里写“给角色看的说明”的那一节，每次都会带上。'}
           />
         </CollapsibleSection> : null}
       </div>

@@ -17,6 +17,11 @@ export const SETTINGS_WORKSPACE_INSPECTOR_MODULE_GUIDES: Record<
   SettingsControlCenterPageId,
   SettingsWorkspaceInspectorModuleGuide
 > = {
+  'system-health': {
+    purpose: '检查聊天模型、本地语音、QQ 连接等常出问题的地方，能安全修复的直接修好。',
+    useCases: ['角色不回话、没声音、QQ 收不到回复时先体检', '改完设置后确认一切正常'],
+    affects: ['只读检查；自动修复只做安全的操作（例如启动本地语音服务）'],
+  },
   overview: {
     purpose: '查看桌宠软件的运行概况、版本和本地数据状态，快速确认当前环境是否正常。',
     useCases: ['首次使用时了解各功能入口', '遇到异常时先确认运行状态和版本'],
@@ -114,6 +119,16 @@ export const SETTINGS_WORKSPACE_INSPECTOR_MODULE_GUIDES: Record<
     useCases: ['让桌宠触发图像或自动化工作流', '检查工作流服务是否可连接'],
     affects: ['可运行的工作流和任务入口', '工作流执行的外部依赖'],
   },
+  'platform-dev-agent': {
+    purpose: '让角色把写代码、改项目文件的活交给 Claude Code，在你列出的项目文件夹里做，做完由角色转述。',
+    useCases: ['做游戏时说“帮我把翻滚无敌改成 0.3 秒”', '让角色帮你改项目里的配置和脚本'],
+    affects: ['每个任务先确认；只能改列出的文件夹；用你自己的 Claude 账号额度'],
+  },
+  'platform-qq': {
+    purpose: '通过本机的 OneBot 服务（SnowLuma 等），在手机 QQ 上跟角色聊天。',
+    useCases: ['不在电脑前时用手机找角色聊天', '在手机上让角色帮你在电脑上做事、回复确认'],
+    affects: ['只回复你填写的 QQ 号发来的私信', '桌宠和电脑需要开着'],
+  },
   'platform-skills-api': {
     purpose: '导入、查看、启用和停用桌宠可用的 Skill。',
     useCases: ['从单个文件或压缩包安装 Skill', '检查已安装 Skill 的说明与来源'],
@@ -141,7 +156,17 @@ export const SETTINGS_WORKSPACE_INSPECTOR_MODULE_GUIDES: Record<
     useCases: ['调整表情包出现频率', '维护不同情绪使用的表情图片'],
     affects: ['聊天回复附带表情的概率', '表情图片与语义标签的匹配'],
   },
-  'system-chat': {
+  'advanced-interactive-dialogue': {
+    purpose: '调整互动对话（视频通话）画面：角色多大、放在哪，对话面板多高多宽。',
+    useCases: ['让角色以半身或脸部特写出现', '对话面板挡住太多时把它调低'],
+    affects: ['互动对话窗口里角色的大小和位置', '互动对话窗口里对话面板的尺寸'],
+  },
+  'advanced-desktop-activity': {
+    purpose: '设置桌宠能在桌面上走动的范围、是否显示范围框，以及物理模拟和载体缩放。',
+    useCases: ['把桌宠限制在屏幕的一块区域里', '关掉限制让桌宠在整张桌面自由活动'],
+    affects: ['桌宠自动走动和拖动的边界', '活动范围框是否显示', '当前角色的显示大小'],
+  },
+  'advanced-chat-display': {
     purpose: '调整桌宠聊天气泡中文字的颜色、大小和粗细。',
     useCases: ['提高文字可读性', '让聊天显示适配桌面主题或模型外观'],
     affects: ['聊天内容在桌面上的显示样式'],

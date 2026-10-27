@@ -350,16 +350,21 @@ export function SettingsModelMotionSection({
     ? `支持 Live2D .motion3.json 动作和 .exp3.json 表情。当前动作 ${motionBindingCount} 个，Live2D 表情 ${expressionBindingCount} 个。`
     : `支持 3D 动作 VRMA / FBX / GLB / GLTF。当前动作 ${motionBindingCount} 个。`;
 
-  return (
-    <div className="space-y-4 rounded-sm border border-border bg-secondary/15 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Label className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">{sectionTitle}</Label>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {sectionDescription}
-          </div>
-        </div>
+  const selectedModelName = modelOptions.find((modelPreset) => modelPreset.id === selectedModelId)?.name;
+  // 导入的动作一多，整个模块会很长，默认收起；标题行留着导入按钮和数量，展开才看每个动作。
+  const collapsedSummary = !canManageCurrentModelMotions
+    ? '暂无模型'
+    : [
+      selectedModelName,
+      `动作 ${motionBindingCount} 个`,
+      currentModelType === 'live2d' ? `表情 ${expressionBindingCount} 个` : null,
+    ].filter(Boolean).join(' · ');
 
+  return (
+    <CollapsibleAssetSection
+      title={sectionTitle}
+      summary={collapsedSummary}
+      actions={(
         <Button
           type="button"
           variant="outline"
@@ -370,6 +375,11 @@ export function SettingsModelMotionSection({
           <ImagePlus className="mr-1 h-3.5 w-3.5" />
           {isUploadingMotionFiles ? '导入中' : importButtonLabel}
         </Button>
+      )}
+    >
+    <div className="space-y-4">
+      <div className="text-xs text-muted-foreground">
+        {sectionDescription}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-sm border border-border/80 bg-background/25 px-3 py-2">
@@ -457,6 +467,7 @@ export function SettingsModelMotionSection({
         </div>
       )}
     </div>
+    </CollapsibleAssetSection>
   );
 }
 

@@ -33,31 +33,22 @@ function createInteractiveChatWindowBoundsSync({
       return;
     }
 
+    const wasInteractive = getWasInteractive();
+    setWasInteractive(isInteractive);
+    if (wasInteractive && isInteractive) {
+      // 进入时摆好一次，之后窗口随用户拖动、缩放。
+      return;
+    }
+
     applyChatWindowSizeConstraints(getChatWindow());
     const currentBounds = getChatWindow().getBounds();
     const limits = getResolvedChatPanelWindowLimits();
     const isBelowNormalMinimum = !isInteractive && (
       currentBounds.width < limits.minWidth || currentBounds.height < limits.minHeight
     );
-    if ((getWasInteractive() && !isInteractive) || isBelowNormalMinimum) {
+    if (isInteractive || (wasInteractive && !isInteractive) || isBelowNormalMinimum) {
       getChatWindow().setBounds(getResolvedChatPanelWindowBounds(), false);
     }
-    setWasInteractive(isInteractive);
-    if (!isInteractive) {
-      return;
-    }
-
-    const nextBounds = getResolvedChatPanelWindowBounds(currentBounds);
-    if (
-      currentBounds.x === nextBounds.x
-      && currentBounds.y === nextBounds.y
-      && currentBounds.width === nextBounds.width
-      && currentBounds.height === nextBounds.height
-    ) {
-      return;
-    }
-
-    getChatWindow().setBounds(nextBounds, false);
   };
 }
 

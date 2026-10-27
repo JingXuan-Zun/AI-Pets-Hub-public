@@ -116,6 +116,30 @@ function useManualPlaybackTarget(isSpeaking: boolean, messageCount: number) {
   return { manualPlaybackKey, trackManualPlayback };
 }
 
+type PlayMessageVoice = NonNullable<PetChatConversationMessagesProps['onPlayMessageVoice']>;
+
+/** One play handler per message, kept between renders so the memoized bubbles don't redraw. */
+function useStablePlayHandlers(base: PetChatConversationMessagesProps['onPlayMessageVoice'], track: (messageKey: string) => void) {
+  const handlersRef = useRef(new Map<string, PlayMessageVoice>());
+  const baseRef = useRef(base);
+  if (baseRef.current !== base) {
+    baseRef.current = base;
+    handlersRef.current = new Map();
+  }
+  return (messageKey: string): PlayMessageVoice | undefined => {
+    if (!base) return undefined;
+    let handler = handlersRef.current.get(messageKey);
+    if (!handler) {
+      handler = (text) => {
+        track(messageKey);
+        return base(text);
+      };
+      handlersRef.current.set(messageKey, handler);
+    }
+    return handler;
+  };
+}
+
 interface PetChatConversationMessageFeedProps {
   conversation: PetChatConversationMessagesProps;
 }
@@ -138,7 +162,7 @@ export function PetChatConversationMessageFeed({ conversation }: PetChatConversa
   const speakingMessageIndex = conversation.isSpeaking
     ? resolveSpeakingMessageIndex(visibleMessages, conversation.speakingPetId, manualPlaybackKey)
     : -1;
-  const basePlayMessageVoice = conversation.onPlayMessageVoice;
+  const playMessageVoice = useStablePlayHandlers(conversation.onPlayMessageVoice, trackManualPlayback);
   const storySession = conversation.chatMode === 'story' && !conversation.isTyping
     ? conversation.storySession : null;
   const narrationIndex = storySession ? findLatestStoryNarrationIndex(visibleMessages) : -1;
@@ -157,10 +181,7 @@ export function PetChatConversationMessageFeed({ conversation }: PetChatConversa
           index={index}
           key={buildMessageKey(message, index)}
           message={message}
-          onPlayMessageVoice={basePlayMessageVoice ? (text) => {
-            trackManualPlayback(buildMessageKey(message, index));
-            return basePlayMessageVoice(text);
-          } : undefined}
+          onPlayMessageVoice={playMessageVoice(buildMessageKey(message, index))}
           showsLatestStoryTurn={Boolean(storySession && index === narrationIndex)}
           speakingMessageIndex={speakingMessageIndex}
         />

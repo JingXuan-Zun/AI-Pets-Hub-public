@@ -295,4 +295,121 @@ assert.ok(
   'the identity reminder comes after the shared knowledge',
 );
 
+// A long design document in the global knowledge base: only the sections the user asks
+// about are attached, and group turns match the user's own words, not the turn instructions.
+const filler = '这一段只是凑长度的普通说明文字。'.repeat(160);
+const longKnowledgeSettings = {
+  ...settings,
+  globalKnowledgeBase: [
+    '# 游戏设计',
+    '## 1. 项目定位',
+    `开场介绍。${filler}`,
+    '## 2. 战斗系统',
+    `翻滚带无敌，连续最多两次。${filler}`,
+    '## 3. 三位守护星君',
+    '三位守护星君分别掌管潮汐、雷霆与灯火，灯火星君住在海边灯塔。',
+    '## 4. 还没定的问题',
+    `守护星君的名字还没定。${filler}`,
+  ].join('\n'),
+} as PetConfig['settings'];
+const groupTurnInput = [
+  '这是桌宠群聊，参与角色：铃音、星灯。',
+  '你是「铃音」，现在轮到你在群里接话。',
+  '只说你自己的这一句。',
+  '本轮用户消息：守护星君你们觉得怎么样',
+].join('\n');
+const longKnowledgePrompt = buildCharacterReplySystemInstruction(personality, longKnowledgeSettings, history, groupTurnInput);
+assert.ok(longKnowledgePrompt.includes('灯火星君住在海边灯塔'), 'the section about the asked topic is attached, though it sits deep in a long document');
+assert.ok(!longKnowledgePrompt.includes('翻滚带无敌'), 'unrelated sections of a long document are left out');
+const smallTalkPrompt = buildCharacterReplySystemInstruction(
+  personality,
+  longKnowledgeSettings,
+  history,
+  groupTurnInput.replace('守护星君你们觉得怎么样', '今天天气不错'),
+);
+assert.ok(!smallTalkPrompt.includes('【全局知识库】'), 'small talk in a group turn does not attach the long document');
+const overviewPrompt = buildCharacterReplySystemInstruction(
+  personality,
+  longKnowledgeSettings,
+  history,
+  groupTurnInput.replace('守护星君你们觉得怎么样', '你们对整个游戏有什么看法'),
+);
+assert.ok(overviewPrompt.includes('目录和每一节的开头'), 'asking about the whole game attaches the outline');
+for (const heading of ['## 1. 项目定位', '## 2. 战斗系统', '## 3. 三位守护星君', '## 4. 还没定的问题']) {
+  assert.ok(overviewPrompt.includes(heading), `the outline keeps every heading: ${heading}`);
+}
+assert.ok(!overviewPrompt.includes(filler.repeat(2)), 'the outline only keeps the opening of each section');
+
+// A section marked "给角色看的说明" rides along whenever the knowledge base attaches.
+const pinnedSettings = {
+  ...longKnowledgeSettings,
+  globalKnowledgeBase: `## 0. 怎么读这份文档（给角色看的说明）\n这是用户在现实中做的游戏，不要带进你们自己的生活。\n${longKnowledgeSettings.globalKnowledgeBase}`,
+} as PetConfig['settings'];
+const pinnedTopicPrompt = buildCharacterReplySystemInstruction(
+  personality,
+  pinnedSettings,
+  history,
+  groupTurnInput.replace('守护星君你们觉得怎么样', '战斗系统里翻滚的无敌合适吗'),
+);
+assert.ok(pinnedTopicPrompt.includes('翻滚带无敌'), 'the asked section is attached');
+assert.ok(pinnedTopicPrompt.includes('不要带进你们自己的生活'), 'the pinned note rides along with a topic question');
+const pinnedOverviewPrompt = buildCharacterReplySystemInstruction(
+  personality,
+  pinnedSettings,
+  history,
+  groupTurnInput.replace('守护星君你们觉得怎么样', '你们对整个游戏有什么看法'),
+);
+assert.ok(pinnedOverviewPrompt.includes('不要带进你们自己的生活'), 'the pinned note is kept whole in the outline');
+const pinnedSmallTalkPrompt = buildCharacterReplySystemInstruction(
+  personality,
+  pinnedSettings,
+  history,
+  groupTurnInput.replace('守护星君你们觉得怎么样', '今天天气不错'),
+);
+assert.ok(!pinnedSmallTalkPrompt.includes('【全局知识库】'), 'the pinned note alone does not attach the knowledge base');
+
+// Each attached section names the document ("# title") it comes from.
+assert.ok(longKnowledgePrompt.includes('（出自《游戏设计》）\n## 3. 三位守护星君'), 'an attached section is labelled with its document');
+
+// In a group turn, the character being answered has her own section brought along.
+const twoBookSettings = {
+  ...settings,
+  globalKnowledgeBase: [
+    longKnowledgeSettings.globalKnowledgeBase,
+    '# 姐妹档案',
+    `## 星灯\n星灯住在钟楼顶上，喜欢收集旧怀表，说话慢吞吞的。${filler}`,
+    `## 晚岚\n晚岚开一家面包店，每天四点起床揉面。${filler}`,
+  ].join('\n'),
+} as PetConfig['settings'];
+const answeringPrompt = buildCharacterReplySystemInstruction(personality, twoBookSettings, history, [
+  '这是桌宠群聊，参与角色：铃音、星灯、晚岚。',
+  '你是「铃音」，现在轮到你在群里接话。',
+  '群里上一句是 星灯：今天的风好大呀。',
+  '本轮用户消息：今天天气不错',
+].join('\n'));
+assert.ok(answeringPrompt.includes('（出自《姐妹档案》）\n## 星灯'), 'the section of the character being answered is attached, labelled');
+assert.ok(!answeringPrompt.includes('## 晚岚'), 'other characters\' sections are not');
+
+// A section longer than the whole budget is cut into pieces; the piece about the question is found.
+const longSectionSettings = {
+  ...twoBookSettings,
+  globalKnowledgeBase: [
+    twoBookSettings.globalKnowledgeBase,
+    '## 钟楼工程',
+    `开工记录。${filler}`,
+    '',
+    `材料清单。${filler}`,
+    '',
+    '守钟的白猫叫雪团，每天黄昏在钟楼顶上巡逻一圈。',
+  ].join('\n'),
+} as PetConfig['settings'];
+const deepPiecePrompt = buildCharacterReplySystemInstruction(personality, longSectionSettings, history, '守钟的白猫雪团是谁');
+assert.ok(deepPiecePrompt.includes('守钟的白猫叫雪团'), 'the matching piece of a long section is attached');
+assert.ok(deepPiecePrompt.includes('## 钟楼工程（续）'), 'a later piece keeps its section heading');
+
+// Asking about the whole game outlines only the game document, not the characters' archive.
+const twoBookOverviewPrompt = buildCharacterReplySystemInstruction(personality, twoBookSettings, history, '你们对整个游戏设计有什么看法');
+assert.ok(twoBookOverviewPrompt.includes('## 3. 三位守护星君'), 'the game document is outlined');
+assert.ok(!twoBookOverviewPrompt.includes('## 星灯'), 'the characters\' archive is left out of a game outline');
+
 console.log('chat personality prompt smoke ok');

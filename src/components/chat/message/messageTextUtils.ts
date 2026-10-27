@@ -21,9 +21,11 @@ const MEMORY_MENU_HEIGHT = 44;
 
 const MEMORY_MENU_OFFSET = 10;
 
-// Models write markdown bold (**名字**) even when told not to; the bubble shows it as bold
-// instead of literal asterisks. Unclosed markers (mid-stream) stay as typed.
-const BOLD_PATTERN = /\*\*(?=\S)([\s\S]*?\S)\*\*/gu;
+// Models write markdown bold (**名字**, ***台词***) even when told not to; the bubble shows it
+// as bold instead of literal asterisks. A marker with no partner (the other half sits past a
+// kaomoji, which splits the text, or is still streaming) is dropped rather than shown.
+const BOLD_PATTERN = /\*{2,3}(?=[^\s*])([\s\S]*?[^\s*])\*{2,3}/gu;
+const STRAY_BOLD_MARKER_PATTERN = /\*{2,}/gu;
 
 function splitBoldRuns(text: string) {
   const runs: Array<{ bold: boolean; text: string }> = [];
@@ -35,7 +37,9 @@ function splitBoldRuns(text: string) {
     last = index + match[0].length;
   }
   if (last < text.length) runs.push({ bold: false, text: text.slice(last) });
-  return runs;
+  return runs
+    .map((run) => ({ ...run, text: run.text.replace(STRAY_BOLD_MARKER_PATTERN, '') }))
+    .filter((run) => run.text);
 }
 
 export function splitMessageTextByBrackets(text: string) {

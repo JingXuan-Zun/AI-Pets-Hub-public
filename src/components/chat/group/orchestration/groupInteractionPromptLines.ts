@@ -7,7 +7,7 @@ function formatNames(names: string[]) {
 function buildUserInteractionLines(plan: GroupChatInteractionPlan) {
   if (plan.userTopicPriority) return [
     '本轮优先回应用户刚刚提出的话题，不要回到用户发言之前的旧话题。',
-    '请从你自己的角度补充用户话题；如果没有新观点，可以简短回应后保持安静。',
+    '请从你自己的角度补充用户话题；如果没有新观点，可以回应别人说的话，不必硬找新观点。',
   ];
   if (plan.userAddressedPetId) {
     const names = plan.userAddressedPetNames?.length

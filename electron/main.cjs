@@ -30,6 +30,8 @@ const { registerExpressionLibraryIpcHandlers } = require('./expressionLibraryIpc
 const { createDataBackupService, registerDataBackupIpcHandlers } = require('./dataBackupIpcHandlers.cjs');
 const { createKnownFoldersService, registerKnownFoldersIpcHandlers } = require('./knownFoldersIpcHandlers.cjs');
 const { createComfyUiService, registerComfyUiIpcHandlers } = require('./comfyUiService.cjs');
+const { createDevAgentService, registerDevAgentIpcHandlers } = require('./devAgentService.cjs');
+const { createSnowLumaService, registerSnowLumaIpcHandlers } = require('./snowLumaService.cjs');
 const { createGptSovitsService } = require('./gptSovitsService.cjs');
 const { registerGptSovitsIpcHandlers } = require('./gptSovitsIpcHandlers.cjs');
 const { createSystemExpressionCatalogService } = require('./systemExpressionCatalog.cjs');
@@ -612,6 +614,16 @@ registerComfyUiIpcHandlers({
   ipcMain: trustedIpcMain,
   service: createComfyUiService({ log: (message, details) => runtimeLogger.log('backend', 'comfyui', message, details) }),
 });
+registerDevAgentIpcHandlers({
+  ipcMain: trustedIpcMain,
+  service: createDevAgentService({ log: (message, details) => runtimeLogger.log('backend', 'dev-agent', message, details) }),
+  shell,
+});
+const snowLumaService = createSnowLumaService({
+  logDirectory: path.join(app.getPath('userData'), 'logs'),
+  log: (message, details) => runtimeLogger.log('backend', 'snowluma', message, details),
+});
+registerSnowLumaIpcHandlers({ dialog, ipcMain: trustedIpcMain, service: snowLumaService, shell });
 registerDataBackupIpcHandlers({
   ipcMain: trustedIpcMain,
   service: createDataBackupService({ backupDirectory: path.join(app.getPath('userData'), 'backups') }),
@@ -641,6 +653,8 @@ registerCaptureSourceImageIpc({ desktopCapturer, ipcMain: trustedIpcMain });
 
 app.on('before-quit', () => {
   appUsageMetricsService.persist();
+  // SnowLuma started in the background by the pet goes away with it.
+  snowLumaService.stop();
   const sharedState = windowManager.getSharedState();
   if (Array.isArray(sharedState?.chatState?.messages)) {
     persistedChatHistoryStore.save(sharedState.chatState.messages);

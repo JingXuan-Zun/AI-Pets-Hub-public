@@ -61,6 +61,8 @@ export interface SettingsMotionExpressionTabProps {
   ) => void;
   onUpdatePetAutoMovementEnabled: (slotId: string, enabled: boolean) => void;
   onUpdatePetPointerLookEnabled: (slotId: string, enabled: boolean) => void;
+  /** 高级 → 桌面活动范围：只显示活动范围、物理模拟/缩放和运行状态；动作表情页不再显示这些。 */
+  onlyActivityArea?: boolean;
 }
 
 export function SettingsMotionExpressionTab({
@@ -95,6 +97,7 @@ export function SettingsMotionExpressionTab({
   onUpdateModelMotionBindingSemantic,
   onUpdatePetAutoMovementEnabled,
   onUpdatePetPointerLookEnabled,
+  onlyActivityArea = false,
 }: SettingsMotionExpressionTabProps) {
   const motion3dFileInputRef = useRef<HTMLInputElement | null>(null);
   const live2dMotionFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -215,6 +218,7 @@ export function SettingsMotionExpressionTab({
 
   return (
     <div className="m-0 space-y-6">
+      {!onlyActivityArea ? (<>
       <input
         ref={motion3dFileInputRef}
         type="file"
@@ -374,8 +378,10 @@ export function SettingsMotionExpressionTab({
       </div>
 
       <SettingsAnimationDriftQaPanel logs={logs} />
+      </>) : null}
 
-      <div className="space-y-4 border-t border-border pt-4">
+      {onlyActivityArea ? (<>
+      <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <Label className="text-2xs font-bold uppercase tracking-widest text-muted-foreground">活动范围限制</Label>
@@ -585,6 +591,7 @@ export function SettingsMotionExpressionTab({
           </div>
         </div>
       </div>
+      </>) : null}
     </div>
   );
 }

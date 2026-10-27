@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronUp, Clock, Loader2, StopCircle, X } from 'lucide-react';
+import { Check, CheckCheck, ChevronDown, ChevronUp, Clock, Loader2, StopCircle, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../../../components/ui/button';
 import { type ChatAgentApprovalDecision, type ChatAgentLoopRun, type ChatMessage } from '../../../types';
@@ -104,13 +104,25 @@ export function AgentLoopRunPanel({
               variant="ghost"
               size="sm"
               disabled={!onResolveAgentApproval}
+              onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-task')}
+              className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
+              title="这个任务后面的步骤都不再问，下一个任务会重新问"
+            >
+              <CheckCheck className="mr-1 h-3 w-3" />
+              这次都允许
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={!onResolveAgentApproval}
               onClick={() => void onResolveAgentApproval?.(pending.id, 'deny')}
               className="h-7 rounded-full border border-border px-3 text-2xs"
             >
               <X className="mr-1 h-3 w-3" />
               拒绝
             </Button>
-            <span className="text-2xs text-muted-foreground">也可以直接说“同意”或“拒绝”</span>
+            <span className="text-2xs text-muted-foreground">也可以直接说“同意”“都同意”或“拒绝”</span>
           </div>
         </div>
       ) : null}

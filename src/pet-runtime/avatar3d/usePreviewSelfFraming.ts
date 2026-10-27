@@ -22,10 +22,17 @@ const FILL = 0.84;
 const CENTER_TOLERANCE = 0.04;
 // The model may not be drawn yet when the first look is due; keep looking for a while.
 const MAX_EMPTY_LOOKS = 40;
+// Dragging a window on a scaled display nudges its size by a pixel or so every frame. Changes
+// this small keep the framing as it is; re-framing hid the model each time and it flickered.
+const IGNORED_VIEWPORT_CHANGE = 0.03;
 
 // The preview canvas is larger than its card (hems may swing out of view while animating),
 // so "fits" and "centred" are judged against the part of the canvas the card shows.
+// A stage that deliberately runs past its window (互动对话 frames the whole body in a box taller
+// than the window, so only the upper body shows) marks that box; the model fits the box.
 function visibleHeightOf(canvas: HTMLCanvasElement) {
+  const stageFrame = canvas.closest<HTMLElement>('[data-preview-stage-frame]');
+  if (stageFrame) return stageFrame.getBoundingClientRect().height;
   const canvasHeight = canvas.getBoundingClientRect().height;
   for (let node = canvas.parentElement; node; node = node.parentElement) {
     const height = node.getBoundingClientRect().height;
@@ -80,17 +87,33 @@ export function usePreviewSelfFraming(options: {
   baseDistanceRef.current = baseDistance;
   const fovRef = useRef(verticalFovDegrees);
   fovRef.current = verticalFovDegrees;
+  const framingRef = useRef(framing);
+  framingRef.current = framing;
+  const framedForRef = useRef<{ canvas: HTMLCanvasElement; modelKey: unknown; viewportHeight: number } | null>(null);
 
   useEffect(() => {
     if (!enabled || viewportHeight <= 0) {
       setFraming({ ...NEUTRAL, settled: true });
       return undefined;
     }
-    // Hidden until settled: the camera jumps straight to each correction, and showing those
-    // jumps read as the model zooming in and out right after a switch.
-    setFraming({ ...NEUTRAL, settled: false });
+    const framedFor = framedForRef.current;
+    const sameModel = Boolean(framedFor && framedFor.canvas === canvas && framedFor.modelKey === modelKey);
+    if (
+      sameModel && framedFor && framingRef.current.settled
+      && Math.abs(viewportHeight - framedFor.viewportHeight) <= framedFor.viewportHeight * IGNORED_VIEWPORT_CHANGE
+    ) {
+      return undefined;
+    }
+    framedForRef.current = { canvas, modelKey, viewportHeight };
+    // A new model is hidden until settled: the camera jumps straight to each correction, and
+    // showing those jumps read as zooming in and out right after a switch. The same model in a
+    // resized window stays visible and is corrected from where it was.
+    const resumeFrom = sameModel && framingRef.current.settled
+      ? { distanceScale: framingRef.current.distanceScale, shiftY: framingRef.current.shiftY }
+      : NEUTRAL;
+    if (!sameModel) setFraming({ ...NEUTRAL, settled: false });
     const sampler = createAvatar3DCanvasVisualBoundsSampler();
-    let current = NEUTRAL;
+    let current = resumeFrom;
     let round = 0;
     let emptyLooks = 0;
     let timer: number | null = null;
@@ -126,7 +149,7 @@ export function usePreviewSelfFraming(options: {
         };
         round += 1;
         pushFrontendRuntimeLog('model', `3d preview self-framing pet=${label} round=${round} distanceScale=${current.distanceScale.toFixed(3)} shiftY=${current.shiftY.toFixed(3)}`);
-        setFraming({ ...current, settled: false });
+        setFraming({ ...current, settled: sameModel });
         timer = window.setTimeout(step, LOOK_MS);
       });
     };

@@ -29,6 +29,21 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     run: (request) => ipcRenderer.invoke('desktop-pet:comfyui-run', request ?? {}),
     test: (request) => ipcRenderer.invoke('desktop-pet:comfyui-test', request ?? {}),
   },
+  devAgent: {
+    run: (request) => ipcRenderer.invoke('desktop-pet:dev-agent-run', request ?? {}),
+    status: (request) => ipcRenderer.invoke('desktop-pet:dev-agent-status', request ?? {}),
+    login: (request) => ipcRenderer.invoke('desktop-pet:dev-agent-login', request ?? {}),
+    openKeyPage: (url) => ipcRenderer.invoke('desktop-pet:dev-agent-open-key-page', url),
+  },
+  snowLuma: {
+    ensureRunning: (request) => ipcRenderer.invoke('desktop-pet:snowluma-ensure-running', request ?? {}),
+    fetchImage: (url) => ipcRenderer.invoke('desktop-pet:qq-fetch-image', String(url ?? '')),
+    inspect: (dir) => ipcRenderer.invoke('desktop-pet:snowluma-inspect', dir),
+    openLog: () => ipcRenderer.invoke('desktop-pet:snowluma-open-log'),
+    status: () => ipcRenderer.invoke('desktop-pet:snowluma-status'),
+    stop: () => ipcRenderer.invoke('desktop-pet:snowluma-stop'),
+  },
+  pickDirectory: (title) => ipcRenderer.invoke('desktop-pet:pick-directory', title),
   dataBackup: {
     list: () => ipcRenderer.invoke('desktop-pet:data-backup-list'),
     openFolder: () => ipcRenderer.invoke('desktop-pet:data-backup-open-folder'),

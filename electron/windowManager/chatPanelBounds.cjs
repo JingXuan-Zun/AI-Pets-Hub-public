@@ -55,6 +55,21 @@ function createChatPanelBoundsResolver({ getResolvedChatPanelWindowLimits, getAc
     );
 
     if (isInteractiveDialogueChatActive()) {
+      if (!currentBounds) {
+        // 互动对话默认 16:9：高度占屏幕八成左右，太宽时按宽度收。
+        let fitHeight = Math.round(workArea.height * 0.82);
+        let fitWidth = Math.round(fitHeight * 16 / 9);
+        if (fitWidth > workArea.width * 0.92) {
+          fitWidth = Math.round(workArea.width * 0.92);
+          fitHeight = Math.round(fitWidth * 9 / 16);
+        }
+        return resolveInteractiveChatPanelPosition(
+          workArea,
+          Math.max(limits.minWidth, fitWidth),
+          Math.max(limits.minHeight, fitHeight),
+          INTERACTIVE_CHAT_PANEL_CENTER_Y_RATIO,
+        );
+      }
       return resolveInteractiveChatPanelPosition(workArea, width, height, INTERACTIVE_CHAT_PANEL_CENTER_Y_RATIO);
     }
 

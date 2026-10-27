@@ -4,6 +4,10 @@ import testSquare200 from './assets/test-square-200.svg';
 import { DEFAULT_FOOD_APPEARANCES } from './foodAppearances';
 import { DEFAULT_PRODUCTIVITY_SETTINGS } from './productivity/productivitySettings';
 import { DEFAULT_COMFY_UI_SETTINGS } from './comfyui/comfyUiSettings';
+import { DEFAULT_QQ_BRIDGE_SETTINGS } from './qq-bridge/qqBridgeSettings';
+import { DEFAULT_WORK_TASK_SETTINGS } from './work-tasks/workTaskSettings';
+import { DEFAULT_DEV_AGENT_SETTINGS } from './dev-agent/devAgentSettings';
+import { DEFAULT_INTERACTIVE_DIALOGUE_SETTINGS } from './interactiveDialogueSettings';
 import { DEFAULT_EXPRESSION_REPLY_SETTINGS } from './expression/expressionSettings';
 import { DEFAULT_WALK_SEQUENCE_FRAMES, PET2_WALK_SEQUENCE_FRAMES } from './petAnimationSequences';
 import { type CompanionPetConfig, type ModelType, type PetCollisionProfile, type PetConfig, type PetModelPreset } from './types';
@@ -356,8 +360,13 @@ export const DEFAULT_CONFIG: PetConfig = {
     globalKnowledgeBase: '',
     sharedUserMemory: [],
     productivity: DEFAULT_PRODUCTIVITY_SETTINGS,
+    workTasks: DEFAULT_WORK_TASK_SETTINGS,
+    devAgent: DEFAULT_DEV_AGENT_SETTINGS,
+    devAgentApiKey: '',
     comfyUi: DEFAULT_COMFY_UI_SETTINGS,
     comfyUiApiKey: '',
+    qqBridge: DEFAULT_QQ_BRIDGE_SETTINGS,
+    qqBridgeAccessToken: '',
     webSearchEnabled: false,
     webLearningEnabled: false,
     webSearchProvider: 'browser',
@@ -411,6 +420,7 @@ export const DEFAULT_CONFIG: PetConfig = {
     gptSovitsModelId: '',
     gptSovitsDevice: 'auto',
     gptSovitsApiUrl: DEFAULT_GPT_SOVITS_API_URL,
+    gptSovitsSeed: '',
     activityAreaLimitEnabled: true,
     desktopIconInteractionEnabled: true,
     desktopMouseInteractionEnabled: true,
@@ -431,6 +441,7 @@ export const DEFAULT_CONFIG: PetConfig = {
     activityOffsetY: 0,
     activityDisplayId: 'primary',
     interactiveDialogueDisplayId: 'activity',
+    interactiveDialogue: { ...DEFAULT_INTERACTIVE_DIALOGUE_SETTINGS },
     lifeCompanion: { ...DEFAULT_LIFE_COMPANION_SETTINGS },
     activityBorderVisible: true,
     chatBracketOuterTextColor: '#0f766e',

@@ -1,8 +1,10 @@
 import { describeLoopAction, type LoopAction } from './loopActions';
 
-// Approval policy (confirmed 2026-10-06): one approval for the task scope; inside it, clicks,
-// opening and switching windows run without asking. Typing text, sending, deleting, paying and
-// closing programs ask every time.
+// Approval policy (2026-10-20, user: “很多都可以直接不用询问”): opening an app or bringing a window
+// to the front changes nothing and never asks. One approval covers the task scope; inside it,
+// clicks, ordinary keys and typing text run without asking (typing alone sends nothing — Enter
+// right after typing still asks). Sending, deleting, paying and closing programs ask every time.
+// Each spoken question cost 20-60 s, so tasks like 打开记事本写… had become twice as slow.
 
 export type LoopActionRisk = 'free' | 'scope' | 'confirm';
 
@@ -30,7 +32,7 @@ export function classifyLoopActionRisk(
     case 'done':
       return { reason: '只读或结束动作', risk: 'free' };
     case 'type_text':
-      return { reason: '输入文字每次都需要确认', risk: 'confirm' };
+      return { reason: '任务范围内的输入文字', risk: 'scope' };
     case 'press_keys':
       if (RISKY_KEYS.test(action.keys)) return { reason: '可能删除或关闭程序的按键', risk: 'confirm' };
       if (SUBMIT_KEYS.test(action.keys) && context.previousAction?.action === 'type_text') {
@@ -45,7 +47,7 @@ export function classifyLoopActionRisk(
         : { reason: '任务范围内的点击', risk: 'scope' };
     case 'launch_app':
     case 'focus_window':
-      return { reason: '打开或切换窗口', risk: 'scope' };
+      return { reason: '打开或切换窗口', risk: 'free' };
   }
 }
 
@@ -53,8 +55,8 @@ export function createTaskScopeApprovalRequest(goal: string): LoopApprovalReques
   return {
     detail: [
       `任务：${goal}`,
-      '批准后，执行这个任务需要的点击、打开应用、切换窗口不再逐个询问。',
-      '输入文字、发送、删除、付款、关闭程序等操作仍会单独询问。',
+      '批准后，执行这个任务需要的点击、按键、输入文字不再逐个询问。',
+      '发送、删除、付款、关闭程序等操作仍会单独询问。',
     ].join('\n'),
     kind: 'task-scope',
     title: '允许执行这个任务？',

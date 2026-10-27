@@ -12,6 +12,7 @@ import PetContainer from './components/PetContainer';
 import { resolvePetModel3DStandaloneSurface } from './components/pet/petModel3DStandaloneSurface';
 import { useDesktopCapture } from './hooks/useDesktopCapture';
 import { type PetVisualSize } from './types';
+import { publishInteractiveDialoguePreview } from './components/chat/interactive/interactiveDialoguePreview';
 
 const PetModel3D = lazy(() => import('./components/PetModel3D'));
 
@@ -53,6 +54,9 @@ function decodeQueryPath(searchParams: URLSearchParams, base64Key: string, plain
 export default function App() {
   const chatControllerRef = useRef<DesktopPetChatController | null>(null);
   const [interactiveDialogueActive, setInteractiveDialogueActive] = useState(false);
+  // A preview left behind by a settings window that never closed cleanly (crash, kill) must not
+  // keep overriding the saved interactive-dialogue layout after a restart.
+  useEffect(() => publishInteractiveDialoguePreview(null), []);
   const [petVisualSize, setPetVisualSize] = useState<PetVisualSize | null>(null);
   const debugModelPath = useMemo(() => {
     if (typeof window === 'undefined') {

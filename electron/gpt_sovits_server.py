@@ -15,6 +15,7 @@ import threading
 import wave
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from gpt_sovits_synthesis import split_synthesis_text
+from gpt_sovits_voice_style import parse_voice_style, reference_lang, stretch_phrase_tails
 
 MODEL_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 EMOTION_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
@@ -78,7 +79,7 @@ def load_manifest(models_root, model_id, source_dir):
         wav = resolve_inside(model_dir, (entry or {}).get("wav"))
         text = str((entry or {}).get("text") or "").strip()
         if EMOTION_PATTERN.match(key) and wav and text and os.path.exists(wav):
-            emotions[key] = {"wav": wav, "text": text}
+            emotions[key] = {"wav": wav, "text": text, "lang": reference_lang(entry)}
     if manifest.get("gpt") is None and manifest.get("sovits") is None:
         gpt, sovits = base_weights(source_dir)  # lite pack
     else:
@@ -86,7 +87,8 @@ def load_manifest(models_root, model_id, source_dir):
         sovits = resolve_inside(model_dir, manifest.get("sovits"))
     if manifest.get("version") != "v2ProPlus" or not gpt or not sovits or "neutral" not in emotions:
         raise ValueError("invalid_manifest")
-    return {"gpt": gpt, "sovits": sovits, "emotions": emotions}
+    style = parse_voice_style(manifest, lambda relative: resolve_inside(model_dir, relative), os.path.exists)
+    return {"gpt": gpt, "sovits": sovits, "emotions": emotions, **style}
 
 
 class VoiceEngine:
@@ -119,11 +121,11 @@ class VoiceEngine:
         self.model_id = model_id
         return manifest
 
-    def _run_once(self, text, reference, seed):
+    def _run_once(self, text, reference, seed, blend=()):
         import numpy as np
         request = {
-            "text": text, "text_lang": "zh", "ref_audio_path": reference["wav"],
-            "prompt_text": reference["text"], "prompt_lang": "zh", "top_k": 15, "top_p": 1,
+            "text": text, "text_lang": "zh", "ref_audio_path": reference["wav"], "aux_ref_audio_paths": list(blend),
+            "prompt_text": reference["text"], "prompt_lang": reference["lang"], "top_k": 15, "top_p": 1,
             "temperature": 1, "text_split_method": "cut0", "batch_size": 1, "seed": seed,
             "parallel_infer": False, "repetition_penalty": 1.35, "return_fragment": False,
         }
@@ -132,12 +134,13 @@ class VoiceEngine:
             chunks.append(audio)
         return sample_rate, (np.concatenate(chunks) if chunks else np.zeros(0, dtype=np.int16))
 
-    def _synthesize_chunk(self, text, reference):
+    def _synthesize_chunk(self, text, reference, manifest):
         verdict = "empty"
-        for _ in range(MAX_ATTEMPTS):
+        for attempt in range(MAX_ATTEMPTS):
             if self.cancelled.is_set():
                 raise InterruptedError("cancelled")
-            sample_rate, audio = self._run_once(text, reference, random.randint(1, 2**31 - 1))
+            seed = manifest["seed"] if attempt == 0 and manifest["seed"] is not None else random.randint(1, 2**31 - 1)
+            sample_rate, audio = self._run_once(text, reference, seed, manifest["blend"])
             if self.cancelled.is_set() or self.tts.stop_flag:
                 raise InterruptedError("cancelled")
             verdict = judge_audio(len(audio), sample_rate, text)
@@ -146,19 +149,20 @@ class VoiceEngine:
             sys.stderr.write(f"[gpt-sovits] retrying rejected output: {verdict}\n")
         raise RuntimeError(f"synthesis_rejected:{verdict}")
 
-    def synthesize(self, model_id, text, emotion):
+    def synthesize(self, model_id, text, emotion, seed=None):
         import numpy as np
         with self.lock:
             self.cancelled.clear()
             manifest = self._ensure_model(model_id)
+            manifest = manifest if seed is None else {**manifest, "seed": seed}  # the user's seed wins
             reference = manifest["emotions"].get(emotion) or manifest["emotions"]["neutral"]
             sample_rate, chunks = 0, []
             for part in split_synthesis_text(text):
-                rate, audio = self._synthesize_chunk(part, reference)
+                rate, audio = self._synthesize_chunk(part, reference, manifest)
                 if sample_rate and rate != sample_rate:
                     raise RuntimeError("inconsistent_sample_rate")
                 sample_rate = rate
-                chunks.append(audio)
+                chunks.append(stretch_phrase_tails(audio, rate, manifest["tail_stretch"]))
             if not chunks:
                 raise ValueError("empty_text")
             return sample_rate, np.concatenate(chunks)
@@ -167,7 +171,7 @@ class VoiceEngine:
         """Load weights and run one short sentence so the first real reply skips CUDA/kernel init."""
         with self.lock:
             manifest = self._ensure_model(model_id)
-            self._run_once("你好。", manifest["emotions"]["neutral"], 1)
+            self._run_once("你好。", manifest["emotions"]["neutral"], 1, manifest["blend"])
 
     def cancel(self):
         self.cancelled.set()
@@ -250,7 +254,9 @@ def build_handler(engine):
                 if not text:
                     self._send(400, {"error": "empty_text"})
                     return
-                sample_rate, audio = engine.synthesize(str(payload.get("model_id") or ""), text, emotion)
+                seed = payload.get("seed")
+                seed = seed % 2**31 if isinstance(seed, int) and not isinstance(seed, bool) and seed >= 0 else None
+                sample_rate, audio = engine.synthesize(str(payload.get("model_id") or ""), text, emotion, seed)
                 self._send(200, encode_wav(sample_rate, audio), "audio/wav")
             except InterruptedError:
                 self._send(409, {"error": "cancelled"})
