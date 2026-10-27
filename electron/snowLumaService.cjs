@@ -120,6 +120,11 @@ function createSnowLumaService({ logDirectory, log = () => undefined }) {
   return { ensureRunning, inspect: inspectSnowLumaDir, logPath, readInitialCredentials, status, stop };
 }
 
+const SETUP_DOWNLOAD_URLS = {
+  qq: 'https://im.qq.com/pcqq/index.shtml',
+  snowluma: 'https://github.com/SnowLuma/SnowLuma/releases/latest',
+};
+
 /** The SnowLuma admin page address, from its config (loopback only). */
 function resolveSnowLumaWebuiUrl(dir) {
   const inspected = inspectSnowLumaDir(dir);
@@ -158,6 +163,13 @@ async function fetchQqImage(url, fetchImpl = fetch) {
 function registerSnowLumaIpcHandlers({ ipcMain, service, dialog, shell }) {
   ipcMain.handle('desktop-pet:qq-fetch-image', (_event, url) => fetchQqImage(url));
   ipcMain.handle('desktop-pet:snowluma-initial-credentials', () => service.readInitialCredentials());
+  // Download pages for first-time setup: only these fixed official addresses can be opened.
+  ipcMain.handle('desktop-pet:snowluma-open-download', async (_event, target) => {
+    const url = SETUP_DOWNLOAD_URLS[String(target)];
+    if (!url) return { ok: false, error: '不认识的下载页。' };
+    await shell.openExternal(url);
+    return { ok: true, url };
+  });
   ipcMain.handle('desktop-pet:snowluma-open-webui', async (_event, dir) => {
     const resolved = resolveSnowLumaWebuiUrl(dir);
     if (!resolved.ok) return resolved;

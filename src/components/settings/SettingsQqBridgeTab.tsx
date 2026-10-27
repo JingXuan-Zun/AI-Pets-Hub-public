@@ -78,6 +78,15 @@ export function SettingsQqBridgeTab({ localConfig, onCommit }: { localConfig: Pe
     setFeedback(result.ok ? `已在浏览器打开 ${result.url}（SnowLuma 要先启动）` : result.error ?? '打不开管理页。');
   };
 
+  const openDownload = async (target: 'qq' | 'snowluma') => {
+    const result = await window.desktopPetShell?.snowLuma?.openDownload?.(target);
+    if (!result) setFeedback('只能在桌面版里打开。');
+    else if (!result.ok) setFeedback(result.error ?? '打不开下载页。');
+    else setFeedback(target === 'snowluma'
+      ? '已打开 SnowLuma 下载页：下载名字里带 win-x64 的 zip（不带 lite 的那个），解压到一个文件夹，再点上面的“选择文件夹”选它。'
+      : '已打开电脑版 QQ 下载页：安装后用小号登录。');
+  };
+
   const [credentials, setCredentials] = useState<string | null>(null);
   const showInitialCredentials = async () => {
     const result = await window.desktopPetShell?.snowLuma?.initialCredentials?.();
@@ -152,9 +161,14 @@ export function SettingsQqBridgeTab({ localConfig, onCommit }: { localConfig: Pe
             <span className="mt-1 block text-2xs text-muted-foreground">登录管理页后请马上改密码；不改的话，下次启动 SnowLuma 会换一个新的初始密码。</span>
           </p>
         ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-2xs font-bold text-muted-foreground">第一次用：</span>
+          <button type="button" className="rounded-sm border border-border px-3 py-1.5 text-xs hover:bg-secondary" onClick={() => { void openDownload('qq'); }}>下载电脑版 QQ</button>
+          <button type="button" className="rounded-sm border border-border px-3 py-1.5 text-xs hover:bg-secondary" onClick={() => { void openDownload('snowluma'); }}>下载 SnowLuma</button>
+        </div>
         <ol className="list-decimal space-y-1 pl-5 text-2xs leading-5 text-muted-foreground">
-          <li>电脑上的 QQ 先用<b>小号</b>登录。</li>
-          <li>选好 SnowLuma 文件夹，打开上面的“开启 QQ 连接”。</li>
+          <li>装好电脑版 QQ，用<b>小号</b>登录。</li>
+          <li>下载 SnowLuma（选名字带 win-x64、不带 lite 的 zip），解压后点“选择文件夹”选它，再打开上面的“开启 QQ 连接”。</li>
           <li>点“打开 SnowLuma 管理页”，用“显示初始密码”里的账号密码登录，按提示改密码。</li>
           <li>在管理页里把服务加载到<b>小号</b>的 QQ 上。之后每次重新打开桌面 QQ，都要再加载一次。</li>
         </ol>
