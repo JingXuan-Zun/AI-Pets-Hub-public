@@ -107,6 +107,26 @@ client.stop();
 assert.equal(statuses.at(-1), 'disconnected');
 assert.equal(sockets.length, 1, 'a deliberate stop does not reconnect');
 
+// The token can be looked up again before every attempt (SnowLuma sets a new one after login).
+{
+  const urls: string[] = [];
+  let calls = 0;
+  const looked = createOneBotClient({
+    createSocket: (url) => {
+      urls.push(url);
+      const socket = { close: () => undefined, onclose: null as null | ((event: unknown) => void), onerror: null, onmessage: null, onopen: null, readyState: 0, send: () => undefined };
+      setTimeout(() => socket.onclose?.({}), 0);
+      return socket as never;
+    },
+    onMessage: () => undefined,
+    resolveAccessToken: async () => (calls++ === 0 ? '' : 'after-login'),
+    url: 'ws://127.0.0.1:3001',
+  });
+  for (let i = 0; i < 100 && urls.length < 2; i += 1) await new Promise((resolve) => { setTimeout(resolve, 50); });
+  looked.stop();
+  assert.deepEqual(urls.slice(0, 2), ['ws://127.0.0.1:3001', 'ws://127.0.0.1:3001?access_token=after-login']);
+}
+
 // A send QQ refuses ("网络连接异常") is retried after a pause; one that keeps failing is reported.
 {
   const sent: Array<{ echo: string; message: string }> = [];

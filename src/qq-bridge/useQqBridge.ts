@@ -82,6 +82,11 @@ export function useQqBridge({ config, configRef, sendMessage }: {
 
     const client = createOneBotClient({
       accessToken,
+      // A token typed in the settings wins; otherwise use the one SnowLuma made for its server.
+      resolveAccessToken: accessToken.trim() || !settings.snowLumaDir ? undefined : async () => {
+        const found = await window.desktopPetShell?.snowLuma?.wsToken?.({ dir: settings.snowLumaDir, ownerQq: owner, wsUrl: settings.wsUrl });
+        return found?.found ? found.token ?? '' : '';
+      },
       url: settings.wsUrl,
       onStatus: (status, detail) => {
         pushFrontendRuntimeLog('qq-bridge', `status ${status}`, detail ? { detail } : undefined);
@@ -219,5 +224,5 @@ export function useQqBridge({ config, configRef, sendMessage }: {
     };
     // Reconnect only when the connection settings change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.enabled, settings.ownerQq, settings.wsUrl, accessToken]);
+  }, [settings.enabled, settings.ownerQq, settings.wsUrl, settings.snowLumaDir, accessToken]);
 }
