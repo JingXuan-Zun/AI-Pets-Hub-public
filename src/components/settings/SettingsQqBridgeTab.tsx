@@ -36,7 +36,11 @@ export function SettingsQqBridgeTab({ localConfig, onCommit }: { localConfig: Pe
   const test = async () => {
     setTesting(true);
     setFeedback('正在连接…');
-    const result = await testOneBotConnection(wsUrl.trim(), accessToken.trim());
+    // No token typed in: use the one SnowLuma set for its server (a fresh install always has one).
+    const detected = !accessToken.trim() && qq.snowLumaDir
+      ? await window.desktopPetShell?.snowLuma?.wsToken?.({ dir: qq.snowLumaDir, ownerQq: normalizeQqNumber(ownerQq), wsUrl: wsUrl.trim() })
+      : undefined;
+    const result = await testOneBotConnection(wsUrl.trim(), accessToken.trim() || (detected?.found ? detected.token ?? '' : ''));
     setTesting(false);
     if ('account' in result) {
       updateQqBridge(onCommit, { ownerQq: normalizeQqNumber(ownerQq), wsUrl: wsUrl.trim() }, accessToken.trim());
@@ -187,7 +191,7 @@ export function SettingsQqBridgeTab({ localConfig, onCommit }: { localConfig: Pe
           <input className={inputClass} value={wsUrl} onChange={(event) => setWsUrl(event.target.value)} placeholder="ws://127.0.0.1:3001" />
         </label>
         <label className="block space-y-1">
-          <span className="text-2xs font-bold text-muted-foreground">Access Token（SnowLuma 里没设就留空）</span>
+          <span className="text-2xs font-bold text-muted-foreground">Access Token（一般留空：选了 SnowLuma 文件夹就会自动读取它的 Token）</span>
           <input className={inputClass} type="password" value={accessToken} onChange={(event) => setAccessToken(event.target.value)} />
         </label>
         <div className="flex flex-wrap items-center gap-2">

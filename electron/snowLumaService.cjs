@@ -120,6 +120,35 @@ function createSnowLumaService({ logDirectory, log = () => undefined }) {
   return { ensureRunning, inspect: inspectSnowLumaDir, logPath, readInitialCredentials, status, stop };
 }
 
+/**
+ * The access token of SnowLuma's WebSocket server on this port. A fresh SnowLuma makes its
+ * server with a random token (and a new one per account after login, in onebot_<uin>.json),
+ * so without it the pet is refused forever. Per-account files (newest first) win over the
+ * shared onebot.json. The owner's own account (the main account, which must not be the bot)
+ * is skipped. Returns found:false when no server on that port is configured.
+ */
+function readSnowLumaWsToken(dir, port, ownerQq = '') {
+  const inspected = inspectSnowLumaDir(dir);
+  if (!inspected.ok) return { found: false };
+  const configDir = path.join(inspected.folder, 'config');
+  const ownerFile = /^\d+$/u.test(String(ownerQq)) ? `onebot_${ownerQq}.json` : '';
+  let files = [];
+  try {
+    files = fs.readdirSync(configDir)
+      .filter((name) => /^onebot_\d+\.json$/u.test(name) && name !== ownerFile)
+      .map((name) => ({ name, time: fs.statSync(path.join(configDir, name)).mtimeMs }))
+      .sort((left, right) => right.time - left.time)
+      .map((entry) => entry.name);
+  } catch { return { found: false }; }
+  for (const name of [...files, 'onebot.json']) {
+    let config = null;
+    try { config = JSON.parse(fs.readFileSync(path.join(configDir, name), 'utf8')); } catch { continue; }
+    const server = (config?.networks?.wsServers ?? []).find((entry) => entry && entry.enabled !== false && Number(entry.port) === Number(port));
+    if (server) return { found: true, source: name, token: typeof server.accessToken === 'string' ? server.accessToken : '' };
+  }
+  return { found: false };
+}
+
 const SETUP_DOWNLOAD_URLS = {
   qq: 'https://im.qq.com/pcqq/index.shtml',
   snowluma: 'https://github.com/SnowLuma/SnowLuma/releases/latest',
@@ -163,6 +192,7 @@ async function fetchQqImage(url, fetchImpl = fetch) {
 function registerSnowLumaIpcHandlers({ ipcMain, service, dialog, shell }) {
   ipcMain.handle('desktop-pet:qq-fetch-image', (_event, url) => fetchQqImage(url));
   ipcMain.handle('desktop-pet:snowluma-initial-credentials', () => service.readInitialCredentials());
+  ipcMain.handle('desktop-pet:snowluma-ws-token', (_event, request) => readSnowLumaWsToken(request?.dir, portFromWsUrl(request?.wsUrl), request?.ownerQq));
   // Download pages for first-time setup: only these fixed official addresses can be opened.
   ipcMain.handle('desktop-pet:snowluma-open-download', async (_event, target) => {
     const url = SETUP_DOWNLOAD_URLS[String(target)];
@@ -192,4 +222,4 @@ function registerSnowLumaIpcHandlers({ ipcMain, service, dialog, shell }) {
   });
 }
 
-module.exports = { createSnowLumaService, fetchQqImage, inspectSnowLumaDir, isPortOpen, portFromWsUrl, registerSnowLumaIpcHandlers, resolveSnowLumaWebuiUrl };
+module.exports = { createSnowLumaService, fetchQqImage, inspectSnowLumaDir, isPortOpen, portFromWsUrl, readSnowLumaWsToken, registerSnowLumaIpcHandlers, resolveSnowLumaWebuiUrl };

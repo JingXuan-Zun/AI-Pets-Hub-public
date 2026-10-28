@@ -7,7 +7,8 @@ import path from 'node:path';
 import { normalizeQqBridgeSettings } from '../src/qq-bridge/qqBridgeSettings';
 
 const require = createRequire(import.meta.url);
-const { createSnowLumaService, inspectSnowLumaDir, isPortOpen, portFromWsUrl, resolveSnowLumaWebuiUrl } = require('../electron/snowLumaService.cjs') as {
+const { createSnowLumaService, inspectSnowLumaDir, isPortOpen, portFromWsUrl, readSnowLumaWsToken, resolveSnowLumaWebuiUrl } = require('../electron/snowLumaService.cjs') as {
+  readSnowLumaWsToken: (dir: string, port: number, ownerQq?: string) => { found: boolean; source?: string; token?: string };
   resolveSnowLumaWebuiUrl: (dir: string) => { error?: string; ok: boolean; url?: string };
   createSnowLumaService: (options: { logDirectory: string }) => {
     ensureRunning: (request: { dir: string; wsUrl?: string }) => Promise<{ error?: string; ok: boolean; owned?: boolean; started?: boolean }>;
@@ -90,5 +91,20 @@ writeFileSync(path.join(fake, 'config', 'runtime.json'), JSON.stringify({ webuiH
 assert.equal(resolveSnowLumaWebuiUrl(fake).url, 'http://127.0.0.1:6000');
 writeFileSync(path.join(fake, 'config', 'runtime.json'), JSON.stringify({ webuiHost: '0.0.0.0', webuiPort: 6000 }));
 assert.equal(resolveSnowLumaWebuiUrl(fake).ok, false, 'not opened when exposed beyond this computer');
+
+// The WebSocket token SnowLuma made: a fresh install sets a random one, and each account gets
+// its own file after login; the newest account file wins over the shared one.
+const ws = (config: object) => JSON.stringify({ networks: { wsServers: [{ accessToken: (config as { token: string }).token, enabled: true, port: 3001 }] } });
+assert.deepEqual(readSnowLumaWsToken(fake, 3001), { found: false }, 'nothing configured yet');
+writeFileSync(path.join(fake, 'config', 'onebot.json'), ws({ token: 'shared' }));
+assert.equal(readSnowLumaWsToken(fake, 3001).token, 'shared');
+assert.equal(readSnowLumaWsToken(fake, 3002).found, false, 'another port');
+writeFileSync(path.join(fake, 'config', 'onebot_10001.json'), ws({ token: 'account' }));
+assert.deepEqual(readSnowLumaWsToken(fake, 3001), { found: true, source: 'onebot_10001.json', token: 'account' });
+writeFileSync(path.join(fake, 'config', 'onebot_10001.json'), JSON.stringify({ networks: { wsServers: [{ port: 3001 }] } }));
+assert.deepEqual(readSnowLumaWsToken(fake, 3001), { found: true, source: 'onebot_10001.json', token: '' }, 'a server without a token');
+writeFileSync(path.join(fake, 'config', 'onebot_10001.json'), ws({ token: 'bot' }));
+writeFileSync(path.join(fake, 'config', 'onebot_20002.json'), ws({ token: 'main' }));
+assert.equal(readSnowLumaWsToken(fake, 3001, '20002').token, 'bot', "the owner's own account is never used");
 
 console.log('snowluma service smoke ok');

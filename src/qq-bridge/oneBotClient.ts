@@ -27,6 +27,8 @@ type SocketLike = {
 
 export type OneBotClientOptions = {
   accessToken?: string;
+  /** Called before each connection attempt; wins over accessToken (e.g. read from SnowLuma's config). */
+  resolveAccessToken?: () => Promise<string>;
   createSocket?: (url: string) => SocketLike;
   onMessage: (message: OneBotPrivateMessage) => void;
   /** A reply QQ refused even after the retries (e.g. Tencent's "网络连接异常"). */
@@ -190,12 +192,17 @@ export function createOneBotClient(options: OneBotClientOptions) {
     sendTimers.add(timer);
   };
 
-  const connect = () => {
+  const connect = async () => {
     if (stopped) return;
     options.onStatus?.('connecting');
+    // Looked up again on every attempt: the service may set a new token after it logs in.
+    const accessToken = options.resolveAccessToken
+      ? await options.resolveAccessToken().catch(() => options.accessToken ?? '')
+      : options.accessToken;
+    if (stopped) return;
     let current: SocketLike;
     try {
-      current = createSocket(buildOneBotUrl(options.url, options.accessToken));
+      current = createSocket(buildOneBotUrl(options.url, accessToken));
     } catch (error) {
       options.onStatus?.('disconnected', error instanceof Error ? error.message : String(error));
       scheduleReconnect();
@@ -233,7 +240,7 @@ export function createOneBotClient(options: OneBotClientOptions) {
     if (stopped || retryTimer) return;
     retryTimer = setTimeout(() => {
       retryTimer = null;
-      connect();
+      void connect();
     }, retryMs);
     retryMs = Math.min(retryMs * 2, RECONNECT_MAX_MS);
   };
@@ -251,7 +258,7 @@ export function createOneBotClient(options: OneBotClientOptions) {
     return true;
   };
 
-  connect();
+  void connect();
 
   /** A voice message: any audio as base64; SnowLuma converts it to QQ's voice format. */
   const sendPrivateRecord = (userId: string, base64: string) => {

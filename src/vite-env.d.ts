@@ -996,6 +996,8 @@ interface Window {
       fetchImage: (url: string) => Promise<{ dataUrl?: string; error?: string; mimeType?: string; ok: boolean; sizeBytes?: number }>;
       /** The first-start WebUI login SnowLuma printed (only until the user changes the password). */
       initialCredentials: () => Promise<{ ok: boolean; password?: string; user?: string }>;
+      /** The access token SnowLuma set for its WebSocket server on that port (found:false when none is configured). */
+      wsToken: (request: { dir: string; ownerQq?: string; wsUrl: string }) => Promise<{ found: boolean; source?: string; token?: string }>;
       openWebui: (dir: string) => Promise<{ error?: string; ok: boolean; url?: string }>;
       /** Opens the official download page of SnowLuma or desktop QQ. */
       openDownload: (target: 'qq' | 'snowluma') => Promise<{ error?: string; ok: boolean; url?: string }>;
