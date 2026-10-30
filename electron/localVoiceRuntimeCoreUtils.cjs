@@ -15,7 +15,7 @@ function createRuntimeRootHelpers({ createPythonEnv, ensureDir, runtimeRoot }) {
   function getSharedOptions() {
     return {
       cwd: ensureRuntimeRoot(),
-      env: createPythonEnv(),
+      env: createPythonEnv(runtimeRoot),
     };
   }
 

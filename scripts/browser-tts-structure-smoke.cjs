@@ -39,5 +39,5 @@ const first = production.createBrowserTtsService({ app: { isPackaged: false, get
 const second = production.createBrowserTtsService({ app: { isPackaged: false, getPath: () => 'peer-user' }, projectRoot: 'peer' });
 assert.deepEqual(Object.keys(first), ['dispose', 'ensureStarted', 'getHealth', 'getSpeakers', 'installDependencies']);
 for (const name of Object.keys(first)) assert.notEqual(first[name], second[name]);
-assert.equal(graph.size, 15);
+assert.equal(graph.size, 16);
 console.log('Browser TTS structure passed: ' + graph.size + ' reachable, acyclic production modules; ' + functions + ' functions; all files <=300 and functions <=50; exact public API and instance closures, no API invocation or process/install.');

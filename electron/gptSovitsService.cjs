@@ -16,7 +16,9 @@ const SERVER_SCRIPT_NAME = 'gpt_sovits_server.py';
 const INSTALL_SCRIPT_NAME = 'gpt_sovits_install.py';
 
 function createGptSovitsService({ app, log, projectRoot }) {
-  const paths = resolveGptSovitsPaths({ runtimeRoot: resolveRuntimeRoot({ app, projectRoot }) });
+  const runtimeRoot = resolveRuntimeRoot({ app, projectRoot });
+  const paths = resolveGptSovitsPaths({ runtimeRoot });
+  const getSharedEnv = () => createPythonEnv(runtimeRoot);
   const writeLog = (message, details) => {
     if (typeof log === 'function') log(message, details);
   };
@@ -36,10 +38,10 @@ function createGptSovitsService({ app, log, projectRoot }) {
     return runtimePath;
   }
 
-  const python = createGptSovitsPython({ paths, getSharedEnv: createPythonEnv });
+  const python = createGptSovitsPython({ paths, getSharedEnv });
   const getHealth = createGptSovitsHealth({ python, getModelsRoot, writeLog });
   const processControl = createGptSovitsProcess({
-    paths, getModelsRoot, getCandidate: python.getCandidate, getSharedEnv: createPythonEnv, writeLog,
+    paths, getModelsRoot, getCandidate: python.getCandidate, getSharedEnv, writeLog,
     ensureServerScript: () => {
       ensureRuntimeScript('gpt_sovits_synthesis.py');
       ensureRuntimeScript('gpt_sovits_voice_style.py');
@@ -48,7 +50,7 @@ function createGptSovitsService({ app, log, projectRoot }) {
   });
   const ensureStarted = createGptSovitsStartup({ getHealth, processControl });
   const installRuntime = createGptSovitsInstaller({
-    paths, projectRoot, python, getHealth, writeLog, getSharedEnv: createPythonEnv,
+    paths, projectRoot, python, getHealth, writeLog, getSharedEnv,
     ensureInstallScript: () => ensureRuntimeScript(INSTALL_SCRIPT_NAME),
     runCommand: createLocalVoiceCommandRunner().spawnCommand,
   });

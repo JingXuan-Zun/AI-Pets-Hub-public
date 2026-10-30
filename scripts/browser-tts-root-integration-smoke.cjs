@@ -87,7 +87,7 @@ async function scenario(fail, query, index) {
     );
     return module.exports;
   }
-  const production = load('./browserTtsService.cjs'); assert.equal(cache.size, 15);
+  const production = load('./browserTtsService.cjs'); assert.equal(cache.size, 16);
   const logA = [], logB = [];
   const projectA = path.join(fixture, 'a'), projectB = path.join(fixture, 'b');
   const first = production.createBrowserTtsService({ projectRoot: projectA, log: (...args) => logA.push(args) });
