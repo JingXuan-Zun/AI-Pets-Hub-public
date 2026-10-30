@@ -258,15 +258,6 @@ function getPythonCandidates(preferredPath, options = {}) {
 
   candidates.push(...collectKnownPythonCandidates(options.projectRoot));
 
-  const bundledPythonPath = resolveBundledPythonPath();
-  if (pathExists(bundledPythonPath)) {
-    candidates.push({
-      label: 'bundled',
-      executable: bundledPythonPath,
-      args: [],
-    });
-  }
-
   candidates.push(
     {
       label: 'python',
@@ -279,6 +270,13 @@ function getPythonCandidates(preferredPath, options = {}) {
       args: ['-3'],
     },
   );
+
+  // A Python that ships inside another program on C:, kept only as a last resort: environments
+  // were built on it and broke whenever that program updated, while the system Python was ignored.
+  const bundledPythonPath = resolveBundledPythonPath();
+  if (pathExists(bundledPythonPath)) {
+    candidates.push({ label: 'bundled', executable: bundledPythonPath, args: [] });
+  }
 
   return uniqueCandidates(candidates);
 }
