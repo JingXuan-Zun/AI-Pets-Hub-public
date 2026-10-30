@@ -33,8 +33,8 @@ class Engine(VoiceEngine):
         self.tts = Tts()
         self.calls, self.failed_part, self.cancel = [], failed_part, cancel
     def _ensure_model(self, model_id):
-        return {"emotions": {"neutral": {"text": "neutral"}, "happy": {"text": "happy"}}}
-    def _run_once(self, part, reference, seed):
+        return {"emotions": {"neutral": {"text": "neutral"}, "happy": {"text": "happy"}}, "seed": None, "blend": (), "tail_stretch": 1.0}
+    def _run_once(self, part, reference, seed, blend=()):
         self.calls.append((part, reference["text"]))
         self.tts.stop_flag = self.cancel
         samples = 1 if part == self.failed_part else int(32000 * max(1, len(part) * 0.2))
@@ -64,8 +64,8 @@ except InterruptedError:
 assert len(cancelled.calls) == 1
 
 class CancelBetweenChunks(Engine):
-    def _synthesize_chunk(self, part, reference):
-        result = super()._synthesize_chunk(part, reference)
+    def _synthesize_chunk(self, part, reference, manifest):
+        result = super()._synthesize_chunk(part, reference, manifest)
         self.cancelled.set()
         return result
 cancelled_between = CancelBetweenChunks()

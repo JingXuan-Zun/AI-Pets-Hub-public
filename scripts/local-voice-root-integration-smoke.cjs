@@ -147,7 +147,8 @@ async function scenario(isPackaged, projectRoot, cacheExists, earlyTimer) {
   assert.equal(requestB.cancelReason, 'runtime_dispose');
   assert.equal(stateB.referenceTextCache.size, 0);
   assert.equal(fixture.timers[1].active, false);
-  assert.deepEqual(fixture.writes, [], 'no real files or unexpected fixture writes');
+  const unexpected = fixture.writes.filter(([key, file]) => !(key === 'readFileSync' && String(file).endsWith('voice-runtime-location.json')));
+  assert.deepEqual(unexpected, [], 'no real files or unexpected fixture writes');
 }
 
 async function main() {

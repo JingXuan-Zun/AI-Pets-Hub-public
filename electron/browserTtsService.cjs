@@ -28,7 +28,7 @@ function createBrowserTtsService({ app, log, projectRoot }) {
   }
 
   function getSharedEnv() {
-    return createPythonEnv();
+    return createPythonEnv(runtimeRoot);
   }
 
   function ensureServerScript() {

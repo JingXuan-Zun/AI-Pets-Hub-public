@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { readRememberedRuntimeRoot, rememberRuntimeRoot } = require('./localVoiceRuntimeLocation.cjs');
 
 function pathExists(targetPath) {
   if (!targetPath || typeof targetPath !== 'string') {
@@ -201,11 +202,10 @@ function collectKnownPythonCandidates(projectRoot) {
     }));
 }
 
-// A voice environment is several GB. A new build in another folder (a fresh release folder,
-// or the app moved one level down) used to see none and asked for a full reinstall, while
-// speech recognition failed meanwhile. Folders up to three levels above the exe are checked
-// for one that is already installed, the same way voice packs are found; with none, new
-// installs go next to the exe as before.
+// A voice environment is several GB; a new build in another folder used to see none and asked
+// for a full reinstall. Folders up to three levels above the exe are checked for one already
+// installed, then the last folder one was found in (the exe may have been moved away from it);
+// with none, new installs go next to the exe as before.
 const INSTALLED_RUNTIME_MARKERS = [
   ['venv-stt'],
   ['venv-tts'],
@@ -216,19 +216,22 @@ function hasInstalledRuntime(runtimeRoot) {
   return INSTALLED_RUNTIME_MARKERS.some((parts) => pathExists(path.join(runtimeRoot, ...parts)));
 }
 
-function resolveExistingRuntimeRoot(baseDir) {
+function resolveExistingRuntimeRoot(baseDir, app) {
   const candidates = [0, 1, 2, 3].map((depth) => path.resolve(baseDir, ...Array(depth).fill('..'), 'python', 'local-voice-runtime'));
-  return candidates.find(hasInstalledRuntime) ?? candidates[0];
+  const nearby = candidates.find(hasInstalledRuntime);
+  if (nearby) return app?.getPath ? rememberRuntimeRoot(app, nearby) : nearby;
+  const remembered = app?.getPath ? readRememberedRuntimeRoot(app) : '';
+  return remembered && hasInstalledRuntime(remembered) ? remembered : candidates[0];
 }
 
 function resolveRuntimeRoot({ app, projectRoot }) {
   const portableExecutableDir = resolvePortableExecutableDir();
   if (portableExecutableDir) {
-    return resolveExistingRuntimeRoot(portableExecutableDir);
+    return resolveExistingRuntimeRoot(portableExecutableDir, app);
   }
 
   if (app?.isPackaged && process.execPath) {
-    return resolveExistingRuntimeRoot(path.dirname(process.execPath));
+    return resolveExistingRuntimeRoot(path.dirname(process.execPath), app);
   }
 
   if (projectRoot) {
