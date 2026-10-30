@@ -27,10 +27,21 @@ function logRuntime(runtimeLogger, scope, message, details) {
   runtimeLogger.log('后端', scope, message, details);
 }
 
+// Channels the renderer calls many times a second or on a timer. Logging each call was 94% of
+// the log (430k lines a day for interactive regions alone) and pushed every other entry out of
+// the log viewer within seconds, so only their failures are logged.
+const QUIET_IPC_CHANNELS = new Set([
+  'desktop-pet:set-interactive-regions',
+  'desktop-pet:set-pointer-passthrough',
+  'desktop-pet:list-desktop-icons',
+  'desktop-pet:pick-2d-video-from-library',
+  'desktop-pet:save-persisted-chat-history',
+]);
+
 function registerLoggedEvent(ipcMain, runtimeLogger, channel, handler, options = {}) {
   const {
     logArgs = true,
-    logLifecycle = true,
+    logLifecycle = !QUIET_IPC_CHANNELS.has(channel),
   } = options;
 
   ipcMain.on(channel, (event, ...args) => {
@@ -57,12 +68,14 @@ function registerLoggedHandle(ipcMain, runtimeLogger, channel, handler, options 
     summarizeResult,
   } = options;
 
+  const quiet = QUIET_IPC_CHANNELS.has(channel);
   ipcMain.handle(channel, async (event, ...args) => {
-    const argSummary = logArgs ? summarizeArgs(args) : '';
-    logRuntime(runtimeLogger, 'IPC', `received ${channel}${argSummary ? ` ${argSummary}` : ''}`);
+    const argSummary = logArgs && !quiet ? summarizeArgs(args) : '';
+    if (!quiet) logRuntime(runtimeLogger, 'IPC', `received ${channel}${argSummary ? ` ${argSummary}` : ''}`);
 
     try {
       const result = await handler(event, ...args);
+      if (quiet) return result;
       const resultSummary = typeof summarizeResult === 'function'
         ? summarizeResult(result)
         : undefined;
