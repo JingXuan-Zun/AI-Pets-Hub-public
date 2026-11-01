@@ -126,7 +126,8 @@ export function useQqBridge({ config, configRef, sendMessage }: {
           message = { ...message, text: heard };
         }
         if (latestPendingAgentLoopApprovalId()) {
-          const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings));
+          // Typed on the phone, so never her own voice: answered even while she is still asking out loud.
+          const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings), () => false);
           if (decision) {
             reply(decision === 'deny' ? '好，这一步不做了。' : decision === 'approve-day' ? '好，今天的操作都不再问你了（发送、删除、付款这类还会问）。'
             : decision === 'approve-task' ? '好，这个任务后面的步骤都不再问你了。' : '好，这就去做。');

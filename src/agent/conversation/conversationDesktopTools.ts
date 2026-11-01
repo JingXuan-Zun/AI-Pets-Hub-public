@@ -66,6 +66,10 @@ const MAX_DURATION_MS = 5 * 60_000;
 const OWN_WINDOW = /^AI Desktop Pet\b/iu;
 const SCREEN_QUERY = /^(?:屏幕|整个屏幕|全屏|桌面|screen)$/iu;
 const TRASH_LABEL = /(?:回收站|废纸篓|recycle|trash)/iu;
+// A browser window holds many pages: "关闭当前窗口 / 这个网页" there usually means one tab, and
+// closing the whole window loses every tab (user, 2026-11-01).
+const BROWSER_PROCESS = /^(?:chrome|msedge|firefox|brave|opera|vivaldi|arc|360se|360chrome|qqbrowser|sogouexplorer|2345explorer|liebao|iexplore)(?:\.exe)?$/iu;
+const isBrowserWindow = (window: LoopWindow) => BROWSER_PROCESS.test(window.processName ?? '');
 const NO_VISION_HINT = '（没有配置视觉模型，看不了画面：纯图标按钮可以改用快捷键、命令、清单里相邻文字的坐标，或请用户告诉你位置；必要时提醒用户可以在设置里配置一个视觉模型。）';
 
 function defaultDependencies(settings: PetConfig['settings']): DesktopToolDependencies {
@@ -341,16 +345,37 @@ export function createConversationDesktopSession(options: {
     // Closing went focus → Alt+F4, which failed whenever Windows refused to bring the window
     // forward (rounds of retries). The close request goes to the window directly instead; the
     // app still asks to save unsaved work, so it is as safe as the user clicking ×.
-    tool('close_window', '关闭一个窗口（相当于点它的 ×，不用先切到前台、不用按 Alt+F4）。有没保存的内容时应用会自己弹出“是否保存”。', {
+    tool('close_tab', '关闭浏览器里当前的标签页（Ctrl+W），浏览器和其他标签页都留着。前台是浏览器、用户说“关掉这个网页 / 这个页面 / 当前窗口 / 这个视频”时用这个。', {
+      window: { description: '浏览器窗口的标题、进程名或 hwnd；不写就用前台的浏览器', type: 'string' },
+    }, [], async (args) => {
+      ({ active, windows } = await deps.observeWindows());
+      const query = text(args, 'window');
+      const target = query ? resolveLoopWindow(query, windows) : active && isBrowserWindow(active) ? active : windows.find(isBrowserWindow) ?? null;
+      if (!target) return { content: '没有找到浏览器窗口。先用 list_windows 看看。' };
+      if (!isBrowserWindow(target)) return { content: `「${target.title}」不是浏览器，没有标签页。要关掉整个窗口用 close_window。` };
+      const action: LoopAction = { action: 'press_keys', keys: '^w' };
+      const refusal = await authorize(action, undefined, { reason: '关闭浏览器当前标签页', risk: 'scope' });
+      if (refusal) return { content: refusal };
+      const focusAction: LoopAction = { action: 'focus_window', window: String(target.hwnd) };
+      focus = (await deps.executeLoop(focusAction, { elements: [], focus, windows })).focusWindow ?? target;
+      return afterAction(action, await deps.executeLoop(action, { elements: [], focus, windows }));
+    }),
+    // Closing went focus → Alt+F4, which failed whenever Windows refused to bring the window
+    // forward (rounds of retries). The close request goes to the window directly instead; the
+    // app still asks to save unsaved work, so it is as safe as the user clicking ×. A browser
+    // is the exception: every tab goes with it, so that always asks first.
+    tool('close_window', '关闭整个窗口（相当于点它的 ×）。浏览器要关的通常只是当前标签页，用 close_tab；只有用户明确说“关掉浏览器 / 整个浏览器 / 所有网页”才用这个关浏览器，拿不准就先问用户是关当前网页还是整个浏览器。有没保存的内容时应用会自己弹出“是否保存”。', {
       window: { description: '窗口标题、进程名或 hwnd，来自 list_windows', type: 'string' },
     }, ['window'], async (args) => {
       const query = text(args, 'window');
-      const action: LoopAction = { action: 'focus_window', window: query };
-      const refusal = await authorize(action, undefined);
-      if (refusal) return { content: refusal };
       ({ active, windows } = await deps.observeWindows());
       const target = resolveLoopWindow(query, windows);
       if (!target) return { content: `没有找到窗口「${query}」。先用 list_windows 看看。` };
+      const action: LoopAction = { action: 'focus_window', window: query };
+      const refusal = isBrowserWindow(target)
+        ? await authorize(action, undefined, { reason: '浏览器里所有标签页都会关掉', risk: 'confirm', title: `关掉整个浏览器「${target.title || target.processName}」` })
+        : await authorize(action, undefined);
+      if (refusal) return { content: refusal };
       const error = await deps.closeWindow(target);
       await deps.sleep(SETTLE_MS);
       ({ active, windows } = await deps.observeWindows());
