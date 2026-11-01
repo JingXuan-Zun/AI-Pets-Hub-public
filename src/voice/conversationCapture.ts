@@ -7,6 +7,8 @@ const CAPTURE_FRAME_SIZE = 1024;
 
 export interface ConversationCaptureHandlers {
   onSpeechStart?: () => void;
+  /** The sound after onSpeechStart was too short to be speech and was dropped. */
+  onSpeechDiscarded?: () => void;
   /** A finished utterance as 16 kHz mono WAV (base64), ready for local STT. */
   onUtterance: (audioBase64: string, durationMs: number) => void;
 }
@@ -23,6 +25,8 @@ function handleVadEvent(event: ConversationVadEvent | null, sampleRate: number, 
   if (!event) return;
   if (event.type === 'speech-start') {
     handlers.onSpeechStart?.();
+  } else if (event.type === 'discarded') {
+    handlers.onSpeechDiscarded?.();
   } else if (event.type === 'utterance') {
     const resampled = resampleAudio(event.samples, sampleRate, STT_SAMPLE_RATE);
     handlers.onUtterance(encodeWavBase64(resampled, STT_SAMPLE_RATE), Math.round(event.durationMs));

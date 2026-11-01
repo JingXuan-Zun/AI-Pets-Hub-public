@@ -5,6 +5,7 @@ import { DEFAULT_FOOD_APPEARANCES } from './foodAppearances';
 import { DEFAULT_PRODUCTIVITY_SETTINGS } from './productivity/productivitySettings';
 import { DEFAULT_COMFY_UI_SETTINGS } from './comfyui/comfyUiSettings';
 import { DEFAULT_QQ_BRIDGE_SETTINGS } from './qq-bridge/qqBridgeSettings';
+import { DEFAULT_WEIXIN_BRIDGE_SETTINGS } from './weixin-bridge/weixinBridgeSettings';
 import { DEFAULT_WORK_TASK_SETTINGS } from './work-tasks/workTaskSettings';
 import { DEFAULT_DEV_AGENT_SETTINGS } from './dev-agent/devAgentSettings';
 import { DEFAULT_INTERACTIVE_DIALOGUE_SETTINGS } from './interactiveDialogueSettings';
@@ -366,6 +367,7 @@ export const DEFAULT_CONFIG: PetConfig = {
     comfyUi: DEFAULT_COMFY_UI_SETTINGS,
     comfyUiApiKey: '',
     qqBridge: DEFAULT_QQ_BRIDGE_SETTINGS,
+    weixinBridge: DEFAULT_WEIXIN_BRIDGE_SETTINGS,
     qqBridgeAccessToken: '',
     webSearchEnabled: false,
     webLearningEnabled: false,

@@ -122,7 +122,7 @@ function createMcpSoakReadinessService(options = {}) {
   function createReadinessReport(request = {}) {
     const rounds = normalizeRounds(request.rounds);
     const reportDir = path.resolve(projectRoot, request.reportDir || path.join('tmp', 'mcp-real-soak-samples'));
-    const configPath = path.join(projectRoot, '.desktop-pet-mcp.json');
+    const configPath = (process.env.DESKTOP_PET_MCP_CONFIG_PATH || '').trim() || path.join(projectRoot, '.desktop-pet-mcp.json');
     const draftServers = parseDraftServers(request.rawText, projectRoot);
     const servers = (draftServers ?? loadExternalMcpServers(projectRoot)).map(createServerReadiness);
     const readyServers = servers.filter((server) => server.readyForRealSoak);

@@ -5,15 +5,17 @@ import { useSyncExternalStore } from 'react';
 export interface VoiceMicStatus {
   wakeListening: boolean;
   conversationActive: boolean;
+  /** In a conversation: the user is talking, or what they said is being turned into text. */
+  input: 'idle' | 'speaking' | 'recognizing';
 }
 
-let state: VoiceMicStatus = { wakeListening: false, conversationActive: false };
+let state: VoiceMicStatus = { wakeListening: false, conversationActive: false, input: 'idle' };
 let stopConversation: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
 function update(patch: Partial<VoiceMicStatus>) {
   const next = { ...state, ...patch };
-  if (next.wakeListening === state.wakeListening && next.conversationActive === state.conversationActive) return;
+  if (next.wakeListening === state.wakeListening && next.conversationActive === state.conversationActive && next.input === state.input) return;
   state = next;
   listeners.forEach((listener) => listener());
 }
@@ -30,7 +32,10 @@ export const voiceMicStatusStore = {
   /** stop is how the pill ends this conversation; cleared when the conversation ends. */
   setConversation(active: boolean, stop: (() => void) | null = null) {
     stopConversation = active ? stop : null;
-    update({ conversationActive: active });
+    update(active ? { conversationActive: true } : { conversationActive: false, input: 'idle' });
+  },
+  setInput(input: VoiceMicStatus['input']) {
+    update({ input });
   },
   stopConversation() {
     stopConversation?.();

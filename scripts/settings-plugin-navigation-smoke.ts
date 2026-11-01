@@ -35,4 +35,12 @@ assert.doesNotMatch(hubSource, /SettingsAgentSkillPackageExchangePreview/u);
 assert.doesNotMatch(hubSource, /导入 DeepSeek Harness/u);
 assert.doesNotMatch(navigationSource, /插件管理/u);
 
+// 2026-10-31: QQ, ComfyUI, the dev assistant, skills and MCP moved into the plugin market.
+const navigationModule = await import('../src/components/settings/settingsControlCenterNavigation');
+assert.deepEqual(navigationModule.visibleSettingsPages(extensionModule).map((page) => page.id), ['extension-plugins', 'extension-personas', 'extension-resources']);
+assert.deepEqual(navigationModule.resolveSettingsPageRoute('platform-qq'), { pageId: 'extension-plugins', pluginId: 'native:qq-bridge' });
+assert.deepEqual(navigationModule.resolveSettingsPageRoute('platform-workflow'), { pageId: 'extension-plugins', pluginId: 'native:comfyui' });
+assert.deepEqual(navigationModule.resolveSettingsPageRoute('platform-dev-agent'), { pageId: 'extension-plugins', pluginId: 'native:dev-agent' });
+assert.deepEqual(navigationModule.resolveSettingsPageRoute('platform-mcp'), { pageId: 'extension-plugins', pluginId: null });
+assert.deepEqual(navigationModule.resolveSettingsPageRoute('desktop-role'), { pageId: 'desktop-role', pluginId: null }, 'other pages are untouched');
 console.log('settings plugin navigation smoke passed');

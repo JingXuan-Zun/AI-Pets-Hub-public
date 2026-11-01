@@ -6,7 +6,7 @@ const { createSequenceAssetStore } = require('../electron/sequenceAssetStore.cjs
 
 // Keep packaged ffmpeg resolution covered when the dependency export points
 // inside app.asar but electron-builder placed the binary in app.asar.unpacked.
-const sequenceStoreSource = fs.readFileSync(path.join(__dirname, '..', 'electron', 'sequenceAssetStore.cjs'), 'utf8');
+const sequenceStoreSource = fs.readFileSync(path.join(__dirname, '..', 'electron', 'ffmpegPath.cjs'), 'utf8');
 assert.match(sequenceStoreSource, /app\.asar\.unpacked/u);
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-pet-video-asset-'));

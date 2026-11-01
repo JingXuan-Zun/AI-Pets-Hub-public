@@ -129,6 +129,11 @@ export const SETTINGS_WORKSPACE_INSPECTOR_MODULE_GUIDES: Record<
     useCases: ['不在电脑前时用手机找角色聊天', '在手机上让角色帮你在电脑上做事、回复确认'],
     affects: ['只回复你填写的 QQ 号发来的私信', '桌宠和电脑需要开着'],
   },
+  'platform-weixin': {
+    purpose: '通过微信官方的 ClawBot 通道，在手机微信上跟角色聊天。',
+    useCases: ['不在电脑前时用手机微信找角色聊天', '在手机上回复角色的确认'],
+    affects: ['只回复扫码的那个微信', '桌宠和电脑需要开着'],
+  },
   'platform-skills-api': {
     purpose: '导入、查看、启用和停用桌宠可用的 Skill。',
     useCases: ['从单个文件或压缩包安装 Skill', '检查已安装 Skill 的说明与来源'],

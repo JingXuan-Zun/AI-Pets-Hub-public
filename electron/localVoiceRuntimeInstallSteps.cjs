@@ -2,6 +2,13 @@ const { getModeLabel, getModeEnvDirectory, getModeEnvPythonPath,
   getInstallSteps } = require('./localVoiceRuntimeModeUtils.cjs');
 const { formatSpawnFailure } = require('./localVoiceRuntimeCommandUtils.cjs');
 const { removeDirectorySafe } = require('./localVoiceRuntimeHostUtils.cjs');
+const path = require('path');
+const { describeBlockedInstall, runWatchedInstallCommand } = require('./localVoiceRuntimeInstallWatchdog.cjs');
+
+// Where an install step writes: watched to tell a slow download from a step that stalled.
+function installWatchFolders(runtimeRoot, envDir) {
+  return runtimeRoot ? [path.join(runtimeRoot, 'tmp'), path.join(runtimeRoot, 'pip-cache'), envDir] : [];
+}
 
 function buildIsolatedRuntime(mode, envPythonPath) {
   return {
@@ -26,30 +33,37 @@ async function ensureVenv(context, baseRuntime, mode, progress, options = {}) {
   }
   ensureDir(runtimeRoot);
   progress.push(`Creating ${label} isolated runtime...`);
-  const result = await spawnCommand(baseRuntime.candidate, ['-m', 'venv', envDir, '--without-pip'], {
-    ...getSharedOptions(),
-    onStdoutLine: (line) => progress.push(line),
-    onStderrLine: (line) => progress.push(line),
+  const result = await runWatchedInstallCommand({
+    spawnCommand,
+    candidate: baseRuntime.candidate,
+    args: ['-m', 'venv', envDir, '--without-pip'],
+    options: { ...getSharedOptions(), onStdoutLine: (line) => progress.push(line), onStderrLine: (line) => progress.push(line) },
+    watchFolders: installWatchFolders(runtimeRoot, envDir),
+    runtimeRoot,
+    label: `创建${label}环境`,
   });
   if (!result.ok || !pathExists(envPythonPath)) {
-    throw new Error(`${label} isolated runtime creation failed: ${formatSpawnFailure(result)}`);
+    throw new Error(describeBlockedInstall(`${label} isolated runtime creation failed: ${formatSpawnFailure(result)}`, runtimeRoot));
   }
   progress.push(`${label} isolated runtime created.`);
   return buildIsolatedRuntime(mode, envPythonPath);
 }
 
 async function installModeDependencies(context, baseRuntime, runtime, mode, progress, preferredTorchPackages) {
-  const { spawnCommand, getSharedOptions } = context;
+  const { spawnCommand, getSharedOptions, runtimeRoot } = context;
   const steps = getInstallSteps(mode, preferredTorchPackages);
   for (const step of steps) {
     progress.push(`${step.label}...`);
-    const result = await spawnCommand(baseRuntime.candidate,
-      ['-m', 'pip', '--python', runtime.executable, ...step.installArgs], {
-        ...getSharedOptions(),
-        onStdoutLine: (line) => progress.push(line),
-        onStderrLine: (line) => progress.push(line),
-      });
-    if (!result.ok) throw new Error(`${step.label} failed: ${formatSpawnFailure(result)}`);
+    const result = await runWatchedInstallCommand({
+      spawnCommand,
+      candidate: baseRuntime.candidate,
+      args: ['-m', 'pip', '--python', runtime.executable, ...step.installArgs],
+      options: { ...getSharedOptions(), onStdoutLine: (line) => progress.push(line), onStderrLine: (line) => progress.push(line) },
+      watchFolders: installWatchFolders(runtimeRoot, runtimeRoot ? getModeEnvDirectory(runtimeRoot, mode) : ''),
+      runtimeRoot,
+      label: step.label,
+    });
+    if (!result.ok) throw new Error(describeBlockedInstall(`${step.label} failed: ${formatSpawnFailure(result)}`, runtimeRoot));
   }
 }
 

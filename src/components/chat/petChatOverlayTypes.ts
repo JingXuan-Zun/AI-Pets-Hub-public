@@ -9,6 +9,7 @@ import {
   type EmbeddedPetChatPanelSize,
 } from './embeddedPetChatPanelTypes';
 import { type ChatTargetOption } from './multiPetChat';
+import { type PendingApprovalBubble } from './PetStatusBubbleCard';
 
 export interface PetChatOverlayBubbleProps {
   chatBracketOuterTextColor: string;
@@ -18,6 +19,9 @@ export interface PetChatOverlayBubbleProps {
   petAnchorPosition: { x: number; y: number };
   petVisualBounds: { top: number };
   webSearchStatusMessage?: string;
+  /** A task step waiting for the user's yes/no, answered on the bubble itself. */
+  pendingApproval?: PendingApprovalBubble | null;
+  onResolveApproval?: (approvalId: string, decision: ChatAgentApprovalDecision) => void;
 }
 
 export interface PetChatOverlayProps {

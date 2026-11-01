@@ -32,6 +32,8 @@ const { createKnownFoldersService, registerKnownFoldersIpcHandlers } = require('
 const { createComfyUiService, registerComfyUiIpcHandlers } = require('./comfyUiService.cjs');
 const { createDevAgentService, registerDevAgentIpcHandlers } = require('./devAgentService.cjs');
 const { createSnowLumaService, registerSnowLumaIpcHandlers } = require('./snowLumaService.cjs');
+const { createPluginPackageService, registerPluginPackageIpcHandlers } = require('./pluginPackageService.cjs');
+const { createWeixinBridgeService, registerWeixinBridgeIpcHandlers } = require('./weixinBridgeService.cjs');
 const { createGptSovitsService } = require('./gptSovitsService.cjs');
 const { registerGptSovitsIpcHandlers } = require('./gptSovitsIpcHandlers.cjs');
 const { createSystemExpressionCatalogService } = require('./systemExpressionCatalog.cjs');
@@ -495,6 +497,11 @@ const mcpHistoryService = createMcpHistoryService({
   log: (message, details) => runtimeLogger.log('backend', 'mcp-history', message, details),
   storagePath: path.join(app.getPath('userData'), MCP_HISTORY_FILE_NAME),
 });
+// In a packaged build the app folder is a read-only archive: MCP config (and plugin-installed
+// servers) live in userData instead.
+if (app.isPackaged && !(process.env.DESKTOP_PET_MCP_CONFIG_PATH || '').trim()) {
+  process.env.DESKTOP_PET_MCP_CONFIG_PATH = path.join(app.getPath('userData'), '.desktop-pet-mcp.json');
+}
 const mcpServerHealthService = createMcpServerHealthService();
 const mcpStdioClientService = createMcpStdioClientService({
   health: mcpServerHealthService,
@@ -624,6 +631,28 @@ const snowLumaService = createSnowLumaService({
   log: (message, details) => runtimeLogger.log('backend', 'snowluma', message, details),
 });
 registerSnowLumaIpcHandlers({ dialog, ipcMain: trustedIpcMain, service: snowLumaService, shell });
+const weixinBridgeService = createWeixinBridgeService({
+  emit: (channel, payload) => windowManager.getShellRendererWindows().forEach((win) => {
+    if (win && !win.isDestroyed?.()) win.webContents.send(channel, payload);
+  }),
+  log: (message, details) => runtimeLogger.log('backend', 'weixin', message, details),
+  safeStorage,
+  userDataPath: app.getPath('userData'),
+});
+registerWeixinBridgeIpcHandlers({
+  ipcMain: trustedIpcMain,
+  log: (message, details) => runtimeLogger.log('backend', 'weixin', message, details),
+  service: weixinBridgeService,
+});
+registerPluginPackageIpcHandlers({
+  ipcMain: trustedIpcMain,
+  log: (message, details) => runtimeLogger.log('backend', 'plugins', message, details),
+  service: createPluginPackageService({
+    log: (message, details) => runtimeLogger.log('backend', 'plugins', message, details),
+    trashItem: (folder) => shell.trashItem(folder),
+    userDataPath: app.getPath('userData'),
+  }),
+});
 registerDataBackupIpcHandlers({
   ipcMain: trustedIpcMain,
   service: createDataBackupService({ backupDirectory: path.join(app.getPath('userData'), 'backups') }),
@@ -655,6 +684,7 @@ app.on('before-quit', () => {
   appUsageMetricsService.persist();
   // SnowLuma started in the background by the pet goes away with it.
   snowLumaService.stop();
+  weixinBridgeService.stop();
   const sharedState = windowManager.getSharedState();
   if (Array.isArray(sharedState?.chatState?.messages)) {
     persistedChatHistoryStore.save(sharedState.chatState.messages);

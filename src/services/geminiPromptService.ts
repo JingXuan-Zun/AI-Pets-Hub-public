@@ -22,6 +22,12 @@ const CHARACTER_REPLY_FORMAT_INSTRUCTION = [
   '6. 如果一句回复同时包含描写和对白，描写放前面或单独成段，但都必须保留括号。',
 ].join('\n');
 
+// Rendered by the chat window (components/chat/message/messageDiagrams.ts); never spoken.
+const CHARACTER_DIAGRAM_INSTRUCTION = [
+  '示意图（可选）：遇到用文字很难讲清、看一眼就懂的东西（构图、剪影、明暗、流程、结构、位置关系），可以在回复里放一段 ```svg 代码块，里面只写一个完整的 <svg viewBox="…">…</svg>，不要脚本和外部链接。',
+  '聊天窗口会把它画出来，语音不会念它。只在确实有帮助时画，一次最多一张；画完用一两句话告诉用户看哪里。',
+].join('\n');
+
 const CHARACTER_TOOL_PROTOCOL_INSTRUCTION = [
   '角色工具调用协议（可选）：',
   '1. 人格提示词里的所有设定拥有最高执行权；工具调用只能服务于角色表达，不得改变角色人设、口吻、关系、边界或用户在人格提示词里指定的回复格式。',
@@ -1032,6 +1038,7 @@ export function buildCharacterReplySystemInstruction(
       buildWorkTaskInstruction(settings.workTasks),
       buildWebLearningInstruction(personality, settings),
       CHARACTER_TOOL_PROTOCOL_INSTRUCTION,
+      CHARACTER_DIAGRAM_INSTRUCTION,
       personaRulePolicy.mode === 'default' ? CHARACTER_REPLY_FORMAT_INSTRUCTION : '',
       buildFinalPersonaAdherenceInstruction(personality),
       buildPersonaRuleContractInstruction(personality),

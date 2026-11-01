@@ -236,7 +236,7 @@ export default function ChatWindow({
       case 'outfit':
         return activePetSlot && onUpdateConfig ? <ChatHubOutfitPage config={config} slot={activePetSlot} onUpdateConfig={onUpdateConfig} /> : null;
       case 'plugins':
-        return <ChatHubPluginsPage currentPetId={resolvedActivePetId} />;
+        return <ChatHubPluginsPage config={config} currentPetId={resolvedActivePetId} />;
       case 'settings':
         return onUpdateConfig ? <ChatHubQuickSettingsPage config={config} onUpdateConfig={onUpdateConfig} /> : null;
       default:

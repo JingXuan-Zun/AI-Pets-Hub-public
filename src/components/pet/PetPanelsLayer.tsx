@@ -1,3 +1,4 @@
+import { useVoiceMicStatus } from '../../voice/voiceMicStatus';
 import { Suspense, lazy, memo, type PointerEvent as ReactPointerEvent } from 'react';
 import { Gamepad2, Monitor, StopCircle } from 'lucide-react';
 import { useSteadyQuickMenuPosition } from './useSteadyQuickMenuPosition';
@@ -337,7 +338,11 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
       config.customModelPresets,
     ),
   );
-  const shouldRenderChatOverlay = showEmbeddedChatPanel || Boolean(latestPetMessage) || isPrimaryTyping || Boolean(webSearchStatusMessage);
+  // Voice input and task approvals show as bubbles above the character even with no chat line.
+  const voiceInputActive = useVoiceMicStatus().input !== 'idle';
+  const hasPendingApproval = messages.some((message) => Boolean(message.agentLoopRun?.pendingApproval));
+  const shouldRenderChatOverlay = showEmbeddedChatPanel || Boolean(latestPetMessage) || isPrimaryTyping || Boolean(webSearchStatusMessage)
+    || voiceInputActive || hasPendingApproval;
   const quickSubPanelWidth = isPetActionSelectorOpen
     ? PET_QUICK_ACTION_PANEL_WIDTH
     : (isChatSelectorOpen || isAgentSelectorOpen)

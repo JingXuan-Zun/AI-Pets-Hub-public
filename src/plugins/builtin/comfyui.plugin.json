@@ -1,0 +1,24 @@
+{
+  "id": "comfyui",
+  "name": "ComfyUI 画图",
+  "version": "1.0.0",
+  "description": "连接本机的 ComfyUI，用你导入的工作流画图，画好直接发在聊天里。",
+  "author": "AI Pets Hub",
+  "kind": "native",
+  "permissions": ["network"],
+  "capabilityIds": ["images.list_workflows", "images.generate"],
+  "settingsPageId": "platform-workflow",
+  "roleScoped": true,
+  "useWhen": "用户想要一张图片、插画或角色立绘时。",
+  "examples": ["帮我画一张她在窗边看书的图", "用动漫风格的工作流画一张"],
+  "requires": [{ "name": "ComfyUI", "install": "https://github.com/comfyanonymous/ComfyUI" }],
+  "setup": [
+    "启动 ComfyUI，确认浏览器能打开 http://127.0.0.1:8188。",
+    "在 ComfyUI 里把常用工作流导出为“API 格式”的 JSON。",
+    "在下面的工作流管理里导入它，并选好提示词写进哪个节点。"
+  ],
+  "troubleshooting": [
+    "连不上 ComfyUI：确认 ComfyUI 已经启动，地址和端口与设置一致（默认 http://127.0.0.1:8188）。",
+    "开着 Clash 的 TUN 模式时本机地址可能被拦：在 Clash 里放行局域网，或测试时关掉 TUN。"
+  ]
+}

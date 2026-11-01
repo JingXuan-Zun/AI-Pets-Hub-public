@@ -29,6 +29,7 @@ import {
   getSettingsControlCenterPage,
   SETTINGS_CONTROL_CENTER_MODULES,
   type SettingsControlCenterPageId,
+  visibleSettingsPages,
 } from './settingsControlCenterNavigation';
 import { SettingsWorkspaceInspector } from './SettingsWorkspaceInspector';
 import { SettingsWorkspaceLogViewer } from './SettingsWorkspaceLogViewer';
@@ -182,7 +183,7 @@ export function SettingsPanelStandaloneShell({
                   key={module.id}
                   type="button"
                   aria-current={isActive ? 'page' : undefined}
-                  onClick={() => onSetActivePage(module.pages[0].id)}
+                  onClick={() => onSetActivePage(visibleSettingsPages(module)[0].id)}
                   className={[
                     'flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2.5 text-left transition-colors',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
@@ -327,7 +328,7 @@ export function SettingsPanelStandaloneShell({
         <div aria-label={`${activeFeatureModule.label}二级功能页`} className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-lg border border-border bg-card px-2 py-1.5 shadow-sm">
           <span className="shrink-0 px-1 text-2xs font-bold uppercase tracking-[0.1em] text-muted-foreground">{activeFeatureModule.label}</span>
           <div className="flex min-w-max gap-1.5">
-            {activeFeatureModule.pages.map((page) => {
+            {visibleSettingsPages(activeFeatureModule).map((page) => {
               const isActive = page.id === activePageId;
               return <button key={page.id} type="button" aria-current={isActive ? 'page' : undefined} onClick={() => onSetActivePage(page.id)} className={[
                 'rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',

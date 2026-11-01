@@ -427,7 +427,7 @@ const AGENT_RUNTIME_TOOL_HANDLERS: Record<AgentToolCallName, AgentRuntimeToolHan
   warmup_local_voice: ({ runtime }) => executeWarmupLocalVoice(runtime),
   list_agent_skills: ({ runtime, toolCall }) => executeListAgentSkills(toolCall, runtime),
   execute_agent_skill: ({ runtime, toolCall }) => executeAgentSkill(runtime, toolCall),
-  list_mcp_tools: ({ toolCall }) => executeListMcpTools(toolCall),
+  list_mcp_tools: ({ runtime, toolCall }) => executeListMcpTools(toolCall, runtime),
   call_mcp_tool: ({ runtime, toolCall }) => executeCallMcpTool(runtime, toolCall),
   organize_desktop_icons: ({ command, runtime, toolCall }) => (
     executeDesktopOrganizationToolCall(runtime, toolCall, command.sourceText)
