@@ -8,6 +8,8 @@ import type { ChatAgentApprovalDecision } from '../../types';
 export interface PendingApprovalBubble {
   detail: string;
   id: string;
+  /** Sending, deleting, paying…: only yes/no, asked every time. */
+  irreversible?: boolean;
   title: string;
 }
 
@@ -26,12 +28,17 @@ export function ApprovalBubbleCard({ approval, onResolve, textColor }: {
   return (
     <div className="relative">
       <div className={`rounded-2xl ${CARD_CLASS}`} style={{ color: textColor }}>
-        <div className="text-2xs font-bold opacity-70">需要你同意</div>
+        <div className="text-2xs font-bold opacity-70">{approval.irreversible ? '需要你同意（做了撤不回）' : '需要你同意'}</div>
         <div className="mt-0.5 font-semibold">{approval.title}</div>
         {approval.detail ? <div className="mt-0.5 line-clamp-2 text-2xs opacity-70">{approval.detail}</div> : null}
         <div className="mt-2 flex flex-wrap justify-center gap-1.5">
           <button type="button" onClick={() => onResolve(approval.id, 'approve')} className={`${button} bg-primary text-primary-foreground hover:bg-primary/90`}>允许</button>
-          <button type="button" onClick={() => onResolve(approval.id, 'approve-task')} className={`${button} border border-primary/40 text-primary hover:bg-primary/10`}>这次都允许</button>
+          {approval.irreversible ? null : (
+            <>
+              <button type="button" onClick={() => onResolve(approval.id, 'approve-task')} className={`${button} border border-primary/40 text-primary hover:bg-primary/10`}>这次都允许</button>
+              <button type="button" onClick={() => onResolve(approval.id, 'approve-day')} className={`${button} border border-primary/40 text-primary hover:bg-primary/10`} title="今天的操作都不再问；发送、删除、付款这类还会问">今天都允许</button>
+            </>
+          )}
           <button type="button" onClick={() => onResolve(approval.id, 'deny')} className={`${button} border border-border text-muted-foreground hover:bg-muted`}>不要</button>
         </div>
       </div>

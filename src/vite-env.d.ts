@@ -1011,16 +1011,18 @@ interface Window {
     /** Phone WeChat through Tencent's official ClawBot channel (electron/weixinBridgeService.cjs). */
     weixin?: {
       status: () => Promise<import('./weixin-bridge/weixinBridgeSettings').WeixinBridgeStatus>;
-      startLogin: () => Promise<{ ok: true; qrContent: string } | { ok: false; error: string }>;
+      startLogin: (request?: { label?: string; owner?: boolean }) => Promise<{ ok: true; qrContent: string } | { ok: false; error: string }>;
+      cancelLogin: () => Promise<{ ok: boolean }>;
       submitVerifyCode: (code: string) => Promise<{ ok: boolean; error?: string }>;
       start: () => Promise<{ ok: boolean; error?: string }>;
       stop: () => Promise<{ ok: boolean }>;
-      logout: () => Promise<{ ok: boolean }>;
-      send: (text: string) => Promise<{ ok: boolean; error?: string }>;
-      sendVoice: (wavBase64: string, imageBase64?: string) => Promise<{ ok: boolean; error?: string }>;
-      sendImage: (imageBase64: string) => Promise<{ ok: boolean; error?: string }>;
+      updateAccount: (accountId: string, changes: { label?: string; owner?: boolean }) => Promise<{ ok: boolean; error?: string }>;
+      removeAccount: (accountId: string) => Promise<{ ok: boolean }>;
+      send: (accountId: string | undefined, text: string) => Promise<{ ok: boolean; error?: string }>;
+      sendVoice: (accountId: string | undefined, wavBase64: string, imageBase64?: string) => Promise<{ ok: boolean; error?: string }>;
+      sendImage: (accountId: string | undefined, imageBase64: string) => Promise<{ ok: boolean; error?: string }>;
       onStatus: (callback: (status: import('./weixin-bridge/weixinBridgeSettings').WeixinBridgeStatus | null) => void) => () => void;
-      onMessage: (callback: (message: { images: string[]; text: string; voice: boolean } | null) => void) => () => void;
+      onMessage: (callback: (message: import('./weixin-bridge/weixinBridgeSettings').WeixinInboundMessage | null) => void) => () => void;
     };
     /** Plugin packages in userData/plugins (electron/pluginPackageService.cjs). */
     plugins?: {

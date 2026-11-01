@@ -2,7 +2,7 @@ import { desktopPetChatStore } from '../../chatStore';
 import { isPetAudible } from './voiceConversationBusy';
 import { type ChatAgentApprovalDecision, type PetConfig } from '../../types';
 import { latestPendingAgentLoopApprovalId, resolveAgentLoopApproval } from './runController/agentLoopApprovalRegistry';
-import { AGENT_APPROVAL_APPROVE_TASK_TEXTS } from './runController/approvalDecisionText';
+import { AGENT_APPROVAL_APPROVE_DAY_TEXTS, AGENT_APPROVAL_APPROVE_TASK_TEXTS } from './runController/approvalDecisionText';
 
 // Answering an approval card by voice ("同意" / "拒绝"), so hands-free use does not need a
 // click for every step. Only clear, whole-utterance words count — never a bare "嗯", and
@@ -19,6 +19,7 @@ const FILLER = /[\s，。,.!！?？~～、…吧啊呀呢哦嘛的]/gu;
 
 export function classifyVoiceApproval(text: string): ChatAgentApprovalDecision | null {
   const words = text.replace(FILLER, '');
+  if (AGENT_APPROVAL_APPROVE_DAY_TEXTS.has(words)) return 'approve-day';
   if (APPROVE_TASK_WORDS.has(words)) return 'approve-task';
   if (!words || words.length > 5) return null;
   if (DENY_WORDS.has(words)) return 'deny';

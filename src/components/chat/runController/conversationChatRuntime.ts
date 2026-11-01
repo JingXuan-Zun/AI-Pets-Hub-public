@@ -1,4 +1,5 @@
 import { delegatedScopeFields } from './chatDelegation';
+import { isDailyApprovalActive, isIrreversibleApproval } from '../../../agent/approval/dailyApproval';
 import { createConversationDesktopSession } from '../../../agent/conversation/conversationDesktopTools';
 import type { ConversationToolRuntime } from '../../../agent/conversation/conversationTools';
 import { desktopPetChatStore } from '../../../chatStore';
@@ -46,9 +47,12 @@ export function createConversationChatRuntime(options: {
   // One card per task: its steps, which one runs, and the confirmations, all in one place.
   const taskCard = createConversationTaskCard({ chatMode, goal: sourceText.trim().slice(0, 80) || '帮你办一件事', targetSlot });
   let askedInThisTask = false;
-  const requestApproval: ConversationToolRuntime['requestApproval'] = async (request) => {
-    // The user said "这次都允许" earlier in this task: go ahead without asking or announcing.
-    if (taskCard.isAllowedForTask()) return taskCard.requestApproval(request);
+  const requestApproval: ConversationToolRuntime['requestApproval'] = async (input) => {
+    // Sending, deleting, paying, closing… ask every time; everything else is covered by
+    // "这次都允许" earlier in this task or "今天都允许" earlier today: go ahead without asking.
+    const request = { ...input, irreversible: input.irreversible ?? isIrreversibleApproval(`${input.title}
+${input.detail}`) };
+    if (!request.irreversible && (taskCard.isAllowedForTask() || isDailyApprovalActive())) return !taskCard.signal.aborted;
     publishAgentRuntimeWorldProgress({ continuation: { taskState: { phase: 'approval' } }, stepIndex: 0, taskPhase: 'approval', type: 'model-decision' });
     // One clear order, so nobody talks over anyone: she finishes what she is saying, asks out
     // loud, and only then does the question appear on the card and the microphone listen for

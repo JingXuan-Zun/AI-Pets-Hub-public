@@ -6,6 +6,7 @@ import { type DesktopPetChatSendOptions, type DesktopPetGroupChatContinuationMod
 import { type ChatAgentApprovalDecision, type ChatMessage, type DesktopPetChatMode, type PetAction, type PetConfig, type PetConfigUpdateHandler, type PetModelMotionBinding, type PetVisualSize } from '../../types';
 import { type ChatMemorySaveHandler } from '../chat/chatMemorySaveUtils';
 import { LifeCompanionScreenWatchPill } from './LifeCompanionScreenWatchPill';
+import { DailyApprovalPill } from './DailyApprovalPill';
 import { VoiceMicStatusPill } from './VoiceMicStatusPill';
 import { type AvatarRuntimeEventSummaryByPetId } from '../../pet-runtime/avatar-runtime/avatarRuntimeEventState';
 import { resolveActiveChatSlot, type ChatTargetOption } from '../chat/multiPetChat';
@@ -434,6 +435,11 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
 
       {/* Under the model, below the game companion badge when both are shown. */}
       <LifeCompanionScreenWatchPill
+        centerShift={primaryPillCenterShift}
+        offsetBelowCenter={primaryPillOffsetBelowCenter}
+        ownerId="primary"
+      />
+      <DailyApprovalPill
         centerShift={primaryPillCenterShift}
         offsetBelowCenter={primaryPillOffsetBelowCenter}
         ownerId="primary"

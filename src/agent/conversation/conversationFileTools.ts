@@ -134,6 +134,8 @@ export const conversationFileTool: ConversationTool = {
     const title = `${change.label}：${action === 'create_folder' ? path : `${path}${target}`}`;
     const approved = await runtime.requestApproval({
       detail: [title, preview.willOverwrite ? '注意：目标位置已有同名文件，会被覆盖。' : ''].filter(Boolean).join('\n'),
+      // Deleting (even to the Recycle Bin) and overwriting ask every time.
+      irreversible: action === 'trash' || Boolean(preview.willOverwrite),
       title,
     });
     if (!approved) return '用户没有同意，这一步没有执行。不要再重复请求，直接告诉用户。';
