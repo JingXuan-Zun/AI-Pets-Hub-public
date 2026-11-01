@@ -128,7 +128,8 @@ export function useQqBridge({ config, configRef, sendMessage }: {
         if (latestPendingAgentLoopApprovalId()) {
           const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings));
           if (decision) {
-            reply(decision === 'deny' ? '好，这一步不做了。' : decision === 'approve-task' ? '好，这个任务后面的步骤都不再问你了。' : '好，这就去做。');
+            reply(decision === 'deny' ? '好，这一步不做了。' : decision === 'approve-day' ? '好，今天的操作都不再问你了（发送、删除、付款这类还会问）。'
+            : decision === 'approve-task' ? '好，这个任务后面的步骤都不再问你了。' : '好，这就去做。');
           } else {
             reply('还在等你确认上一步：回复“好”“都好”或“不要”就可以。');
           }

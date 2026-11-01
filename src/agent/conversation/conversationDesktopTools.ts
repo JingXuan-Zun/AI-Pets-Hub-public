@@ -142,7 +142,7 @@ export function createConversationDesktopSession(options: {
   dependencies?: Partial<DesktopToolDependencies>;
   goal: string;
   now?: () => number;
-  requestApproval: (request: { detail: string; title: string }) => Promise<boolean>;
+  requestApproval: (request: { detail: string; irreversible?: boolean; title: string }) => Promise<boolean>;
   settings: PetConfig['settings'];
 }): ConversationDesktopSession {
   const deps: DesktopToolDependencies = { ...defaultDependencies(options.settings), ...options.dependencies };
@@ -177,7 +177,7 @@ export function createConversationDesktopSession(options: {
   };
   const compactObservation = (current: LoopWindowObservation) => `（读过窗口「${current.window.title || current.window.processName}」，${current.elements.length} 个元素；编号以最新一次为准）`;
 
-  const approve = async (request: { detail: string; title: string }) => {
+  const approve = async (request: { detail: string; irreversible?: boolean; title: string }) => {
     const asked = now();
     const granted = await options.requestApproval(request);
     approvalWaitMs += now() - asked;
@@ -190,6 +190,7 @@ export function createConversationDesktopSession(options: {
       '要操作的窗口是以管理员身份运行的（例如 WeGame），普通权限点不动它。',
       '同意后 Windows 会再弹一个确认框，点“是”即可。管理员助手只负责点击和输入，几分钟不用会自动关闭。',
     ].join('\n'),
+    irreversible: false,
     title: '临时使用管理员权限操作这个窗口',
   }));
   /** Returns a refusal message, or null when the action may run. */
@@ -203,12 +204,12 @@ export function createConversationDesktopSession(options: {
       const request = override?.title
         ? { detail: `${override.title}\n原因：${reason}`, title: override.title }
         : { detail: createActionApprovalRequest(action, reason, label).detail, title: '' };
-      if (!await approve({ detail: request.detail, title: request.title || request.detail.split('\n')[0] })) return '用户拒绝了这一步，没有执行。换个方法，或问用户。';
+      if (!await approve({ detail: request.detail, irreversible: true, title: request.title || request.detail.split('\n')[0] })) return '用户拒绝了这一步，没有执行。换个方法，或问用户。';
       return null;
     }
     if (risk === 'scope' && !scopeApproved) {
       const request = createTaskScopeApprovalRequest(options.goal);
-      if (!await approve({ detail: request.detail, title: '让我操作你的电脑' })) {
+      if (!await approve({ detail: request.detail, irreversible: false, title: '让我操作你的电脑' })) {
         denied = true;
         return '用户没有允许操作电脑。不要再尝试，直接告诉用户。';
       }

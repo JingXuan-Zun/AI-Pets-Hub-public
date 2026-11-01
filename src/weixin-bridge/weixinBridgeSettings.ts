@@ -19,11 +19,32 @@ export function normalizeWeixinBridgeSettings(value: unknown): WeixinBridgeSetti
   return { enabled: raw.enabled === true, voiceReplyMode: mode === 'mirror' || mode === 'off' ? mode : 'always' };
 }
 
-/** Status the main process reports (state machine of the QR login and the message loop). */
-export type WeixinBridgeState = 'logged-out' | 'waiting-scan' | 'scanned' | 'need-verify' | 'expired-qr' | 'connected' | 'reconnecting' | 'expired' | 'stopped' | 'error';
+/** One person's login (each family member scans once). Only the owner's chat goes into the chat window. */
+export interface WeixinAccountStatus {
+  detail: string;
+  id: string;
+  label: string;
+  owner: boolean;
+  state: 'connected' | 'reconnecting' | 'expired' | 'stopped';
+}
+
+/** A QR login on screen: the QR link while waiting, then scanned / verify code / errors. */
+export interface WeixinLoginStatus {
+  detail: string;
+  state: 'waiting-scan' | 'scanned' | 'need-verify' | 'expired-qr' | 'error';
+}
 
 export interface WeixinBridgeStatus {
-  account: { botId: string } | null;
-  detail: string;
-  state: WeixinBridgeState;
+  accounts: WeixinAccountStatus[];
+  login: WeixinLoginStatus | null;
+  running: boolean;
+}
+
+export interface WeixinInboundMessage {
+  accountId: string;
+  images: string[];
+  label: string;
+  owner: boolean;
+  text: string;
+  voice: boolean;
 }

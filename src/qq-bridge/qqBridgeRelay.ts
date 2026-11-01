@@ -50,8 +50,11 @@ function formatQqReply(message: ChatMessage) {
   return { speechText: formatQqReplyText(words), stickerAssetIds, text: formatQqReplyText(parts.join('')) };
 }
 
-export function formatQqApprovalQuestion(title: string) {
-  return `需要你确认：${title.trim() || '这一步'}\n回复“好”就去做，“都好”就这个任务后面都不再问，“不要”就取消。`;
+/** Steps that cannot be taken back (sending, deleting…) only offer yes/no: they ask every time. */
+export function formatQqApprovalQuestion(title: string, irreversible = false) {
+  return irreversible
+    ? `需要你确认：${title.trim() || '这一步'}\n这一步做了就撤不回，回复“好”就去做，“不要”就取消。`
+    : `需要你确认：${title.trim() || '这一步'}\n回复“好”就去做，“都好”就这个任务后面都不再问，“今天都好”就今天都不再问，“不要”就取消。`;
 }
 
 /**
@@ -82,7 +85,7 @@ export function collectQqRelayOutgoing(messages: ChatMessage[], state: QqRelaySt
     }
     if (pending?.id && !state.sentApprovalIds.has(pending.id)) {
       state.sentApprovalIds.add(pending.id);
-      outgoing.push({ petId: null, speechText: '', stickerAssetIds: [], text: formatQqApprovalQuestion(pending.title) });
+      outgoing.push({ petId: null, speechText: '', stickerAssetIds: [], text: formatQqApprovalQuestion(pending.title, pending.irreversible) });
     }
   });
   return outgoing;

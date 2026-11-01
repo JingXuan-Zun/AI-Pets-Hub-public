@@ -1,6 +1,8 @@
 // WeChat (official ClawBot / iLink) bridge against a fake server: QR login with a verify code,
 // receiving text, voice-as-text and an encrypted image, ignoring other users, replying with the
-// latest context token, keeping the cursor across restarts, and reporting an expired login.
+// latest context token, a second family login next to the owner's (each answers only its own
+// person), the first version's single login carried over, keeping the cursor across restarts,
+// and reporting an expired login.
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -21,28 +23,32 @@ const plainImage = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
 const cipher = crypto.createCipheriv('aes-128-ecb', imageKey, null);
 const encryptedImage = Buffer.concat([cipher.update(plainImage), cipher.final()]);
 
-const qrStatuses = ['wait', 'scaned', 'need_verifycode', 'scaned', 'confirmed'];
-const updates = [];
+// Each scan logs in a different person: the owner first, then mum.
+const logins = [
+  { bot_token: 'token-1', ilink_bot_id: 'bot1@im.bot', ilink_user_id: 'me@im.wechat' },
+  { bot_token: 'token-2', ilink_bot_id: 'bot2@im.bot', ilink_user_id: 'mum@im.wechat' },
+];
+let qrStatuses = ['wait', 'scaned', 'need_verifycode', 'scaned', 'confirmed'];
+const updatesByToken = { 'token-1': [], 'token-2': [] };
 const sent = [];
 const uploads = [];
 const seenRequests = [];
 const json = (value) => ({ arrayBuffer: async () => new ArrayBuffer(0), ok: true, status: 200, text: async () => JSON.stringify(value) });
 const fetchImpl = async (url, init = {}) => {
   const { pathname, searchParams } = new URL(url);
-  seenRequests.push({ body: typeof init.body === 'string' ? JSON.parse(init.body) : null, headers: init.headers ?? {}, path: pathname, query: Object.fromEntries(searchParams) });
+  const token = String(init.headers?.Authorization ?? '').replace('Bearer ', '');
+  seenRequests.push({ body: typeof init.body === 'string' ? JSON.parse(init.body) : null, headers: init.headers ?? {}, path: pathname, query: Object.fromEntries(searchParams), token });
   if (pathname.endsWith('/get_bot_qrcode')) return json({ qrcode: 'qr-1', qrcode_img_content: 'https://liteapp.weixin.qq.com/q/abc' });
   if (pathname.endsWith('/get_qrcode_status')) {
     const next = qrStatuses.shift();
-    return json(next === 'confirmed'
-      ? { baseurl: 'https://ilinkai.weixin.qq.com', bot_token: 'token-1', ilink_bot_id: 'bot@im.bot', ilink_user_id: 'me@im.wechat', status: 'confirmed' }
-      : { status: next });
+    return json(next === 'confirmed' ? { ...logins.shift(), baseurl: 'https://ilinkai.weixin.qq.com', status: 'confirmed' } : { status: next });
   }
   if (pathname.endsWith('/getupdates')) {
-    const batch = updates.shift();
-    if (!batch) { await new Promise((resolve) => setTimeout(resolve, 30)); return json({ ret: 0, msgs: [], get_updates_buf: 'cursor-2' }); }
+    const batch = updatesByToken[token]?.shift();
+    if (!batch) { await new Promise((resolve) => setTimeout(resolve, 30)); return json({ ret: 0, msgs: [], get_updates_buf: `cursor-${token}` }); }
     return json(batch);
   }
-  if (pathname.endsWith('/sendmessage')) { sent.push(JSON.parse(init.body).msg); return json({ ret: 0 }); }
+  if (pathname.endsWith('/sendmessage')) { sent.push({ ...JSON.parse(init.body).msg, token }); return json({ ret: 0 }); }
   if (pathname.endsWith('/getuploadurl')) return json({ upload_param: 'up-param' });
   if (pathname.endsWith('/c2c/upload')) {
     uploads.push({ bytes: init.body.length, filekey: searchParams.get('filekey') });
@@ -60,35 +66,39 @@ const until = async (check, label) => {
   for (let wait = 0; wait < 200; wait += 1) { if (check()) return; await new Promise((resolve) => setTimeout(resolve, 15)); }
   throw new Error(`timed out waiting for ${label}`);
 };
+const inbound = () => events.filter(([channel]) => channel === 'desktop-pet:weixin-message').map(([, payload]) => payload);
+const readState = () => JSON.parse(fs.readFileSync(path.join(base, 'weixin-bridge.json'), 'utf8'));
 
 (async () => {
   const service = createWeixinBridgeService({ emit: (channel, payload) => events.push([channel, payload]), fetchImpl, makeVideo, safeStorage, userDataPath: base });
   assert.deepEqual(service.start(), { error: '还没扫码登录。', ok: false });
 
-  // QR login with a verify code.
-  assert.equal((await service.startLogin()).qrContent, 'https://liteapp.weixin.qq.com/q/abc');
-  await until(() => service.getStatus().state === 'need-verify', 'verify prompt');
+  // The owner's QR login, with a verify code.
+  assert.equal((await service.startLogin({ label: '我' })).qrContent, 'https://liteapp.weixin.qq.com/q/abc');
+  await until(() => service.getStatus().login?.state === 'need-verify', 'verify prompt');
   assert.equal(service.submitVerifyCode('abc').ok, false, 'only digits');
   assert.equal(service.submitVerifyCode('2468').ok, true);
-  updates.push({ get_updates_buf: 'cursor-1', msgs: [
+  updatesByToken['token-1'].push({ get_updates_buf: 'cursor-1', msgs: [
     { context_token: 'ctx-1', from_user_id: 'me@im.wechat', item_list: [{ text_item: { text: '你好呀' }, type: 1 }], message_type: 1 },
     { context_token: 'ctx-x', from_user_id: 'stranger@im.wechat', item_list: [{ text_item: { text: '陌生人' }, type: 1 }], message_type: 1 },
     { context_token: 'ctx-2', from_user_id: 'me@im.wechat', item_list: [{ type: 3, voice_item: { text: '这是语音转的字' } }, { image_item: { aeskey: imageKey.toString('hex'), media: { encrypt_query_param: 'p' } }, type: 2 }], message_type: 1 },
-    { from_user_id: 'bot@im.bot', item_list: [{ text_item: { text: '机器人自己发的' }, type: 1 }], message_type: 2 },
+    { from_user_id: 'bot1@im.bot', item_list: [{ text_item: { text: '机器人自己发的' }, type: 1 }], message_type: 2 },
   ] });
-  await until(() => events.filter(([channel]) => channel === 'desktop-pet:weixin-message').length === 2, 'messages');
+  await until(() => inbound().length === 2, 'messages');
   assert.equal(seenRequests.find((request) => request.query.verify_code)?.query.verify_code, '2468', 'the verify code is sent with the next poll');
-  const saved = JSON.parse(fs.readFileSync(path.join(base, 'weixin-bridge.json'), 'utf8'));
-  assert.ok(saved.tokenCipher && !JSON.stringify(saved).includes('token-1'), 'the token is stored encrypted');
+  assert.equal(service.getStatus().login, null, 'the QR is gone after the login');
+  const saved = readState();
+  assert.ok(saved.accounts[0].tokenCipher && !JSON.stringify(saved).includes('token-1'), 'the token is stored encrypted');
+  assert.deepEqual([saved.accounts[0].label, saved.accounts[0].owner], ['我', true], 'the first login is the owner\'s');
 
-  const messages = events.filter(([channel]) => channel === 'desktop-pet:weixin-message').map(([, payload]) => payload);
-  assert.deepEqual(messages[0], { images: [], text: '你好呀', voice: false });
-  assert.equal(messages[1].text, '这是语音转的字');
-  assert.equal(messages[1].voice, true);
-  assert.equal(messages[1].images[0], `data:image/png;base64,${plainImage.toString('base64')}`, 'the image is decrypted');
+  const [first, second] = inbound();
+  assert.deepEqual(first, { accountId: 'bot1@im.bot', images: [], label: '我', owner: true, text: '你好呀', voice: false });
+  assert.equal(second.text, '这是语音转的字');
+  assert.equal(second.voice, true);
+  assert.equal(second.images[0], `data:image/png;base64,${plainImage.toString('base64')}`, 'the image is decrypted');
 
-  // Replies go to the user who scanned, with the latest context token.
-  assert.equal((await service.send('收到啦')).ok, true);
+  // Replies go to the person who scanned, with their latest context token (no id: the owner).
+  assert.equal((await service.send(undefined, '收到啦')).ok, true);
   assert.deepEqual([sent[0].to_user_id, sent[0].context_token, sent[0].item_list[0].text_item.text, sent[0].message_type], ['me@im.wechat', 'ctx-2', '收到啦', 2]);
   const post = seenRequests.find((request) => request.path.endsWith('/sendmessage'));
   assert.equal(post.headers.Authorization, 'Bearer token-1');
@@ -106,33 +116,66 @@ const until = async (check, label) => {
   const wav = Buffer.concat([header, pcm]);
   const mp4 = await makeVoiceVideo(wav, null);
   assert.equal(mp4.subarray(4, 8).toString('ascii'), 'ftyp', 'an MP4 comes out');
-  const voiceResult = await service.sendVoice(wav.toString('base64'), plainImage.toString('base64'));
+  const voiceResult = await service.sendVoice(undefined, wav.toString('base64'), plainImage.toString('base64'));
   assert.equal(voiceResult.ok, true, voiceResult.error);
   assert.deepEqual(madeVideos.at(-1), { image: plainImage.length, wav: wav.length }, 'the audio and the picture reach the video maker');
   const videoItem = sent.at(-1).item_list[0];
   assert.equal(videoItem.type, 5);
   assert.deepEqual([videoItem.video_item.media.encrypt_query_param, videoItem.video_item.media.encrypt_type, videoItem.video_item.video_size], ['down-param', 1, 16]);
   assert.equal(Buffer.from(videoItem.video_item.media.aes_key, 'base64').toString('ascii').length, 32, 'the key is sent as base64 of its hex text');
-  const imageResult = await service.sendImage(plainImage.toString('base64'));
+  const imageResult = await service.sendImage(undefined, plainImage.toString('base64'));
   assert.equal(imageResult.ok, true, imageResult.error);
   assert.equal(sent.at(-1).item_list[0].type, 2);
   assert.equal(sent.at(-1).item_list[0].image_item.mid_size, 16, 'cipher size of an 8-byte image');
   assert.equal(uploads.length, 2);
   assert.equal(seenRequests.filter((request) => request.path.endsWith('/getuploadurl')).map((request) => request.body.media_type).join(','), '2,1');
 
-  // A restart reuses the login and the cursor.
+  // Mum scans her own login next to the owner's; her messages carry her name, and replies on her
+  // login go to her only.
+  qrStatuses = ['wait', 'scaned', 'confirmed'];
+  await service.startLogin({ label: '妈妈' });
+  await until(() => service.getStatus().accounts.length === 2 && service.getStatus().accounts.every((account) => account.state === 'connected'), 'two logins');
+  assert.deepEqual(service.getStatus().accounts.map((account) => [account.label, account.owner]), [['我', true], ['妈妈', false]]);
+  updatesByToken['token-2'].push({ get_updates_buf: 'cursor-m', msgs: [
+    { context_token: 'ctx-m', from_user_id: 'mum@im.wechat', item_list: [{ text_item: { text: '吃饭了吗' }, type: 1 }], message_type: 1 },
+  ] });
+  await until(() => inbound().length === 3, 'mum\'s message');
+  assert.deepEqual(inbound()[2], { accountId: 'bot2@im.bot', images: [], label: '妈妈', owner: false, text: '吃饭了吗', voice: false });
+  assert.equal((await service.send('bot2@im.bot', '吃过啦')).ok, true);
+  assert.deepEqual([sent.at(-1).to_user_id, sent.at(-1).context_token, sent.at(-1).token], ['mum@im.wechat', 'ctx-m', 'token-2']);
+  assert.equal((await service.send('nobody', '?')).ok, false, 'an unknown login sends nothing');
+
+  // Renaming and moving "me" to another login.
+  assert.equal(service.updateAccount('bot2@im.bot', { label: '老妈' }).ok, true);
+  assert.equal(readState().accounts.find((account) => account.botId === 'bot2@im.bot').label, '老妈');
+  service.updateAccount('bot2@im.bot', { owner: true });
+  assert.deepEqual(service.getStatus().accounts.map((account) => account.owner), [false, true], 'only one owner');
+  service.updateAccount('bot1@im.bot', { owner: true });
+
+  // A restart reuses both logins and their cursors.
   service.stop();
   await new Promise((resolve) => setTimeout(resolve, 50));
-  await until(() => JSON.parse(fs.readFileSync(path.join(base, 'weixin-bridge.json'), 'utf8')).syncBuf === 'cursor-2', 'cursor saved');
-  const again = createWeixinBridgeService({ emit: (channel, payload) => events.push([channel, payload]), fetchImpl, safeStorage, userDataPath: base });
+  await until(() => readState().accounts.every((account) => account.syncBuf), 'cursors saved');
+  const again = createWeixinBridgeService({ emit: (channel, payload) => events.push([channel, payload]), fetchImpl, makeVideo, safeStorage, userDataPath: base });
   assert.equal(again.start().ok, true, 'no new scan needed');
-  await until(() => seenRequests.filter((request) => request.path.endsWith('/getupdates')).some((request) => request.body?.get_updates_buf === 'cursor-2'), 'resumed cursor');
+  await until(() => again.getStatus().accounts.filter((account) => account.state === 'connected').length === 2, 'both reconnected');
 
-  // An expired login is reported so the page can ask for a new scan.
-  updates.push({ errcode: -14, errmsg: 'session timeout', ret: -14 });
-  await until(() => again.getStatus().state === 'expired', 'expired state');
-  again.logout();
-  assert.equal(fs.existsSync(path.join(base, 'weixin-bridge.json')), false, 'logout forgets the login');
+  // An expired login is reported on that login so the page can ask that person for a new scan.
+  updatesByToken['token-2'].push({ errcode: -14, errmsg: 'session timeout', ret: -14 });
+  await until(() => again.getStatus().accounts.find((account) => account.id === 'bot2@im.bot').state === 'expired', 'expired state');
+  assert.equal(again.getStatus().accounts.find((account) => account.id === 'bot1@im.bot').state, 'connected', 'the others keep going');
+
+  // Removing a login forgets it; the last one gone removes the file.
+  again.removeAccount('bot2@im.bot');
+  assert.deepEqual(readState().accounts.map((account) => account.botId), ['bot1@im.bot']);
+  again.removeAccount('bot1@im.bot');
+  assert.equal(fs.existsSync(path.join(base, 'weixin-bridge.json')), false, 'nothing kept after the last login is removed');
+  again.stop();
+
+  // The first version saved one login as the whole file: it comes back as the owner's.
+  fs.writeFileSync(path.join(base, 'weixin-bridge.json'), JSON.stringify({ baseUrl: 'https://ilinkai.weixin.qq.com', botId: 'old@im.bot', syncBuf: 'c', tokenCipher: Buffer.from('enc:token-1').toString('base64'), userId: 'me@im.wechat' }));
+  const migrated = createWeixinBridgeService({ emit: () => undefined, fetchImpl, makeVideo, safeStorage, userDataPath: base });
+  assert.deepEqual(migrated.getStatus().accounts.map((account) => [account.id, account.label, account.owner]), [['old@im.bot', '我', true]]);
 
   fs.rmSync(base, { force: true, recursive: true });
   console.log('weixin bridge service smoke passed');

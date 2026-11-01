@@ -514,8 +514,12 @@ export type PetConfigUpdateHandler = (
 
 export type DesktopPetChatMode = 'single' | 'group' | 'story';
 
-/** 'approve-task' = yes, and don't ask again for the rest of this task. */
-export type ChatAgentApprovalDecision = 'approve' | 'approve-task' | 'deny';
+/**
+ * 'approve-task' = yes, and don't ask again for the rest of this task; 'approve-day' = yes, and
+ * don't ask again today (src/agent/approval/dailyApproval.ts). Steps that cannot be taken back
+ * still ask every time.
+ */
+export type ChatAgentApprovalDecision = 'approve' | 'approve-task' | 'approve-day' | 'deny';
 export type ChatAgentFollowUpAction = AgentChatFollowUpAction;
 export type ChatAgentApprovalStatus = 'pending' | 'approved' | 'denied' | 'running' | 'awaiting-approval' | 'completed' | 'failed' | 'blocked';
 export type ChatAgentRunStatus = 'planned' | 'running' | 'awaiting-approval' | 'completed' | 'failed' | 'blocked';
@@ -682,7 +686,8 @@ export interface ChatAgentLoopRun {
   durationMs?: number | null;
   goal: string;
   /** A step waiting for the user's yes/no, answered on this card (button, typed or spoken). */
-  pendingApproval?: { detail: string; id: string; title: string } | null;
+  /** irreversible: sending, deleting, paying…: only a plain yes/no is offered, every time. */
+  pendingApproval?: { detail: string; id: string; irreversible?: boolean; title: string } | null;
   startedAt?: number | null;
   status: 'running' | 'done' | 'needs-user' | 'failed' | 'cancelled' | 'budget';
   steps: Array<{ changed: boolean | null; index: number; key?: string; result?: string | null; status?: 'running' | 'done' | 'failed' | 'waiting'; text: string }>;

@@ -88,7 +88,7 @@ export function AgentLoopRunPanel({
           {pending.detail && pending.detail !== pending.title ? (
             <p className="whitespace-pre-wrap text-2xs leading-snug text-muted-foreground">{pending.detail}</p>
           ) : null}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               size="sm"
@@ -99,18 +99,34 @@ export function AgentLoopRunPanel({
               <Check className="mr-1 h-3 w-3" />
               允许
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={!onResolveAgentApproval}
-              onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-task')}
-              className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
-              title="这个任务后面的步骤都不再问，下一个任务会重新问"
-            >
-              <CheckCheck className="mr-1 h-3 w-3" />
-              这次都允许
-            </Button>
+            {pending.irreversible ? null : (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={!onResolveAgentApproval}
+                  onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-task')}
+                  className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
+                  title="这个任务后面的步骤都不再问，下一个任务会重新问"
+                >
+                  <CheckCheck className="mr-1 h-3 w-3" />
+                  这次都允许
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={!onResolveAgentApproval}
+                  onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-day')}
+                  className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
+                  title="今天的操作都不再问，明天或你拒绝一次后会重新问；发送、删除、付款这类还会问"
+                >
+                  <CheckCheck className="mr-1 h-3 w-3" />
+                  今天都允许
+                </Button>
+              </>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -122,7 +138,7 @@ export function AgentLoopRunPanel({
               <X className="mr-1 h-3 w-3" />
               拒绝
             </Button>
-            <span className="text-2xs text-muted-foreground">也可以直接说“同意”“都同意”或“拒绝”</span>
+            <span className="text-2xs text-muted-foreground">{pending.irreversible ? '这一步做了撤不回，每次都会问。也可以直接说“同意”或“拒绝”' : '也可以直接说“同意”“都同意”“今天都允许”或“拒绝”'}</span>
           </div>
         </div>
       ) : null}

@@ -95,10 +95,19 @@ export const AGENT_APPROVAL_APPROVE_TASK_TEXTS = new Set([
   '都同意', '全部同意', '都允许', '全部允许', '都可以', '都行', '都好', '这次都允许', '这次都同意', '后面都同意', '不用再问了', '不用问了', '别问了', '都去做',
 ]);
 
+/** Yes to this step and to everyday steps for the rest of today ("今天都允许" on the card). */
+export const AGENT_APPROVAL_APPROVE_DAY_TEXTS = new Set([
+  '今天都允许', '今天都同意', '今天都可以', '今天都行', '今天都好', '今天不用问了', '今天不用再问了', '今天别问了', '今天都去做', '今天都放行',
+]);
+
 export function resolveAgentApprovalDecisionFromText(text: string): ChatAgentApprovalDecision | null {
   const normalizedText = normalizeAgentApprovalDecisionText(text);
   if (!normalizedText || normalizedText.length > 18) {
     return null;
+  }
+
+  if (AGENT_APPROVAL_APPROVE_DAY_TEXTS.has(normalizedText.replace(/[吧啊呀呢哦嘛的]+$/u, ''))) {
+    return 'approve-day';
   }
 
   if (AGENT_APPROVAL_APPROVE_TASK_TEXTS.has(normalizedText.replace(/[吧啊呀呢哦嘛的]+$/u, ''))) {

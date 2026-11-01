@@ -1,4 +1,5 @@
 import { delegatedScopeFields } from './chatDelegation';
+import { grantDailyApproval, revokeDailyApproval } from '../../../agent/approval/dailyApproval';
 import { describeConversationStep } from '../../../agent/conversation/conversationStepLabels';
 import { type ConversationTaskProgress } from '../../../agent/conversation/conversationTools';
 import { desktopPetChatStore } from '../../../chatStore';
@@ -134,22 +135,24 @@ export function createConversationTaskCard(options: {
   };
 
   // "这次都允许": the rest of this task runs without asking; the next task asks again.
+  // "今天都允许" does the same for the rest of the day; any "不要" ends it (dailyApproval.ts).
   let allowedForTask = false;
 
   /** Asks on this card; the step that is running shows "等你确认" until answered. */
-  const requestApproval = async ({ detail, title }: { detail: string; title: string }) => {
-    if (allowedForTask) return !controller.signal.aborted;
+  const requestApproval = async ({ detail, irreversible = false, title }: { detail: string; irreversible?: boolean; title: string }) => {
     const approvalId = createChatMessageId('agent-loop-approval');
     const running = [...run.steps].reverse().find((step) => step.status === 'running');
     // Registered before the card shows the question, so anything that reacts to the card
     // (the microphone, a spoken or typed answer) already finds it waiting.
     const answer = waitForAgentLoopDecision(approvalId, null).then((decision) => {
-      if (decision === 'approve-task') allowedForTask = true;
+      if (decision === 'approve-task' || decision === 'approve-day') allowedForTask = true;
+      if (decision === 'approve-day') grantDailyApproval();
+      if (decision === 'deny') revokeDailyApproval();
       return decision !== 'deny';
     });
     write({
       ...run,
-      pendingApproval: { detail, id: approvalId, title },
+      pendingApproval: { detail, id: approvalId, irreversible, title },
       status: 'needs-user',
       steps: running ? run.steps.map((step) => (step === running ? { ...step, status: 'waiting' } : step)) : run.steps,
     });

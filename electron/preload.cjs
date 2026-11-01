@@ -51,14 +51,16 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   /** Phone WeChat through Tencent's official ClawBot channel (electron/weixinBridgeService.cjs). */
   weixin: {
     status: () => ipcRenderer.invoke('desktop-pet:weixin-status'),
-    startLogin: () => ipcRenderer.invoke('desktop-pet:weixin-start-login'),
+    startLogin: (request) => ipcRenderer.invoke('desktop-pet:weixin-start-login', request ?? {}),
+    cancelLogin: () => ipcRenderer.invoke('desktop-pet:weixin-cancel-login'),
     submitVerifyCode: (code) => ipcRenderer.invoke('desktop-pet:weixin-verify', { code }),
     start: () => ipcRenderer.invoke('desktop-pet:weixin-start'),
     stop: () => ipcRenderer.invoke('desktop-pet:weixin-stop'),
-    logout: () => ipcRenderer.invoke('desktop-pet:weixin-logout'),
-    send: (text) => ipcRenderer.invoke('desktop-pet:weixin-send', { text }),
-    sendVoice: (wavBase64, imageBase64) => ipcRenderer.invoke('desktop-pet:weixin-send-voice', { imageBase64, wavBase64 }),
-    sendImage: (imageBase64) => ipcRenderer.invoke('desktop-pet:weixin-send-image', { imageBase64 }),
+    updateAccount: (accountId, changes) => ipcRenderer.invoke('desktop-pet:weixin-update-account', { accountId, ...(changes ?? {}) }),
+    removeAccount: (accountId) => ipcRenderer.invoke('desktop-pet:weixin-remove-account', { accountId }),
+    send: (accountId, text) => ipcRenderer.invoke('desktop-pet:weixin-send', { accountId, text }),
+    sendVoice: (accountId, wavBase64, imageBase64) => ipcRenderer.invoke('desktop-pet:weixin-send-voice', { accountId, imageBase64, wavBase64 }),
+    sendImage: (accountId, imageBase64) => ipcRenderer.invoke('desktop-pet:weixin-send-image', { accountId, imageBase64 }),
     onStatus: (callback) => {
       if (typeof callback !== 'function') return () => {};
       const listener = (_event, status) => callback(status ?? null);

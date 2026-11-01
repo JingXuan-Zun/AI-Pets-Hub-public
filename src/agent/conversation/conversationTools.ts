@@ -24,7 +24,8 @@ export interface ConversationToolRuntime {
   /** Shows pictures in the chat as a message from this character (e.g. a drawing it made). */
   presentImages?: (images: Array<{ dataUrl: string; mimeType: string; name: string; sizeBytes?: number }>, caption: string) => void;
   /** Shows a plain-language confirmation card and resolves with the user's answer. */
-  requestApproval: (request: { detail: string; title: string }) => Promise<boolean>;
+  /** irreversible: asked every time, even after "这次都允许" or "今天都允许" (decided from the text when left out). */
+  requestApproval: (request: { detail: string; irreversible?: boolean; title: string }) => Promise<boolean>;
   /** Reports each tool call to the task card in the chat (plain-language progress only). */
   progress?: ConversationTaskProgress;
   signal?: AbortSignal | null;
