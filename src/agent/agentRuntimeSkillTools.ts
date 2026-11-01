@@ -19,6 +19,7 @@ import {
   getToolStringInput,
 } from './agentRuntimeToolPreparation';
 import { createAgentRuntimeResult } from './agentRuntimeToolResult';
+import { isMcpServerEnabledForPet } from '../plugins/pluginCapabilityAccess';
 import {
   describeAgentImportedSkill,
   loadEnabledAgentImportedSkills,
@@ -106,10 +107,12 @@ function describeMcpToolParameters(inputSchema: Record<string, unknown>) {
   return properties.slice(0, 8).map((key) => `${key}${required.has(key) ? '*' : ''}`).join(', ');
 }
 
-export async function executeListMcpTools(toolCall: AgentToolCallCommand) {
+export async function executeListMcpTools(toolCall: AgentToolCallCommand, scope: AgentImportedSkillScope = {}) {
   const serverId = getToolStringInput(toolCall, ['serverId']);
-  const tools = await listAvailableAgentMcpTools(serverId || null);
-  const servers = await listAvailableAgentMcpServers();
+  // Servers turned off for this character in the plugin market are left out.
+  const enabled = (id: string) => isMcpServerEnabledForPet(id, scope.petId);
+  const tools = (await listAvailableAgentMcpTools(serverId || null)).filter((tool) => enabled(tool.serverId));
+  const servers = (await listAvailableAgentMcpServers()).filter((server) => enabled(server.id));
   const mcpConfig = await loadExternalAgentMcpConfig();
   const policyConfig = parseAgentMcpPolicyConfig(mcpConfig);
   const shownServers = servers.filter((server) => !serverId || server.id === serverId);
@@ -137,13 +140,17 @@ export async function executeListMcpTools(toolCall: AgentToolCallCommand) {
 }
 
 export async function executeCallMcpTool(
-  runtimeOrToolCall: Pick<AgentSkillRuntimeContext, 'signal'> | AgentToolCallCommand,
+  runtimeOrToolCall: Pick<AgentSkillRuntimeContext, 'signal' | 'petId'> | AgentToolCallCommand,
   maybeToolCall?: AgentToolCallCommand,
 ) {
-  const runtime = maybeToolCall ? runtimeOrToolCall as Pick<AgentSkillRuntimeContext, 'signal'> : {};
+  const runtime = maybeToolCall ? runtimeOrToolCall as Pick<AgentSkillRuntimeContext, 'signal' | 'petId'> : {};
   const toolCall = maybeToolCall ?? runtimeOrToolCall as AgentToolCallCommand;
   const serverId = getToolStringInput(toolCall, ['serverId']);
   const name = getToolStringInput(toolCall, ['name', 'toolName']);
+  if (!isMcpServerEnabledForPet(serverId, runtime.petId)) {
+    const text = `扩展「${serverId}」没有给这个角色开启，可以在 设置 → 扩展 → 插件市场 里打开。`;
+    return createAgentRuntimeResult({ errorText: text, observations: [`MCP server disabled for this character: ${serverId}`], responseText: text });
+  }
   const requestId = createMcpRequestId(serverId, name);
   const startedAt = Date.now();
   const removeAbortListener = registerMcpAbortCancel(runtime.signal, requestId);

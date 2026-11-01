@@ -1008,6 +1008,31 @@ interface Window {
     };
     /** Native folder picker. */
     pickDirectory?: (title?: string) => Promise<{ ok: boolean; path?: string }>;
+    /** Phone WeChat through Tencent's official ClawBot channel (electron/weixinBridgeService.cjs). */
+    weixin?: {
+      status: () => Promise<import('./weixin-bridge/weixinBridgeSettings').WeixinBridgeStatus>;
+      startLogin: () => Promise<{ ok: true; qrContent: string } | { ok: false; error: string }>;
+      submitVerifyCode: (code: string) => Promise<{ ok: boolean; error?: string }>;
+      start: () => Promise<{ ok: boolean; error?: string }>;
+      stop: () => Promise<{ ok: boolean }>;
+      logout: () => Promise<{ ok: boolean }>;
+      send: (text: string) => Promise<{ ok: boolean; error?: string }>;
+      sendVoice: (wavBase64: string, imageBase64?: string) => Promise<{ ok: boolean; error?: string }>;
+      sendImage: (imageBase64: string) => Promise<{ ok: boolean; error?: string }>;
+      onStatus: (callback: (status: import('./weixin-bridge/weixinBridgeSettings').WeixinBridgeStatus | null) => void) => () => void;
+      onMessage: (callback: (message: { images: string[]; text: string; voice: boolean } | null) => void) => () => void;
+    };
+    /** Plugin packages in userData/plugins (electron/pluginPackageService.cjs). */
+    plugins?: {
+      list: () => Promise<{ ok: boolean; plugins: unknown[]; error?: string }>;
+      installFolder: (folder: string) => Promise<{ ok: true; manifest: import('./plugins/pluginPackages').PluginPackageManifest; replaced?: boolean } | { ok: false; error: string }>;
+      installGitHub: (url: string) => Promise<{ ok: true; manifest: import('./plugins/pluginPackages').PluginPackageManifest; replaced?: boolean } | { ok: false; error: string }>;
+      uninstall: (id: string) => Promise<{ ok: boolean; error?: string }>;
+      readSkill: (id: string) => Promise<{ ok: true; text: string } | { ok: false; error: string }>;
+      installMarket?: (url: string, sha256: string) => Promise<{ ok: true; manifest: import('./plugins/pluginPackages').PluginPackageManifest } | { ok: false; error: string }>;
+      publish?: (id: string, apiUrl: string) => Promise<{ ok: true; status: 'pending'; uploadId: string; version: string } | { ok: false; error: string }>;
+      writeDraft?: (id: string, files: Record<string, string>) => Promise<{ ok: true; folder: string } | { ok: false; error: string }>;
+    };
     /** Private-data backups in the app's own backups folder (no API keys). */
     dataBackup?: {
       list: () => Promise<{ backups?: Array<{ modifiedAt: string; name: string; sizeBytes: number }>; error?: string; ok: boolean }>;
@@ -1348,6 +1373,7 @@ interface Window {
     }) => Promise<DesktopPetMcpHistoryMutationResultLike>;
     loadMcpConfig?: () => Promise<DesktopPetMcpConfigResultLike>;
     saveMcpConfig?: (request?: {
+      config?: Record<string, unknown>;
       rawText?: string;
     }) => Promise<DesktopPetMcpConfigResultLike>;
     getMcpSoakReadiness?: (request?: {

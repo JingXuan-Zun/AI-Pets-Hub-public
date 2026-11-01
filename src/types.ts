@@ -8,6 +8,7 @@ import type { InteractiveDialogueSettings } from './interactiveDialogueSettings'
 import type { ProductivitySettings } from './productivity/productivityTypes';
 import type { ComfyUiSettings } from './comfyui/comfyUiSettings';
 import type { QqBridgeSettings } from './qq-bridge/qqBridgeSettings';
+import type { WeixinBridgeSettings } from './weixin-bridge/weixinBridgeSettings';
 import type { WorkTaskSettings } from './work-tasks/workTaskSettings';
 import type { DevAgentSettings } from './dev-agent/devAgentSettings';
 import type { Live2DRuntimeProfileConfigV1 } from './pet-runtime/live2d/live2dRuntimeProfile';
@@ -398,6 +399,7 @@ export interface PetConfig {
     comfyUiApiKey: string;
     /** Chatting with the characters from phone QQ through a local OneBot v11 service. */
     qqBridge: QqBridgeSettings;
+    weixinBridge: WeixinBridgeSettings;
     /** Optional access token of that OneBot service. */
     qqBridgeAccessToken: string;
     webSearchEnabled: boolean;

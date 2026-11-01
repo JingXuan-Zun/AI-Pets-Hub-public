@@ -87,6 +87,7 @@ export function useVoiceConversationController({
       isBusy: isPetVoiceBusy,
       subscribeBusy: subscribePetVoiceBusy,
       onListeningChange: (listening) => desktopPetChatStore.setListening(listening),
+      onInputActivity: (activity) => voiceMicStatusStore.setInput(activity),
       onRecognitionError: (error) => {
         pushFrontendRuntimeError('voice', 'conversation recognition failed', error);
         lastRecognitionError = getVoiceErrorMessage(error, '');

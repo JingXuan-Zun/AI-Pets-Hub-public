@@ -1,0 +1,24 @@
+{
+  "id": "dev-agent",
+  "name": "开发助手",
+  "version": "1.0.0",
+  "description": "让角色把写代码、改项目的活交给 Claude Code（或兼容的编程模型），做完把结果告诉你。",
+  "author": "AI Pets Hub",
+  "kind": "native",
+  "permissions": ["run-program", "change-computer", "credentials"],
+  "capabilityIds": ["dev.delegate"],
+  "settingsPageId": "platform-dev-agent",
+  "roleScoped": true,
+  "useWhen": "用户想改代码、修 bug、给项目加功能，或者想做一个新插件时。",
+  "examples": ["帮我把翻滚的无敌时间改成 0.3 秒", "看看这个项目为什么启动报错"],
+  "requires": [{ "name": "Claude Code（登录一次 Claude 账号），或一个兼容的 API", "install": "https://docs.anthropic.com/claude-code" }],
+  "setup": [
+    "在下面打开开发助手，选 Claude 账号或兼容接口。",
+    "添加要让它改的项目文件夹。",
+    "需要时把常用的检查命令（例如 npm test）加进“允许的命令”，就不用每次确认。"
+  ],
+  "troubleshooting": [
+    "提示没登录：在终端里运行一次 claude 并登录。",
+    "改了文件但没生效：开发助手只改文件，程序可能需要重新启动。"
+  ]
+}

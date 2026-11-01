@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../types';
+import { stripMessageDiagrams } from '../components/chat/message/messageDiagrams';
 
 // Which chat lines go back to QQ after a message from the phone: every reply posted since,
 // once it has finished, and every approval question the character asks meanwhile.
@@ -26,7 +27,8 @@ export type QqOutgoing = {
 
 /** Plain text for QQ: no Markdown bold markers. */
 export function formatQqReplyText(text: string) {
-  return text.replace(/\*{2,3}/gu, '').trim();
+  // QQ cannot show the character's diagrams (```svg): they stay in the chat window on the computer.
+  return stripMessageDiagrams(text, '（画了一张示意图，在电脑上的聊天窗口里看）').replace(/\*{2,3}/gu, '').trim();
 }
 
 /** The reply as shown in the chat: text with kaomoji/emoji where they appear, image stickers apart. */

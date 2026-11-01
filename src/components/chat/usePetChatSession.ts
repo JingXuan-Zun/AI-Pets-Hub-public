@@ -25,6 +25,7 @@ import { getDesktopPetSlot } from '../../multiPetRoster';
 // Read before anything at startup can change the chat partner.
 const initialChatTarget = loadChatTargetSnapshot();
 import { registerCompanionLineSpeaker } from '../../life-companion/companionLineSpeech';
+import { useWeixinBridge } from '../../weixin-bridge/useWeixinBridge';
 
 interface UsePetChatSessionOptions {
   config: PetConfig;
@@ -190,6 +191,7 @@ export function usePetChatSession({
   }), [playVoiceText]);
   useApprovalVoiceListener({ config, conversationActive: voiceInputController.conversation.active });
   useQqBridge({ config, configRef, sendMessage });
+  useWeixinBridge({ config, configRef, sendMessage });
   useVoiceWakeListener({
     config,
     conversationActive: voiceInputController.conversation.active,

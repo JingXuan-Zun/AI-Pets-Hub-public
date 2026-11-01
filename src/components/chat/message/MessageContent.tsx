@@ -3,6 +3,7 @@ import { expressionLibraryBridge } from '../../../expression/expressionLibraryBr
 import { pushFrontendRuntimeLog } from '../../../frontendRuntimeLogger';
 import { type ChatMessageContentSegment, type ChatMessageExpressionContentSegment, type ChatMessageImageAttachment } from '../../../types';
 import { splitMessageTextByBrackets } from './messageTextUtils';
+import { splitMessageDiagrams } from './messageDiagrams';
 
 export function AvatarBadge({
   avatarUrl,
@@ -110,7 +111,7 @@ export function OrderedMessageContent({
     ? <ExpressionContentSegment key={`${messageKey}-expression-${segment.expressionId}-${index}`} segment={segment} />
     : (
       <Fragment key={`${messageKey}-content-text-${index}`}>
-        {splitMessageTextByBrackets(segment.text).map((part, partIndex) => (
+        {splitMessageTextByBrackets(splitMessageDiagrams(segment.text).text).map((part, partIndex) => (
           <span key={`${messageKey}-content-text-${index}-${partIndex}`} style={{ ...(!part.isBracketContent ? { color } : {}), ...(part.bold ? { fontWeight: 700 } : {}) }}>{part.text}</span>
         ))}
       </Fragment>

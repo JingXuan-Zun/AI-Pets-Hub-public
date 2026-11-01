@@ -131,6 +131,7 @@ const inputs: Array<Record<string, unknown>> = [];
 const executed: string[] = [];
 const desktopApprovals: string[] = [];
 const fakeDesktop = (labelsFor: (window: FakeWindow) => string[]): DesktopToolDependencies => ({
+  closeWindow: async () => null,
   executeLoop: async (action) => { executed.push(action.action); return { detail: `${action.action} ok`, ok: true }; },
   focusWindow: async () => undefined,
   input: async (request) => { inputs.push(request); return null; },

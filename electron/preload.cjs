@@ -48,6 +48,40 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     stop: () => ipcRenderer.invoke('desktop-pet:snowluma-stop'),
   },
   pickDirectory: (title) => ipcRenderer.invoke('desktop-pet:pick-directory', title),
+  /** Phone WeChat through Tencent's official ClawBot channel (electron/weixinBridgeService.cjs). */
+  weixin: {
+    status: () => ipcRenderer.invoke('desktop-pet:weixin-status'),
+    startLogin: () => ipcRenderer.invoke('desktop-pet:weixin-start-login'),
+    submitVerifyCode: (code) => ipcRenderer.invoke('desktop-pet:weixin-verify', { code }),
+    start: () => ipcRenderer.invoke('desktop-pet:weixin-start'),
+    stop: () => ipcRenderer.invoke('desktop-pet:weixin-stop'),
+    logout: () => ipcRenderer.invoke('desktop-pet:weixin-logout'),
+    send: (text) => ipcRenderer.invoke('desktop-pet:weixin-send', { text }),
+    sendVoice: (wavBase64, imageBase64) => ipcRenderer.invoke('desktop-pet:weixin-send-voice', { imageBase64, wavBase64 }),
+    sendImage: (imageBase64) => ipcRenderer.invoke('desktop-pet:weixin-send-image', { imageBase64 }),
+    onStatus: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, status) => callback(status ?? null);
+      ipcRenderer.on('desktop-pet:weixin-status-changed', listener);
+      return () => ipcRenderer.removeListener('desktop-pet:weixin-status-changed', listener);
+    },
+    onMessage: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, message) => callback(message ?? null);
+      ipcRenderer.on('desktop-pet:weixin-message', listener);
+      return () => ipcRenderer.removeListener('desktop-pet:weixin-message', listener);
+    },
+  },
+  plugins: {
+    list: () => ipcRenderer.invoke('desktop-pet:plugins-list'),
+    installFolder: (folder) => ipcRenderer.invoke('desktop-pet:plugins-install-folder', { folder }),
+    installGitHub: (url) => ipcRenderer.invoke('desktop-pet:plugins-install-github', { url }),
+    uninstall: (id) => ipcRenderer.invoke('desktop-pet:plugins-uninstall', { id }),
+    readSkill: (id) => ipcRenderer.invoke('desktop-pet:plugins-read-skill', { id }),
+    installMarket: (url, sha256) => ipcRenderer.invoke('desktop-pet:plugins-install-market', { url, sha256 }),
+    publish: (id, apiUrl) => ipcRenderer.invoke('desktop-pet:plugins-publish', { id, apiUrl }),
+    writeDraft: (id, files) => ipcRenderer.invoke('desktop-pet:plugins-write-draft', { id, files }),
+  },
   dataBackup: {
     list: () => ipcRenderer.invoke('desktop-pet:data-backup-list'),
     openFolder: () => ipcRenderer.invoke('desktop-pet:data-backup-open-folder'),

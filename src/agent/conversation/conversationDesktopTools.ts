@@ -30,6 +30,8 @@ import type { ConversationToolDefinition } from './conversationToolTypes';
 // policy: one approval for operating the computer, typing/sending/deleting asked each time.
 
 export interface DesktopToolDependencies {
+  /** Asks the window to close (like its × button); resolves with an error message, or null. */
+  closeWindow: (window: LoopWindow) => Promise<string | null>;
   executeLoop: (action: LoopAction, context: { elements: LoopElement[]; focus: LoopWindow | null; windows: LoopWindow[] }) => Promise<LoopActionOutcome>;
   focusWindow: (window: LoopWindow) => Promise<void>;
   /** Sends one raw input request; resolves with an error message, or null on success. */
@@ -69,6 +71,10 @@ const NO_VISION_HINT = '（没有配置视觉模型，看不了画面：纯图�
 function defaultDependencies(settings: PetConfig['settings']): DesktopToolDependencies {
   const vision = resolveVisionModelSettings(settings);
   return {
+    closeWindow: async (window) => {
+      const result = (await desktopPetShellRuntime.closeWindow({ hwnd: window.hwnd, pid: window.pid ?? undefined }) ?? {}) as { closed?: unknown; error?: unknown; reason?: unknown };
+      return result.closed ? null : String(result.error ?? result.reason ?? '没有关掉');
+    },
     executeLoop: executeLoopAction,
     focusWindow: async (window) => {
       if (!(window.hwnd > 0)) return;
@@ -330,6 +336,28 @@ export function createConversationDesktopSession(options: {
       if (refusal) return { content: refusal };
       ({ active, windows } = await deps.observeWindows());
       return afterAction(action, await deps.executeLoop(action, { elements: [], focus, windows }));
+    }),
+    // Closing went focus → Alt+F4, which failed whenever Windows refused to bring the window
+    // forward (rounds of retries). The close request goes to the window directly instead; the
+    // app still asks to save unsaved work, so it is as safe as the user clicking ×.
+    tool('close_window', '关闭一个窗口（相当于点它的 ×，不用先切到前台、不用按 Alt+F4）。有没保存的内容时应用会自己弹出“是否保存”。', {
+      window: { description: '窗口标题、进程名或 hwnd，来自 list_windows', type: 'string' },
+    }, ['window'], async (args) => {
+      const query = text(args, 'window');
+      const action: LoopAction = { action: 'focus_window', window: query };
+      const refusal = await authorize(action, undefined);
+      if (refusal) return { content: refusal };
+      ({ active, windows } = await deps.observeWindows());
+      const target = resolveLoopWindow(query, windows);
+      if (!target) return { content: `没有找到窗口「${query}」。先用 list_windows 看看。` };
+      const error = await deps.closeWindow(target);
+      await deps.sleep(SETTLE_MS);
+      ({ active, windows } = await deps.observeWindows());
+      const stillOpen = windows.some((window) => window.hwnd === target.hwnd);
+      if (error && stillOpen) return { content: `关闭「${target.title}」失败：${error}` };
+      const prompt = stillOpen ? '窗口还在，可能弹出了“是否保存”之类的对话框：先 list_windows / read_window 看一下，再问用户要不要保存。' : '';
+      return { content: `已请求关闭「${target.title}」。${stillOpen ? prompt : '窗口已关闭。'}
+${formatLoopWindows(windows, active)}` };
     }),
     tool('click', '点击。target 用最新清单里的元素编号；清单里没有、但知道位置时可以用屏幕坐标。返回点击后的变化和新清单。文件改名、移动、复制、新建文件夹不要在资源管理器里点，用 files 工具。', {
       button: { description: 'left（默认）、double（双击）或 right（右键）', enum: ['left', 'double', 'right'], type: 'string' },

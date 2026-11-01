@@ -112,6 +112,13 @@ for ($attempt = 0; $attempt -lt 5; $attempt++) {
     $attached = [DesktopPetTopLevelWindowEnumerator]::AttachThreadInput($currentThreadId, $foregroundThreadId, $true)
   }
   try {
+    # Windows refuses to bring a window forward for a process that did not get the last input
+    # (it showed as 4-5 failed attempts, ~2.5 s, then keys went nowhere). A synthetic Alt tap
+    # counts as that input; done only after the plain request failed once.
+    if ($attempt -gt 0) {
+      [DesktopPetTopLevelWindowEnumerator]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
+      [DesktopPetTopLevelWindowEnumerator]::keybd_event(0x12, 0, 0x0002, [UIntPtr]::Zero)
+    }
     $focused = [DesktopPetTopLevelWindowEnumerator]::SetForegroundWindow($handle)
   } finally {
     if ($attached) {

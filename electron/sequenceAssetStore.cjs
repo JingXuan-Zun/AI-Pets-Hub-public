@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { MODEL_ASSET_DIRECTORY_NAME } = require('./modelAssetRoot.cjs');
 const { spawn } = require('child_process');
 const { createVideoLibraryFolders } = require('./videoLibraryFolders.cjs');
+const { resolveFfmpegPath } = require('./ffmpegPath.cjs');
 
 const IMAGE_EXTENSIONS = new Set(['.avif', '.bmp', '.gif', '.jpeg', '.jpg', '.png', '.webp']);
 const MAX_SEQUENCE_FRAME_COUNT = 300;
@@ -137,37 +138,6 @@ function createSequenceAssetStore({ assetRootPath, log } = {}) {
       fs.rmSync(targetDirectory, { force: true, recursive: true });
       return { error: error instanceof Error ? error.message : String(error), ok: false };
     }
-  }
-
-  function resolveFfmpegPath() {
-    const packagedBinaryName = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-    const resourcesUnpacked = process.resourcesPath
-      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffmpeg-static', packagedBinaryName)
-      : '';
-    // In packaged Electron builds this is the only path guaranteed to be a
-    // real filesystem executable. Check it before ffmpeg-static's ASAR path.
-    if (resourcesUnpacked && fs.existsSync(resourcesUnpacked)) return resourcesUnpacked;
-    const configured = process.env.DESKTOP_PET_FFMPEG_PATH || process.env.FFMPEG_PATH;
-    if (configured && fs.existsSync(configured)) return configured;
-    try {
-      const bundled = require('ffmpeg-static');
-      if (bundled && !bundled.includes(`${path.sep}app.asar${path.sep}`) && fs.existsSync(bundled)) return bundled;
-      // electron-builder unpacks native binaries outside app.asar. The
-      // package export still points into app.asar, so resolve its unpacked
-      // sibling before spawning the process.
-      if (bundled && /[\\/]app\.asar[\\/]/iu.test(bundled)) {
-        const unpacked = bundled.replace(/[\\/]app\.asar[\\/]/iu, `${path.sep}app.asar.unpacked${path.sep}`);
-        if (fs.existsSync(unpacked)) return unpacked;
-      }
-    } catch {}
-    const candidates = process.platform === 'win32' ? ['ffmpeg.exe', 'ffmpeg'] : ['ffmpeg'];
-    for (const candidate of candidates) {
-      try {
-        const result = require('child_process').execFileSync(candidate, ['-version'], { windowsHide: true, stdio: 'ignore' });
-        if (result !== undefined || candidate) return candidate;
-      } catch {}
-    }
-    return null;
   }
 
   function convertToTransparentWebm(sourcePath, targetPath, sourceExtension) {

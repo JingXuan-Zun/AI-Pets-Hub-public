@@ -1,4 +1,5 @@
 import { type VoiceSettings } from './types';
+import { stripMessageDiagrams } from '../components/chat/message/messageDiagrams';
 
 const SPEECH_BRACKET_PAIRS = new Map<string, string>([
   ['(', ')'],
@@ -169,7 +170,8 @@ export function splitSpeechTextForPlaybackPauses(text: string, settings: VoiceSe
 }
 
 export function prepareSpeechText(text: string, settings: VoiceSettings, preserveParagraphs = false) {
-  const rawText = String(text ?? '');
+  // Diagram code (```svg) is drawn in the chat, never read aloud.
+  const rawText = stripMessageDiagrams(String(text ?? ''));
   const normalizedText = settings.speechSkipBracketContent
     ? removeSpeechBracketContent(rawText)
     : rawText;

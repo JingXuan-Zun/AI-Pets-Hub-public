@@ -23,8 +23,9 @@ import { SettingsToggleSwitch } from '../../settings/SettingsToggleSwitch';
 import type { SettingsControlCenterPageId } from '../../settings/settingsControlCenterNavigation';
 import { openSettingsPage } from './settingsPageRequest';
 
-const SettingsExtensionHubTab = lazy(() => import('../../settings/SettingsExtensionHubTab')
-  .then((module) => ({ default: module.SettingsExtensionHubTab })));
+// The chat window shows only installed plugins; browsing and installing live in the settings window.
+const SettingsPluginMarketplaceTab = lazy(() => import('../../settings/SettingsPluginMarketplaceTab')
+  .then((module) => ({ default: module.SettingsPluginMarketplaceTab })));
 
 /**
  * 聊天 Hub 里的简洁设置页：常用项直接在 Hub 中修改并立即生效，
@@ -202,11 +203,11 @@ export function ChatHubOutfitPage({ config, slot, onUpdateConfig }: {
 
 /* ---------------- 插件 ---------------- */
 
-export function ChatHubPluginsPage({ currentPetId }: { currentPetId: string }) {
+export function ChatHubPluginsPage({ config, currentPetId }: { config: PetConfig; currentPetId: string }) {
   return (
-    <HubSettingsPage title="插件" description="查看、安装与管理插件" advancedPageId="extension-plugins">
+    <HubSettingsPage title="已装插件" description="这个角色能用哪些插件，分别开关" advancedPageId="extension-plugins">
       <Suspense fallback={<p className="py-10 text-center text-sm text-muted-foreground">加载中…</p>}>
-        <SettingsExtensionHubTab category="plugins" currentPetId={currentPetId} />
+        <SettingsPluginMarketplaceTab config={config} currentPetId={currentPetId} installedOnly />
       </Suspense>
     </HubSettingsPage>
   );

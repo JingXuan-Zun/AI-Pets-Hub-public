@@ -29,7 +29,7 @@ function setup(idleTimeoutMs = 60000) {
   let busyListener: (() => void) | null = null;
   let handlers: ConversationCaptureHandlers | null = null;
   const capture = { paused: false, stopped: false };
-  const log = { listening: [] as boolean[], sent: [] as string[], ended: [] as string[], recognized: 0 };
+  const log = { listening: [] as boolean[], sent: [] as string[], ended: [] as string[], recognized: 0, input: [] as string[] };
   const session = createVoiceConversationSession({
     startCapture: async (h) => {
       handlers = h;
@@ -54,6 +54,7 @@ function setup(idleTimeoutMs = 60000) {
     isBusy: () => busy,
     subscribeBusy: (listener) => { busyListener = listener; return () => { busyListener = null; }; },
     onListeningChange: (listening) => log.listening.push(listening),
+    onInputActivity: (activity) => log.input.push(activity),
     onEnd: (reason) => log.ended.push(reason),
     idleTimeoutMs,
     setTimer,
@@ -69,9 +70,16 @@ function setup(idleTimeoutMs = 60000) {
   check(await a.session.start(), true, 'starts');
   check([a.capture.paused, a.log.listening.at(-1)], [false, true], 'listening right away when pet is idle');
 
+  // The bubble above the character: talking → recognizing → done; a dropped noise clears it.
+  a.handlers().onSpeechStart?.();
+  check(a.log.input, ['speaking'], 'speech start shows the user is being heard');
+  a.handlers().onSpeechDiscarded?.();
+  check(a.log.input.at(-1), 'idle', 'a sound too short to be speech clears it');
+  a.handlers().onSpeechStart?.();
   a.handlers().onUtterance('hello', 1200);
   await flush();
   check(a.log.sent, ['heard:hello'], 'utterance recognized and sent');
+  check(a.log.input.slice(-3), ['speaking', 'recognizing', 'idle'], 'recognizing while turning speech into text, then idle');
 
   a.setBusy(true); // reply generating / speaking / queued synthesis
   check([a.capture.paused, a.log.listening.at(-1)], [true, false], 'mic paused (and shown off) while pet has the floor');

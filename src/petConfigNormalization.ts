@@ -21,6 +21,7 @@ import { migrateAgentMemoryLines } from './character-memory/sharedUserMemory';
 import { normalizeProductivitySettings } from './productivity/productivitySettings';
 import { normalizeComfyUiSettings } from './comfyui/comfyUiSettings';
 import { normalizeQqBridgeSettings } from './qq-bridge/qqBridgeSettings';
+import { normalizeWeixinBridgeSettings } from './weixin-bridge/weixinBridgeSettings';
 import { normalizeWorkTaskSettings } from './work-tasks/workTaskSettings';
 import { normalizeDevAgentSettings } from './dev-agent/devAgentSettings';
 import {
@@ -701,6 +702,7 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       comfyUi: normalizeComfyUiSettings(rawSettings.comfyUi),
       comfyUiApiKey: typeof rawSettings.comfyUiApiKey === 'string' ? rawSettings.comfyUiApiKey : '',
       qqBridge: normalizeQqBridgeSettings(rawSettings.qqBridge),
+      weixinBridge: normalizeWeixinBridgeSettings(rawSettings.weixinBridge),
       qqBridgeAccessToken: typeof rawSettings.qqBridgeAccessToken === 'string' ? rawSettings.qqBridgeAccessToken : '',
       geminiApiKey: normalizeTrimmedSettingString(
         rawSettings.geminiApiKey,

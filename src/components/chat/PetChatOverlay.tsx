@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useMemo } from 'react';
 import { PetChatOverlayBubble } from './PetChatOverlayBubble';
 import { type PetChatOverlayProps } from './petChatOverlayTypes';
 
@@ -56,6 +56,15 @@ export default function PetChatOverlay({
   onToggleVoiceEnabled,
   onToggleVoiceInput,
 }: PetChatOverlayProps) {
+  // The newest task card still waiting for a yes/no; its question also shows above the character.
+  const pendingApproval = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const pending = messages[index].agentLoopRun?.pendingApproval;
+      if (pending) return pending;
+    }
+    return null;
+  }, [messages]);
+
   return (
     <>
       {!isInteractiveDialogue && (
@@ -67,6 +76,8 @@ export default function PetChatOverlay({
           petAnchorPosition={petAnchorPosition}
           petVisualBounds={petVisualBounds}
           webSearchStatusMessage={webSearchStatusMessage}
+          pendingApproval={pendingApproval}
+          onResolveApproval={onResolveAgentApproval ? (approvalId, decision) => void onResolveAgentApproval(approvalId, decision) : undefined}
         />
       )}
 

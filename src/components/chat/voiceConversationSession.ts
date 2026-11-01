@@ -18,6 +18,8 @@ export interface VoiceConversationSessionDeps {
   isBusy: () => boolean;
   subscribeBusy: (listener: () => void) => () => void;
   onListeningChange: (listening: boolean) => void;
+  /** The user started talking, their words are being recognized, or neither (for the bubble). */
+  onInputActivity?: (activity: 'idle' | 'speaking' | 'recognizing') => void;
   onEnd: (reason: VoiceConversationEndReason) => void;
   onRecognitionError?: (error: unknown) => void;
   idleTimeoutMs: number;
@@ -90,6 +92,7 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
       if (deps.isBusy()) petHadFloor = true;
       resumeTimer = clear(resumeTimer);
       if (!capture.isPaused()) setListening(false);
+      if (!recognizing) deps.onInputActivity?.('idle'); // paused mid-sentence: that speech is dropped
       return;
     }
     if (capture.isPaused() && resumeTimer === null) {
@@ -106,6 +109,7 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
   async function handleUtterance(audioBase64: string) {
     if (!active || deps.isBusy()) return; // never talk over the pet
     recognizing = true;
+    deps.onInputActivity?.('recognizing');
     sync();
     let text = '';
     try {
@@ -125,6 +129,7 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
     // until it ended meant that answer was never heard (each waited on the other). While the
     // reply generates and speaks the pet is busy, which keeps the microphone paused anyway.
     recognizing = false;
+    deps.onInputActivity?.('idle');
     sync();
     if (!active || !text) return;
     try {
@@ -140,6 +145,8 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
     active = true;
     try {
       const nextCapture = await deps.startCapture({
+        onSpeechStart: () => { if (active && !deps.isBusy()) deps.onInputActivity?.('speaking'); },
+        onSpeechDiscarded: () => { if (!recognizing) deps.onInputActivity?.('idle'); },
         onUtterance: (audioBase64) => void handleUtterance(audioBase64),
       });
       if (!active) {

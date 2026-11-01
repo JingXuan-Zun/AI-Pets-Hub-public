@@ -15,6 +15,8 @@ import { clampMemoryMenuPosition, isPointInsideElement, isPromiseLike, resolveAv
 import { formatMessageTime, MessageMetaRow, resolveUserBubbleBackgroundStyle } from './message/MessageMetaRow';
 import { resolveConversationMessageLabel } from './petChatConversationMessageUtils';
 import { StoryNarrativeText } from './story/StoryNarrativeText';
+import { MessageDiagram } from './message/MessageDiagram';
+import { splitMessageDiagrams } from './message/messageDiagrams';
 
 function PetChatConversationMessageBubbleComponent({
   chatBracketOuterTextColor,
@@ -31,7 +33,9 @@ function PetChatConversationMessageBubbleComponent({
 }: PetChatConversationMessageBubbleProps) {
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const memoryMenuRef = useRef<HTMLDivElement | null>(null);
-  const textSegments = splitMessageTextByBrackets(message.text);
+  // Diagrams (```svg blocks) are drawn below the text instead of showing their code.
+  const diagramParts = splitMessageDiagrams(message.text);
+  const textSegments = splitMessageTextByBrackets(diagramParts.text);
   // A task card's text is a record for the conversation history; the card itself is shown instead.
   const hasMessageText = message.text.trim().length > 0 && !message.agentLoopRun;
   const canSaveMemory = Boolean(onSaveMessageToMemory && message.text.trim());
@@ -196,6 +200,8 @@ function PetChatConversationMessageBubbleComponent({
                   >{segment.text}</span>
                 </Fragment>
               ))}
+              {diagramParts.diagrams.map((svg, index) => <MessageDiagram key={`${messageKey}-diagram-${index}`} svg={svg} index={index} />)}
+              {diagramParts.drawing ? <div className="mt-2 text-2xs text-muted-foreground">正在画示意图…</div> : null}
             </div>
           )}
           <PetChatAgentApprovalPanel

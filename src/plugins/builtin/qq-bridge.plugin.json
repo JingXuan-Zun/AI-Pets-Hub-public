@@ -1,0 +1,27 @@
+{
+  "id": "qq-bridge",
+  "name": "QQ 连接",
+  "version": "1.0.0",
+  "description": "在手机 QQ 上跟角色聊天：文字、语音、表情和图片都能来回发。",
+  "author": "AI Pets Hub",
+  "kind": "native",
+  "permissions": ["network", "send-messages", "credentials"],
+  "settingsPageId": "platform-qq",
+  "roleScoped": false,
+  "useWhen": "用户想离开电脑时也能在手机上跟角色聊天。",
+  "requires": [
+    { "name": "电脑版 QQ 9.9.21 或更新", "install": "https://im.qq.com/pcqq/index.shtml" },
+    { "name": "SnowLuma", "install": "https://github.com/SnowLuma/SnowLuma/releases/latest" }
+  ],
+  "setup": [
+    "装好电脑版 QQ，准备一个小号（不要用常用的大号）。",
+    "下载 SnowLuma 并解压，在下面的设置里选中它的文件夹，打开“开启 QQ 连接”。",
+    "打开电脑版 QQ 但先不登录，在 SnowLuma 管理页里挂上，再登录小号。",
+    "填上你自己的 QQ 号，用手机给小号发消息试试。"
+  ],
+  "troubleshooting": [
+    "SnowLuma 管理页一直“等待连接”：电脑版 QQ 太旧，需要 9.9.21 或更新。",
+    "一直“等待登录”：先打开 QQ 但不登录，在 SnowLuma 里挂上，再登录 QQ。",
+    "连接被拒：设置里的 Access Token 一般留空，桌宠会自动读取 SnowLuma 的密钥。"
+  ]
+}

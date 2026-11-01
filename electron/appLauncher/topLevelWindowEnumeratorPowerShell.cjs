@@ -88,6 +88,9 @@ public static class DesktopPetTopLevelWindowEnumerator {
   [DllImport("user32.dll")]
   public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
 
+  [DllImport("user32.dll")]
+  public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
   [DllImport("user32.dll", SetLastError = true)]
   public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 

@@ -39,6 +39,7 @@ import { SettingsComfyUiWorkflowTab } from './settings/SettingsComfyUiWorkflowTa
 import { SettingsQqBridgeTab } from './settings/SettingsQqBridgeTab';
 import { SettingsHealthTab } from './settings/SettingsHealthTab';
 import { SettingsDevAgentTab } from './settings/SettingsDevAgentTab';
+import { SettingsWeixinBridgeTab } from './settings/SettingsWeixinBridgeTab';
 import { SettingsExtensionHubTab } from './settings/SettingsExtensionHubTab';
 import { SettingsAgentRuntimeSection } from './settings/SettingsAgentRuntimeSection';
 import { SettingsGameCompanionTab } from './settings/SettingsGameCompanionTab';
@@ -47,6 +48,7 @@ import { SettingsDesktopActivityAwarenessTab } from './settings/SettingsDesktopA
 import {
   DEFAULT_SETTINGS_CONTROL_CENTER_PAGE_ID,
   getSettingsControlCenterPage,
+  resolveSettingsPageRoute,
   type SettingsControlCenterPageId,
 } from './settings/settingsControlCenterNavigation';
 import { useSettingsPanelDraftState } from './settings/useSettingsPanelDraftState';
@@ -183,6 +185,8 @@ export default function SettingsPanel({
   const [activeControlCenterPageId, setActiveControlCenterPageId] = useState<SettingsControlCenterPageId>(
     DEFAULT_SETTINGS_CONTROL_CENTER_PAGE_ID,
   );
+  // Set when a link to a page that moved into the plugin market (QQ, ComfyUI…) opens it there.
+  const [focusedPlugin, setFocusedPlugin] = useState<{ id: string; nonce: number } | null>(null);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -475,16 +479,29 @@ export default function SettingsPanel({
     // control-center page's route so the visible page and content cannot drift.
     setActiveTab(activeControlCenterPage.runtimeTab);
   }, [activeControlCenterPage.runtimeTab, isOpen, resetToken, setActiveTab]);
-  const handleSetControlCenterPage = (pageId: SettingsControlCenterPageId) => {
+  // A plugin's own page in the plugin market shows the same settings as its full page.
+  const renderPluginSettings = (pageId: SettingsControlCenterPageId) => (
+    pageId === 'platform-qq' ? <SettingsQqBridgeTab localConfig={localConfig} onCommit={commitModelConfig} />
+      : pageId === 'platform-weixin' ? <SettingsWeixinBridgeTab localConfig={localConfig} onCommit={commitModelConfig} />
+      : pageId === 'platform-workflow' ? <SettingsComfyUiWorkflowTab localConfig={localConfig} onCommit={commitModelConfig} />
+        : pageId === 'platform-mcp' ? <SettingsPlatformMcpTab />
+          : pageId === 'platform-dev-agent' ? <SettingsDevAgentTab localConfig={localConfig} onCommit={commitModelConfig} />
+          : null
+  );
+  const handleSetControlCenterPage = (requestedPageId: SettingsControlCenterPageId) => {
+    const { pageId, pluginId } = resolveSettingsPageRoute(requestedPageId);
     const page = getSettingsControlCenterPage(pageId);
     setActiveControlCenterPageId(pageId);
     setActiveTab(page.runtimeTab);
+    setFocusedPlugin(pluginId ? { id: pluginId, nonce: Date.now() } : null);
   };
   // 聊天 Hub 的「记忆 / 插件 / 换装」等入口会请求打开某个指定页面。
   useEffect(() => {
-    const goToRequestedPage = (pageId: SettingsControlCenterPageId) => {
+    const goToRequestedPage = (requestedPageId: SettingsControlCenterPageId) => {
+      const { pageId, pluginId } = resolveSettingsPageRoute(requestedPageId);
       setActiveControlCenterPageId(pageId);
       setActiveTab(getSettingsControlCenterPage(pageId).runtimeTab);
+      setFocusedPlugin(pluginId ? { id: pluginId, nonce: Date.now() } : null);
     };
     if (isOpen) {
       const requestedPageId = consumeSettingsPageRequest();
@@ -691,7 +708,7 @@ export default function SettingsPanel({
       : activeControlCenterPageId === 'extension-overview'
         ? <SettingsExtensionHubTab category="overview" currentPetId={selectedPetSlot.id} />
         : activeControlCenterPageId === 'extension-plugins'
-          ? <SettingsExtensionHubTab category="plugins" currentPetId={selectedPetSlot.id} />
+          ? <SettingsExtensionHubTab category="plugins" config={localConfig} currentPetId={selectedPetSlot.id} focusedPlugin={focusedPlugin} onOpenPage={handleSetControlCenterPage} renderPluginSettings={renderPluginSettings} />
           : activeControlCenterPageId === 'extension-personas'
             ? <SettingsExtensionHubTab category="personas" currentPetId={selectedPetSlot.id} />
             : activeControlCenterPageId === 'extension-external'

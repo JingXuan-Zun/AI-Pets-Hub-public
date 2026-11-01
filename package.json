@@ -81,6 +81,7 @@
     "pinyin-pro": "3.29.4",
     "pixi-live2d-display": "^0.4.0",
     "pixi.js": "^6.5.10",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "shadcn": "^4.2.0",
@@ -91,6 +92,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@types/qrcode": "^1.5.6",
     "autoprefixer": "^10.4.21",
     "electron": "^37.10.3",
     "electron-builder": "^25.1.8",

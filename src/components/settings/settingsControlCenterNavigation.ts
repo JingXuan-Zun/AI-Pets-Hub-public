@@ -24,6 +24,7 @@ export type SettingsControlCenterPageId =
   | 'platform-mcp'
   | 'platform-workflow'
   | 'platform-qq'
+  | 'platform-weixin'
   | 'platform-dev-agent'
   | 'platform-skills-api'
   | 'extension-overview'
@@ -50,6 +51,8 @@ export interface SettingsControlCenterPage {
   personalityWorkspacePage?: SettingsPersonalityWorkspacePage;
   runtimeTab: SettingsPanelTabValue;
   workspaceTitle: string;
+  /** Not in the navigation: reached through the plugin market (see resolveSettingsPageRoute). */
+  hidden?: boolean;
 }
 
 export interface SettingsControlCenterModule {
@@ -113,23 +116,26 @@ export const SETTINGS_CONTROL_CENTER_MODULES: SettingsControlCenterModule[] = [
   {
     id: 'platform', label: '扩展', description: '插件、人格、外部接入与资源',
     headerMetrics: [
-      { label: '插件', value: '市场筹备' },
+      { label: '插件市场', value: '已装插件' },
       { label: '人格', value: '可分享' },
       { label: '外部接入', value: '按需连接' },
       { label: '资源包', value: '持续扩展' },
     ],
     pages: [
-      { id: 'extension-overview', label: '扩展总览', description: '发现、安装与管理平台扩展', runtimeTab: 'system', workspaceTitle: '扩展中心' },
-      { id: 'extension-plugins', label: '插件', description: '查看、安装与管理平台插件', runtimeTab: 'system', workspaceTitle: '插件扩展' },
-      { id: 'extension-deepseek-harness', label: 'DeepSeek Harness', description: '配置外部 Agent Runtime 适配器', runtimeTab: 'system', workspaceTitle: 'DeepSeek Harness 工作区' },
+      // 2026-10-31: QQ, ComfyUI, the dev assistant, skills and MCP live in the plugin market now
+      // (each plugin's page holds its settings); the old pages stay for that page and old links.
+      { id: 'extension-plugins', label: '插件市场', description: '管理已装插件，按角色开关', runtimeTab: 'system', workspaceTitle: '插件市场' },
       { id: 'extension-personas', label: '人格分享', description: '发现和导入角色人格预设', runtimeTab: 'system', workspaceTitle: '人格分享' },
-      { id: 'extension-external', label: '外部接入', description: '连接 MCP、工作流与外部项目', runtimeTab: 'system', workspaceTitle: '外部接入' },
       { id: 'extension-resources', label: '资源包', description: '模型、声音、动作与视觉资源', runtimeTab: 'system', workspaceTitle: '资源包' },
-      { id: 'platform-mcp', label: 'MCP 管理', description: '连接工具来源并查看是否可用', runtimeTab: 'system', workspaceTitle: 'MCP 管理' },
-      { id: 'platform-workflow', label: '工作流管理', description: 'ComfyUI 工作流接入', runtimeTab: 'system', workspaceTitle: 'ComfyUI 工作流管理' },
-      { id: 'platform-qq', label: 'QQ 连接', description: '在手机 QQ 上跟角色聊天', runtimeTab: 'system', workspaceTitle: 'QQ 连接' },
-      { id: 'platform-dev-agent', label: '开发助手', description: '让角色把写代码的活交给 Claude Code', runtimeTab: 'system', workspaceTitle: '开发助手' },
-      { id: 'platform-skills-api', label: 'Skills', description: '导入、启用和管理 Skill', runtimeTab: 'system', workspaceTitle: 'Skills' },
+      { id: 'extension-overview', label: '扩展总览', description: '发现、安装与管理平台扩展', runtimeTab: 'system', workspaceTitle: '扩展中心', hidden: true },
+      { id: 'extension-deepseek-harness', label: 'DeepSeek Harness', description: '配置外部 Agent Runtime 适配器', runtimeTab: 'system', workspaceTitle: 'DeepSeek Harness 工作区', hidden: true },
+      { id: 'extension-external', label: '外部接入', description: '连接 MCP、工作流与外部项目', runtimeTab: 'system', workspaceTitle: '外部接入', hidden: true },
+      { id: 'platform-mcp', label: 'MCP 管理', description: '连接工具来源并查看是否可用', runtimeTab: 'system', workspaceTitle: 'MCP 管理', hidden: true },
+      { id: 'platform-workflow', label: '工作流管理', description: 'ComfyUI 工作流接入', runtimeTab: 'system', workspaceTitle: 'ComfyUI 工作流管理', hidden: true },
+      { id: 'platform-qq', label: 'QQ 连接', description: '在手机 QQ 上跟角色聊天', runtimeTab: 'system', workspaceTitle: 'QQ 连接', hidden: true },
+      { id: 'platform-weixin', label: '微信连接', description: '在手机微信上跟角色聊天', runtimeTab: 'system', workspaceTitle: '微信连接', hidden: true },
+      { id: 'platform-dev-agent', label: '开发助手', description: '让角色把写代码的活交给 Claude Code', runtimeTab: 'system', workspaceTitle: '开发助手', hidden: true },
+      { id: 'platform-skills-api', label: 'Skills', description: '导入、启用和管理 Skill', runtimeTab: 'system', workspaceTitle: 'Skills', hidden: true },
     ],
   },
   {
@@ -165,6 +171,30 @@ export const SETTINGS_CONTROL_CENTER_MODULES: SettingsControlCenterModule[] = [
 ];
 
 export const DEFAULT_SETTINGS_CONTROL_CENTER_PAGE_ID: SettingsControlCenterPageId = 'overview';
+
+// Old pages that moved into the plugin market: a link to one opens the market, on that plugin's
+// own page when it has one.
+const PLUGIN_PAGE_ROUTES: Partial<Record<SettingsControlCenterPageId, string | null>> = {
+  'extension-deepseek-harness': null,
+  'extension-external': null,
+  'extension-overview': null,
+  'platform-dev-agent': 'native:dev-agent',
+  'platform-mcp': null,
+  'platform-qq': 'native:qq-bridge',
+  'platform-weixin': 'native:weixin-bridge',
+  'platform-skills-api': null,
+  'platform-workflow': 'native:comfyui',
+};
+
+export function resolveSettingsPageRoute(pageId: SettingsControlCenterPageId): { pageId: SettingsControlCenterPageId; pluginId: string | null } {
+  return pageId in PLUGIN_PAGE_ROUTES
+    ? { pageId: 'extension-plugins', pluginId: PLUGIN_PAGE_ROUTES[pageId] ?? null }
+    : { pageId, pluginId: null };
+}
+
+export function visibleSettingsPages(module: SettingsControlCenterModule) {
+  return module.pages.filter((page) => !page.hidden);
+}
 
 export function getSettingsControlCenterPage(pageId: SettingsControlCenterPageId) {
   for (const module of SETTINGS_CONTROL_CENTER_MODULES) {

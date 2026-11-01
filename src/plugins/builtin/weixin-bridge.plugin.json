@@ -1,0 +1,24 @@
+{
+  "id": "weixin-bridge",
+  "name": "微信连接",
+  "version": "1.0.0",
+  "description": "在手机微信上跟角色聊天：走微信官方的 ClawBot 通道，扫一次码就行，不用装电脑版微信。",
+  "author": "AI Pets Hub",
+  "kind": "native",
+  "permissions": ["network", "send-messages", "credentials"],
+  "settingsPageId": "platform-weixin",
+  "roleScoped": false,
+  "useWhen": "用户想离开电脑时也能在手机微信上跟角色聊天。",
+  "requires": [{ "name": "手机微信 iOS 8.0.70 / 安卓 8.0.69 或更新（我 → 设置 → 插件 里有“微信ClawBot”）", "install": "https://weixin.qq.com" }],
+  "setup": [
+    "手机微信更新到最新，确认 我 → 设置 → 插件 里有“微信ClawBot”。",
+    "在下面点“扫码登录”，用手机微信扫码并确认；手机上显示数字的话填进来。",
+    "在手机微信里给 ClawBot 发消息试试。"
+  ],
+  "troubleshooting": [
+    "微信里找不到 ClawBot 插件：先把微信更新到最新；官方还在逐步开放，有的账号要等一阵。",
+    "提示登录失效：在这里重新扫码。",
+    "她回了消息但微信没收到：看状态是不是“已连接”；网络不通时会自动重试。",
+    "微信群里叫不到她：官方通道只支持一对一聊天。"
+  ]
+}

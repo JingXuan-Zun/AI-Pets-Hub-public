@@ -2,6 +2,7 @@ import { executeMemoryAction } from '../agentRuntimeMemoryTools';
 import { type AgentRuntimeExecutorContext } from '../agentRuntimeExecutor';
 import { listPlatformCapabilities, runPlatformCapability } from '../../platform-capabilities/platformCapabilityRegistry';
 import type { PlatformCapability } from '../../platform-capabilities/platformCapabilityTypes';
+import { isCapabilityEnabledForPet } from '../../plugins/pluginCapabilityAccess';
 import type { PetConfig, PetConfigUpdateHandler } from '../../types';
 import type { AgentChatCommandHandler } from '../agentChatCommand';
 import { listConversationAgentBridgeTools } from './conversationAgentBridgeTools';
@@ -150,7 +151,7 @@ function buildTools(runtime: Pick<ConversationToolRuntime, 'configRef' | 'deskto
     }))
     : [];
   const tools: ConversationTool[] = [
-    ...listPlatformCapabilities().map(capabilityTool),
+    ...listPlatformCapabilities().filter((capability) => isCapabilityEnabledForPet(capability.id, runtime.petId)).map(capabilityTool),
     memoryTool,
     conversationFileTool,
     conversationDesktopIconTool,

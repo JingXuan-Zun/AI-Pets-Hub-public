@@ -52,7 +52,10 @@ function createConfigPayload(configPath, exists, rawText, config, error = null) 
 
 function createMcpConfigService(options = {}) {
   const projectRoot = options.projectRoot || path.join(__dirname, '..');
-  const configPath = path.join(projectRoot, MCP_CONFIG_FILE_NAME);
+  // Same override the server loader reads; packaged builds point it at userData (the app folder
+  // is a read-only archive there, so the config could never be saved).
+  const overridePath = (process.env.DESKTOP_PET_MCP_CONFIG_PATH || '').trim();
+  const configPath = overridePath ? path.resolve(overridePath) : path.join(projectRoot, MCP_CONFIG_FILE_NAME);
   const log = typeof options.log === 'function' ? options.log : null;
   const onSaved = typeof options.onSaved === 'function' ? options.onSaved : null;
 
