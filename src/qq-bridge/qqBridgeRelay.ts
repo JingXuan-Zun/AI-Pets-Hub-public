@@ -50,6 +50,14 @@ function formatQqReply(message: ChatMessage) {
   return { speechText: formatQqReplyText(words), stickerAssetIds, text: formatQqReplyText(parts.join('')) };
 }
 
+/** The approval question read out in her voice, for family who listen rather than read. */
+export function formatApprovalSpeech(title: string, irreversible = false) {
+  const step = title.trim() || '这一步';
+  return irreversible
+    ? `${step}，需要你同意，这一步做了就撤不回。可以就回复“好”，不行就回复“不要”。`
+    : `${step}，需要你同意。可以就回复“好”，今天都不用再问就回复“今天都好”，不行就回复“不要”。`;
+}
+
 /** Steps that cannot be taken back (sending, deleting…) only offer yes/no: they ask every time. */
 export function formatQqApprovalQuestion(title: string, irreversible = false) {
   return irreversible
@@ -85,7 +93,7 @@ export function collectQqRelayOutgoing(messages: ChatMessage[], state: QqRelaySt
     }
     if (pending?.id && !state.sentApprovalIds.has(pending.id)) {
       state.sentApprovalIds.add(pending.id);
-      outgoing.push({ petId: null, speechText: '', stickerAssetIds: [], text: formatQqApprovalQuestion(pending.title, pending.irreversible) });
+      outgoing.push({ petId: null, speechText: formatApprovalSpeech(pending.title, pending.irreversible), stickerAssetIds: [], text: formatQqApprovalQuestion(pending.title, pending.irreversible) });
     }
   });
   return outgoing;

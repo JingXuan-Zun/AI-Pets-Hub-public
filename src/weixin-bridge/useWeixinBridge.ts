@@ -110,7 +110,8 @@ export function useWeixinBridge({ config, configRef, sendMessage }: {
       ownerAccountId = message.accountId;
       lastOwnerMessageAt = Date.now();
       if (latestPendingAgentLoopApprovalId() && message.text) {
-        const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings));
+        // Typed on the phone, so never her own voice: answered even while she is still asking out loud.
+        const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings), () => false);
         reply(message.accountId, decision === 'deny' ? '好，这一步不做了。'
           : decision === 'approve-day' ? '好，今天的操作都不再问你了（发送、删除、付款这类还会问）。'
             : decision === 'approve-task' ? '好，这个任务后面的步骤都不再问你了。'
@@ -167,6 +168,12 @@ export function useWeixinBridge({ config, configRef, sendMessage }: {
         item.stickerAssetIds.forEach((assetId) => { void sendSticker(accountId, assetId); });
         // Voice follows the text it says, in order (synthesis takes a few seconds per reply).
         if (ownerVoiceReplies && item.petId && item.speechText) voiceQueue = voiceQueue.then(() => sendVoice(accountId, item.petId!, item.speechText));
+        // A question waiting for a yes/no is read out too (unless voice is off), in the voice of
+        // the character doing the task, so someone who does not read knows what to answer.
+        if (!item.petId && item.speechText && voiceMode() !== 'off') {
+          const petId = desktopPetChatStore.getState().activePetId;
+          voiceQueue = voiceQueue.then(() => sendVoice(accountId, petId, item.speechText));
+        }
       });
     };
 

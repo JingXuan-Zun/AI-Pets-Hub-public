@@ -27,6 +27,8 @@ export function describeConversationStep(name: string, args: Record<string, unkn
     case 'launch_app': return `启动${quoted(text(args, 'name'))}`;
     case 'open_url': return '打开网页';
     case 'focus_window': return `切换到${quoted(text(args, 'window'))}`;
+    case 'close_tab': return '关掉当前网页';
+    case 'close_window': return `关闭${quoted(text(args, 'window'))}`;
     case 'click': {
       const target = text(args, 'target');
       return /^[\d\s,]+$/u.test(target) ? '点击界面上的按钮' : `点击${quoted(target)}`;

@@ -51,5 +51,19 @@ assert.equal(classifyVoiceApproval('都好'), 'approve-task', 'the task-only ans
 assert.match(formatQqApprovalQuestion('打开浏览器'), /“今天都好”/u);
 assert.doesNotMatch(formatQqApprovalQuestion('发送消息', true), /都好/u, 'irreversible steps offer only yes/no');
 
+// The question read out on WeChat says what to answer.
+const { formatApprovalSpeech } = await import('../src/qq-bridge/qqBridgeRelay');
+assert.match(formatApprovalSpeech('让我操作你的电脑'), /让我操作你的电脑.*“好”.*“今天都好”.*“不要”/u);
+assert.doesNotMatch(formatApprovalSpeech('发送消息', true), /今天都好/u);
+
+// An answer typed on the phone counts even while she is still asking out loud on the computer
+// (it used to be dropped as "maybe her own voice", so it took several answers).
+const { waitForAgentLoopDecision } = await import('../src/components/chat/runController/agentLoopApprovalRegistry');
+const { resolvePendingApprovalBySpeech } = await import('../src/components/chat/voiceApproval');
+const waiting = waitForAgentLoopDecision('phone-1');
+assert.equal(await resolvePendingApprovalBySpeech('好', async () => null, () => true), null, 'the microphone still ignores answers while she talks');
+assert.equal(await resolvePendingApprovalBySpeech('今天都好', async () => null, () => false), 'approve-day');
+assert.equal(await waiting, 'approve-day');
+
 console.log('daily approval smoke ok');
 process.exit(0);
