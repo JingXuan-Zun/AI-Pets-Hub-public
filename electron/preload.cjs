@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     stay: () => ipcRenderer.invoke('desktop-pet:app-update-stay'),
     setAutoDownload: (enabled) => ipcRenderer.invoke('desktop-pet:app-update-set-auto', { enabled }),
   },
+  exportDiagnostics: () => ipcRenderer.invoke('desktop-pet:export-diagnostics'),
   prepareDeepSeekHarnessProfile: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-prepare-profile', request ?? {}),
   validateDeepSeekHarnessSetup: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-validate-setup', request ?? {}),
   runDeepSeekHarness: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-run', request ?? {}),
@@ -116,6 +117,7 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   knownFolders: {
     list: () => ipcRenderer.invoke('desktop-pet:known-folders-list'),
     reveal: (targetPath) => ipcRenderer.invoke('desktop-pet:known-folders-reveal', { path: targetPath }),
+    openFile: (targetPath, app) => ipcRenderer.invoke('desktop-pet:known-folders-open-file', { app, path: targetPath }),
   },
   getExpressionLibraryState: (request) => ipcRenderer.invoke('desktop-pet:expression-library-get-state', request ?? {}),
   getExpressionReplyCatalog: () => ipcRenderer.invoke('desktop-pet:expression-reply-catalog-get'),

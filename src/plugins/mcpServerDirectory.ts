@@ -48,6 +48,22 @@ export function refreshMcpServerDirectory(force = false) {
   return pending;
 }
 
+/** The chrome-devtools-mcp server, whatever id the user gave it. */
+export function isChromeDevtoolsServer(serverId: string, list = entries) {
+  const entry = list.find((item) => item.id === serverId);
+  return serverId === 'chrome-devtools' || Boolean(entry?.args.some((arg) => typeof arg === 'string' && /chrome-devtools-mcp/iu.test(arg)));
+}
+
+/**
+ * Usage notes for chrome-devtools (benchmark 2026-11-05): she left out pageId on navigate_page
+ * (one failed call every time) and tried to save the screenshot to the user's desktop.
+ */
+export function describeChromeDevtoolsTips(petId: string | null | undefined, list = entries) {
+  const ids = list.filter((entry) => isMcpServerEnabledForPet(entry.id, petId) && isChromeDevtoolsServer(entry.id, list)).map((entry) => entry.id);
+  if (!ids.length) return '';
+  return `用 ${ids.join('、')} 时：先 list_pages 拿到 pageId，之后 navigate_page、take_screenshot、take_snapshot、click 等每次都带上这个 pageId；截图给用户看时不要传 filePath，截图会自动发到聊天里（传 filePath 会在用户电脑上存一个文件）。`;
+}
+
 /** "chrome-devtools（让她能…）" for each plugin this character may use; empty when none. */
 export function describeMcpServersForPet(petId: string | null | undefined, list = entries) {
   return list

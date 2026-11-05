@@ -1,6 +1,6 @@
 import type { AgentChatCommand, AgentChatCommandResult, AgentToolCallName } from '../agentChatCommand';
-import { isDeclaredReadOnlyMcpTool } from '../agentMcpRegistry';
-import { describeHerBrowserAccounts, describeMcpServersForPet, refreshMcpServerDirectory } from '../../plugins/mcpServerDirectory';
+import { ensureMcpToolsListed, isReadOnlyMcpCall } from '../agentMcpRegistry';
+import { describeChromeDevtoolsTips, describeHerBrowserAccounts, describeMcpServersForPet, isChromeDevtoolsServer, refreshMcpServerDirectory } from '../../plugins/mcpServerDirectory';
 import { herBrowserPort } from '../../plugins/herBrowser';
 import { runCharacterAnimationSkill } from '../agentCharacterSkillRuntime';
 import { buildAgentPermissionRoute } from '../agentPermissionRouter';
@@ -42,6 +42,8 @@ interface BridgeSpec {
   name: string;
   /** True when the call only reads (e.g. loading a skill's instructions), whatever the old policy says. */
   readOnly?: (args: Record<string, unknown>) => boolean;
+  /** Loads what readOnly needs before the confirmation is decided. */
+  prepare?: (args: Record<string, unknown>) => Promise<void>;
   properties: Record<string, unknown>;
   required: string[];
 }
@@ -49,6 +51,12 @@ interface BridgeSpec {
 function str(args: Record<string, unknown>, key: string) {
   const value = args[key];
   return typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value) : '';
+}
+
+/** A JSON-string argument; models sometimes send the object itself ("arguments_json": {"pageId": 1}). */
+function jsonText(args: Record<string, unknown>, key: string) {
+  const value = args[key];
+  return value && typeof value === 'object' ? JSON.stringify(value) : str(args, key);
 }
 
 function clip(value: string, max = 80) {
@@ -85,7 +93,7 @@ const BRIDGE_SPECS: BridgeSpec[] = [
       if (BLOCKED_COMMAND.test(command)) return '不能用：删除、关机、结束进程、改注册表这类命令不允许运行。删文件请用 files 工具（移到回收站）。';
       return { input: { command, ...(str(args, 'cwd') ? { cwd: str(args, 'cwd') } : {}), shell: str(args, 'shell') === 'cmd' ? 'cmd' : 'powershell' }, name: 'run_controlled_command' };
     },
-    description: '在电脑上运行一条简单命令（默认 PowerShell），返回输出。只查询信息的命令（Get-Process、Get-ChildItem、Test-Path、tasklist、ipconfig 等）直接运行；会改动东西的命令会请用户确认。查信息时命令往往比点界面更快更稳。限制：一次一条，不能用管道 |、重定向、分号或 && 连接；不能删除、关机、结束进程。',
+    description: '在电脑上运行一条简单命令（默认 PowerShell），返回输出。打开文件、写文本文件不要用命令，用 files 的 open_file / write。只查询信息的命令（Get-Process、Get-ChildItem、Test-Path、tasklist、ipconfig 等）直接运行；会改动东西的命令会请用户确认。查信息时命令往往比点界面更快更稳。限制：一次一条，不能用管道 |、重定向、分号或 && 连接；不能删除、关机、结束进程。',
     describe: (args) => `运行命令：${clip(str(args, 'command'), 120)}`,
     name: 'run_command',
     readOnly: (args) => isReadOnlyCommand(str(args, 'command')),
@@ -120,7 +128,7 @@ const BRIDGE_SPECS: BridgeSpec[] = [
         name: 'organize_desktop_icons',
       };
     },
-    description: '整理桌面图标：先 preview 生成排列预览，用户满意后再 execute 按预览移动图标（execute 时 screen、group_by 要和 preview 一样）。只整理某一块屏幕时 screen 写 primary（主屏）或 secondary（副屏）：只动那块屏幕上的图标，排在那块屏幕上；不写就是整理全部图标。',
+    description: '整理桌面图标：先 preview 生成排列预览，用户满意后再 execute 按预览移动图标（execute 时 screen、group_by 要和 preview 一样）。只整理某一块屏幕时 screen 写 primary（主屏）或 secondary（副屏）：只动那块屏幕上的图标，排在那块屏幕上；不写就是整理全部图标。用户只问“桌面 / 副屏上有哪些图标”也直接用 preview（只看不动，结果里有每块屏幕的图标），不要用 read_window 去读“屏幕”。',
     describe: (args) => {
       const screen = str(args, 'screen') === 'secondary' ? '副屏' : str(args, 'screen') === 'primary' ? '主屏' : '';
       return str(args, 'action') === 'execute' ? `按刚才的预览移动${screen}桌面图标` : `预览${screen}桌面图标的整理方案`;
@@ -158,20 +166,22 @@ const BRIDGE_SPECS: BridgeSpec[] = [
   {
     call: (args) => (str(args, 'action') === 'call'
       ? (str(args, 'server_id') && str(args, 'tool_name')
-        ? { input: { name: str(args, 'tool_name'), serverId: str(args, 'server_id'), ...(str(args, 'arguments_json') ? { argumentsJson: str(args, 'arguments_json') } : {}) }, name: 'call_mcp_tool' }
+        ? { input: { name: str(args, 'tool_name'), serverId: str(args, 'server_id'), ...(jsonText(args, 'arguments_json') ? { argumentsJson: jsonText(args, 'arguments_json') } : {}) }, name: 'call_mcp_tool' }
         : 'call 需要 server_id 和 tool_name（先 list 看有哪些）。')
       : { input: { ...(str(args, 'server_id') ? { serverId: str(args, 'server_id') } : {}) }, name: 'list_mcp_tools' }),
     description: (petId, herBrowserPortNumber) => {
       const installed = describeMcpServersForPet(petId);
-      const accounts = describeHerBrowserAccounts(petId, herBrowserPortNumber);
+      const accounts = describeHerBrowserAccounts(petId, herBrowserPortNumber) + describeChromeDevtoolsTips(petId);
       return `用户接入的 MCP 扩展工具：list 查看工具和参数（可带 server_id 只看一个），call 调用其中一个。${installed
         ? `已接入：${installed}。用户要做的事这些扩展能做时就用它们（先 list 再 call）；用一个扩展打开的网页或程序，后面也用这个扩展继续操作（应用自带的 browser 看不到它打开的网页）。${accounts}`
         : '现在没有接入任何扩展。'}`;
     },
     describe: (args) => `调用扩展工具 ${str(args, 'server_id')}/${str(args, 'tool_name')}`,
     name: 'mcp',
-    // Listing only reads; a call skips the card when the server declares that tool read-only.
-    readOnly: (args) => str(args, 'action') !== 'call' || isDeclaredReadOnlyMcpTool(str(args, 'server_id'), str(args, 'tool_name')),
+    // Listing only reads; a call skips the card when the server declares that tool read-only
+    // (its tools are listed first if she calls one straight away).
+    prepare: async (args) => { if (str(args, 'action') === 'call') await ensureMcpToolsListed(str(args, 'server_id')); },
+    readOnly: (args) => str(args, 'action') !== 'call' || isReadOnlyMcpCall(str(args, 'server_id'), str(args, 'tool_name'), jsonText(args, 'arguments_json'), isChromeDevtoolsServer(str(args, 'server_id'))),
     properties: {
       action: { enum: ['list', 'call'], type: 'string' },
       arguments_json: { description: 'call 的参数，JSON 字符串', type: 'string' },
@@ -228,6 +238,7 @@ function formatResult(result: AgentChatCommandResult) {
 
 function bridgeTool(spec: BridgeSpec, petId: string | null | undefined, herBrowserPortNumber: number): ConversationTool {
   return {
+    ...(spec.prepare ? { prepare: spec.prepare } : {}),
     confirmation: (args) => {
       const call = spec.call(args);
       if (typeof call === 'string' || spec.readOnly?.(args)) return null;
@@ -308,7 +319,7 @@ const webSearchTool: ConversationTool = {
   confirmation: () => null,
   definition: {
     function: {
-      description: '联网搜索，返回搜索结果摘要（标题、链接、片段）。查新闻、天气、资料、价格等实时信息时用。',
+      description: '联网搜索，返回搜索结果摘要（标题、链接、片段）。查新闻、天气、资料、价格等实时信息时用。用户明确说“用你的浏览器”“打开网页看看”时不要用它，改用浏览器（接入了浏览器扩展就用扩展，否则用 browser），在你自己的浏览器里打开网页去查。',
       name: 'web_search',
       parameters: { properties: { query: { description: '搜索关键词', type: 'string' } }, required: ['query'], type: 'object' },
     },

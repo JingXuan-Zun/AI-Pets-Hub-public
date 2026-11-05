@@ -93,18 +93,6 @@ function createInteractiveDialogueAnchorPosition(
   };
 }
 
-function createInteractiveDialogueStageFrame(
-  interactiveDialogueAnchorPosition: Position,
-  interactiveDialogueShellSize: number,
-) {
-  return {
-    height: Math.round(interactiveDialogueShellSize * 1.06),
-    left: interactiveDialogueAnchorPosition.x - Math.round(interactiveDialogueShellSize * 0.56),
-    top: interactiveDialogueAnchorPosition.y - Math.round(interactiveDialogueShellSize * 0.64),
-    width: Math.round(interactiveDialogueShellSize * 1.12),
-  };
-}
-
 function resolveInteractiveDialogueViewport(
   activityViewport: ViewportRect,
   availableDisplays: DesktopPetDisplayLike[],
@@ -280,9 +268,7 @@ export function usePetContainerViewportLayout({
     interactiveDialogueViewport,
     interactiveDialogueShellSize,
   ), [interactiveDialogueShellSize, interactiveDialogueViewport]);
-  const interactiveDialoguePosition = useMemo(() => ({ x: interactiveDialogueAnchorPosition.x - activityCenter.x, y: interactiveDialogueAnchorPosition.y - activityCenter.y }), [activityCenter, interactiveDialogueAnchorPosition]);
   const interactiveDialogueVisualSize = useMemo(() => ({ width: interactiveDialogueShellSize, height: Math.round(interactiveDialogueShellSize * 1.04) }), [interactiveDialogueShellSize]);
-  const interactiveDialogueStageFrame = useMemo(() => createInteractiveDialogueStageFrame(interactiveDialogueAnchorPosition, interactiveDialogueShellSize), [interactiveDialogueAnchorPosition, interactiveDialogueShellSize]);
   const interactiveDialogueChatPanelPosition = useMemo(() => createInteractiveDialogueChatPanelPosition(
     interactiveDialogueViewport,
     chatPanelSize,
@@ -292,11 +278,7 @@ export function usePetContainerViewportLayout({
     chatPanelBasePosition,
     interactiveDialogueAnchorPosition,
     interactiveDialogueChatPanelPosition,
-    interactiveDialoguePosition,
-    interactiveDialogueShellSize,
-    interactiveDialogueStageFrame,
     interactiveDialogueVisualSize,
-    interactiveDialogueViewport,
     petAnchorPosition,
     petVisualSize,
     shellViewport,

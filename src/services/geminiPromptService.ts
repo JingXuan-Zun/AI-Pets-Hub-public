@@ -59,6 +59,8 @@ const PROMPT_HISTORY_MAX_MESSAGE_COUNT = 100;
 const PROMPT_HISTORY_CHAR_BUDGET_FLOOR = 4096;
 const PROMPT_HISTORY_CHAR_BUDGET_CEILING = 65536;
 const PROMPT_HISTORY_CHARS_PER_MEMORY_TOKEN = 2;
+// Old messages are dropped this many at a time (see limitHistoryForPrompt).
+const PROMPT_HISTORY_TRIM_STEP = 20;
 const MEMORY_PREFERENCE_NOTE_LIMIT = 6;
 const SELECTIVE_CONTEXT_MATCH_LIMIT = 6;
 const SELECTIVE_CONTEXT_MIN_KEYWORD_LENGTH = 2;
@@ -1015,7 +1017,69 @@ export function limitHistoryForPrompt(history: ChatMessage[], memoryDepth: numbe
     currentCost += messageCost;
   }
 
-  return keptMessages.reverse();
+  // Dropping exactly one old message per turn changed the start of the history every turn, so
+  // none of it could come from the provider's prompt cache. The window instead starts at a
+  // multiple of PROMPT_HISTORY_TRIM_STEP (counted from the oldest message): the same first
+  // message for about that many turns, then one bigger jump.
+  const firstKept = normalizedHistory.length - keptMessages.length;
+  if (firstKept === 0) return keptMessages.reverse();
+  const alignedStart = Math.min(
+    normalizedHistory.length - PROMPT_HISTORY_MIN_MESSAGE_COUNT,
+    Math.ceil(firstKept / PROMPT_HISTORY_TRIM_STEP) * PROMPT_HISTORY_TRIM_STEP,
+  );
+  return normalizedHistory.slice(Math.max(firstKept, alignedStart));
+}
+
+/**
+ * Prompt caching (2026-11-05): providers such as DeepSeek bill a repeated request prefix at a
+ * fraction of the price, but only up to the first character that differs. The system message
+ * used to carry the minute-level clock and the memory summary built from the latest messages,
+ * so every turn re-billed the whole history at full price (measured: 41k prompt tokens, 20-40%
+ * cached). The stable part (persona, rules) now goes first; what changes per turn goes in
+ * `buildCharacterReplyTurnContext`, sent after the history.
+ */
+export function buildCharacterReplyStableInstruction(
+  personality: PetPersonality,
+  settings: PetConfig['settings'],
+) {
+  const personaRulePolicy = resolvePersonaRulePolicy(personality);
+  void settings;
+  return [
+    buildDialogueCompletionPresetInstruction(personality),
+    CHARACTER_PERSONA_ENFORCEMENT_INSTRUCTION,
+    buildCharacterPersonaProfileInstruction(personality),
+    buildCharacterPersonaLockInstruction(personality),
+    buildCharacterKnowledgeProfileInstruction(personality),
+    buildCharacterFewShotInstruction(personality),
+    CHARACTER_TOOL_PROTOCOL_INSTRUCTION,
+    CHARACTER_DIAGRAM_INSTRUCTION,
+    personaRulePolicy.mode === 'default' ? CHARACTER_REPLY_FORMAT_INSTRUCTION : '',
+    buildFinalPersonaAdherenceInstruction(personality),
+    buildPersonaRuleContractInstruction(personality),
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** What changes from turn to turn: memories, open tasks, web learning, the clock. */
+export function buildCharacterReplyTurnContext(
+  personality: PetPersonality,
+  settings: PetConfig['settings'],
+  history: ChatMessage[],
+  userInput = '',
+) {
+  const autoMemorySummary = buildLongTermMemorySummary(history);
+  return buildRealWorldTimeSystemInstruction(
+    [
+      buildUserDefinedRoleMemoryInstruction(personality, settings, autoMemorySummary, userInput, history),
+      buildWorkTaskInstruction(settings.workTasks),
+      describeBackgroundTasksForPrompt(),
+      buildWebLearningInstruction(personality, settings),
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    settings,
+  );
 }
 
 export function buildCharacterReplySystemInstruction(

@@ -77,12 +77,9 @@ interface PetAvatarLayerProps {
   isDragging?: boolean;
   isChatOpen: boolean;
   isInteractiveDialogueHidden?: boolean;
-  isInteractiveDialogueMode?: boolean;
   isSpeaking?: boolean;
   isSettingsOpen: boolean;
   isTyping?: boolean;
-  interactiveDialoguePosition?: Position | null;
-  interactiveDialogueShellSize?: number;
   latestMessage?: string;
   animationToolTrigger?: DesktopPetAnimationToolTrigger | null;
   lastReplayableAnimationToolTrigger?: DesktopPetAnimationToolTrigger | null;
@@ -155,14 +152,11 @@ function arePetAvatarLayerPropsEqual(
     && previousProps.isChatOpen === nextProps.isChatOpen
     && previousProps.isDragging === nextProps.isDragging
     && previousProps.isInteractiveDialogueHidden === nextProps.isInteractiveDialogueHidden
-    && previousProps.isInteractiveDialogueMode === nextProps.isInteractiveDialogueMode
     && previousProps.isSettingsOpen === nextProps.isSettingsOpen
     && previousProps.isSpeaking === nextProps.isSpeaking
     && previousProps.isTyping === nextProps.isTyping
     && previousProps.animationToolTrigger === nextProps.animationToolTrigger
     && previousProps.lastReplayableAnimationToolTrigger === nextProps.lastReplayableAnimationToolTrigger
-    && areOptionalPositionsEqual(previousProps.interactiveDialoguePosition, nextProps.interactiveDialoguePosition)
-    && previousProps.interactiveDialogueShellSize === nextProps.interactiveDialogueShellSize
     && previousProps.latestMessage === nextProps.latestMessage
     && previousProps.manualMotionBinding === nextProps.manualMotionBinding
     && previousProps.motionOverrideMode === nextProps.motionOverrideMode
@@ -199,12 +193,9 @@ function PetAvatarLayerComponent({
   isDragging = false,
   isChatOpen,
   isInteractiveDialogueHidden = false,
-  isInteractiveDialogueMode = false,
   isSpeaking = false,
   isSettingsOpen,
   isTyping = false,
-  interactiveDialoguePosition = null,
-  interactiveDialogueShellSize = 256,
   latestMessage = '',
   animationToolTrigger = null,
   lastReplayableAnimationToolTrigger = null,
@@ -391,9 +382,6 @@ function PetAvatarLayerComponent({
     resolvePetVisualRendererShellSurface({
       avatar3dRuntimeBackend: config.settings.avatar3dRuntimeBackend,
       dragMotionState,
-      interactiveDialoguePosition,
-      interactiveDialogueShellSize,
-      isInteractiveDialogueMode,
       isDragging,
       measuredInteractiveVisualBounds,
       measuredWindowShapeVisualBounds,
@@ -410,9 +398,6 @@ function PetAvatarLayerComponent({
     config.scale,
     config.settings.avatar3dRuntimeBackend,
     dragMotionState,
-    interactiveDialoguePosition,
-    interactiveDialogueShellSize,
-    isInteractiveDialogueMode,
     isDragging,
     manualMotionAction,
     measuredInteractiveVisualBounds,
@@ -425,8 +410,6 @@ function PetAvatarLayerComponent({
     presentationMode,
     renderedPosition,
     shellSize,
-    shouldEmitVisualBounds,
-    shouldLockDragAndScale,
     selectionScoreAreaAttributes,
     windowShapeProxyStyle,
   } = renderShellSurface;
@@ -621,7 +604,7 @@ function PetAvatarLayerComponent({
       videoLibraryRootPath: matchedModelPreset?.videoLibraryRootPath ?? null,
       sequenceFrames: matchedModelPreset?.sequenceFrames,
       onRuntimeEvent,
-      onVisualBoundsChange: shouldEmitVisualBounds ? handleVisualBoundsChange : undefined,
+      onVisualBoundsChange: handleVisualBoundsChange,
       pet2dRenderAdapterState,
       pointerLookTarget,
       presentationMode,
@@ -661,21 +644,14 @@ function PetAvatarLayerComponent({
     matchedModelPreset?.videoEmotionFolderAliases,
     matchedModelPreset?.videoLibraryRootPath,
     sequenceFrameDurationMultiplier,
-    shouldEmitVisualBounds,
     visualRendererViewport,
     visualRendererAction,
     visualRendererIsMoving,
   ]);
-  const handleInteractivePointerDownCapture = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (shouldLockDragAndScale && event.button === 0) {
-      return;
-    }
+  const handleInteractivePointerDownCapture = useCallback(() => {
     notifyPointerDownInteraction();
-  }, [notifyPointerDownInteraction, shouldLockDragAndScale]);
+  }, [notifyPointerDownInteraction]);
   const handleInteractivePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (shouldLockDragAndScale && event.button === 0) {
-      return;
-    }
     const targetPetId = resolveStackedPetSelectionTargetFromPointerEvent(event, {
       currentPetId: PRIMARY_DESKTOP_PET_SLOT_ID,
       selectedPetId,
@@ -690,15 +666,11 @@ function PetAvatarLayerComponent({
       return;
     }
     onStartPetDrag(event);
-  }, [onSelectPet, onStartOverlappedPetDrag, onStartPetDrag, selectedPetId, shouldLockDragAndScale]);
+  }, [onSelectPet, onStartOverlappedPetDrag, onStartPetDrag, selectedPetId]);
   const handleInteractiveWheel = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
-    if (shouldLockDragAndScale) {
-      event.preventDefault();
-      return;
-    }
     notifyWheelInteraction();
     onWheelPetScale(event);
-  }, [notifyWheelInteraction, onWheelPetScale, shouldLockDragAndScale]);
+  }, [notifyWheelInteraction, onWheelPetScale]);
   const handleInteractiveContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     notifyContextMenuInteraction();
     onPetContextMenu(event);
@@ -716,7 +688,6 @@ function PetAvatarLayerComponent({
           transform: 'translate(-50%, -50%)',
           zIndex: resolvePrimaryPetLayerZIndex({
             isDragging,
-            isInteractiveDialogueMode,
             isSelected: selectedPetId === PRIMARY_DESKTOP_PET_SLOT_ID,
           }),
         }}
@@ -726,7 +697,7 @@ function PetAvatarLayerComponent({
           data-desktop-pet-debug-box="primary pet shell"
           data-desktop-pet-debug-box-kind="viewport"
           data-desktop-pet-owner-id={PRIMARY_DESKTOP_PET_SLOT_ID}
-          className={isInteractiveDialogueMode ? 'pet-interactive-dialogue-enter relative pointer-events-none' : 'relative pointer-events-none'}
+          className="relative pointer-events-none"
           style={avatarShellStyle}
         >
           {visionTarget && (

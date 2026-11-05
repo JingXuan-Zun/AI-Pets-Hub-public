@@ -1,4 +1,5 @@
 const { createCloseWindowScript } = require('./closeWindowScript.cjs');
+const { resolveWindowQueryAliases } = require('./windowsAppChineseAliases.cjs');
 
 function createWindowCloseOperation({ runPowerShellScript }) {
   async function closeWindow(request = {}) {
@@ -26,11 +27,15 @@ function createWindowCloseOperation({ runPowerShellScript }) {
       };
     }
 
-    const script = createCloseWindowScript({ query, hasPid, requestedPid, hasHwnd, requestedHwnd });
+    const run = async (text) => JSON.parse(String(await runPowerShellScript(createCloseWindowScript({ query: text, hasPid, requestedPid, hasHwnd, requestedHwnd }), 3600) || '{}').trim() || '{}');
 
     try {
-      const stdout = await runPowerShellScript(script, 3600);
-      const parsed = JSON.parse(String(stdout || '{}').trim() || '{}');
+      let parsed = await run(query);
+      // “记事本” when the window is titled “… - Notepad”: try the app's English window name.
+      for (const alias of resolveWindowQueryAliases(query)) {
+        if (parsed?.closed || !/no-window-match/iu.test(String(parsed?.reason || parsed?.error || ''))) break;
+        parsed = await run(alias);
+      }
       return {
         ok: Boolean(parsed?.ok),
         closed: Boolean(parsed?.closed),

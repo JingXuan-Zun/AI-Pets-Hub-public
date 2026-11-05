@@ -437,10 +437,6 @@
   }
 }
 
-.pet-interactive-dialogue-enter {
-  animation: pet-interactive-dialogue-enter 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, translate;
-}
 .pet-overlay-enter {
   animation: pet-overlay-enter 180ms ease-out both;
 }
@@ -543,22 +539,6 @@
   animation-name: pet-anim-hover-hand-right;
 }
 
-@keyframes pet-interactive-dialogue-enter {
-  0% {
-    opacity: 0;
-    translate: 0 46vh;
-  }
-
-  72% {
-    opacity: 1;
-    translate: 0 -8px;
-  }
-
-  100% {
-    opacity: 1;
-    translate: 0 0;
-  }
-}
 @keyframes pet-overlay-enter {
   0% {
     opacity: 0;
@@ -784,7 +764,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pet-overlay-enter,
-  .pet-interactive-dialogue-enter,
   .pet-vision-line,
   .pet-vision-pulse,
   .pet-folder-appear,

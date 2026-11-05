@@ -50,10 +50,7 @@ interface CompanionPetRuntimeLayerProps {
   draggingCompanionPetIdRef?: MutableRefObject<string | null>;
   hungerAutoEatStopThreshold: number;
   hungerTriggerThreshold: number;
-  interactiveDialoguePosition?: Position | null;
-  interactiveDialogueShellSize?: number;
   isInteractiveDialogueHidden?: boolean;
-  isInteractiveDialogueMode?: boolean;
   isMovementPaused: boolean;
   isSpeaking?: boolean;
   isTyping?: boolean;
@@ -100,10 +97,7 @@ export const CompanionPetRuntimeLayer = memo(function CompanionPetRuntimeLayer({
   draggingCompanionPetIdRef,
   hungerAutoEatStopThreshold,
   hungerTriggerThreshold,
-  interactiveDialoguePosition = null,
-  interactiveDialogueShellSize = 256,
   isInteractiveDialogueHidden = false,
-  isInteractiveDialogueMode = false,
   isMovementPaused,
   isSpeaking = false,
   isTyping = false,
@@ -232,11 +226,8 @@ export const CompanionPetRuntimeLayer = memo(function CompanionPetRuntimeLayer({
       expressionAction={expressionAction}
       isDragging={isDragging}
       isInteractiveDialogueHidden={isInteractiveDialogueHidden}
-      isInteractiveDialogueMode={isInteractiveDialogueMode}
       isSpeaking={isSpeaking}
       isTyping={isTyping}
-      interactiveDialoguePosition={interactiveDialoguePosition}
-      interactiveDialogueShellSize={interactiveDialogueShellSize}
       latestMessage={latestMessage}
       manualExpressionBinding={effectiveManualExpressionBinding}
       manualMotionBinding={effectiveManualMotionBinding}

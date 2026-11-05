@@ -49,7 +49,11 @@ assert.deepEqual(
   'nothing is summarized while the whole chat still fits the window',
 );
 const shortOverflow = Array.from({ length: 105 }, (_entry, index) => chat(index));
-assert.deepEqual(selectMessagesPendingSummary(shortOverflow, 8192, null), [], 'small overflows wait for a full batch');
+// The prompt window drops old messages 20 at a time (prompt caching, 2026-11-05), so a small
+// overflow already leaves one full batch outside the window — summarized together, oldest first.
+const overflowBatch = selectMessagesPendingSummary(shortOverflow, 8192, null);
+assert.equal(overflowBatch.length, CONVERSATION_SUMMARY_MIN_BATCH, 'messages leave the window one full batch at a time');
+assert.equal(overflowBatch[0]?.id, shortOverflow[0].id, 'and the batch starts with the oldest message');
 
 // --- Automatic memory extraction ---
 const trigger = createAutoMemoryExtractionTrigger(3);

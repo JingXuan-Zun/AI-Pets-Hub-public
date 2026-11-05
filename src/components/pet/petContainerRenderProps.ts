@@ -24,7 +24,7 @@ interface CreatePetPanelsLayerPropsOptions extends Omit<PetPanelsLayerProps, 'is
 
 interface CreatePrimaryPetAvatarLayerPropsOptions extends Omit<
   PetAvatarLayerProps,
-  'isInteractiveDialogueHidden' | 'isInteractiveDialogueMode'
+  'isInteractiveDialogueHidden'
 > {
   isInteractiveDialogueActive: boolean;
   panelPetId: string;
@@ -56,8 +56,6 @@ interface CreateCompanionRuntimeLayerItemsOptions {
   handleStartCompanionPetDrag: CompanionPetRuntimeLayerProps['onStartDrag'];
   hungerAutoEatStopThreshold: CompanionPetRuntimeLayerProps['hungerAutoEatStopThreshold'];
   hungerTriggerThreshold: CompanionPetRuntimeLayerProps['hungerTriggerThreshold'];
-  interactiveDialoguePosition: CompanionPetRuntimeLayerProps['interactiveDialoguePosition'];
-  interactiveDialogueShellSize: CompanionPetRuntimeLayerProps['interactiveDialogueShellSize'];
   isInteractiveDialogueActive: boolean;
   isSpeaking: boolean;
   isTyping: boolean;
@@ -131,8 +129,6 @@ export function createCompanionRuntimeLayerItems({
   handleStartCompanionPetDrag,
   hungerAutoEatStopThreshold,
   hungerTriggerThreshold,
-  interactiveDialoguePosition,
-  interactiveDialogueShellSize,
   isInteractiveDialogueActive,
   isSpeaking,
   isTyping,
@@ -177,8 +173,6 @@ export function createCompanionRuntimeLayerItems({
     handleStartCompanionPetDrag,
     hungerAutoEatStopThreshold,
     hungerTriggerThreshold,
-    interactiveDialoguePosition,
-    interactiveDialogueShellSize,
     isInteractiveDialogueActive,
     isMovementPausedByPetId,
     isSpeaking,

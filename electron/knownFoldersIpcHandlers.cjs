@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawn } = require('node:child_process');
 const { createSensitivePathPolicy } = require('./sensitivePathPolicy.cjs');
 const { resolveVoiceRootPath } = require('./localVoiceLibrary.cjs');
 
@@ -74,8 +75,37 @@ function createKnownFoldersService({ app, projectRoot, protectedRoots = [] }) {
       }
       return { kind: stat.isDirectory() ? 'directory' : 'file', ok: true, path: resolved };
     },
+    // Opens a document in its program (or in Notepad when asked). She used to run
+    // `notepad.exe "<path>"` as a shell command, so the card showed a command line
+    // (benchmark 2026-11-05). Programs and scripts are not opened this way.
+    async openFile(shell, target, app, spawnProcess = spawn) {
+      if (typeof target !== 'string' || !path.isAbsolute(target.trim())) throw new Error('需要完整的绝对路径。');
+      const resolved = path.resolve(target.trim());
+      if (policy.isSensitivePath(resolved)) throw new Error('这个位置存放着私密数据，不能打开。');
+      let stat;
+      try {
+        stat = fs.statSync(resolved);
+      } catch {
+        throw new Error(`找不到 ${resolved}。`);
+      }
+      if (stat.isDirectory()) throw new Error('这是文件夹，用 open 打开文件夹。');
+      if (RUNNABLE_EXTENSIONS.test(resolved)) throw new Error('这是程序或脚本，不能用打开文件的方式运行；要启动软件请用 launch_app。');
+      const wanted = typeof app === 'string' ? app.trim().toLowerCase() : '';
+      if (wanted && !NOTEPAD_NAMES.has(wanted)) throw new Error('现在只支持用默认程序或记事本打开。');
+      if (wanted) {
+        const child = spawnProcess('notepad.exe', [resolved], { detached: true, stdio: 'ignore', windowsHide: false });
+        child.unref?.();
+        return { app: 'notepad', ok: true, path: resolved };
+      }
+      const error = await shell.openPath(resolved);
+      if (error) throw new Error(error);
+      return { app: 'default', ok: true, path: resolved };
+    },
   };
 }
+
+const RUNNABLE_EXTENSIONS = /\.(?:exe|com|bat|cmd|ps1|psm1|vbs|vbe|js|jse|wsf|wsh|msi|msp|scr|lnk|url|hta|cpl|reg|jar|appref-ms)$/iu;
+const NOTEPAD_NAMES = new Set(['notepad', 'notepad.exe', '记事本']);
 
 function registerKnownFoldersIpcHandlers({ ipcMain, service, shell }) {
   const handle = (channel, handler) => {
@@ -90,6 +120,7 @@ function registerKnownFoldersIpcHandlers({ ipcMain, service, shell }) {
 
   handle('desktop-pet:known-folders-list', () => service.list());
   handle('desktop-pet:known-folders-reveal', (request) => service.reveal(shell, request.path));
+  handle('desktop-pet:known-folders-open-file', (request) => service.openFile(shell, request.path, request.app));
 }
 
 module.exports = { createKnownFoldersService, registerKnownFoldersIpcHandlers };

@@ -1,4 +1,5 @@
 const { createFocusExistingAppWindowScript } = require('./focusExistingAppWindowScript.cjs');
+const { resolveWindowQueryAliases } = require('./windowsAppChineseAliases.cjs');
 
 function createWindowFocusOperation({ buildFocusCandidates, runPowerShellScript }) {
   async function focusExistingAppWindow(query, selectedApp, options = {}) {
@@ -77,6 +78,11 @@ function createWindowFocusOperation({ buildFocusCandidates, runPowerShellScript 
       if (!/no-window-match/iu.test(String(result?.reason || result?.error || ''))) {
         break;
       }
+    }
+    // “记事本” when the window is titled “… - Notepad”: try the app's English window name.
+    for (const alias of resolveWindowQueryAliases(query)) {
+      if (!/no-window-match/iu.test(String(result?.reason || result?.error || ''))) break;
+      result = await focusExistingAppWindow(alias, null, { hwnd: hasHwnd ? Math.round(requestedHwnd) : 0, pid: hasPid ? Math.round(requestedPid) : 0 });
     }
     return {
       ...result,

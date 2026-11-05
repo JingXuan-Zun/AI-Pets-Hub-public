@@ -9,6 +9,7 @@ const FILE_MANAGEMENT_ACTION_LABELS = {
   preview: 'preview',
   rename_path: 'rename',
   trash_path: 'trash',
+  write_text_file: 'write-text-file',
 };
 
 function createFileManagementPreview(action, options = {}) {

@@ -38,11 +38,13 @@ export async function* readOpenAITextStream(response: Response, toolSink?: Conve
   let lastFinishReason = '';
   let sawReasoning = false;
   let textLength = 0;
+  let usage: unknown = null;
   function parseEvent() {
     const raw = data.join('\n'); data = [];
     if (!raw || raw === '[DONE]') return { done: raw === '[DONE]', text: '' };
     const payload = JSON.parse(raw);
     if (payload.error) throw new Error(payload.error.message || '模型流式请求失败');
+    if (payload.usage) usage = payload.usage;
     sawReasoning = sawReasoning || hasReasoningContent(payload);
     lastFinishReason = resolveFinishReason(payload) || lastFinishReason;
     if (toolSink) accumulateToolCallDeltas(pendingToolCalls, payload?.choices?.[0]?.delta?.tool_calls);
@@ -74,6 +76,7 @@ export async function* readOpenAITextStream(response: Response, toolSink?: Conve
     if (!hasText && !hasToolCalls()) throw createMissingResponseTextError({ finishReason: lastFinishReason, sawReasoning });
     logUnusualStreamEnd(lastFinishReason, textLength, false);
   } finally {
+    logPromptCacheUsage(usage);
     await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
@@ -111,6 +114,24 @@ function hasReasoningContent(payload: any) {
   return candidates.some((value) => (
     typeof value === 'string' ? Boolean(value.trim()) : Array.isArray(value) ? value.length > 0 : Boolean(value)
   ));
+}
+
+/**
+ * How much of the prompt the provider served from its cache (cheap) vs. read fresh (full price).
+ * DeepSeek reports prompt_cache_hit_tokens / prompt_cache_miss_tokens; OpenAI-style providers
+ * report prompt_tokens_details.cached_tokens. Logged once per request to compare costs.
+ */
+export function summarizePromptCacheUsage(usage: any) {
+  if (!usage || typeof usage !== 'object') return null;
+  const prompt = Number(usage.prompt_tokens) || 0;
+  const hit = Number(usage.prompt_cache_hit_tokens ?? usage.prompt_tokens_details?.cached_tokens) || 0;
+  const miss = Number(usage.prompt_cache_miss_tokens) || Math.max(0, prompt - hit);
+  return { completionTokens: Number(usage.completion_tokens) || 0, hitRate: prompt ? Math.round((hit / prompt) * 100) : 0, hitTokens: hit, missTokens: miss, promptTokens: prompt };
+}
+
+function logPromptCacheUsage(usage: unknown) {
+  const summary = summarizePromptCacheUsage(usage);
+  if (summary) pushFrontendRuntimeLog('chat', 'prompt cache usage', summary);
 }
 
 // Replies that stop mid-sentence are otherwise indistinguishable from complete ones: record why the

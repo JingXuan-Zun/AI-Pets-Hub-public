@@ -82,15 +82,6 @@ export function resolvePetRuntimeDragMotionState(
   };
 }
 
-export function resolvePetRuntimePresentationMode(
-  modelType: ModelType,
-  isInteractiveDialogueMode: boolean,
-): AvatarRuntimePresentationMode {
-  return modelType === '3d' && isInteractiveDialogueMode
-    ? 'interactive-dialogue'
-    : 'default';
-}
-
 export function resolvePetRuntimeFallbackVisualBounds(
   modelType: ModelType,
   scale: number,

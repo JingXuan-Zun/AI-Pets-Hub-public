@@ -14,6 +14,7 @@ import { executeLoopAction, resolveLoopWindow, type LoopActionOutcome } from '..
 import { formatLoopWindows } from '../loop/loopPrompt';
 import { compareLoopState } from '../loop/loopVerification';
 import { lookAtLoopWindow } from '../loop/loopVision';
+import { FAILED_RESULT, FAILURES_BEFORE_STOP, SIGN_IN_TITLE, SIGN_IN_WALL } from './desktopDeadEnds';
 import {
   observeLoopScreen,
   observeLoopWindowElements,
@@ -203,7 +204,7 @@ export function createConversationDesktopSession(options: {
     startedAt ??= now();
     if (actions >= MAX_ACTIONS) return `这次已经操作了 ${MAX_ACTIONS} 步，先停下，把进展告诉用户，问要不要继续。`;
     if (now() - startedAt - approvalWaitMs > MAX_DURATION_MS) return '这次操作超过 5 分钟了，先停下，把进展告诉用户。';
-    const { reason, risk } = override ?? classifyLoopActionRisk(action, { elementLabel: label, previousAction });
+    const { reason, risk } = override ?? classifyLoopActionRisk(action, { elementLabel: label, previousAction, windowProcessName: (focus as LoopWindow | null)?.processName });
     if (risk === 'confirm') {
       const request = override?.title
         ? { detail: `${override.title}\n原因：${reason}`, title: override.title }
@@ -386,7 +387,7 @@ export function createConversationDesktopSession(options: {
       return { content: `已请求关闭「${target.title}」。${stillOpen ? prompt : '窗口已关闭。'}
 ${formatLoopWindows(windows, active)}` };
     }),
-    tool('click', '点击。target 用最新清单里的元素编号；清单里没有、但知道位置时可以用屏幕坐标。返回点击后的变化和新清单。文件改名、移动、复制、新建文件夹不要在资源管理器里点，用 files 工具。', {
+    tool('click', '点击。target 用最新清单里的元素编号；清单里没有、但知道位置时可以用屏幕坐标。返回点击后的变化和新清单。文件改名、移动、复制、新建文件夹不要在资源管理器里点，用 files 工具。要连着点好几个按钮输入数字或算式（计算器、数字键盘）时改用 press_keys 一次打完。', {
       button: { description: 'left（默认）、double（双击）或 right（右键）', enum: ['left', 'double', 'right'], type: 'string' },
       target: targetProperty('点哪里'),
     }, ['target'], async (args) => {
@@ -437,7 +438,7 @@ ${formatLoopWindows(windows, active)}` };
       }
       return afterAction(action, await deps.executeLoop(action, { elements: observation?.elements ?? [], focus, windows }));
     }),
-    tool('press_keys', '在当前窗口按键或快捷键，SendKeys 格式：{ENTER} 回车、{TAB}、{ESC}、{PGDN}、^a 是 Ctrl+A、%{F4} 是 Alt+F4、^c / ^v 复制粘贴。很多事用快捷键比找按钮更稳。', {
+    tool('press_keys', '在当前窗口按键或快捷键，SendKeys 格式：{ENTER} 回车、{TAB}、{ESC}、{PGDN}、^a 是 Ctrl+A、%{F4} 是 Alt+F4、^c / ^v 复制粘贴。很多事用快捷键比找按钮更稳。计算器这类一个个按钮输入的软件，直接按整串键（例如 "37*48="、"{ESC}12+5="），一次就算完，不要一个个点按钮。', {
       keys: { description: '例如 "{ENTER}"、"^f"、"%{TAB}"', type: 'string' },
     }, ['keys'], async (args) => {
       const keys = text(args, 'keys');
@@ -524,5 +525,35 @@ ${formatLoopWindows(windows, active)}` };
         : { content: `等待后：${change}` };
     }),
   ];
-  return { tools };
+  // Every result is checked for dead ends: a sign-in / activation wall, or several failed steps
+  // in a row. Either way she is told to stop and tell the user instead of retrying.
+  let failuresInARow = 0;
+  const warnedWalls = new Set<string>();
+  const findWall = () => {
+    const shown = [active, focus, ...windows].filter((window): window is LoopWindow => Boolean(window) && !OWN_WINDOW.test((window as LoopWindow).title));
+    const byTitle = shown.find((window) => SIGN_IN_WALL.test(window.title) || SIGN_IN_TITLE.test(window.title));
+    if (byTitle) return byTitle.title || byTitle.processName;
+    const labels = ((observation as LoopWindowObservation | null)?.elements ?? []).slice(0, 300).map((element) => element.label).join(' ');
+    return SIGN_IN_WALL.test(labels) ? ((focus as LoopWindow | null)?.title || '当前窗口') : '';
+  };
+  const withDeadEndCheck = (entry: ConversationDesktopTool): ConversationDesktopTool => ({
+    ...entry,
+    run: async (args) => {
+      const result = await entry.run(args);
+      failuresInARow = FAILED_RESULT.test(result.content) ? failuresInARow + 1 : 0;
+      const notes: string[] = [];
+      const wall = findWall();
+      if (wall && !warnedWalls.has(wall)) {
+        warnedWalls.add(wall);
+        notes.push(`【注意】「${wall}」在要求登录或激活。你没有这个软件的账号和密钥，也不能替用户登录或输入密钥。停下，不要再重试、关掉重开或换着点：告诉用户卡在这里，问用户是自己处理，还是换一个不用登录的办法（例如用记事本代替 Excel）。`);
+      }
+      if (failuresInARow >= FAILURES_BEFORE_STOP) {
+        notes.push(`【注意】已经连续 ${failuresInARow} 步没成功。先停下来，告诉用户做到哪一步、卡在哪里，问要不要换个办法；不要再用同样的方法重试。`);
+      }
+      if (!notes.length) return result;
+      const tail = `\n${notes.join('\n')}`;
+      return { ...result, ...(result.compact ? { compact: `${result.compact}${tail}` } : {}), content: `${result.content}${tail}` };
+    },
+  });
+  return { tools: tools.map(withDeadEndCheck) };
 }

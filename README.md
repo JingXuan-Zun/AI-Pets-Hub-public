@@ -184,6 +184,7 @@ A pink glass look across the chat window and settings center; the settings cente
 - **Every character speaks up** — Startup greetings, getting hungry, growing closer: each character speaks in her own manner.
 - **Personality and knowledge** — Every character has its own name, personality, system prompt, knowledge base, and conversation context; SillyTavern presets can be imported and switched entry by entry.
 - **Long chats without forgetting** — History stays on your machine, and very long conversations get automatic summaries.
+- **Long chats that stay cheap** — Requests are laid out so the model service can reuse its cache (DeepSeek, measured: about 95% of each message billed at the cache price), so long conversations cost far less.
 - **Your choice of model** — Gemini or any OpenAI-compatible API, with streaming replies and image input.
 
 <p align="center">
@@ -236,10 +237,12 @@ See [`docs/voice-pack-format.md`](./docs/voice-pack-format.md) for the voice pac
   <img src="./docs/image/screenshot-agent-panel.webp" alt="Task card with five steps and the result, followed by the character asking for permission" width="880">
 </p>
 
-- **Characters that can act** — Open apps, click buttons, type, press keys, open web pages, search the web, check system info, and run commands; apps running as administrator work too (after a system prompt).
+- **Characters that can act** — Open apps, click buttons, type, press keys, open web pages, search the web, read and write files, check system info, and run commands; apps running as administrator work too (after a system prompt).
 - **Desktop tidying** — Tidy just one screen and sort icons by file type, or move an icon to a named spot on a chosen screen ("bottom-right of the second screen").
 - **Moving windows** — "Put Notepad in the bottom-right of the second screen" in one step, keeping the window size.
 - **A process you can see** — One card per task shows each step as it happens; failed steps are marked, and she tries another way.
+- **She stops and asks when stuck** — When an app wants a sign-in or activation, or several steps in a row fail, she stops, says where she is stuck and asks whether you handle it or she tries another way; a task you interrupt is marked "not finished", and she offers to pick it up again.
+- **Tested** — 20 everyday tasks (chat, reminders, settings, Calculator and Notepad, moving windows, tidying the second screen, her browser, looking things up online, reading and writing files, plugins) all completed, including one-sentence tasks across 3–4 apps; using your own browser at the same time does not disturb her.
 - **Permissions you control** — Read-only observation and actions that change things are handled separately; she asks before any change (or "allow for today"), and always asks again before sending, deleting or paying; you can press "stop" at any time.
 - **Works while chatting** — Slow jobs such as drawing run in the background; she keeps chatting and tells you when it's done, and "stop drawing" stops it.
 - **Firm limits** — Even through commands she cannot touch the app's own settings files, keys or browser login data; when a plugin fails to install she tells you why instead of editing configs herself.
@@ -262,7 +265,7 @@ See [The Agent Loop](#agent-loop) above for how it works.
 - **Install from a link** — Send her a plugin's GitHub link; she works out what it is (a skill, an MCP tool or a plugin package), what your computer needs and where it comes from, says it has not been reviewed, and **installs only after you agree** (asked every time).
 - **Build plugins together** — Nothing in the market fits? Describe what you want and she writes a skill or a small tool and installs it.
 - **MCP** — Paste the config from a README into "Add MCP tool"; once added it gets a plain one-line description, she knows which tools are installed and what each does, and screenshots a tool returns appear in the chat.
-- **Her own browser** — The app comes with a separate browser (its own data, not shared with your browser or accounts); with the chrome-devtools plugin she opens pages, clicks, fills in forms and takes screenshots there. Click "Open her browser" on the plugin page and sign in her accounts.
+- **Her own browser** — The app comes with a separate browser (its own data, not shared with your browser or accounts); with the chrome-devtools plugin she opens pages, clicks, fills in forms and takes screenshots there, without pulling the focus away from the window you are using. Click "Open her browser" on the plugin page and sign in her accounts.
 - **QQ** — Connect QQ through SnowLuma to chat on your phone, send pictures and voice messages; she replies with voice messages in her own voice.
 - **WeChat** — Scan a QR code with phone WeChat (official ClawBot channel, no desktop WeChat needed); family members can each connect; her voice is sent as a short video.
 - **ComfyUI image generation** — Connect your own ComfyUI (another computer on your network works too), say "draw…" and she writes the prompt and draws in the background; the image appears in the chat and on QQ / WeChat; with the sync extension, settings you change in ComfyUI are picked up automatically.
@@ -278,6 +281,7 @@ See [The Agent Loop](#agent-loop) above for how it works.
 - **Switch back** — Don't like a new version? Go back to an earlier one or to the version your download came with.
 - **Safe if something breaks** — The version list is signed and every file is checked; a version that fails to start rolls back to the last one that worked, and you are told.
 - Available from **v0.4.0**: if you are on v0.3.x, download the full v0.4.0 once.
+- **Export diagnostics** — If something goes wrong, click "Export diagnostics" in the same place and send the text file to whoever helps you: versions, a settings summary and recent runtime logs, without chat text or keys.
 
 ---
 
@@ -309,7 +313,7 @@ The project is in early public development: the core experience works, and some 
 | --- | :---: | --- |
 | Desktop companions and windows | ✅ Ready | Pets, chat, and settings run independently and share state |
 | Character chat (solo / group / story) | ✅ Ready | Requires your own model service |
-| Say it, she does it (conversation agent) | ✅ Ready | Opening apps, tidying the desktop, and moving windows are tested; complex multi-step UI work is still slow |
+| Say it, she does it (conversation agent) | ✅ Ready | 20 everyday tasks tested, all completed, including tasks across several apps; she stops and asks when an app needs a sign-in or activation |
 | Reminders / to-dos / pomodoro | ✅ Ready | Data stays on your machine |
 | Memory approval and "about you" memory | ✅ Ready | Deeper Neural Persona integration with chat is in progress |
 | Voice and wake words | ✅ Ready | GPT-SoVITS must be installed separately; a GPU is recommended |

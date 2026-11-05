@@ -568,8 +568,6 @@ export default function PetContainer({
     activePanelSelectedCustomMotionBindingId,
     chatPanelBasePosition,
     interactiveDialogueChatPanelPosition,
-    interactiveDialoguePosition,
-    interactiveDialogueShellSize,
     interactiveDialogueVisualSize,
     petAnchorPosition,
     petVisualSize,
@@ -784,7 +782,7 @@ export default function PetContainer({
     handleCompanionRenderedPositionChange, handleCompanionVisualBoundsChange, handleCompanionWheelScale, handleStartCompanionPetDrag,
     hungerAutoEatStopThreshold: PET_HUNGER_AUTO_EAT_STOP_THRESHOLD,
     hungerTriggerThreshold: PET_HUNGER_TRIGGER_THRESHOLD,
-    interactiveDialoguePosition, interactiveDialogueShellSize, isInteractiveDialogueActive, isSpeaking, isTyping,
+    isInteractiveDialogueActive, isSpeaking, isTyping,
     isMovementPausedByPetId: (petId) => (
       effectiveAutoMovementPause
       || isSelectedPetMenuMovementLocked(petId)
@@ -808,7 +806,7 @@ export default function PetContainer({
     debugCollisionBounds: petCollisionBounds,
     expressionAction: primaryReactionState.expressionAction,
     hungerTriggerThreshold: PET_HUNGER_TRIGGER_THRESHOLD,
-    interactiveDialoguePosition, interactiveDialogueShellSize, isAutoMoving, isChatOpen,
+    isAutoMoving, isChatOpen,
     isDragging: isPetDragActive, isInteractiveDialogueActive, isSpeaking: isPrimarySpeaking,
     isSettingsOpen, isTyping: isPrimaryTyping,
     animationToolTrigger: animationToolTriggersByPetId[PRIMARY_DESKTOP_PET_SLOT_ID] ?? null,

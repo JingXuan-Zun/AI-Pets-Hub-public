@@ -23,6 +23,9 @@ export interface ConversationLoopEvent {
   round: number;
 }
 
+/** Tool results that tell her to stop and ask the user (see conversationDesktopTools). */
+const STOP_AND_ASK = /【注意】|先停下/u;
+
 /**
  * One model reply that may call tools: each round streams its text, then the tool calls run
  * and their results go back to the model, until it answers without calling a tool. Callers
@@ -47,6 +50,14 @@ export async function* streamConversationWithTools(options: {
   let worldOutcome: AgentRuntimeWorldResultInput['status'] | null = null;
   let anyToolSucceeded = false;
   const taskState = { phase: 'running', taskId: `conversation-${Date.now().toString(36)}` };
+  // True until the loop ends by itself. A new message from the user stops reading this reply
+  // mid-task (the generator is closed from outside); the task card then said 已完成 for a
+  // task cut off after three steps (benchmark 2026-11-05).
+  let stoppedFromOutside = true;
+  // The last tool round told her to stop and ask the user (sign-in wall, repeated failures,
+  // step limit). If she then answers without tools, the task is not done: she is waiting for
+  // the user's decision, and the card should say so instead of 已完成.
+  let toldToStop = false;
   try {
     for (let round = 1; round <= maxRounds; round += 1) {
       const sink = createConversationToolSink();
@@ -61,10 +72,17 @@ export async function* streamConversationWithTools(options: {
       }
       if (options.runtime.signal?.aborted) {
         if (worldOutcome) worldOutcome = 'cancelled';
+        stoppedFromOutside = false;
+        return;
+      }
+      // A new message from the user cut this round off: the task stops here, not finished.
+      if (sink.interrupted) {
+        if (worldOutcome) worldOutcome = 'cancelled';
         return;
       }
       if (!sink.toolCalls.length) {
-        if (worldOutcome) worldOutcome = anyToolSucceeded ? 'completed' : 'failed';
+        if (worldOutcome) worldOutcome = anyToolSucceeded && !toldToStop ? 'completed' : 'failed';
+        stoppedFromOutside = false;
         return;
       }
       if (!worldOutcome) publishAgentRuntimeWorldTaskStarted();
@@ -83,6 +101,7 @@ export async function* streamConversationWithTools(options: {
       });
       const results = await runConversationToolCalls(options.runtime, sink.toolCalls);
       anyToolSucceeded ||= results.some((result) => result.ok);
+      toldToStop = results.some((result) => STOP_AND_ASK.test(result.content));
       publishAgentRuntimeWorldProgress({ continuation: { taskState }, stepIndex: round, type: 'tool-result' });
       if (results.some((result) => result.compact)) {
         compactable.splice(0).forEach((entry) => { entry.message.content = entry.compact; });
@@ -114,15 +133,25 @@ export async function* streamConversationWithTools(options: {
         if (lastText && !/\s$/u.test(lastText)) yield '\n\n';
         yield ending;
         worldOutcome = 'completed';
+        stoppedFromOutside = false;
         return;
       }
     }
     worldOutcome = 'max-steps';
+    stoppedFromOutside = false;
     yield '\n\n（这件事步骤太多，我先停在这里，你看看要不要换个说法再试。）';
+  } catch (error) {
+    // A failure is not an interruption.
+    stoppedFromOutside = false;
+    throw error;
   } finally {
+    if (worldOutcome && stoppedFromOutside) worldOutcome = 'cancelled';
     if (worldOutcome) publishAgentRuntimeWorldResult({ status: worldOutcome, taskState: { ...taskState, phase: worldOutcome } });
     if (worldOutcome) {
-      options.runtime.progress?.finish(worldOutcome === 'completed' ? 'done' : worldOutcome === 'cancelled' ? 'cancelled' : worldOutcome === 'max-steps' ? 'budget' : 'failed');
+      options.runtime.progress?.finish(
+        worldOutcome === 'completed' ? 'done' : worldOutcome === 'cancelled' ? 'cancelled' : worldOutcome === 'max-steps' ? 'budget' : 'failed',
+        stoppedFromOutside ? '被新的消息打断，还没做完' : toldToStop ? '卡住了，停下来问你怎么办' : undefined,
+      );
     }
   }
 }

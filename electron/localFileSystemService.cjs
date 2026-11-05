@@ -13,7 +13,7 @@ const {
   createFileManagementPreview,
   createFileManagementError,
 } = require('./localFileSystemActionResults.cjs');
-const { executeDesktopOrganizationAction, executeCreateDirectoryAction } = require('./localFileSystemDirectoryActions.cjs');
+const { executeDesktopOrganizationAction, executeCreateDirectoryAction, executeWriteTextFileAction } = require('./localFileSystemDirectoryActions.cjs');
 
 async function executeFileManagementAction(request = {}, options = {}) {
   const { action, dryRun } = readFileManagementRequest(request);
@@ -25,6 +25,9 @@ async function executeFileManagementAction(request = {}, options = {}) {
   }
   if (action === 'create_directory') {
     return executeCreateDirectoryAction(request, dryRun, action);
+  }
+  if (action === 'write_text_file') {
+    return executeWriteTextFileAction(request, dryRun, action);
   }
   const resolvedSource = resolveFileManagementSource(request, action);
   if (!resolvedSource.ok) {

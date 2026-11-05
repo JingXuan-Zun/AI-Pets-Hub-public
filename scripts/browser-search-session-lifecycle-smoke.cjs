@@ -102,7 +102,8 @@ async function main() {
       hash.update(JSON.stringify(actual) + '\n'); cases++;
     }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, '8f37384d3945640a0064a34123f9ccdc318a9483fa15bccc6a8db58663cba4b9', 'Reviewed lifecycle transitions and process call order');
+  // 2026-11-05: spawn args gained --disable-backgrounding-occluded-windows / --disable-renderer-backgrounding.
+  assert.equal(fingerprint, '16ccc7063fbff47a5b0fde7dfa23e0a73e3b85654cdf4c543504fd70a465d1a7', 'Reviewed lifecycle transitions and process call order');
   console.log('Session lifecycle passed: ' + cases + ' sequence/process/failure/exit/reopen/isolation cases');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

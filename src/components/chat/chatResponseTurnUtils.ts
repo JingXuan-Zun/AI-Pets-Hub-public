@@ -124,7 +124,11 @@ export async function requestPetResponseStream(options: {
   return (async function* () {
     const controller = new AbortController();
     const timer = setInterval(() => {
-      if (options.isCurrentRequest && !options.isCurrentRequest()) controller.abort();
+      if (options.isCurrentRequest && !options.isCurrentRequest()) {
+        // The loop must not read the cut-off round as "answered without tools" (= done).
+        if (options.toolTurn) options.toolTurn.sink.interrupted = true;
+        controller.abort();
+      }
     }, 100);
     try {
     yield* getPetResponseStream(

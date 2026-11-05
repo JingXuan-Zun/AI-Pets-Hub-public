@@ -6,6 +6,7 @@ import {
 } from '../src/agent/agentMcpRiskSummary';
 import { setAgentExternalMcpRuntimeOverride } from '../src/agent/agentExternalMcpBridge';
 import { type AgentMcpToolDefinition } from '../src/agent/agentMcpTypes';
+import { coerceMcpArguments, isReadOnlyMcpCall } from '../src/agent/agentMcpRegistry';
 
 const platformListTool: AgentMcpToolDefinition = {
   description: 'List skills.',
@@ -179,7 +180,40 @@ async function assertRuntimeRiskOutput() {
   setAgentExternalMcpRuntimeOverride(null);
 }
 
+// Benchmark 2026-11-05: chrome-devtools list_pages declares readOnlyHint but its description
+// talks about selecting pages; the server's declaration wins over the word guess.
+function assertDeclaredReadOnlyWins() {
+  const summary = summarizeAgentMcpToolRisk({
+    annotations: { readOnlyHint: true },
+    description: 'Get a list of pages open in the browser. Use select_page to open or click one.',
+    name: 'list_pages',
+    serverId: 'chrome-devtools',
+  });
+  assert.equal(summary.risk, 'read');
+  assert.equal(summary.approvalMode, 'silent');
+  const destructive = summarizeAgentMcpToolRisk({ annotations: { destructiveHint: true, readOnlyHint: true }, name: 'wipe', serverId: 'x' });
+  assert.equal(destructive.approvalMode, 'confirm', 'destructiveHint still asks');
+  assert.equal(isReadOnlyMcpCall('chrome-devtools', 'take_screenshot', '', true), true, 'screenshot without a file only looks');
+  assert.equal(isReadOnlyMcpCall('chrome-devtools', 'take_screenshot', '{"filePath":"C:/x.png"}', true), false, 'saving to a file asks');
+  assert.equal(isReadOnlyMcpCall('other', 'take_screenshot', '', false), false, 'only for chrome-devtools');
+  assert.equal(isReadOnlyMcpCall('chrome-devtools', 'click', '{}', true), false);
+}
+
+// Benchmark 2026-11-05: navigate_page failed on pageId "1"; values follow the tool's schema.
+function assertArgumentsFollowSchema() {
+  const schema = { properties: { fullPage: { type: 'boolean' }, label: { type: 'string' }, pageId: { type: 'number' }, tags: { type: 'array' }, url: { type: 'string' } }, type: 'object' };
+  assert.deepEqual(
+    coerceMcpArguments(schema, { fullPage: 'true', label: 3, pageId: '1', tags: 'a', url: 'https://x' }),
+    { fullPage: true, label: '3', pageId: 1, tags: 'a', url: 'https://x' },
+  );
+  assert.deepEqual(coerceMcpArguments(schema, { pageId: 'first' }), { pageId: 'first' }, 'not a number stays as it was');
+  assert.deepEqual(coerceMcpArguments({ properties: { n: { type: ['integer', 'null'] } } }, { n: '2' }), { n: 2 });
+  assert.deepEqual(coerceMcpArguments(undefined, { pageId: '1' }), { pageId: '1' }, 'unknown schema passes through');
+}
+
 assertRiskSummary();
+assertDeclaredReadOnlyWins();
+assertArgumentsFollowSchema();
 await assertRuntimeRiskOutput();
 
 console.log('agent MCP risk summary smoke passed');
