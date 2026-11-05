@@ -12,9 +12,9 @@ import { collectQqRelayOutgoing, createQqRelayState, type QqRelayState } from '.
 import { normalizeQqBridgeSettings, resolveQqBridgeBlocker, wantsVoiceReply } from './qqBridgeSettings';
 import { prepareSpeechText } from '../voice/speechText';
 import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
-import { synthesizeGptSovitsWav } from '../voice/ttsGptSovitsPlayback';
 import { resolveConversationSttSettings } from '../voice/conversationSttModel';
 import { transcribeLocalVoice } from '../voice/runtime';
+import { synthesizeBridgeVoice } from './bridgeVoiceAudio';
 
 // Phone QQ ⇄ the character: a private message from the owner's QQ goes into the chat exactly
 // like typing in the chat window (current character and chat mode); her replies and any
@@ -129,10 +129,9 @@ export function useQqBridge({ config, configRef, sendMessage }: {
           // Typed on the phone, so never her own voice: answered even while she is still asking out loud.
           const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings), () => false);
           if (decision) {
-            reply(decision === 'deny' ? '好，这一步不做了。' : decision === 'approve-day' ? '好，今天的操作都不再问你了（发送、删除、付款这类还会问）。'
-            : decision === 'approve-task' ? '好，这个任务后面的步骤都不再问你了。' : '好，这就去做。');
+            reply(decision === 'deny' ? '好，这一步不做了。' : decision === 'approve-day' ? '好，今天的操作都不再问你了（发送、删除、付款这类还会问）。' : '好，这就去做。');
           } else {
-            reply('还在等你确认上一步：回复“好”“都好”或“不要”就可以。');
+            reply('还在等你确认上一步：回复“好”“今天都好”或“不要”就可以。');
           }
           return;
         }
@@ -156,9 +155,13 @@ export function useQqBridge({ config, configRef, sendMessage }: {
       const { isTyping, messages } = desktopPetChatStore.getState();
       collectQqRelayOutgoing(messages, relay, isTyping).forEach((item) => {
         if (item.text) reply(item.text);
+        item.imageDataUrls.forEach((dataUrl) => {
+          if (!client.sendPrivateImage(owner, dataUrl.replace(/^data:[^,]*,/u, ''))) pushFrontendRuntimeLog('qq-bridge', 'picture not sent: not connected');
+        });
         item.stickerAssetIds.forEach((assetId) => { void sendSticker(assetId); });
         // Voice follows the text it says, in order (synthesis takes a few seconds per reply).
-        if (voiceReplies && item.petId && item.speechText) voiceQueue = voiceQueue.then(() => sendVoice(item.petId!, item.speechText));
+        // Checked again here: when she turns voice off in this very reply, that reply is already text only.
+        if (voiceReplies && normalizeQqBridgeSettings(configRef.current.settings.qqBridge).voiceReplyMode !== 'off' && item.petId && item.speechText) voiceQueue = voiceQueue.then(() => sendVoice(item.petId!, item.speechText));
       });
     };
     // Pictures from the phone become image attachments, as if dropped into the chat window.
@@ -196,7 +199,7 @@ export function useQqBridge({ config, configRef, sendMessage }: {
       const text = limitVoiceText(prepareSpeechText(speechText, voiceSettings));
       if (!text) return;
       try {
-        const wav = await synthesizeGptSovitsWav(text, voiceSettings);
+        const wav = await synthesizeBridgeVoice(text, voiceSettings);
         if (!client.sendPrivateRecord(owner, await blobToBase64(wav))) pushFrontendRuntimeLog('qq-bridge', 'voice reply not sent: not connected');
       } catch (error) {
         pushFrontendRuntimeError('qq-bridge', 'voice reply failed', error);

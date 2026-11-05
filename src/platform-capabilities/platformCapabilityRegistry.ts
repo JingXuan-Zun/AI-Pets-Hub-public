@@ -3,6 +3,9 @@ import { BUILTIN_PLATFORM_CAPABILITIES } from './builtinPlatformCapabilities';
 import { CARE_CAPABILITIES } from './careCapabilities';
 import { DATA_CAPABILITIES } from './dataCapabilities';
 import { DISPLAY_SETTINGS_CAPABILITIES } from './displaySettingsCapabilities';
+import { BACKGROUND_TASK_CAPABILITIES } from './backgroundTaskCapabilities';
+import { SETTINGS_MANIFEST_CAPABILITIES } from './settingsManifestCapabilities';
+import { WEIXIN_CAPABILITIES } from '../weixin-bridge/weixinCapabilities';
 import { IMAGE_CAPABILITIES } from './imageCapabilities';
 import { KNOWLEDGE_CAPABILITIES } from './knowledgeCapabilities';
 import { PET_ROSTER_CAPABILITIES } from './petRosterCapabilities';
@@ -20,7 +23,7 @@ import type {
 } from './platformCapabilityTypes';
 
 const capabilities = new Map<string, PlatformCapability>(
-  [...BUILTIN_PLATFORM_CAPABILITIES, ...CARE_CAPABILITIES, ...DATA_CAPABILITIES, ...DISPLAY_SETTINGS_CAPABILITIES, ...IMAGE_CAPABILITIES, ...KNOWLEDGE_CAPABILITIES, ...PET_ROSTER_CAPABILITIES, ...PRODUCTIVITY_CAPABILITIES, ...WEATHER_CAPABILITIES, ...WORK_TASK_CAPABILITIES, ...SELF_CHECK_CAPABILITIES, ...DEV_AGENT_CAPABILITIES, ...PLUGIN_CAPABILITIES].map((capability) => [capability.id, capability]),
+  [...BUILTIN_PLATFORM_CAPABILITIES, ...CARE_CAPABILITIES, ...DATA_CAPABILITIES, ...DISPLAY_SETTINGS_CAPABILITIES, ...IMAGE_CAPABILITIES, ...BACKGROUND_TASK_CAPABILITIES, ...SETTINGS_MANIFEST_CAPABILITIES, ...WEIXIN_CAPABILITIES, ...KNOWLEDGE_CAPABILITIES, ...PET_ROSTER_CAPABILITIES, ...PRODUCTIVITY_CAPABILITIES, ...WEATHER_CAPABILITIES, ...WORK_TASK_CAPABILITIES, ...SELF_CHECK_CAPABILITIES, ...DEV_AGENT_CAPABILITIES, ...PLUGIN_CAPABILITIES].map((capability) => [capability.id, capability]),
 );
 
 /** Plugins add their capabilities here; ids must be unique. */

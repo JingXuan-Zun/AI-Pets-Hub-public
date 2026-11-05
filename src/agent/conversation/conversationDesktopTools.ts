@@ -361,10 +361,11 @@ export function createConversationDesktopSession(options: {
       return afterAction(action, await deps.executeLoop(action, { elements: [], focus, windows }));
     }),
     // Closing went focus → Alt+F4, which failed whenever Windows refused to bring the window
-    // forward (rounds of retries). The close request goes to the window directly instead; the
-    // app still asks to save unsaved work, so it is as safe as the user clicking ×. A browser
-    // is the exception: every tab goes with it, so that always asks first.
-    tool('close_window', '关闭整个窗口（相当于点它的 ×）。浏览器要关的通常只是当前标签页，用 close_tab；只有用户明确说“关掉浏览器 / 整个浏览器 / 所有网页”才用这个关浏览器，拿不准就先问用户是关当前网页还是整个浏览器。有没保存的内容时应用会自己弹出“是否保存”。', {
+    // forward (rounds of retries). The close request goes to the window directly instead.
+    // Closing a program always asks first (“关闭程序等操作仍会单独询问”, also after
+    // “今天都允许”): the user may have meant something else, and a program in
+    // the tray may go with it. A browser asks in its own words: every tab goes with it.
+    tool('close_window', '关闭整个窗口（相当于点它的 ×），每次都会先问用户。浏览器要关的通常只是当前标签页，用 close_tab；只有用户明确说“关掉浏览器 / 整个浏览器 / 所有网页”才用这个关浏览器，拿不准就先问用户是关当前网页还是整个浏览器。用户说“把 QQ / 微信关了”时，可能是指桌宠里的 QQ / 微信连接（settings.find 能找到），也可能是电脑上的程序：说不清就先问是哪一个。有没保存的内容时应用会自己弹出“是否保存”。', {
       window: { description: '窗口标题、进程名或 hwnd，来自 list_windows', type: 'string' },
     }, ['window'], async (args) => {
       const query = text(args, 'window');
@@ -374,7 +375,7 @@ export function createConversationDesktopSession(options: {
       const action: LoopAction = { action: 'focus_window', window: query };
       const refusal = isBrowserWindow(target)
         ? await authorize(action, undefined, { reason: '浏览器里所有标签页都会关掉', risk: 'confirm', title: `关掉整个浏览器「${target.title || target.processName}」` })
-        : await authorize(action, undefined);
+        : await authorize(action, undefined, { reason: '关掉程序，没保存的内容可能会丢', risk: 'confirm', title: `关闭「${target.title || target.processName}」` });
       if (refusal) return { content: refusal };
       const error = await deps.closeWindow(target);
       await deps.sleep(SETTLE_MS);

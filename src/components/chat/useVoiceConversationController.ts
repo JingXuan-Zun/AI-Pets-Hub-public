@@ -30,6 +30,7 @@ const END_MESSAGES: Record<VoiceConversationEndReason, string> = {
   user: '实时对话已结束。',
   idle: '一段时间没听到你说话，麦克风先关啦。',
   error: '语音识别连续失败，实时对话已停止。请检查语音识别模型后再试。',
+  noise: '周围好像是电视或别人在说话，不是在跟她说，麦克风先关了。',
 };
 
 // The repeated-failure stop used to blame the model even when the speech environment was

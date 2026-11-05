@@ -1,3 +1,4 @@
+import { emitAppEvent } from '../../events/appEvents';
 import { streamConversationWithTools } from '../../agent/conversation/conversationToolStream';
 import type { ConversationToolRuntime } from '../../agent/conversation/conversationTools';
 import type { ConversationToolTurn } from '../../agent/conversation/conversationToolTypes';
@@ -683,6 +684,7 @@ export function usePetChatResponseTurn({
         }
       }
 
+      emitAppEvent({ messageId: modelMessageId, petId: targetSlot.id, type: 'reply.finished' });
       pushFrontendRuntimeLog('chat', 'pet streaming reply completed', {
         petId: targetSlot.id,
         petName: targetSlot.personality.name,

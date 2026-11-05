@@ -30,9 +30,11 @@ const { registerExpressionLibraryIpcHandlers } = require('./expressionLibraryIpc
 const { createDataBackupService, registerDataBackupIpcHandlers } = require('./dataBackupIpcHandlers.cjs');
 const { createKnownFoldersService, registerKnownFoldersIpcHandlers } = require('./knownFoldersIpcHandlers.cjs');
 const { createComfyUiService, registerComfyUiIpcHandlers } = require('./comfyUiService.cjs');
+const { registerChatImageSaveIpcHandlers } = require('./chatImageSave.cjs');
 const { createDevAgentService, registerDevAgentIpcHandlers } = require('./devAgentService.cjs');
 const { createSnowLumaService, registerSnowLumaIpcHandlers } = require('./snowLumaService.cjs');
 const { createPluginPackageService, registerPluginPackageIpcHandlers } = require('./pluginPackageService.cjs');
+const { startAppUpdates } = require('./appUpdateIpc.cjs');
 const { createWeixinBridgeService, registerWeixinBridgeIpcHandlers } = require('./weixinBridgeService.cjs');
 const { createGptSovitsService } = require('./gptSovitsService.cjs');
 const { registerGptSovitsIpcHandlers } = require('./gptSovitsIpcHandlers.cjs');
@@ -433,6 +435,8 @@ const appLauncherService = createAppLauncherService({
 const controlledCommandService = createControlledCommandService({
   app,
   log: (message, details) => runtimeLogger.log('backend', 'controlled-command', message, details),
+  // The app's own data and its MCP config (the project folder's in development).
+  protectedRoots: [app.getPath('userData'), path.join(__dirname, '..', '.desktop-pet-mcp.json'), process.env.DESKTOP_PET_MCP_CONFIG_PATH || ''],
 });
 const elevatedInputBroker = createElevatedInputBroker({
   log: (message, details) => runtimeLogger.log('backend', 'elevated-input', message, details),
@@ -617,9 +621,20 @@ registerExpressionLibraryIpcHandlers({
   shell,
   systemExpressionCatalogService,
 });
+registerChatImageSaveIpcHandlers({
+  BrowserWindow: require('electron').BrowserWindow,
+  app,
+  clipboard: require('electron').clipboard,
+  dialog,
+  ipcMain: trustedIpcMain,
+  nativeImage: require('electron').nativeImage,
+});
 registerComfyUiIpcHandlers({
   ipcMain: trustedIpcMain,
   service: createComfyUiService({ log: (message, details) => runtimeLogger.log('backend', 'comfyui', message, details) }),
+  shell,
+  sourceDir: path.join(__dirname, '..', 'resources', 'comfyui-extension', 'ai-desktop-pet-sync'),
+  userDataPath: app.getPath('userData'),
 });
 registerDevAgentIpcHandlers({
   ipcMain: trustedIpcMain,
@@ -777,6 +792,15 @@ if (!gotSingleInstanceLock) {
 
       runtimeLogger.log('backend', 'main-process', 'whenReady: creating main window');
       windowManager.createMainWindow();
+      startAppUpdates({
+        app,
+        dialog,
+        // Looking for new versions only in the installed app (a development run tests it on request).
+        enabled: (app.isPackaged || process.env.DESKTOP_PET_APP_UPDATE_TEST === '1') && !isLocalTest,
+        getMainWindow: () => windowManager.getMainWindow(),
+        ipcMain: trustedIpcMain,
+        log: (message, details) => runtimeLogger.log('backend', 'app-update', message, details),
+      });
       if (isLocalTest) {
         if (localTestConfigPath) {
           const injectLocalTestConfigTimer = setTimeout(async () => {

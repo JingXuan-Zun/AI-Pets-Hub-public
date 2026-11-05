@@ -58,6 +58,8 @@ export interface PetPersonality {
   systemInstruction: string;
   /** Fixed user-authored completion rules for formal character replies. */
   dialogueCompletionPreset?: string;
+  /** false: the preset is kept but not sent; only the persona prompt is (e.g. models that refuse it). Missing = on. */
+  dialogueCompletionPresetEnabled?: boolean;
   /** Explicit per-role gate for the experimental single-chat Neural input. */
   neuralPersonaChatEnabled?: boolean;
   /** Editable source retained for neural graph generation; never injected directly. */
@@ -367,6 +369,8 @@ export interface PetConfig {
     customModelName: string;
     customModelCapabilities: ModelCapabilities;
     customModelRequestParams: ModelRequestParam[];
+    /** Saved chat model setups to switch between (src/settings/apiProfiles.ts); keys encrypted by the main process. */
+    apiProfiles?: import('./settings/apiProfiles').ApiProfile[];
     neuralPersonaModelTagSuggestionsEnabled: boolean;
     neuralPersonaPrivateProviderDataConsent: boolean;
     neuralPersonaProviderDataEgressConsent: boolean;
@@ -515,11 +519,10 @@ export type PetConfigUpdateHandler = (
 export type DesktopPetChatMode = 'single' | 'group' | 'story';
 
 /**
- * 'approve-task' = yes, and don't ask again for the rest of this task; 'approve-day' = yes, and
- * don't ask again today (src/agent/approval/dailyApproval.ts). Steps that cannot be taken back
- * still ask every time.
+ * 'approve-day' = yes, and don't ask again today (src/agent/approval/dailyApproval.ts). Steps that
+ * cannot be taken back still ask every time.
  */
-export type ChatAgentApprovalDecision = 'approve' | 'approve-task' | 'approve-day' | 'deny';
+export type ChatAgentApprovalDecision = 'approve' | 'approve-day' | 'deny';
 export type ChatAgentFollowUpAction = AgentChatFollowUpAction;
 export type ChatAgentApprovalStatus = 'pending' | 'approved' | 'denied' | 'running' | 'awaiting-approval' | 'completed' | 'failed' | 'blocked';
 export type ChatAgentRunStatus = 'planned' | 'running' | 'awaiting-approval' | 'completed' | 'failed' | 'blocked';

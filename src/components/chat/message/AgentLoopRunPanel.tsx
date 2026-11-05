@@ -26,6 +26,11 @@ function resolveHeadline(run: ChatAgentLoopRun) {
   return `${STATUS_TEXT[run.status]}（${run.steps.length} 步${seconds}）`;
 }
 
+/** "做了：…；没成功：…" from the card's record ("【任务记录】目标：状态；做了：…"), without the heading. */
+function recordPreview(text: string | undefined) {
+  return (text ?? '').split('；').slice(1).join('；').trim();
+}
+
 function StepIcon({ status }: { status: ChatAgentLoopRun['steps'][number]['status'] }) {
   if (status === 'running') return <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />;
   if (status === 'waiting') return <Clock className="h-3 w-3 shrink-0 text-amber-600" />;
@@ -83,6 +88,11 @@ export function AgentLoopRunPanel({
           </Button>
         </div>
       </div>
+      {/* The opening of what the card records (and what reading it aloud says in full), so the
+          words heard can be found on the card; 详情 has the whole list. */}
+      {!pending && !isExpanded && recordPreview(message.text) ? (
+        <p className="mt-1 truncate text-2xs text-muted-foreground" title={recordPreview(message.text)}>{recordPreview(message.text)}</p>
+      ) : null}
       {pending ? (
         <div className="mt-2 space-y-2 border-t border-border pt-2">
           {pending.detail && pending.detail !== pending.title ? (
@@ -100,32 +110,18 @@ export function AgentLoopRunPanel({
               允许
             </Button>
             {pending.irreversible ? null : (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={!onResolveAgentApproval}
-                  onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-task')}
-                  className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
-                  title="这个任务后面的步骤都不再问，下一个任务会重新问"
-                >
-                  <CheckCheck className="mr-1 h-3 w-3" />
-                  这次都允许
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={!onResolveAgentApproval}
-                  onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-day')}
-                  className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
-                  title="今天的操作都不再问，明天或你拒绝一次后会重新问；发送、删除、付款这类还会问"
-                >
-                  <CheckCheck className="mr-1 h-3 w-3" />
-                  今天都允许
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!onResolveAgentApproval}
+                onClick={() => void onResolveAgentApproval?.(pending.id, 'approve-day')}
+                className="h-7 rounded-full border border-primary/40 px-3 text-2xs text-primary"
+                title="今天的操作都不再问，明天或你拒绝一次后会重新问；发送、删除、付款这类还会问"
+              >
+                <CheckCheck className="mr-1 h-3 w-3" />
+                今天都允许
+              </Button>
             )}
             <Button
               type="button"

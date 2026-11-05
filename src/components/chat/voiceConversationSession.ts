@@ -4,12 +4,27 @@ import { type ConversationCapture, type ConversationCaptureHandlers } from '../.
 // before a queued sentence starts) is not taken as the user's turn.
 export const CONVERSATION_RESUME_GRACE_MS = 700;
 
-export type VoiceConversationEndReason = 'user' | 'idle' | 'error';
+export type VoiceConversationEndReason = 'user' | 'idle' | 'error' | 'noise';
 
 // Noise and breathing often come back as a lone "。" — that is not the user taking a turn.
 export function isMeaningfulTranscript(text: string) {
   return /[\p{L}\p{N}]/u.test(text);
 }
+
+/**
+ * What the recognizer makes of a TV, a video or people talking nearby rather than of the user:
+ * a few English words with no Chinese ("The.", "Yeah.", "Im Swish."), or Korean mixed in.
+ * Not sent; several in a row end the conversation (the room is noisy, nobody is talking to her).
+ */
+export function isLikelyNoiseTranscript(text: string) {
+  if (/\p{Script=Hangul}/u.test(text)) return true;
+  if (/\p{Script=Han}/u.test(text)) return false;
+  const words = text.match(/[A-Za-z']+/gu) ?? [];
+  return words.length > 0 && words.length <= 3;
+}
+
+/** Noise in a row that ends the conversation. */
+export const MAX_NOISE_IN_A_ROW = 3;
 
 export interface VoiceConversationSessionDeps {
   startCapture: (handlers: ConversationCaptureHandlers) => Promise<ConversationCapture>;
@@ -46,6 +61,7 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
   let idleTimer: number | null = null;
   let unsubscribe: (() => void) | null = null;
   let consecutiveFailures = 0;
+  let noiseInARow = 0;
   let idleDeadline = 0;
   let petHadFloor = false;
   const maxFailures = deps.maxConsecutiveFailures ?? 2;
@@ -115,8 +131,14 @@ export function createVoiceConversationSession(deps: VoiceConversationSessionDep
     try {
       text = (await deps.recognize(audioBase64)).trim();
       consecutiveFailures = 0;
-      if (isMeaningfulTranscript(text)) refreshIdleDeadline();
-      else text = '';
+      if (isMeaningfulTranscript(text) && isLikelyNoiseTranscript(text)) {
+        text = '';
+        noiseInARow += 1;
+        if (noiseInARow >= MAX_NOISE_IN_A_ROW) stop('noise');
+      } else if (isMeaningfulTranscript(text)) {
+        noiseInARow = 0;
+        refreshIdleDeadline();
+      } else text = '';
     } catch (error) {
       if (active) {
         consecutiveFailures += 1;

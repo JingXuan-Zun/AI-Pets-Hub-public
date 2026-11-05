@@ -1,5 +1,7 @@
 import type { AgentChatCommand, AgentChatCommandResult, AgentToolCallName } from '../agentChatCommand';
 import { isDeclaredReadOnlyMcpTool } from '../agentMcpRegistry';
+import { describeHerBrowserAccounts, describeMcpServersForPet, refreshMcpServerDirectory } from '../../plugins/mcpServerDirectory';
+import { herBrowserPort } from '../../plugins/herBrowser';
 import { runCharacterAnimationSkill } from '../agentCharacterSkillRuntime';
 import { buildAgentPermissionRoute } from '../agentPermissionRouter';
 import { getDesktopPetSlot, PRIMARY_DESKTOP_PET_SLOT_ID } from '../../multiPetRoster';
@@ -33,7 +35,8 @@ export function isReadOnlyCommand(command: string) {
 interface BridgeSpec {
   /** Old runtime tool and its input, from the conversation tool's arguments. */
   call: (args: Record<string, unknown>) => { input: Record<string, unknown>; name: AgentToolCallName } | string;
-  description: string;
+  /** Fixed, or written for the character (e.g. the MCP plugins she may use). */
+  description: string | ((petId: string | null | undefined, herBrowserPortNumber: number) => string);
   /** Confirmation text; the policy decides whether it is shown. */
   describe: (args: Record<string, unknown>) => string;
   name: string;
@@ -58,7 +61,10 @@ const BRIDGE_SPECS: BridgeSpec[] = [
       const action = str(args, 'action');
       if (!['open_url', 'read_page', 'list_tabs', 'focus_tab', 'status'].includes(action)) return `不支持的 action “${action}”。`;
       if (action === 'open_url' && !/^https?:\/\//iu.test(str(args, 'url'))) return 'open_url 需要以 http:// 或 https:// 开头的网址。';
-      return { input: { action, ...(str(args, 'url') ? { url: str(args, 'url') } : {}), ...(str(args, 'tab_id') ? { tabId: str(args, 'tab_id') } : {}) }, name: 'control_browser' };
+      // She opens a page because the user asked: her browser comes back even after the user closed it
+      // (the "closed by hand, stay closed" rule is for things she does on her own).
+      const reopen = action === 'open_url' ? { forceOpen: true } : {};
+      return { input: { action, ...(str(args, 'url') ? { url: str(args, 'url') } : {}), ...(str(args, 'tab_id') ? { tabId: str(args, 'tab_id') } : {}), ...reopen }, name: 'control_browser' };
     },
     description: '应用自带的浏览器：open_url 打开网页，read_page 读取当前页面的文字（总结网页、视频页、文章时用），list_tabs / focus_tab 管理标签页。要读网页内容用它；只是给用户打开网页看用 open_url 工具。',
     describe: (args) => (str(args, 'action') === 'open_url' ? `在应用浏览器里打开：${clip(str(args, 'url'), 100)}` : `浏览器：${str(args, 'action')}`),
@@ -155,7 +161,13 @@ const BRIDGE_SPECS: BridgeSpec[] = [
         ? { input: { name: str(args, 'tool_name'), serverId: str(args, 'server_id'), ...(str(args, 'arguments_json') ? { argumentsJson: str(args, 'arguments_json') } : {}) }, name: 'call_mcp_tool' }
         : 'call 需要 server_id 和 tool_name（先 list 看有哪些）。')
       : { input: { ...(str(args, 'server_id') ? { serverId: str(args, 'server_id') } : {}) }, name: 'list_mcp_tools' }),
-    description: '用户接入的 MCP 扩展工具：list 查看各扩展提供的工具和参数，call 调用其中一个。',
+    description: (petId, herBrowserPortNumber) => {
+      const installed = describeMcpServersForPet(petId);
+      const accounts = describeHerBrowserAccounts(petId, herBrowserPortNumber);
+      return `用户接入的 MCP 扩展工具：list 查看工具和参数（可带 server_id 只看一个），call 调用其中一个。${installed
+        ? `已接入：${installed}。用户要做的事这些扩展能做时就用它们（先 list 再 call）；用一个扩展打开的网页或程序，后面也用这个扩展继续操作（应用自带的 browser 看不到它打开的网页）。${accounts}`
+        : '现在没有接入任何扩展。'}`;
+    },
     describe: (args) => `调用扩展工具 ${str(args, 'server_id')}/${str(args, 'tool_name')}`,
     name: 'mcp',
     // Listing only reads; a call skips the card when the server declares that tool read-only.
@@ -214,7 +226,7 @@ function formatResult(result: AgentChatCommandResult) {
   return result.ok ? clipped : `失败：${clipped}`;
 }
 
-function bridgeTool(spec: BridgeSpec): ConversationTool {
+function bridgeTool(spec: BridgeSpec, petId: string | null | undefined, herBrowserPortNumber: number): ConversationTool {
   return {
     confirmation: (args) => {
       const call = spec.call(args);
@@ -223,7 +235,7 @@ function bridgeTool(spec: BridgeSpec): ConversationTool {
       return route.requiresApproval && !route.blockedStep ? spec.describe(args) : null;
     },
     definition: {
-      function: { description: spec.description, name: spec.name, parameters: { properties: spec.properties, required: spec.required, type: 'object' } },
+      function: { description: typeof spec.description === 'function' ? spec.description(petId, herBrowserPortNumber) : spec.description, name: spec.name, parameters: { properties: spec.properties, required: spec.required, type: 'object' } },
       type: 'function',
     },
     run: async (runtime, args) => {
@@ -232,7 +244,9 @@ function bridgeTool(spec: BridgeSpec): ConversationTool {
       if (!runtime.executeAgentCommand) return '失败：当前不能使用这个工具。';
       const route = buildAgentPermissionRoute(toCommand(call));
       if (route.blockedStep) return `失败：权限策略不允许这一步（${route.blockedStep.decision.reason}）。`;
-      return formatResult(await runtime.executeAgentCommand(toCommand(call), { petId: runtime.petId, signal: runtime.signal ?? null }));
+      const result = await runtime.executeAgentCommand(toCommand(call), { petId: runtime.petId, signal: runtime.signal ?? null });
+      if (result.images?.length) runtime.presentImages?.(result.images, '');
+      return formatResult(result);
     },
   };
 }
@@ -312,9 +326,11 @@ const webSearchTool: ConversationTool = {
 };
 
 export function listConversationAgentBridgeTools(runtime: Pick<ConversationToolRuntime, 'configRef' | 'executeAgentCommand' | 'petId'>): ConversationTool[] {
+  // Picks up plugins added or removed since; this reply uses the list read last.
+  void refreshMcpServerDirectory();
   return [
     webSearchTool,
     ...(canPlayAnimation(runtime) ? [playAnimationTool] : []),
-    ...(runtime.executeAgentCommand ? BRIDGE_SPECS.map(bridgeTool) : []),
+    ...(runtime.executeAgentCommand ? BRIDGE_SPECS.map((spec) => bridgeTool(spec, runtime.petId, herBrowserPort(runtime.configRef.current.settings))) : []),
   ];
 }

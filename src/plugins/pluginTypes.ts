@@ -44,6 +44,8 @@ export interface PluginManifest {
   capabilityIds?: string[];
   /** Ready to use, or what is missing. */
   status: { ready: boolean; note?: string };
+  /** Works on her browser (an MCP plugin connected to it): its page offers to open it for signing in. */
+  usesHerBrowser?: boolean;
 }
 
 export const PLUGIN_KIND_LABELS: Record<PluginKind, string> = {

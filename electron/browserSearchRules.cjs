@@ -128,6 +128,10 @@ function normalizeBrowserControlAction(value) {
     case 'status':
     case 'session_status':
       return 'status';
+    // Only makes sure the browser is running (a browser plugin connects to it), no new tab.
+    case 'open_browser':
+    case 'ensure_open':
+      return 'open_browser';
     default:
       return '';
   }

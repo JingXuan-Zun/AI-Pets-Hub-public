@@ -12,7 +12,7 @@ import { expressionLibraryBridge } from '../expression/expressionLibraryBridge';
 import { getDesktopPetSlot } from '../multiPetRoster';
 import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
 import { prepareSpeechText } from '../voice/speechText';
-import { synthesizeGptSovitsWav } from '../voice/ttsGptSovitsPlayback';
+import { synthesizeBridgeVoice } from '../qq-bridge/bridgeVoiceAudio';
 import type { PetConfig } from '../types';
 import { replyToFamilyMember } from './weixinFamilyChat';
 import { normalizeWeixinBridgeSettings, type WeixinInboundMessage } from './weixinBridgeSettings';
@@ -29,6 +29,8 @@ type SendMessage = (textOverride?: string, options?: DesktopPetChatSendOptions) 
 // After this long without a message from the owner's phone, replies stop going to WeChat.
 const RELAY_WINDOW_MS = 10 * 60 * 1000;
 const RELAY_POLL_MS = 1000;
+// Voice goes as a video, which may be longer than a QQ voice message: about two minutes.
+const MAX_VOICE_CHARS = 600;
 
 async function dataUrlsToAttachments(dataUrls: string[]) {
   const files: File[] = [];
@@ -86,10 +88,10 @@ export function useWeixinBridge({ config, configRef, sendMessage }: {
         pushFrontendRuntimeLog('weixin-bridge', 'voice reply skipped: only character voices (GPT-SoVITS) can be sent');
         return;
       }
-      const text = limitVoiceText(prepareSpeechText(speechText, voiceSettings));
+      const text = limitVoiceText(prepareSpeechText(speechText, voiceSettings), MAX_VOICE_CHARS);
       if (!text) return;
       try {
-        const wav = await synthesizeGptSovitsWav(text, voiceSettings);
+        const wav = await synthesizeBridgeVoice(text, voiceSettings);
         const avatarUrl = getDesktopPetSlot(configRef.current, petId)?.personality.chatAvatarUrl;
         const avatar = avatarUrl ? await fetch(avatarUrl).then((response) => response.blob()).then(blobToBase64).catch(() => '') : '';
         const result = await weixin.sendVoice(accountId, await blobToBase64(wav), avatar || undefined);
@@ -114,8 +116,7 @@ export function useWeixinBridge({ config, configRef, sendMessage }: {
         const decision = await resolvePendingApprovalBySpeech(message.text, judgeApprovalAnswerWithModel(configRef.current.settings), () => false);
         reply(message.accountId, decision === 'deny' ? '好，这一步不做了。'
           : decision === 'approve-day' ? '好，今天的操作都不再问你了（发送、删除、付款这类还会问）。'
-            : decision === 'approve-task' ? '好，这个任务后面的步骤都不再问你了。'
-            : decision ? '好，这就去做。' : '还在等你确认上一步：回复“好”“都好”或“不要”就可以。');
+            : decision ? '好，这就去做。' : '还在等你确认上一步：回复“好”“今天都好”或“不要”就可以。');
         return;
       }
       relay = relay ?? createQqRelayState(Date.now());
@@ -165,9 +166,15 @@ export function useWeixinBridge({ config, configRef, sendMessage }: {
       const accountId = ownerAccountId;
       collectQqRelayOutgoing(messages, relay, isTyping).forEach((item) => {
         if (item.text) reply(accountId, item.text);
+        item.imageDataUrls.forEach((dataUrl) => {
+          void weixin.sendImage(accountId, dataUrl.replace(/^data:[^,]*,/u, '')).then((result) => {
+            if (!result.ok) pushFrontendRuntimeLog('weixin-bridge', 'picture not sent', { reason: result.error });
+          });
+        });
         item.stickerAssetIds.forEach((assetId) => { void sendSticker(accountId, assetId); });
         // Voice follows the text it says, in order (synthesis takes a few seconds per reply).
-        if (ownerVoiceReplies && item.petId && item.speechText) voiceQueue = voiceQueue.then(() => sendVoice(accountId, item.petId!, item.speechText));
+        // Checked again here: when she turns voice off in this very reply, that reply is already text only.
+        if (ownerVoiceReplies && voiceMode() !== 'off' && item.petId && item.speechText) voiceQueue = voiceQueue.then(() => sendVoice(accountId, item.petId!, item.speechText));
         // A question waiting for a yes/no is read out too (unless voice is off), in the voice of
         // the character doing the task, so someone who does not read knows what to answer.
         if (!item.petId && item.speechText && voiceMode() !== 'off') {

@@ -1,8 +1,20 @@
+import { subscribeAppEvents } from '../events/appEvents';
 import type { ChatMessage } from '../types';
 import { stripMessageDiagrams } from '../components/chat/message/messageDiagrams';
 
 // Which chat lines go back to QQ after a message from the phone: every reply posted since,
 // once it has finished, and every approval question the character asks meanwhile.
+
+// Her replies that are complete, as the chat says so (reply.finished). Before this the relay
+// guessed from the order of messages, and a task card or a drawing posted under an
+// unfinished reply made it send the reply cut off.
+const finishedReplyIds = new Set<string>();
+const MAX_REMEMBERED_REPLIES = 500;
+subscribeAppEvents((event) => {
+  if (event.type !== 'reply.finished') return;
+  finishedReplyIds.add(event.messageId);
+  if (finishedReplyIds.size > MAX_REMEMBERED_REPLIES) finishedReplyIds.delete(finishedReplyIds.values().next().value!);
+});
 
 export type QqRelayState = {
   /** Replies posted at or after this moment belong to the phone conversation. */
@@ -17,6 +29,8 @@ export function createQqRelayState(since: number): QqRelayState {
 
 /** One reply for QQ: its text (kaomoji and emoji inline) and its image stickers, sent after it. */
 export type QqOutgoing = {
+  /** Pictures attached to the reply (one she drew…), as data URLs; sent after the text. */
+  imageDataUrls: string[];
   /** Who said it, for her voice; null for the approval questions. */
   petId: string | null;
   /** Only the words (no kaomoji, no speaker name): what a voice message would say. */
@@ -62,7 +76,16 @@ export function formatApprovalSpeech(title: string, irreversible = false) {
 export function formatQqApprovalQuestion(title: string, irreversible = false) {
   return irreversible
     ? `需要你确认：${title.trim() || '这一步'}\n这一步做了就撤不回，回复“好”就去做，“不要”就取消。`
-    : `需要你确认：${title.trim() || '这一步'}\n回复“好”就去做，“都好”就这个任务后面都不再问，“今天都好”就今天都不再问，“不要”就取消。`;
+    : `需要你确认：${title.trim() || '这一步'}\n回复“好”就去做，“今天都好”就今天都不再问，“不要”就取消。`;
+}
+
+function attachedImages(message: ChatMessage) {
+  return (message.attachments ?? []).filter((attachment) => attachment.kind === 'image' && attachment.dataUrl).map((attachment) => attachment.dataUrl!);
+}
+
+/** A message that only shows pictures (a drawing) is complete when posted, and does not end the reply above it. */
+function isPictureOnly(message: ChatMessage) {
+  return message.role === 'model' && !message.text?.trim() && !(Array.isArray(message.content) && message.content.length) && attachedImages(message).length > 0;
 }
 
 /**
@@ -72,18 +95,21 @@ export function formatQqApprovalQuestion(title: string, irreversible = false) {
 export function collectQqRelayOutgoing(messages: ChatMessage[], state: QqRelayState, isTyping: boolean) {
   const outgoing: QqOutgoing[] = [];
   const recent = messages.filter((message) => (message.createdAt ?? 0) >= state.since);
-  recent.forEach((message, index) => {
+  recent.forEach((message) => {
     const pending = message.agentLoopRun?.pendingApproval;
-    // A message waiting for approval has stopped where it is: its text is complete.
-    const finished = !isTyping || index < recent.length - 1 || Boolean(pending);
+    // Done when the chat says her reply finished, when nothing is being written any more, when
+    // it waits for an approval (it stopped where it is), or when it only shows pictures.
+    const finished = finishedReplyIds.has(message.id) || !isTyping || Boolean(pending) || isPictureOnly(message);
     // A task card is a record for the chat window ("【任务记录】…"); on QQ only its question matters.
     const isTaskCard = Boolean(message.agentLoopRun);
     if (message.role === 'model' && finished && !isTaskCard && !state.sentMessageIds.has(message.id)) {
       state.sentMessageIds.add(message.id);
       const reply = formatQqReply(message);
       const speaker = message.chatMode === 'group' && message.petName ? `${message.petName}：` : '';
-      if (reply.text || reply.stickerAssetIds.length) {
+      const imageDataUrls = attachedImages(message);
+      if (reply.text || reply.stickerAssetIds.length || imageDataUrls.length) {
         outgoing.push({
+          imageDataUrls,
           petId: message.petId ?? null,
           speechText: reply.speechText,
           stickerAssetIds: reply.stickerAssetIds,
@@ -93,7 +119,7 @@ export function collectQqRelayOutgoing(messages: ChatMessage[], state: QqRelaySt
     }
     if (pending?.id && !state.sentApprovalIds.has(pending.id)) {
       state.sentApprovalIds.add(pending.id);
-      outgoing.push({ petId: null, speechText: formatApprovalSpeech(pending.title, pending.irreversible), stickerAssetIds: [], text: formatQqApprovalQuestion(pending.title, pending.irreversible) });
+      outgoing.push({ imageDataUrls: [], petId: null, speechText: formatApprovalSpeech(pending.title, pending.irreversible), stickerAssetIds: [], text: formatQqApprovalQuestion(pending.title, pending.irreversible) });
     }
   });
   return outgoing;

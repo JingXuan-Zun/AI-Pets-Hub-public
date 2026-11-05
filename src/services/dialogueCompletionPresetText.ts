@@ -64,3 +64,8 @@ export function resolveDialogueCompletionPresetText(raw: string | undefined | nu
   cache.set(key, resolved);
   return resolved;
 }
+
+/** The preset to send: empty when the character's preset is switched off (dialogueCompletionPresetEnabled false). */
+export function activeDialogueCompletionPreset(personality: { dialogueCompletionPreset?: string; dialogueCompletionPresetEnabled?: boolean }) {
+  return personality.dialogueCompletionPresetEnabled === false ? '' : personality.dialogueCompletionPreset ?? '';
+}

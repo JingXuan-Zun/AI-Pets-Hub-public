@@ -173,6 +173,15 @@ async function route(request, env, now) {
     const configured = Boolean(env.PLUGINS && env.RATE_DB && env.RATE_SALT);
     return json({ configured, ok: true, reviewEnabled: Boolean(env.ADMIN_TOKEN), uploadsEnabled: configured && env.UPLOADS_ENABLED === 'true' });
   }
+  // Hot updates of the app itself (signed list + zips), uploaded by hand to R2 under updates/.
+  const update = /^\/updates\/(latest\.json|app-update-[0-9]+\.[0-9]+\.[0-9]+\.zip)$/u.exec(path);
+  if (request.method === 'GET' && update) {
+    requireConfig(env, false);
+    const object = await env.PLUGINS.get(`updates/${update[1]}`);
+    if (!object) throw new MarketError(404, 'not-found');
+    const isList = update[1] === 'latest.json';
+    return new Response(object.body, { headers: { ...PUBLIC_HEADERS, 'Cache-Control': isList ? 'public, max-age=300' : 'public, max-age=86400, immutable', 'Content-Type': isList ? 'application/json; charset=utf-8' : 'application/zip' } });
+  }
   if (request.method === 'GET' && path === '/review') {
     return new Response(REVIEW_PAGE_HTML, { headers: { 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'", 'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY' } });
   }

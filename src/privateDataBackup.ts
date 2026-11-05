@@ -39,6 +39,8 @@ function redactSecrets(config: PetConfig): PetConfig {
   for (const key of SECRET_SETTING_KEYS) {
     settings[key] = '';
   }
+  // Saved API profiles keep their names and endpoints; their keys stay on this device.
+  if (settings.apiProfiles) settings.apiProfiles = settings.apiProfiles.map((profile) => ({ ...profile, apiKey: '' }));
   return { ...config, settings };
 }
 
@@ -47,6 +49,10 @@ export function preserveLocalSecrets(importedConfig: PetConfig, currentConfig: P
   const settings = { ...importedConfig.settings };
   for (const key of SECRET_SETTING_KEYS) {
     settings[key] = currentConfig.settings[key];
+  }
+  if (settings.apiProfiles) {
+    const localKeys = new Map((currentConfig.settings.apiProfiles ?? []).map((profile) => [profile.id, profile.apiKey]));
+    settings.apiProfiles = settings.apiProfiles.map((profile) => ({ ...profile, apiKey: localKeys.get(profile.id) ?? '' }));
   }
   return { ...importedConfig, settings };
 }

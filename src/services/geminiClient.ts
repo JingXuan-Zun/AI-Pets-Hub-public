@@ -53,3 +53,30 @@ export async function getGeminiClient(apiKey: string | undefined, apiUrl?: strin
   const { GoogleGenAI } = await import('@google/genai');
   return new GoogleGenAI({ apiKey: normalizedKey, ...(normalizedUrl ? { httpOptions: geminiHttpOptions(normalizedUrl) } : {}) });
 }
+
+/**
+ * “读取模型” for Gemini: the model names this key can chat with. On the desktop the main
+ * process asks (it holds the saved key and only sends it to the saved endpoint).
+ */
+export async function listGeminiModels(apiKey: string | undefined, apiUrl?: string): Promise<string[]> {
+  const normalizedKey = apiKey?.trim();
+  if (!normalizedKey) throw new Error('请先填写 Gemini API Key。');
+  const normalizedUrl = apiUrl?.trim() ?? '';
+  if (desktopModelBridge()) {
+    const request = await openDesktopModel({ args: {}, credential: normalizedKey, credentialField: 'geminiApiKey', ...(normalizedUrl ? { endpoint: normalizedUrl } : {}), operation: 'models', provider: 'gemini' });
+    try {
+      const chunk = await request.read();
+      const parsed = JSON.parse(new TextDecoder().decode(chunk.value)) as { models?: unknown };
+      return Array.isArray(parsed.models) ? parsed.models.filter((name): name is string => typeof name === 'string') : [];
+    } finally { request.close(); }
+  }
+  if (normalizedKey.startsWith('desktop-pet-credential:')) throw new Error('请重新填写 Gemini API Key。');
+  const { GoogleGenAI } = await import('@google/genai');
+  const client = new GoogleGenAI({ apiKey: normalizedKey, ...(normalizedUrl ? { httpOptions: geminiHttpOptions(normalizedUrl) } : {}) });
+  const names: string[] = [];
+  for await (const model of await client.models.list({ config: { pageSize: 100 } })) {
+    const actions = model.supportedActions;
+    if (model.name && (!actions || actions.includes('generateContent'))) names.push(model.name.replace(/^models\//u, ''));
+  }
+  return names;
+}

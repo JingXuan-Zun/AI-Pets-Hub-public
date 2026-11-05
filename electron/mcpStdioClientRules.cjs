@@ -4,12 +4,23 @@ function createTextContent(text) {
   return { text: String(text ?? ''), type: 'text' };
 }
 
+const MAX_IMAGE_BASE64 = 12 * 1024 * 1024;
+
 function normalizeToolContent(item) {
   if (item?.type === 'text') {
     return createTextContent(item.text);
   }
 
-  return { text: JSON.stringify(item ?? null), type: 'json' };
+  // Pictures (a screenshot…) stay pictures: the chat shows them. As JSON text the whole base64
+  // went into the model's context.
+  if (item?.type === 'image' && typeof item.data === 'string' && item.data.length <= MAX_IMAGE_BASE64) {
+    return { data: item.data, mimeType: typeof item.mimeType === 'string' ? item.mimeType : 'image/png', text: '', type: 'image' };
+  }
+
+  // Other binary content (audio, blobs) is named, not pasted.
+  const { blob: _blob, data: _data, ...rest } = item && typeof item === 'object' ? item : { value: item };
+  const omitted = item && typeof item === 'object' && (typeof item.data === 'string' || typeof item.blob === 'string');
+  return { text: JSON.stringify(omitted ? { ...rest, data: '（二进制内容，没有放进来）' } : (item ?? null)), type: 'json' };
 }
 
 function normalizeToolCallResult(result) {

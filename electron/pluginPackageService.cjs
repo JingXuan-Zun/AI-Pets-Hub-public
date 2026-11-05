@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { unzipSync, zipSync } = require('fflate');
 const { MANIFEST_FILE, SKILL_FILE, readPluginPackage } = require('./pluginPackageManifest.cjs');
+const { inspectGitHubLink } = require('./pluginLinkInspect.cjs');
 
 // Installed plugin packages: userData/plugins/<id>/ with a plugin.json each. Installing copies a
 // folder (picked by the user, unpacked from a zip, or downloaded from GitHub) there; the version
@@ -241,7 +242,8 @@ function createPluginPackageService({ userDataPath, trashItem, fetchImpl = globa
     return path.resolve(file).startsWith(path.resolve(folder)) && fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
   }
 
-  return { draftsRoot, installFromFolder, installFromGitHub, installFromMarket, installFromZipBytes, list, pluginsRoot, publish, readSkillText, uninstall, writeDraft };
+  const inspectLink = (url) => inspectGitHubLink(url, fetchImpl);
+  return { draftsRoot, inspectLink, installFromFolder, installFromGitHub, installFromMarket, installFromZipBytes, list, pluginsRoot, publish, readSkillText, uninstall, writeDraft };
 }
 
 
@@ -261,6 +263,7 @@ function registerPluginPackageIpcHandlers({ ipcMain, service, log = () => undefi
   handle('desktop-pet:plugins-list', async () => ({ ok: true, plugins: service.list() }));
   handle('desktop-pet:plugins-install-folder', ({ folder }) => service.installFromFolder(String(folder ?? '')));
   handle('desktop-pet:plugins-install-github', ({ url }) => service.installFromGitHub(url));
+  handle('desktop-pet:plugins-inspect-link', ({ url }) => service.inspectLink(url));
   handle('desktop-pet:plugins-uninstall', ({ id }) => service.uninstall(id));
   handle('desktop-pet:plugins-install-market', (request) => service.installFromMarket(request));
   handle('desktop-pet:plugins-publish', (request) => service.publish(request));

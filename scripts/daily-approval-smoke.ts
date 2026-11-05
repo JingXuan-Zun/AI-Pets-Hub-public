@@ -47,7 +47,11 @@ for (const text of ['今天都允许', '今天都好', '今天别问了', '今�
   assert.equal(classifyVoiceApproval(text), 'approve-day', `voice: ${text}`);
   assert.equal(resolveAgentApprovalDecisionFromText(text), 'approve-day', `typed: ${text}`);
 }
-assert.equal(classifyVoiceApproval('都好'), 'approve-task', 'the task-only answer is unchanged');
+// “这次都允许” was dropped (2026-11-03): “都好”“别问了”“这次都允许” and the like now mean today.
+for (const text of ['都同意', '都同意吧', '这次都允许', '全部允许！', '不用问了', '都好']) assert.equal(classifyVoiceApproval(text), 'approve-day', `voice: ${text}`);
+for (const text of ['都同意', '都好吧', '别问了']) assert.equal(resolveAgentApprovalDecisionFromText(text), 'approve-day', `typed: ${text}`);
+assert.equal(classifyVoiceApproval('同意'), 'approve', 'a plain yes is still one step');
+assert.doesNotMatch(formatQqApprovalQuestion('打开浏览器'), /“都好”|这个任务/u, 'QQ / WeChat only offer 好 / 今天都好 / 不要');
 assert.match(formatQqApprovalQuestion('打开浏览器'), /“今天都好”/u);
 assert.doesNotMatch(formatQqApprovalQuestion('发送消息', true), /都好/u, 'irreversible steps offer only yes/no');
 

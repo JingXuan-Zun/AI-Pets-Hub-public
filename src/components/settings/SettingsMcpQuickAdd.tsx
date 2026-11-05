@@ -1,63 +1,41 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Plug, XCircle } from 'lucide-react';
-import { explainMcpProblem, parseMcpQuickAdd, type McpServerDraft } from '../../plugins/mcpQuickAdd';
-import { updateMcpServers } from '../../plugins/pluginPackages';
-
-type TestResult = { status: 'testing' } | { status: 'ok'; tools: string[] } | { status: 'failed'; message: string };
-
-// Placeholders README files leave for the user's own key: <TOKEN>, YOUR_API_KEY, xxx…
-const PLACEHOLDER = /^(?:<[^>]*>|your[_-].*|.*[_-]here|x{3,}|\.\.\.|)$/iu;
+import { parseMcpQuickAdd, type McpServerDraft } from '../../plugins/mcpQuickAdd';
+import { addMcpServers, missingMcpEnvKeys, testMcpServer, type McpTestResult } from '../../plugins/mcpInstall';
+import type { PetConfig } from '../../types';
 
 /**
  * "Add an MCP tool" in one box: paste a command line, a URL or the README's JSON, fill any key it
  * asks for, and it is saved and started once to show whether it works and which tools it has.
  */
-export function SettingsMcpQuickAdd({ onAdded, renderAdvanced }: {
+export function SettingsMcpQuickAdd({ onAdded, renderAdvanced, settings }: {
   onAdded: (message: string) => void;
   renderAdvanced?: () => ReactNode;
+  /** For the one-line summary on the plugin card, written by the chat model. */
+  settings?: PetConfig['settings'];
 }) {
   const [input, setInput] = useState('');
   const [name, setName] = useState('');
   const [env, setEnv] = useState<Record<string, string>>({});
-  const [results, setResults] = useState<Record<string, TestResult>>({});
+  const [results, setResults] = useState<Record<string, McpTestResult>>({});
   const [busy, setBusy] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const parsed = useMemo(() => (input.trim() ? parseMcpQuickAdd(input, name) : null), [input, name]);
   const servers: McpServerDraft[] = parsed?.ok ? parsed.servers : [];
   const envKeys = [...new Set(servers.flatMap((server) => Object.keys(server.env)))];
-  const missingKeys = envKeys.filter((key) => PLACEHOLDER.test((env[key] ?? servers.find((server) => key in server.env)?.env[key] ?? '').trim()));
+  const missingKeys = missingMcpEnvKeys(servers, env);
+  const showResult = (serverId: string, result: McpTestResult) => setResults((current) => ({ ...current, [serverId]: result }));
 
-  const test = async (server: McpServerDraft) => {
-    setResults((current) => ({ ...current, [server.id]: { status: 'testing' } }));
-    const shell = window.desktopPetShell;
-    try {
-      const diagnostic = await shell?.inspectMcpServer?.({ serverId: server.id });
-      if (!diagnostic?.ok) {
-        const message = explainMcpProblem(diagnostic?.compatibility?.issueCode, server.command, diagnostic?.stderrSnippet || diagnostic?.error || '');
-        setResults((current) => ({ ...current, [server.id]: { message, status: 'failed' } }));
-        return false;
-      }
-      const listed = await shell?.listMcpTools?.({ serverId: server.id });
-      const tools = (listed?.tools ?? []).filter((tool) => tool.serverId === server.id).map((tool) => tool.name);
-      setResults((current) => ({ ...current, [server.id]: { status: 'ok', tools } }));
-      return true;
-    } catch (error) {
-      setResults((current) => ({ ...current, [server.id]: { message: explainMcpProblem(undefined, server.command, error instanceof Error ? error.message : ''), status: 'failed' } }));
-      return false;
-    }
-  };
+  const test = (server: McpServerDraft) => testMcpServer(server, settings, (result) => showResult(server.id, result));
 
   const add = async () => {
     if (!servers.length || missingKeys.length) return;
     setBusy(true);
     try {
-      const entries = servers.map((server) => (server.url
-        ? { id: server.id, title: server.title, url: server.url }
-        : { args: server.args, command: server.command, env: Object.fromEntries(Object.keys(server.env).map((key) => [key, env[key] ?? server.env[key]])), id: server.id, title: server.title }));
-      await updateMcpServers((current) => [...current.filter((item) => !entries.some((entry) => entry.id === item.id)), ...entries]);
-      const outcomes = await Promise.all(servers.map(test));
-      const working = outcomes.filter(Boolean).length;
-      onAdded(working === servers.length ? `已添加 ${servers.map((server) => server.id).join('、')}，连接正常。` : `已添加，但有 ${servers.length - working} 个没连上，看下面的原因。`);
+      const added = await addMcpServers(servers, { envValues: env, onProgress: showResult, settings });
+      const working = added.results.filter((item) => item.result.status === 'ok').length;
+      const herBrowserNote = added.pointedAtHerBrowser ? '浏览器插件已设成在她自己的浏览器里操作（到插件页面点“打开她的浏览器”登录她的账号）。' : '';
+      onAdded(`${working === servers.length ? `已添加 ${servers.map((server) => server.id).join('、')}，连接正常。` : `已添加，但有 ${servers.length - working} 个没连上，看下面的原因。`}${herBrowserNote}`);
     } catch (error) {
       onAdded(`添加失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -100,6 +78,7 @@ export function SettingsMcpQuickAdd({ onAdded, renderAdvanced }: {
                   {result?.status === 'failed' ? <XCircle className="h-3.5 w-3.5 text-red-600" /> : null}
                 </div>
                 {result?.status === 'testing' ? <p className="mt-1 text-muted-foreground">正在启动并读取工具（第一次可能要下载，最多等半分钟）…</p> : null}
+                {result?.status === 'ok' && result.summary ? <p className="mt-1 font-semibold text-foreground">{result.summary}</p> : null}
                 {result?.status === 'ok' ? <p className="mt-1 text-emerald-700">已连接，提供 {result.tools.length} 个工具：{result.tools.slice(0, 12).join('、')}{result.tools.length > 12 ? '…' : ''}</p> : null}
                 {result?.status === 'failed' ? (
                   <div className="mt-1 whitespace-pre-wrap text-red-700">

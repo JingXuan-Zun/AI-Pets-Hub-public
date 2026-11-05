@@ -2409,6 +2409,37 @@ var require_pluginManifestRules = __commonJS({
       const env = value.env && typeof value.env === "object" && !Array.isArray(value.env) ? Object.fromEntries(Object.entries(value.env).filter(([, item]) => typeof item === "string").slice(0, 30)) : {};
       return { args: textList(value.args, 40, 500), command, env, url };
     }
+    var SETTING_KEY = /^[A-Za-z][A-Za-z0-9_]{0,40}$/u;
+    var SETTING_KINDS = /* @__PURE__ */ new Set(["boolean", "choice", "number", "text"]);
+    var ENV_NAME = /^[A-Z][A-Z0-9_]{0,60}$/u;
+    var SECRET_WORDS = /key|token|secret|password|密钥|令牌|密码/iu;
+    function pluginSettings(value) {
+      if (!Array.isArray(value)) return [];
+      return value.slice(0, 20).map((item) => {
+        const key = text(item?.key, 41);
+        const kind = text(item?.kind, 10);
+        const label = text(item?.label, 40);
+        if (!SETTING_KEY.test(key) || !SETTING_KINDS.has(kind) || !label || SECRET_WORDS.test(key) || SECRET_WORDS.test(label)) return null;
+        const choices = kind === "choice" && Array.isArray(item.choices) ? item.choices.slice(0, 20).map((choice) => ({ label: text(choice?.label, 40) || text(choice?.value, 40), value: text(choice?.value, 60) })).filter((choice) => choice.value) : [];
+        if (kind === "choice" && !choices.length) return null;
+        const min = Number(item.range?.min);
+        const max = Number(item.range?.max);
+        const range = kind === "number" && Number.isFinite(min) && Number.isFinite(max) && min <= max ? { max, min } : null;
+        const fallback = kind === "boolean" ? item.default === true : kind === "number" ? Number.isFinite(Number(item.default)) ? Number(item.default) : range?.min ?? 0 : kind === "choice" ? choices.some((choice) => choice.value === item.default) ? item.default : choices[0].value : text(item.default, 200);
+        const env = text(item.env, 61);
+        return {
+          choices,
+          default: fallback,
+          env: ENV_NAME.test(env) ? env : "",
+          forModel: text(item.forModel, 200),
+          key,
+          kind,
+          label,
+          range,
+          risk: item.risk === "change" ? "change" : "personal"
+        };
+      }).filter(Boolean);
+    }
     function normalizePluginManifest(raw) {
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { error: "plugin.json \u4E0D\u662F\u4E00\u4E2A JSON \u5BF9\u8C61\u3002" };
       const id = text(raw.id, 63);
@@ -2438,6 +2469,7 @@ var require_pluginManifestRules = __commonJS({
             install: text(item?.install, 300),
             name: text(item?.name, 60)
           })).filter((item) => item.name) : [],
+          settings: pluginSettings(raw.settings),
           setup: textList(raw.setup, 12),
           skill,
           troubleshooting: textList(raw.troubleshooting, 12),
@@ -2723,6 +2755,14 @@ async function route(request, env, now) {
   if (request.method === "GET" && (path === "/" || path === "/health")) {
     const configured = Boolean(env.PLUGINS && env.RATE_DB && env.RATE_SALT);
     return json({ configured, ok: true, reviewEnabled: Boolean(env.ADMIN_TOKEN), uploadsEnabled: configured && env.UPLOADS_ENABLED === "true" });
+  }
+  const update = /^\/updates\/(latest\.json|app-update-[0-9]+\.[0-9]+\.[0-9]+\.zip)$/u.exec(path);
+  if (request.method === "GET" && update) {
+    requireConfig(env, false);
+    const object = await env.PLUGINS.get(`updates/${update[1]}`);
+    if (!object) throw new MarketError(404, "not-found");
+    const isList = update[1] === "latest.json";
+    return new Response(object.body, { headers: { ...PUBLIC_HEADERS, "Cache-Control": isList ? "public, max-age=300" : "public, max-age=86400, immutable", "Content-Type": isList ? "application/json; charset=utf-8" : "application/zip" } });
   }
   if (request.method === "GET" && path === "/review") {
     return new Response(REVIEW_PAGE_HTML, { headers: { "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'", "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" } });

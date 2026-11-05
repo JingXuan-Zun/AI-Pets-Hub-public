@@ -134,8 +134,8 @@ export function createConversationTaskCard(options: {
     },
   };
 
-  // "这次都允许": the rest of this task runs without asking; the next task asks again.
-  // "今天都允许" does the same for the rest of the day; any "不要" ends it (dailyApproval.ts).
+  // "今天都允许": the rest of today runs without asking (this task included); any "不要" ends it
+  // (dailyApproval.ts). Steps that cannot be taken back still ask every time.
   let allowedForTask = false;
 
   /** Asks on this card; the step that is running shows "等你确认" until answered. */
@@ -145,7 +145,7 @@ export function createConversationTaskCard(options: {
     // Registered before the card shows the question, so anything that reacts to the card
     // (the microphone, a spoken or typed answer) already finds it waiting.
     const answer = waitForAgentLoopDecision(approvalId, null).then((decision) => {
-      if (decision === 'approve-task' || decision === 'approve-day') allowedForTask = true;
+      if (decision === 'approve-day') allowedForTask = true;
       if (decision === 'approve-day') grantDailyApproval();
       if (decision === 'deny') revokeDailyApproval();
       return decision !== 'deny';

@@ -29,6 +29,10 @@ check(matchWakePhrase('高然姐，前段时间', ['高冷姐']), { phrase: '高
 check(matchWakePhrase('小淘', ['小桃']), { phrase: '小桃', remainder: '' }, '2-char homophone matches');
 check(matchWakePhrase('嗯小桃陪我聊天', ['小桃']), { phrase: '小桃', remainder: '陪我聊天' }, 'phrase mid-sentence');
 check(matchWakePhrase('今天天气不错', phrases), null, 'unrelated speech ignored');
+// Other people's talk or a video: a near-miss in the middle of a long stretch does not wake her.
+check(matchWakePhrase('那个电视里说他们家的小苗子昨天去上学了', ['小桃子']), null, 'one misheard syllable mid-talk is not a call');
+check(matchWakePhrase('那个电视里说他们家的小淘紫昨天去上学了', ['小桃子']), { phrase: '小桃子', remainder: '昨天去上学了' }, 'the exact sound mid-talk still wakes');
+check(matchWakePhrase('嗯，小苗子在吗', ['小桃子']), { phrase: '小桃子', remainder: '在吗' }, 'a filler before a near-miss call is fine');
 check(matchWakePhrase('', phrases), null, 'empty transcript');
 
 console.log(`voice wake matcher passed: ${cases} cases`);

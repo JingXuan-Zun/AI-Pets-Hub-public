@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ensureHerBrowser } from '../../plugins/herBrowser';
 import { ArrowLeft, ChevronRight, ExternalLink, FolderOpen, Github, Package, Trash2, Upload } from 'lucide-react';
 import { readAgentSkillImportFile } from '../../agent/agentSkillArchiveImport';
 import { installAgentImportedSkills } from '../../agent/agentSkillImportInstallation';
@@ -7,6 +8,7 @@ import { listInstalledPlugins, uninstallSkillPlugin } from '../../plugins/plugin
 import { installPluginFromFolder, installPluginFromGitHub, uninstallPluginPackage, updateMcpServers } from '../../plugins/pluginPackages';
 import { publishPluginPackage } from '../../plugins/pluginMarketApi';
 import { SettingsPluginMarketBrowser } from './SettingsPluginMarketBrowser';
+import { SettingsPluginPackageSettings } from './SettingsPluginPackageSettings';
 import { SettingsMcpQuickAdd } from './SettingsMcpQuickAdd';
 import { forgetPluginRoleAccess, isPluginEnabledForPet, setPluginEnabledForPet } from '../../plugins/pluginRoleAccess';
 import { PLUGIN_KIND_LABELS, PLUGIN_PERMISSION_LABELS, type PluginManifest } from '../../plugins/pluginTypes';
@@ -105,10 +107,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /** One plugin's own page: what it does, what it needs, and its settings in place. */
-function PluginDetail({ onBack, onOpenPage, renderSettings, ...props }: PluginViewProps & {
+function PluginDetail({ onBack, onOpenPage, renderSettings, settings, ...props }: PluginViewProps & {
   onBack: () => void;
   onOpenPage: (pageId: SettingsControlCenterPageId) => void;
   renderSettings?: (pageId: SettingsControlCenterPageId) => ReactNode;
+  settings?: PetConfig['settings'];
 }) {
   const { plugin, onChanged } = props;
   const removable = plugin.kind === 'skill' || plugin.kind === 'mcp' || Boolean(plugin.packageId);
@@ -176,6 +179,21 @@ function PluginDetail({ onBack, onOpenPage, renderSettings, ...props }: PluginVi
           <ul className="space-y-1">{plugin.troubleshooting.map((tip) => <li key={tip}>· {tip}</li>)}</ul>
         </Section>
       ) : null}
+
+      {plugin.usesHerBrowser && settings ? (
+        <Section title="她的浏览器">
+          <p>这个插件在她自己的浏览器里操作（和你平时用的 Chrome 分开，登录信息、记录都不互通）。第一次用前，打开它，把她的账号登录好，以后会一直记着。</p>
+          <button
+            type="button"
+            onClick={() => void ensureHerBrowser(settings).then((result) => onChanged(result.ok ? '她的浏览器已经打开，可以在里面登录她的账号。' : `打不开她的浏览器：${result.error}`))}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-primary/40 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />打开她的浏览器
+          </button>
+        </Section>
+      ) : null}
+
+      {plugin.packageId ? <SettingsPluginPackageSettings packageId={plugin.packageId} onChanged={onChanged} /> : null}
 
       {plugin.readme ? (
         <Section title="技能说明（SKILL.md）">
@@ -288,6 +306,7 @@ export function SettingsPluginMarketplaceTab({ config, currentPetId, focusedPlug
         onBack={() => setSelectedId(null)}
         onOpenPage={onOpenPage}
         renderSettings={renderSettings}
+        settings={config?.settings}
       />
     );
   }
@@ -336,7 +355,7 @@ export function SettingsPluginMarketplaceTab({ config, currentPetId, focusedPlug
       )}
 
       {showMcpAdd && !installedOnly ? (
-        <SettingsMcpQuickAdd onAdded={changed} renderAdvanced={renderSettings ? () => renderSettings('platform-mcp') : undefined} />
+        <SettingsMcpQuickAdd onAdded={changed} settings={config?.settings} renderAdvanced={renderSettings ? () => renderSettings('platform-mcp') : undefined} />
       ) : null}
 
       {!settings ? (

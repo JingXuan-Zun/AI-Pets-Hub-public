@@ -90,14 +90,14 @@ export function normalizeAgentApprovalDecisionText(text: string) {
     .replace(AGENT_APPROVAL_DECISION_PUNCTUATION_PATTERN, '');
 }
 
-/** Yes to this step and the rest of the task ("这次都允许" on the card); typed, spoken or sent from QQ. */
-export const AGENT_APPROVAL_APPROVE_TASK_TEXTS = new Set([
-  '都同意', '全部同意', '都允许', '全部允许', '都可以', '都行', '都好', '这次都允许', '这次都同意', '后面都同意', '不用再问了', '不用问了', '别问了', '都去做',
-]);
-
-/** Yes to this step and to everyday steps for the rest of today ("今天都允许" on the card). */
+/**
+ * Yes to this step and to everyday steps for the rest of today ("今天都允许" on the card); typed,
+ * spoken or sent from QQ / WeChat. “都好”“别问了” and the like mean the same: there used to be a
+ * separate “这次都允许” (rest of this task only), dropped 2026-11-03 as a duplicate.
+ */
 export const AGENT_APPROVAL_APPROVE_DAY_TEXTS = new Set([
   '今天都允许', '今天都同意', '今天都可以', '今天都行', '今天都好', '今天不用问了', '今天不用再问了', '今天别问了', '今天都去做', '今天都放行',
+  '都同意', '全部同意', '都允许', '全部允许', '都可以', '都行', '都好', '这次都允许', '这次都同意', '后面都同意', '不用再问了', '不用问了', '别问了', '都去做',
 ]);
 
 export function resolveAgentApprovalDecisionFromText(text: string): ChatAgentApprovalDecision | null {
@@ -108,10 +108,6 @@ export function resolveAgentApprovalDecisionFromText(text: string): ChatAgentApp
 
   if (AGENT_APPROVAL_APPROVE_DAY_TEXTS.has(normalizedText.replace(/[吧啊呀呢哦嘛的]+$/u, ''))) {
     return 'approve-day';
-  }
-
-  if (AGENT_APPROVAL_APPROVE_TASK_TEXTS.has(normalizedText.replace(/[吧啊呀呢哦嘛的]+$/u, ''))) {
-    return 'approve-task';
   }
 
   if (AGENT_APPROVAL_DENY_TEXTS.has(normalizedText) || AGENT_APPROVAL_DENY_PATTERN.test(normalizedText)) {

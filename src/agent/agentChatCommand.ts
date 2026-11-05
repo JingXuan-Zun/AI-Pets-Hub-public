@@ -520,6 +520,8 @@ export interface AgentChatCommandResult {
   followUp?: string | null;
   followUpAction?: AgentChatFollowUpAction | null;
   followUpActions?: AgentChatFollowUpAction[] | null;
+  /** Pictures a tool returned (an MCP screenshot…), shown in the chat. */
+  images?: Array<{ dataUrl: string; mimeType: string; name: string }>;
   observations?: string[];
   ok?: boolean;
   observationStats?: AgentDesktopObservationStats | null;

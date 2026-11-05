@@ -1,5 +1,7 @@
 import { delegatedScopeFields } from './chatDelegation';
 import { isDailyApprovalActive, isIrreversibleApproval } from '../../../agent/approval/dailyApproval';
+import { announceBackgroundOutcome } from '../../../agent/background/announceBackgroundOutcome';
+import { startBackgroundTask } from '../../../agent/background/backgroundTasks';
 import { createConversationDesktopSession } from '../../../agent/conversation/conversationDesktopTools';
 import type { ConversationToolRuntime } from '../../../agent/conversation/conversationTools';
 import { desktopPetChatStore } from '../../../chatStore';
@@ -49,7 +51,7 @@ export function createConversationChatRuntime(options: {
   let askedInThisTask = false;
   const requestApproval: ConversationToolRuntime['requestApproval'] = async (input) => {
     // Sending, deleting, paying, closing… ask every time; everything else is covered by
-    // "这次都允许" earlier in this task or "今天都允许" earlier today: go ahead without asking.
+    // "今天都允许" earlier today (or in this task): go ahead without asking.
     const request = { ...input, irreversible: input.irreversible ?? isIrreversibleApproval(`${input.title}
 ${input.detail}`) };
     if (!request.irreversible && (taskCard.isAllowedForTask() || isDailyApprovalActive())) return !taskCard.signal.aborted;
@@ -96,6 +98,33 @@ ${input.detail}`) };
       text: caption,
     });
   };
+  // A long job (a drawing) runs on after this reply ends; when it is done its pictures are
+  // shown and she says how it went, in this same chat.
+  const runInBackground: ConversationToolRuntime['runInBackground'] = (job) => {
+    let images: Parameters<NonNullable<typeof presentImages>>[0] | undefined;
+    const started = startBackgroundTask({
+      kind: job.kind,
+      onEnd: async ({ ok, status, text }) => {
+        if (status === 'cancelled') return;
+        if (ok && images?.length) presentImages(images, '');
+        await announceBackgroundOutcome({
+          chatMode, config: configRef.current, outcome: { ok, text }, petId: targetSlot.id, petName: targetSlot.personality.name, title: job.title,
+        });
+      },
+      petId: targetSlot.id,
+      run: async (signal) => {
+        const result = await job.run(signal);
+        images = result.images;
+        return { ok: result.ok, text: result.text };
+      },
+      title: job.title,
+    });
+    if ('busy' in started) {
+      const seconds = Math.round((Date.now() - started.busy.startedAt) / 1000);
+      return { ok: false, text: `还在做上一件：${started.busy.title}（已经 ${seconds} 秒）。一次只做一件；要换的话先停掉它，再重新开始。` };
+    }
+    return { ok: true, text: `已经在后台开始了：${job.title}。要等一会儿（画图一般 1～3 分钟），好了会自动发出来，你到时再告诉用户。现在照常聊天就好。` };
+  };
   return {
     configRef,
     desktop: createConversationDesktopSession({ goal: sourceText, requestApproval, settings: configRef.current.settings }),
@@ -104,6 +133,7 @@ ${input.detail}`) };
     petId: targetSlot.id,
     presentImages,
     progress: taskCard.progress,
+    runInBackground,
     requestApproval,
     signal: taskCard.signal,
   };

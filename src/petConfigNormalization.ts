@@ -1,3 +1,4 @@
+import { normalizeApiProfiles } from './settings/apiProfiles';
 import {
   DEFAULT_BUILTIN_PET2_WALKING_PET_MODEL_URL,
   DEFAULT_BUILTIN_WALKING_PET_MODEL_URL,
@@ -301,6 +302,9 @@ function normalizePersonality(
     dialogueCompletionPreset: typeof input?.dialogueCompletionPreset === 'string'
       ? input.dialogueCompletionPreset
       : (fallback.dialogueCompletionPreset ?? ''),
+    dialogueCompletionPresetEnabled: typeof input?.dialogueCompletionPresetEnabled === 'boolean'
+      ? input.dialogueCompletionPresetEnabled
+      : fallback.dialogueCompletionPresetEnabled,
     beginDialogs,
     customErrorMessage: typeof input?.customErrorMessage === 'string'
       ? input.customErrorMessage
@@ -714,6 +718,7 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       ),
       customModelCapabilities: normalizeModelCapabilities(rawSettings.customModelCapabilities),
       customModelRequestParams: normalizeModelRequestParams(rawSettings.customModelRequestParams),
+      apiProfiles: normalizeApiProfiles(rawSettings.apiProfiles),
       neuralPersonaModelTagSuggestionsEnabled:
         rawSettings.neuralPersonaModelTagSuggestionsEnabled === true,
       neuralPersonaPrivateProviderDataConsent:

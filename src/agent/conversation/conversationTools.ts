@@ -1,7 +1,7 @@
 import { executeMemoryAction } from '../agentRuntimeMemoryTools';
 import { type AgentRuntimeExecutorContext } from '../agentRuntimeExecutor';
 import { listPlatformCapabilities, runPlatformCapability } from '../../platform-capabilities/platformCapabilityRegistry';
-import type { PlatformCapability } from '../../platform-capabilities/platformCapabilityTypes';
+import type { PlatformCapability, PlatformCapabilityContext } from '../../platform-capabilities/platformCapabilityTypes';
 import { isCapabilityEnabledForPet } from '../../plugins/pluginCapabilityAccess';
 import type { PetConfig, PetConfigUpdateHandler } from '../../types';
 import type { AgentChatCommandHandler } from '../agentChatCommand';
@@ -11,6 +11,7 @@ import { conversationDesktopIconTool } from './conversationDesktopIconTool';
 import { conversationWindowMoveTool } from './conversationWindowMoveTool';
 import { conversationFileTool } from './conversationFileTools';
 import type { ConversationToolCall, ConversationToolDefinition } from './conversationToolTypes';
+import { collectConversationTools, registerConversationToolProvider, type ConversationToolScope } from './conversationToolProviders';
 
 /** What the tools can reach in the app; supplied by the chat session. */
 export interface ConversationToolRuntime {
@@ -23,8 +24,10 @@ export interface ConversationToolRuntime {
   petId: string | null;
   /** Shows pictures in the chat as a message from this character (e.g. a drawing it made). */
   presentImages?: (images: Array<{ dataUrl: string; mimeType: string; name: string; sizeBytes?: number }>, caption: string) => void;
+  /** Long jobs (a drawing) run on after the reply; see PlatformCapabilityContext.runInBackground. */
+  runInBackground?: PlatformCapabilityContext['runInBackground'];
   /** Shows a plain-language confirmation card and resolves with the user's answer. */
-  /** irreversible: asked every time, even after "这次都允许" or "今天都允许" (decided from the text when left out). */
+  /** irreversible: asked every time, even after "今天都允许" (decided from the text when left out). */
   requestApproval: (request: { detail: string; irreversible?: boolean; title: string }) => Promise<boolean>;
   /** Reports each tool call to the task card in the chat (plain-language progress only). */
   progress?: ConversationTaskProgress;
@@ -41,7 +44,7 @@ export interface ConversationTool {
   definition: ConversationToolDefinition;
   /** Returns the confirmation text when the call changes something; null runs it directly. */
   confirmation: (args: Record<string, unknown>) => string | null;
-  run: (runtime: ConversationToolRuntime, args: Record<string, unknown>) => Promise<string | { compact?: string; content: string }>;
+  run: (runtime: ConversationToolRuntime, args: Record<string, unknown>) => Promise<string | { compact?: string; content: string; endsReply?: string }>;
   /** Runs one at a time in call order (desktop actions depend on what the previous one did). */
   sequential?: boolean;
 }
@@ -50,6 +53,8 @@ export interface ConversationToolResult {
   /** Shorter form that replaces this result in later rounds once a newer one has `compact` too. */
   compact?: string;
   content: string;
+  /** Words that end the reply here, with no further round (the next round would go to another model). */
+  endsReply?: string;
   id: string;
   name: string;
   ok: boolean;
@@ -83,6 +88,7 @@ function capabilityTool(capability: PlatformCapability): ConversationTool {
     },
     run: async (runtime, args) => {
       const result = await runPlatformCapability(runtime, { args, capability: capability.id });
+      if (result.ok && result.endsReply) return { content: result.text, endsReply: result.endsReply };
       return result.ok ? result.text : `失败：${result.text}`;
     },
   };
@@ -142,30 +148,35 @@ const todosTool: ConversationTool = {
   },
 };
 
-function buildTools(runtime: Pick<ConversationToolRuntime, 'configRef' | 'desktop' | 'executeAgentCommand' | 'petId'>) {
-  const desktopTools: ConversationTool[] = runtime.desktop
-    ? runtime.desktop.tools.map((desktopTool) => ({
-      confirmation: () => null,
-      definition: desktopTool.definition,
-      run: (_runtime, args) => desktopTool.run(args),
-      sequential: true,
-    }))
-    : [];
-  const tools: ConversationTool[] = [
-    ...listPlatformCapabilities().filter((capability) => isCapabilityEnabledForPet(capability.id, runtime.petId)).map(capabilityTool),
-    memoryTool,
-    conversationFileTool,
-    conversationDesktopIconTool,
-    conversationWindowMoveTool,
-    todosTool,
-    ...desktopTools,
-    ...listConversationAgentBridgeTools(runtime),
-  ];
-  return new Map(tools.map((tool) => [tool.definition.function.name, tool]));
+// The built-in sources of tools, in the order they have always had (see conversationToolProviders).
+registerConversationToolProvider({
+  id: 'platform-capabilities',
+  order: 10,
+  tools: (scope) => listPlatformCapabilities().filter((capability) => isCapabilityEnabledForPet(capability.id, scope.petId)).map(capabilityTool),
+});
+registerConversationToolProvider({ id: 'memory', order: 20, tools: () => [memoryTool] });
+registerConversationToolProvider({ id: 'files', order: 30, tools: () => [conversationFileTool] });
+registerConversationToolProvider({ id: 'desktop-icons', order: 40, tools: () => [conversationDesktopIconTool] });
+registerConversationToolProvider({ id: 'window-move', order: 50, tools: () => [conversationWindowMoveTool] });
+registerConversationToolProvider({ id: 'todos', order: 60, tools: () => [todosTool] });
+registerConversationToolProvider({
+  id: 'desktop-session',
+  order: 70,
+  tools: (scope) => (scope.desktop?.tools ?? []).map((desktopTool) => ({
+    confirmation: () => null,
+    definition: desktopTool.definition,
+    run: (_runtime, args) => desktopTool.run(args),
+    sequential: true,
+  })),
+});
+registerConversationToolProvider({ id: 'agent-bridge', order: 80, tools: (scope) => listConversationAgentBridgeTools(scope) });
+
+function buildTools(scope: ConversationToolScope) {
+  return collectConversationTools(scope);
 }
 
 /** Stable order so the request prefix stays cacheable. */
-export function listConversationToolDefinitions(runtime: Pick<ConversationToolRuntime, 'configRef' | 'desktop' | 'executeAgentCommand' | 'petId'>) {
+export function listConversationToolDefinitions(runtime: ConversationToolScope) {
   return [...buildTools(runtime).values()].map((tool) => tool.definition);
 }
 

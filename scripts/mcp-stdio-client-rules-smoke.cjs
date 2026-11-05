@@ -74,11 +74,13 @@ assert.equal(rules.inferMcpCallErrorStatus(new Error('closed after timeout')), '
 assert.equal(rules.shouldRecordServerFailure('cancelled'), false);
 assert.equal(rules.shouldRecordServerFailure('timeout'), true);
 assert.deepEqual(rules.normalizeToolCallResult({ content: [], structuredContent: [] }), { content: [], isError: false, structuredContent: null });
-assert.deepEqual(rules.normalizeToolContent({ type: 'image', data: 'fixture' }), { text: '{"type":"image","data":"fixture"}', type: 'json' });
+// Pictures stay pictures (the chat shows them); other binary content is named, not pasted.
+assert.deepEqual(rules.normalizeToolContent({ type: 'image', data: 'fixture' }), { data: 'fixture', mimeType: 'image/png', text: '', type: 'image' });
+assert.deepEqual(rules.normalizeToolContent({ type: 'audio', data: 'x'.repeat(5000), mimeType: 'audio/wav' }), { text: '{"type":"audio","mimeType":"audio/wav","data":"（二进制内容，没有放进来）"}', type: 'json' });
 assert.equal(rules.createCooldownToolCallResult({ id: 'fixture' }, { waitMs: -1 }).structuredContent.retryAfterMs, 0);
 assert.equal(rules.createCooldownToolCallResult({ id: 'fixture' }, { waitMs: 0.5 }).structuredContent.retryAfterMs, 1);
 const encode = (_, value) => value === cyclic ? '<fixture-cycle>' : typeof value === 'bigint' ? 'bigint:' + value : typeof value === 'symbol' ? String(value) : typeof value === 'number' && !Number.isFinite(value) ? String(value) : value;
 const digest = crypto.createHash('sha256').update(JSON.stringify(results, encode)).digest('hex');
-const expected = '0d8766525e0dc9a976e0775d26610abccf365274a631a09580ca2e515fbb2d77';
+const expected = '2c6b7ae144470d22c7baeeeb5e6d5a17c2b47c6988f30274aa668653d33dfce9';
 assert.equal(digest, expected);
 console.log(`MCP stdio client rules passed: ${results.length} cases; ${digest}${previous ? '; original functions and remaining root AST unchanged' : ''}; no external calls.`);

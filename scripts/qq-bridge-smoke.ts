@@ -200,7 +200,19 @@ messages.push(message({
   id: 's',
   text: '好吃',
 }));
-assert.deepEqual(collectQqRelayOutgoing(messages, state, false), [{ petId: null, speechText: '好吃', stickerAssetIds: ['asset-1'], text: '好吃(๑´ڡ`๑)' }], 'the voice says only the words');
+assert.deepEqual(collectQqRelayOutgoing(messages, state, false), [{ imageDataUrls: [], petId: null, speechText: '好吃', stickerAssetIds: ['asset-1'], text: '好吃(๑´ڡ`๑)' }], 'the voice says only the words');
+// Drawing: her line is still being written when the picture is posted below it. The picture goes
+// at once; the line waits until she has finished, then goes whole (it used to go cut off, once).
+messages.push(message({ id: 'draw', text: '我去画' }));
+messages.push(message({ agentLoopRun: { pendingApproval: null } as ChatMessage['agentLoopRun'], id: 'card', text: '【任务记录】画图' }));
+messages.push(message({ attachments: [{ dataUrl: 'data:image/png;base64,AAA', id: 'img', kind: 'image', mimeType: 'image/png', name: 'x.png' }], id: 'pic', text: '' }));
+assert.deepEqual(collectQqRelayOutgoing(messages, state, true).map((item) => [item.text, item.imageDataUrls]), [['', ['data:image/png;base64,AAA']]], 'the drawn picture is sent, the unfinished line waits');
+messages[messages.findIndex((item) => item.id === 'draw')] = message({ id: 'draw', text: '我去画，画好啦，你看看' });
+assert.deepEqual(collectQqRelayOutgoing(messages, state, true), [], 'still being written: nothing yet');
+// The chat says her reply is finished (another character may still be typing): it goes whole.
+const { emitAppEvent } = await import('../src/events/appEvents');
+emitAppEvent({ messageId: 'draw', petId: null, type: 'reply.finished' });
+assert.deepEqual(texts(collectQqRelayOutgoing(messages, state, true)), ['我去画，画好啦，你看看'], 'the line goes whole once the chat says she has finished');
 
 // The token is a secret: encrypted on disk and left out of backups.
 const { createConfigCredentialCodec } = require('../electron/configCredentials.cjs') as {

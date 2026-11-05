@@ -10,6 +10,7 @@ import {
 } from '../../controlCenterUsage';
 import { downloadJsonTextFile } from './settingsDownloadUtils';
 import { buildPrivateDataExport, parsePrivateDataExport, preserveLocalSecrets } from '../../privateDataBackup';
+import { SettingsAppUpdatePanel } from './SettingsAppUpdatePanel';
 
 declare const __APP_VERSION__: string;
 
@@ -54,6 +55,7 @@ export interface SettingsOverviewDashboardProps {
 export function SettingsOverviewDashboard({ config, onImportConfig }: SettingsOverviewDashboardProps) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [feedback, setFeedback] = useState('私人数据只保存在本机；导出文件不包含 API Key 等密钥。');
+  const [showUpdates, setShowUpdates] = useState(false);
   const { modelUsage, runtime } = useOverviewMetrics();
 
   const exportPrivateData = () => {
@@ -88,7 +90,7 @@ export function SettingsOverviewDashboard({ config, onImportConfig }: SettingsOv
         : '等待模型接口返回 usage 字段',
     },
     { label: '软件总运行', value: formatDuration(runtime.totalMs), detail: `本次运行 ${formatDuration(runtime.sessionMs)}` },
-    { label: '当前版本', value: `v${__APP_VERSION__}`, detail: '当前安装包构建版本' },
+    { label: '当前版本', value: `v${__APP_VERSION__}`, detail: '点一下检查更新、选版本下载', onClick: () => setShowUpdates((current) => !current) },
     { label: '私人数据', value: '导入 / 导出', detail: '配置、角色、记忆与本机偏好' },
     { label: '数据边界', value: '密钥不导出', detail: 'API Key 和第三方访问凭证始终留在本机' },
   ];
@@ -97,14 +99,28 @@ export function SettingsOverviewDashboard({ config, onImportConfig }: SettingsOv
     <section className="space-y-4" aria-label="控制台总览">
       <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => { void importPrivateData(event.target.files); }} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {cards.map((card) => (
-          <article key={card.label} className="min-h-28 rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="text-2xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{card.label}</div>
-            <div className="mt-2 truncate text-lg font-bold text-primary" title={card.value}>{card.value}</div>
-            <p className="mt-2 text-2xs leading-4 text-muted-foreground">{card.detail}</p>
-          </article>
-        ))}
+        {cards.map((card) => {
+          const body = (
+            <>
+              <div className="text-2xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{card.label}</div>
+              <div className="mt-2 truncate text-lg font-bold text-primary" title={card.value}>{card.value}</div>
+              <p className="mt-2 text-2xs leading-4 text-muted-foreground">{card.detail}</p>
+            </>
+          );
+          return 'onClick' in card && card.onClick ? (
+            <button key={card.label} type="button" onClick={card.onClick} aria-expanded={showUpdates} className={`min-h-28 rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/50 ${showUpdates ? 'border-primary/60' : 'border-border'}`}>{body}</button>
+          ) : (
+            <article key={card.label} className="min-h-28 rounded-lg border border-border bg-card p-4 shadow-sm">{body}</article>
+          );
+        })}
       </div>
+
+      {showUpdates ? (
+        <article className="rounded-lg border border-primary/40 bg-card p-5 shadow-sm">
+          <div className="mb-3 text-sm font-bold text-foreground">软件更新</div>
+          <SettingsAppUpdatePanel />
+        </article>
+      ) : null}
 
       <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">

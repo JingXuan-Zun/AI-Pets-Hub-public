@@ -82,6 +82,34 @@ MCP 插件把 `skill` 换成 `mcp`：
 | `credentials` | 使用账号或密钥 |
 | `change-computer` | 改动电脑 |
 
+## 插件自己的设置（settings）
+
+插件可以声明几项设置，用户在插件页面里改，也可以直接跟角色说（“天气默认查北京”），角色会找到并改好：
+
+```json
+"settings": [
+  { "key": "city", "label": "默认城市", "kind": "text", "default": "上海", "env": "WEATHER_CITY",
+    "forModel": "没说城市时查哪里（“默认查北京”）" },
+  { "key": "unit", "label": "温度单位", "kind": "choice", "env": "WEATHER_UNIT",
+    "choices": [{ "value": "c", "label": "摄氏" }, { "value": "f", "label": "华氏" }] },
+  { "key": "days", "label": "预报天数", "kind": "number", "range": { "min": 1, "max": 7 }, "default": 3 }
+]
+```
+
+| 字段 | 说明 |
+|---|---|
+| `key` | 英文字母开头，字母、数字、下划线 |
+| `label` | 显示的名字 |
+| `kind` | `boolean`（开关）、`choice`（几选一，配 `choices`）、`number`（数字，可配 `range`）、`text`（一段文字，最多 200 字） |
+| `default` | 默认值 |
+| `forModel` | 写给角色看：这项管什么、用户会怎么说 |
+| `risk` | `personal`（默认，角色直接改）或 `change`（会改变插件行为的，角色改之前先问用户） |
+| `env` | 只对 MCP 插件：把值作为这个环境变量传给你的程序，改了以后程序会自动重启 |
+
+技能插件读不到环境变量，值会以“用户的设置：…”附在 SKILL.md 后面交给角色。
+
+**不能放密钥、令牌、密码**：名字里带 key / token / secret / password / 密钥 / 令牌 / 密码 的设置会被丢掉。需要密钥的插件请在 `setup` 里写清楚用户自己在哪里填。
+
 ## 装好以后
 
 - 插件默认只对**安装时选中的角色**开启（技能），或对所有角色开启（MCP）；每个角色可以单独开关。
