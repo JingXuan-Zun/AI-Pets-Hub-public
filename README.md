@@ -43,7 +43,11 @@
 - 🎙️ **Characters with real voices** — GPT-SoVITS voices with swappable voice packs; say a wake word and just talk
 - 🧠 **They remember you** — Characters propose what to remember and save it only after you approve; every character shares what they know "about you"
 - 👀 **Life companion** — Only with your consent does a character look at what you're doing and check in on you; disconnect with one click
-- 🔌 **Extensible** — MCP tool servers, ComfyUI image generation, SillyTavern presets; bring whichever model and voice services you like
+- 📱 **Chat from your phone** — Connect QQ or WeChat to chat with her, send pictures, and get her voice replies on your phone; her drawings and questions that need your OK reach you there too
+- 🧩 **Plugin market** — Install from the online plugin market in one click; send her a plugin's GitHub link and she explains what it is and installs it only after you agree; nothing fits? Build one together
+- 🌐 **Her own browser** — She browses, clicks, fills in forms and takes screenshots in her own browser with her own accounts, kept apart from yours
+- 🔌 **Extensible** — MCP tool servers, ComfyUI image generation, SillyTavern presets; save several model setups and switch with one click
+- 🔄 **Updates inside the app** — New versions download only what changed and apply after a restart; don't like a new version? Switch back to an earlier one
 - 🔐 **Privacy first** — API keys are encrypted on your machine; chats and memories stay on your own computer
 
 ---
@@ -99,6 +103,7 @@ See the [project overview](./docs/project-overview.en.md) for the full Agent Run
 1. Open the [Releases page](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest) and download `AI-Desktop-Pet-<version>.exe`.
 2. Double-click to run — no installer needed.
 3. Fill in your model service as described in [First-run setup](#first-setup).
+4. Later versions update inside the app: Settings → Overview → Current version (from v0.4.0).
 
 > [!NOTE]
 > The app is not yet code-signed, so Windows SmartScreen may show a warning. Make sure the file came from this repository's Releases page before running it; you can also check it against the published SHA-256 file.
@@ -235,7 +240,9 @@ See [`docs/voice-pack-format.md`](./docs/voice-pack-format.md) for the voice pac
 - **Desktop tidying** — Tidy just one screen and sort icons by file type, or move an icon to a named spot on a chosen screen ("bottom-right of the second screen").
 - **Moving windows** — "Put Notepad in the bottom-right of the second screen" in one step, keeping the window size.
 - **A process you can see** — One card per task shows each step as it happens; failed steps are marked, and she tries another way.
-- **Permissions you control** — Read-only observation and actions that change things are handled separately; she asks before any change, and you can press "stop" at any time.
+- **Permissions you control** — Read-only observation and actions that change things are handled separately; she asks before any change (or "allow for today"), and always asks again before sending, deleting or paying; you can press "stop" at any time.
+- **Works while chatting** — Slow jobs such as drawing run in the background; she keeps chatting and tells you when it's done, and "stop drawing" stops it.
+- **Firm limits** — Even through commands she cannot touch the app's own settings files, keys or browser login data; when a plugin fails to install she tells you why instead of editing configs herself.
 
 See [The Agent Loop](#agent-loop) above for how it works.
 
@@ -251,11 +258,26 @@ See [The Agent Loop](#agent-loop) above for how it works.
 
 ### 🔌 Extensions and Integrations
 
-- **MCP** — Connect external MCP tool servers: `mcpServers` configs copied straight from a README, `npx` launches, and remote servers with keys all work; tools a server declares read-only don't need a confirmation every time.
-- **ComfyUI image generation (preview)** — Add your server address and import a workflow, then say "draw…" in chat; the character writes the prompt from the conversation and the image appears in the chat.
+- **Plugin market** — Settings → Extensions → Plugin market: online plugins are public only after review, and you see the permissions before installing; each plugin can be turned on per character and has its own page and settings.
+- **Install from a link** — Send her a plugin's GitHub link; she works out what it is (a skill, an MCP tool or a plugin package), what your computer needs and where it comes from, says it has not been reviewed, and **installs only after you agree** (asked every time).
+- **Build plugins together** — Nothing in the market fits? Describe what you want and she writes a skill or a small tool and installs it.
+- **MCP** — Paste the config from a README into "Add MCP tool"; once added it gets a plain one-line description, she knows which tools are installed and what each does, and screenshots a tool returns appear in the chat.
+- **Her own browser** — The app comes with a separate browser (its own data, not shared with your browser or accounts); with the chrome-devtools plugin she opens pages, clicks, fills in forms and takes screenshots there. Click "Open her browser" on the plugin page and sign in her accounts.
+- **QQ** — Connect QQ through SnowLuma to chat on your phone, send pictures and voice messages; she replies with voice messages in her own voice.
+- **WeChat** — Scan a QR code with phone WeChat (official ClawBot channel, no desktop WeChat needed); family members can each connect; her voice is sent as a short video.
+- **ComfyUI image generation** — Connect your own ComfyUI (another computer on your network works too), say "draw…" and she writes the prompt and draws in the background; the image appears in the chat and on QQ / WeChat; with the sync extension, settings you change in ComfyUI are picked up automatically.
+- **Model setups** — Save several model setups (OpenAI-compatible / Gemini) and switch with one click when one has trouble, or just tell her "switch to the backup model".
 - **Skills** — Import skill instructions the character can draw on during a conversation.
-- **Persona sharing** — Import or share reusable persona presets (requires a configured sharing service).
+- **Persona sharing** — Import or share reusable persona presets.
 - **More runtimes** — Unity Bridge and DeepSeek Harness Bridge.
+
+### 🔄 Updates
+
+- **Update inside the app** — Settings → Overview → click "Current version" to see every version and its notes, and pick one; by default new versions download in the background and you are asked before restarting.
+- **Only what changed** — Usually a few MB instead of the whole program; versions that change the foundation (Electron or dependencies) point you to the full download.
+- **Switch back** — Don't like a new version? Go back to an earlier one or to the version your download came with.
+- **Safe if something breaks** — The version list is signed and every file is checked; a version that fails to start rolls back to the last one that worked, and you are told.
+- Available from **v0.4.0**: if you are on v0.3.x, download the full v0.4.0 once.
 
 ---
 
@@ -293,7 +315,12 @@ The project is in early public development: the core experience works, and some 
 | Voice and wake words | ✅ Ready | GPT-SoVITS must be installed separately; a GPU is recommended |
 | Life companion | 🧪 Preview | Screen watching needs your consent and can be disconnected anytime |
 | 2D / Live2D / VRM / MMD characters | ⚙️ Needs assets | Runtimes are ready; bring your own models and motions |
-| MCP / ComfyUI | 🧪 Preview | Third-party compatibility varies; ComfyUI has only been tested against a mock server |
+| Plugin market / install from a link | ✅ Ready | Skills, MCP tools, plugin packages; GitHub plugins install only after you agree |
+| QQ / WeChat | ✅ Ready | QQ needs SnowLuma; WeChat uses the official ClawBot channel, voice is sent as a short video |
+| Her own browser (chrome-devtools) | ✅ Ready | Needs Node.js and Chrome; you sign in her accounts |
+| ComfyUI image generation | ✅ Ready | Tested with a real ComfyUI on another computer; workflows differ, some need the prompt box picked by hand |
+| In-app updates | ✅ Ready | From v0.4.0 |
+| Other MCP tools | 🧪 Preview | Third-party compatibility varies |
 | Unity Bridge / DeepSeek Harness | ⚙️ Needs setup | Require their external runtimes |
 
 <details>
@@ -310,7 +337,9 @@ The project is in early public development: the core experience works, and some 
 **Focus areas**
 
 - Interactive dialogue: talk with your character face to face, like a video call.
-- Specialist agent plugins: package abilities such as translating, writing, or organizing files as "skill cards" the character can call on.
+- A plugin process host: plugins in any language running in their own process, with clearer permissions.
+- Importing characters from other desktop-pet platforms (starting with VPet character animations, only from copies you installed yourself).
+- Characters that go online to learn and slowly grow their own personality (what they learn is kept only with your OK).
 - Let Neural Persona, long-term memory, and character relationships play a bigger part in everyday chat.
 - Let characters share recent news, so each one knows what you have talked about with the others.
 
