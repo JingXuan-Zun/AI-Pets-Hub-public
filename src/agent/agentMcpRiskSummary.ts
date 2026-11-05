@@ -139,6 +139,13 @@ function resolveAgentMcpRisk(tool: AgentMcpToolRiskInput, signals: AgentMcpRiskS
     return 'reversible-write';
   }
 
+  // The server's own readOnlyHint wins over name/schema guessing (MCP spec): chrome-devtools'
+  // list_pages says read-only, but its description mentions selecting a page, so the word
+  // guess asked for confirmation every time (benchmark 2026-11-05).
+  if (isRecord(tool.annotations) && tool.annotations.readOnlyHint === true && tool.annotations.destructiveHint !== true) {
+    return 'read';
+  }
+
   if (signals.destructive || signals.execution) {
     return 'destructive-like';
   }

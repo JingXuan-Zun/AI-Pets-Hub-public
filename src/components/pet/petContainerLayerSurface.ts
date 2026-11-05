@@ -7,7 +7,6 @@ type SelectedCustomMotionBindingMap = Record<string, PetModelMotionBinding | und
 
 type PetInteractiveDialogueLayerSurface = {
   isInteractiveDialogueHidden: boolean;
-  isInteractiveDialogueMode: boolean;
 };
 
 type CreateCompanionRuntimeLayerItemOptions = {
@@ -31,8 +30,6 @@ type CreateCompanionRuntimeLayerItemOptions = {
   handleStartCompanionPetDrag: CompanionPetRuntimeLayerProps['onStartDrag'];
   hungerAutoEatStopThreshold: CompanionPetRuntimeLayerProps['hungerAutoEatStopThreshold'];
   hungerTriggerThreshold: CompanionPetRuntimeLayerProps['hungerTriggerThreshold'];
-  interactiveDialoguePosition: CompanionPetRuntimeLayerProps['interactiveDialoguePosition'];
-  interactiveDialogueShellSize: CompanionPetRuntimeLayerProps['interactiveDialogueShellSize'];
   isInteractiveDialogueActive: boolean;
   isMovementPausedByPetId: (petId: string) => boolean;
   isSpeaking: boolean;
@@ -68,7 +65,6 @@ export function resolvePetInteractiveDialogueLayerSurface(
   return {
     isInteractiveDialogueHidden: isInteractiveDialogueActive
       && (interactiveDialoguePetId === null || interactiveDialoguePetId === targetPetId),
-    isInteractiveDialogueMode: false,
   };
 }
 
@@ -95,8 +91,6 @@ export function createCompanionRuntimeLayerItem({
   handleStartCompanionPetDrag,
   hungerAutoEatStopThreshold,
   hungerTriggerThreshold,
-  interactiveDialoguePosition,
-  interactiveDialogueShellSize,
   isInteractiveDialogueActive,
   isMovementPausedByPetId,
   isSpeaking,
@@ -137,8 +131,6 @@ export function createCompanionRuntimeLayerItem({
     draggingCompanionPetIdRef,
     hungerAutoEatStopThreshold,
     hungerTriggerThreshold,
-    interactiveDialoguePosition,
-    interactiveDialogueShellSize,
     isMovementPaused: isMovementPausedByPetId(slot.id),
     isSpeaking: isSpeaking && speakingPetId === slot.id,
     isTyping: isTyping && typingPetId === slot.id,

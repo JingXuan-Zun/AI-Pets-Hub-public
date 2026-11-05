@@ -30,6 +30,48 @@ function executeDesktopOrganizationAction(request, dryRun, action) {
   }
 }
 
+const WRITE_TEXT_MAX_CHARS = 1_000_000;
+
+/**
+ * Writes a text file (UTF-8, no BOM): mode "create" (default) only makes a new file and
+ * refuses when one is there, "overwrite" replaces it, "append" adds to the end. She used to
+ * do this with a PowerShell command, so the card showed a raw command line (benchmark 2026-11-05).
+ */
+function executeWriteTextFileAction(request, dryRun, action) {
+  const target = getCreateDirectoryPath(request);
+  if (!target.ok) {
+    return createFileManagementError(action, target.error, { destinationPath: target.path });
+  }
+  const text = typeof request.text === 'string' ? request.text : typeof request.content === 'string' ? request.content : null;
+  if (text === null) {
+    return createFileManagementError(action, 'Text to write is missing.', { destinationPath: target.path });
+  }
+  if (text.length > WRITE_TEXT_MAX_CHARS) {
+    return createFileManagementError(action, 'Text is too long to write in one go.', { destinationPath: target.path });
+  }
+  const mode = request.writeMode === 'overwrite' || request.writeMode === 'append' ? request.writeMode : 'create';
+  if (!getSafeStat(path.dirname(target.path))?.isDirectory()) {
+    return createFileManagementError(action, 'Parent directory must exist.', { destinationPath: target.path });
+  }
+  const existing = getSafeStat(target.path);
+  if (existing?.isDirectory()) {
+    return createFileManagementError(action, 'That path is a folder, not a file.', { destinationPath: target.path });
+  }
+  if (existing && mode === 'create') {
+    return createFileManagementError(action, 'File already exists. Use append to add to it, or overwrite to replace it.', { destinationPath: target.path, reason: 'exists' });
+  }
+  if (dryRun) {
+    return { ...createFileManagementPreview(action, { destinationPath: target.path }), willOverwrite: Boolean(existing) && mode === 'overwrite', writeMode: mode };
+  }
+  try {
+    if (mode === 'append') fs.appendFileSync(target.path, text, 'utf8');
+    else fs.writeFileSync(target.path, text, { encoding: 'utf8', flag: mode === 'create' ? 'wx' : 'w' });
+    return createFileManagementSuccess(action, { changedPaths: [target.path], destinationPath: target.path, dryRun: false });
+  } catch (error) {
+    return createFileManagementError(action, error instanceof Error ? error.message : String(error), { destinationPath: target.path });
+  }
+}
+
 function executeCreateDirectoryAction(request, dryRun, action) {
   const target = getCreateDirectoryPath(request);
   if (!target.ok) {
@@ -73,4 +115,4 @@ function executeCreateDirectoryAction(request, dryRun, action) {
   }
 }
 
-module.exports = { executeDesktopOrganizationAction, executeCreateDirectoryAction };
+module.exports = { executeDesktopOrganizationAction, executeCreateDirectoryAction, executeWriteTextFileAction };

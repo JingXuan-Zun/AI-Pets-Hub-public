@@ -19,10 +19,13 @@ export type LoopApprovalHandler = (request: LoopApprovalRequest) => Promise<bool
 const RISKY_LABEL = /(?:发送|发布|提交订单|删除|移除|清空|卸载|支付|付款|购买|下单|充值|转账|关闭程序|退出程序|退出登录|注销|格式化|send|post|publish|delete|remove|uninstall|pay|purchase|buy|checkout|transfer|log\s*out|sign\s*out|format)/iu;
 const RISKY_KEYS = /(?:%\{F4\}|\{DEL(?:ETE)?\}|\+\{DEL(?:ETE)?\})/iu;
 const SUBMIT_KEYS = /^\s*(?:\{ENTER\}|~|\^\{ENTER\})\s*$/iu;
+// In a text editor Enter only starts a new line (benchmark 2026-11-05: each Enter in Notepad
+// asked again). Chat apps, browsers and everything else still ask.
+const TEXT_EDITOR_PROCESS = /^(?:notepad|notepad\+\+|notepad3|wordpad|write|code|cursor|sublime_text|winword|typora|emeditor)(?:\.exe)?$/iu;
 
 export function classifyLoopActionRisk(
   action: LoopAction,
-  context: { elementLabel?: string; previousAction?: LoopAction | null } = {},
+  context: { elementLabel?: string; previousAction?: LoopAction | null; windowProcessName?: string } = {},
 ): { reason: string; risk: LoopActionRisk } {
   switch (action.action) {
     case 'observe':
@@ -35,7 +38,7 @@ export function classifyLoopActionRisk(
       return { reason: '任务范围内的输入文字', risk: 'scope' };
     case 'press_keys':
       if (RISKY_KEYS.test(action.keys)) return { reason: '可能删除或关闭程序的按键', risk: 'confirm' };
-      if (SUBMIT_KEYS.test(action.keys) && context.previousAction?.action === 'type_text') {
+      if (SUBMIT_KEYS.test(action.keys) && context.previousAction?.action === 'type_text' && !TEXT_EDITOR_PROCESS.test(context.windowProcessName?.trim() ?? '')) {
         return { reason: '输入文字后按回车可能会发送', risk: 'confirm' };
       }
       return { reason: '任务范围内的按键', risk: 'scope' };

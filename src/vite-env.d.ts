@@ -1064,9 +1064,12 @@ interface Window {
       status: () => Promise<{ active: boolean; ok: boolean }>;
       stop: () => Promise<{ ok: boolean }>;
     };
+    /** Saves a diagnostics text file (no chat text, no keys) where the user picks. */
+    exportDiagnostics?: () => Promise<{ cancelled?: boolean; error?: string; ok: boolean; path?: string }>;
     knownFolders?: {
       list: () => Promise<{ drives?: string[]; error?: string; folders?: Array<{ label: string; path: string }>; ok: boolean }>;
       reveal: (path: string) => Promise<{ error?: string; kind?: 'directory' | 'file'; ok: boolean; path?: string }>;
+      openFile: (path: string, app?: string) => Promise<{ app?: 'default' | 'notepad'; error?: string; ok: boolean; path?: string }>;
     };
     platform: string;
     packaged: boolean;

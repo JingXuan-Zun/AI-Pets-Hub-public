@@ -2,6 +2,7 @@ const path = require('path');
 const { isBrowserCategoryQuery, uniqueCaseInsensitive } = require('./appSearchMatching.cjs');
 const { getDetectedBrowserCandidates } = require('../browserSearchService.cjs');
 const { createMoveWindowToDisplayScript } = require('./moveWindowToDisplayScript.cjs');
+const { resolveWindowQueryAliases } = require('./windowsAppChineseAliases.cjs');
 
 function createWindowMoveOperation({ createMoveWindowNativeDisplayHint, runPowerShellScript, normalizeWindowMoveBounds, nativeScreenRectToDipRect, normalizeDisplayRect, findDisplayForBounds }) {
   async function moveWindowToDisplay(request = {}) {
@@ -25,6 +26,8 @@ function createWindowMoveOperation({ createMoveWindowNativeDisplayHint, runPower
     const queryCandidates = uniqueCaseInsensitive([
       ...rawQueryCandidates,
       ...browserQueryCandidates,
+      // “记事本” also finds the window titled “… - Notepad”.
+      ...resolveWindowQueryAliases(query),
     ]).slice(0, 12);
     const requestedPid = Number(request?.pid);
     const requestedHwnd = Number(request?.hwnd || request?.windowHandle);

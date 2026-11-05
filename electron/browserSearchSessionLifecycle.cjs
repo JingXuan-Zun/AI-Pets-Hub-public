@@ -14,6 +14,10 @@ function launchBrowserIfNeeded(session, { browserPath, port, profilePath }) {
       `--user-data-dir=${profilePath}`,
       '--no-first-run',
       '--no-default-browser-check',
+      // Keep drawing while covered by other windows: the user's window gets the focus back
+      // after she switches tabs, and screenshots of a page that stopped drawing hang.
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
       '--new-window',
       'about:blank',
     ], {

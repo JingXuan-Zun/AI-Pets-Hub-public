@@ -30,6 +30,7 @@ const CHANGE_ACTIONS: Record<string, { label: string; service: string }> = {
   move: { label: '移动', service: 'move_path' },
   rename: { label: '重命名', service: 'rename_path' },
   trash: { label: '移到回收站', service: 'trash_path' },
+  write: { label: '写入文件', service: 'write_text_file' },
 };
 const LIST_LIMIT = 80;
 const READ_MAX_BYTES = 12_000;
@@ -56,19 +57,23 @@ export const conversationFileTool: ConversationTool = {
       description: [
         '直接操作电脑上的文件和文件夹（比在资源管理器里点鼠标快且准）：',
         'places 列出常用位置（桌面、下载、文档、各个盘、桌宠程序文件夹、语音包和语音识别模型的文件夹），不需要 path；',
-        'open 在资源管理器里打开文件夹（文件则打开所在文件夹并选中它），只在用户想看里面的内容或位置时用；把桌面上的东西挪到别的屏幕要用 move_desktop_icon，不要用 open；',
+        'open 在资源管理器里打开文件夹（文件则打开所在文件夹并选中它），只在用户想看里面的内容或位置时用；open_file 用默认程序打开一个文件（app 写“记事本”就用记事本打开），要打开文档、表格、图片时用它，不要用 run_command；把桌面上的东西挪到别的屏幕要用 move_desktop_icon，不要用 open；',
         'list 列出文件夹内容；search 在文件夹里按名字找（会找子文件夹）；read 读文本文件；',
-        'rename 重命名（new_name 只写新名字）；move / copy 到 to 文件夹；create_folder 新建文件夹（path 是新文件夹的完整路径）；trash 移到回收站。',
+        'rename 重命名（new_name 只写新名字）；move / copy 到 to 文件夹；create_folder 新建文件夹（path 是新文件夹的完整路径）；trash 移到回收站；',
+        'write 写文本文件（path 是文件完整路径，text 是内容；mode 默认 create 只新建，已有文件时用 append 追加到末尾，或 overwrite 覆盖）。新建、写文本文件用 write，不要用 run_command。',
         '路径用完整的绝对路径。不知道路径时：先 places，再用 search / list 在相关位置里找；资源管理器窗口的地址栏也能用 read_window 读到。',
-        '查看类操作（places、list、search、read、open）直接做；会改动文件的操作每次都会请用户确认。',
+        '查看类操作（places、list、search、read、open、open_file）直接做；会改动文件的操作每次都会请用户确认。',
       ].join(''),
       name: 'files',
       parameters: {
         properties: {
-          action: { enum: ['places', 'list', 'search', 'read', 'open', 'rename', 'move', 'copy', 'create_folder', 'trash'], type: 'string' },
+          action: { enum: ['places', 'list', 'search', 'read', 'open', 'open_file', 'rename', 'move', 'copy', 'create_folder', 'trash', 'write'], type: 'string' },
+          app: { description: 'open_file 用什么打开（可选）：不写用默认程序，写“记事本”用记事本', type: 'string' },
+          mode: { description: 'write 的方式：create 新建（默认，已有同名文件会失败）、append 追加、overwrite 覆盖', enum: ['create', 'append', 'overwrite'], type: 'string' },
           new_name: { description: 'rename 的新名字（含扩展名），例如 “报告.docx”', type: 'string' },
           path: { description: '文件或文件夹的完整路径；search 时是在哪个文件夹里找；places 不需要', type: 'string' },
           query: { description: 'search 的关键词（文件名的一部分）', type: 'string' },
+          text: { description: 'write 要写进去的文字', type: 'string' },
           to: { description: 'move / copy 的目标文件夹完整路径', type: 'string' },
         },
         required: ['action'],
@@ -96,6 +101,12 @@ export const conversationFileTool: ConversationTool = {
       if (!result?.ok) return `失败：${result?.error ?? '打不开'}`;
       return result.kind === 'file' ? `已打开所在文件夹并选中：${result.path ?? path}` : `已在资源管理器里打开：${result.path ?? path}`;
     }
+    if (action === 'open_file') {
+      if (!knownFolders?.openFile) return '失败：现在不能打开文件。';
+      const result = await knownFolders.openFile(path, str(args, 'app') || undefined);
+      if (!result?.ok) return `失败：${result?.error ?? '打不开'}`;
+      return `已用${result.app === 'notepad' ? '记事本' : '默认程序'}打开：${result.path ?? path}。窗口出现后可以用 list_windows / read_window 继续操作。`;
+    }
     if (action === 'list') {
       const result = await call<FileResult>(desktopPetShellRuntime.listDirectory({ limit: LIST_LIMIT, path }));
       if (!result.ok) return `失败：${result.error ?? '读不了这个文件夹'}`;
@@ -121,19 +132,27 @@ export const conversationFileTool: ConversationTool = {
     const to = str(args, 'to');
     if (action === 'rename' && !newName) return 'rename 需要 new_name。';
     if ((action === 'move' || action === 'copy') && !to) return `${action} 需要 to（目标文件夹）。`;
+    const content = typeof args.text === 'string' ? args.text : null;
+    const mode = str(args, 'mode') === 'append' || str(args, 'mode') === 'overwrite' ? str(args, 'mode') : 'create';
+    if (action === 'write' && content === null) return 'write 需要 text（要写的内容）。';
     const request = {
       action: change.service,
-      ...(action === 'create_folder' ? { destinationPath: path } : { sourcePath: path }),
+      ...(action === 'create_folder' || action === 'write' ? { destinationPath: path } : { sourcePath: path }),
+      ...(action === 'write' ? { text: content, writeMode: mode } : {}),
       ...(newName ? { newName } : {}),
       ...(to ? { destinationDirectory: to } : {}),
     };
     const preview = await call<FileResult>(desktopPetShellRuntime.executeFileManagementAction({ ...request, dryRun: true }));
     if (!preview.ok) return `失败：${preview.error ?? '无法执行'}`;
-    if (action !== 'create_folder' && preview.sourceExists === false) return `失败：找不到 ${path}。`;
+    if (action !== 'create_folder' && action !== 'write' && preview.sourceExists === false) return `失败：找不到 ${path}。`;
     const target = preview.destinationPath ? ` → ${preview.destinationPath}` : '';
-    const title = `${change.label}：${action === 'create_folder' ? path : `${path}${target}`}`;
+    const writeLabel = mode === 'append' ? '追加到文件' : mode === 'overwrite' ? '覆盖文件' : '新建文件';
+    const title = action === 'write'
+      ? `${writeLabel}：${path}`
+      : `${change.label}：${action === 'create_folder' ? path : `${path}${target}`}`;
+    const writePreview = action === 'write' && content !== null ? `内容：${content.length > 120 ? `${content.slice(0, 120)}…` : content}` : '';
     const approved = await runtime.requestApproval({
-      detail: [title, preview.willOverwrite ? '注意：目标位置已有同名文件，会被覆盖。' : ''].filter(Boolean).join('\n'),
+      detail: [title, writePreview, preview.willOverwrite ? '注意：目标位置已有同名文件，会被覆盖。' : ''].filter(Boolean).join('\n'),
       // Deleting (even to the Recycle Bin) and overwriting ask every time.
       irreversible: action === 'trash' || Boolean(preview.willOverwrite),
       title,
@@ -141,7 +160,9 @@ export const conversationFileTool: ConversationTool = {
     if (!approved) return '用户没有同意，这一步没有执行。不要再重复请求，直接告诉用户。';
     const result = await call<FileResult>(desktopPetShellRuntime.executeFileManagementAction(request));
     return result.ok
-      ? `已${change.label}：${result.sourcePath ?? path}${result.destinationPath ? ` → ${result.destinationPath}` : ''}`
+      ? action === 'write'
+        ? `已${writeLabel}：${result.destinationPath ?? path}`
+        : `已${change.label}：${result.sourcePath ?? path}${result.destinationPath ? ` → ${result.destinationPath}` : ''}`
       : `失败：${result.error ?? '执行失败'}`;
   },
 };

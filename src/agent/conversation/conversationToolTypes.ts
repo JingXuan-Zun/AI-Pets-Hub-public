@@ -37,6 +37,8 @@ export interface ConversationToolCall {
 
 /** Collects the tool calls of one model response while its text streams normally. */
 export interface ConversationToolSink {
+  /** Set when the request was cut off because the user sent a new message. */
+  interrupted?: boolean;
   toolCalls: ConversationToolCall[];
 }
 

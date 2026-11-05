@@ -31,7 +31,6 @@ import {
 } from '../../pet-runtime/avatar-runtime/avatarRuntimeTypes';
 import {
   resolvePetRuntimeFallbackVisualBounds,
-  resolvePetRuntimePresentationMode,
 } from './petAvatarRuntimeSurface';
 import { type PetVisualRendererProps } from './PetVisualRenderer';
 import { type Live2DRuntimeProfileConfigV1 } from '../../pet-runtime/live2d/live2dRuntimeProfile';
@@ -42,11 +41,8 @@ type Position = {
 };
 
 type ResolvePetVisualRendererShellSurfaceOptions = {
-  interactiveDialoguePosition?: Position | null;
-  interactiveDialogueShellSize?: number;
   avatar3dRuntimeBackend?: Avatar3DRuntimeBackend;
   dragMotionState?: AvatarRuntimeDragState | null;
-  isInteractiveDialogueMode?: boolean;
   isDragging?: boolean;
   measuredInteractiveVisualBounds?: PetVisualBounds | null;
   measuredWindowShapeVisualBounds?: PetVisualBounds | null;
@@ -64,8 +60,6 @@ type PetVisualRendererShellSurface = {
   presentationMode: AvatarRuntimePresentationMode;
   renderedPosition: Position;
   shellSize: number;
-  shouldEmitVisualBounds: boolean;
-  shouldLockDragAndScale: boolean;
   selectionScoreAreaAttributes: Record<string, string> | undefined;
   visualRendererIsMoving: boolean;
   windowShapeProxyStyle: CSSProperties | undefined;
@@ -137,11 +131,8 @@ export function resolvePetVisualRendererIsMoving({
 }
 
 export function resolvePetVisualRendererShellSurface({
-  interactiveDialoguePosition = null,
-  interactiveDialogueShellSize = 256,
   avatar3dRuntimeBackend = 'three',
   dragMotionState = null,
-  isInteractiveDialogueMode = false,
   isDragging = false,
   measuredInteractiveVisualBounds = null,
   measuredWindowShapeVisualBounds = null,
@@ -153,13 +144,10 @@ export function resolvePetVisualRendererShellSurface({
   visualRendererAction = null,
 }: ResolvePetVisualRendererShellSurfaceOptions): PetVisualRendererShellSurface {
   const inferredRenderKind = renderKind;
-  const renderedPosition = isInteractiveDialogueMode && interactiveDialoguePosition
-    ? interactiveDialoguePosition
-    : position;
-  const presentationMode = resolvePetRuntimePresentationMode(
-    modelType,
-    isInteractiveDialogueMode,
-  );
+  const renderedPosition = position;
+  // The desktop pet is always drawn in the normal way; the interactive dialogue draws the
+  // character in the chat window since 2026-10-19.
+  const presentationMode: AvatarRuntimePresentationMode = 'default';
   const visualRendererIsMoving = resolvePetVisualRendererIsMoving({
     modelType,
     shouldAnimateAsMoving,
@@ -167,15 +155,11 @@ export function resolvePetVisualRendererShellSurface({
   });
   const isUnity3DPresentation = modelType === '3d' && avatar3dRuntimeBackend === 'unity';
   const isLive2DPresentation = modelType === 'live2d';
-  const shellSize = isInteractiveDialogueMode
-    ? Math.max(256, Math.round(interactiveDialogueShellSize))
-    : isUnity3DPresentation
+  const shellSize = isUnity3DPresentation
       ? resolveUnity3DViewportShellSize(scale, visualRendererIsMoving)
       : isLive2DPresentation
         ? resolveLive2DViewportShellSize(scale, visualRendererIsMoving)
         : 256;
-  const shouldLockDragAndScale = isInteractiveDialogueMode;
-  const shouldEmitVisualBounds = !isInteractiveDialogueMode;
   const fallbackInteractiveVisualBounds = isUnity3DPresentation
     ? resolveUnity3DInteractiveVisualBounds(scale, visualRendererIsMoving)
     : resolvePetRuntimeFallbackVisualBounds(
@@ -219,8 +203,6 @@ export function resolvePetVisualRendererShellSurface({
     presentationMode,
     renderedPosition,
     shellSize,
-    shouldEmitVisualBounds,
-    shouldLockDragAndScale,
     selectionScoreAreaAttributes: modelType === '3d'
       ? resolvePetSelectionScoreAreaAttributes(interactiveHitVisualBounds, selectionScoreVisualBounds)
       : undefined,

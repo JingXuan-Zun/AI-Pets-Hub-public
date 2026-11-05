@@ -1,4 +1,4 @@
-import { Download, ExternalLink, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
+import { Download, ExternalLink, FileText, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppUpdateStatus, AppUpdateVersion } from '../../appUpdate/appUpdateTypes';
 
@@ -57,6 +57,20 @@ export function SettingsAppUpdatePanel() {
     setStatus(await bridge.stay());
     setMessage('好，继续用现在这个版本。');
   };
+  // A text file with versions, settings summary and recent logs (no chat, no keys) to send when
+  // something goes wrong; released builds keep no log file of their own.
+  const exportDiagnostics = async () => {
+    const shell = window.desktopPetShell;
+    if (!shell?.exportDiagnostics) return;
+    setBusy('diagnostics');
+    try {
+      const result = await shell.exportDiagnostics();
+      if (result.ok) setMessage(`诊断信息已保存到 ${result.path}。不含聊天内容和密钥，发给帮你排查的人就行。`);
+      else if (!result.cancelled) setMessage(`没导出成：${result.error ?? ''}`);
+    } finally {
+      setBusy(null);
+    }
+  };
   const isNewer = (version: string) => version.localeCompare(status?.current ?? '', undefined, { numeric: true }) > 0;
 
   const upToDate = status && !status.versions.some((item) => (item.action === 'download' || item.action === 'full') && isNewer(item.version));
@@ -72,6 +86,9 @@ export function SettingsAppUpdatePanel() {
         <div className="flex gap-2">
           <button type="button" disabled={Boolean(busy)} onClick={() => void check()} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
             {busy === 'check' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}检查更新
+          </button>
+          <button type="button" disabled={Boolean(busy)} onClick={() => void exportDiagnostics()} title="遇到问题时导出给帮你排查的人：版本、设置摘要、最近的运行日志（不含聊天内容和密钥）" className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+            {busy === 'diagnostics' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}导出诊断信息
           </button>
           {status?.pending ? (
             <>

@@ -16,7 +16,7 @@ function quoted(value: string) {
 
 const FILE_ACTIONS: Record<string, string> = {
   copy: '复制文件', create_folder: '新建文件夹', list: '查看文件夹', move: '移动文件', open: '打开文件夹',
-  places: '查看常用位置', read: '读取文件', rename: '重命名文件', search: '查找文件', trash: '把文件移到回收站',
+  open_file: '打开文件', places: '查看常用位置', read: '读取文件', rename: '重命名文件', search: '查找文件', trash: '把文件移到回收站', write: '写入文件',
 };
 
 export function describeConversationStep(name: string, args: Record<string, unknown>): string {
@@ -29,6 +29,7 @@ export function describeConversationStep(name: string, args: Record<string, unkn
     case 'focus_window': return `切换到${quoted(text(args, 'window'))}`;
     case 'close_tab': return '关掉当前网页';
     case 'close_window': return `关闭${quoted(text(args, 'window'))}`;
+    case 'move_window': return `把${quoted(text(args, 'window')) || '窗口'}移到${text(args, 'screen') || '另一块屏幕'}`;
     case 'click': {
       const target = text(args, 'target');
       return /^[\d\s,]+$/u.test(target) ? '点击界面上的按钮' : `点击${quoted(target)}`;
@@ -46,7 +47,11 @@ export function describeConversationStep(name: string, args: Record<string, unkn
     case 'browser': return text(args, 'action') === 'read_page' ? '读取网页内容' : '使用浏览器';
     case 'run_command': return '运行命令';
     case 'system_info': return '查看电脑配置';
-    case 'desktop_icons': return '整理桌面图标';
+    case 'desktop_icons': {
+      // Preview only looks (benchmark 2026-11-05: "副屏有哪些图标" showed 整理桌面图标 and read as moving).
+      const screen = text(args, 'screen') === 'secondary' ? '副屏' : text(args, 'screen') === 'primary' ? '主屏' : '';
+      return text(args, 'action') === 'execute' ? `整理${screen}桌面图标` : `查看${screen}桌面图标`;
+    }
     case 'skills': return text(args, 'action') === 'run' ? '使用技能' : '查看技能';
     case 'mcp': return text(args, 'action') === 'call' ? `使用扩展工具${quoted(text(args, 'tool_name'))}` : '查看扩展工具';
     case 'game_companion': return '陪玩';

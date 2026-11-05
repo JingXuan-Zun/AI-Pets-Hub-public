@@ -113,3 +113,11 @@
 - **当时是做什么的**：她要你同意某一步时，任务卡和模型头上的气泡里除了“允许 / 今天都允许 / 不要”，还有“这次都允许”：这个任务后面的步骤都不再问，下一个任务重新问。说 / 打 / 在 QQ 回“都好”“别问了”也算。
 - **为什么删**：用户觉得和“今天都允许”重复（2026-11-03）。只留“今天都允许”。
 - **现在怎么样**：按钮去掉了；“都好”“都允许”“别问了”“不用再问了”“这次都允许”这些说法现在都算“今天都允许”。QQ / 微信的提问只给“好 / 今天都好 / 不要”。发送、删除、付款、关闭程序这类撤不回的照样每次都问；拒绝一次今天的授权就失效，这些都没变。
+
+## 2026-11-05 互动对话的桌面“舞台模式”
+
+**最后还在的提交：`3491229`**（舞台框 `createInteractiveDialogueStageFrame` 最后在 `8c68f25`；涉及 `src/components/pet/` 下的 `usePetContainerPanelLayout.ts`、`petVisualRendererSurface.ts`、`petAvatarRuntimeSurface.ts`、`petLayerOrdering.ts`、`petContainerLayerSurface.ts`、`petContainerRenderProps.ts`、`PetAvatarLayer.tsx`、`PetCompanionLayer.tsx`、`CompanionPetRuntimeLayer.tsx`，以及 `PetContainer.tsx` 和 `src/index.css`）
+
+- **当时是做什么的**：互动对话第一版把角色画在桌面上：开始通话时桌宠从屏幕下方升到一个“舞台”位置并放大（`isInteractiveDialogueMode`、`interactiveDialoguePosition`、`interactiveDialogueShellSize`、舞台框 `interactiveDialogueStageFrame`），这时不能拖动、不能滚轮缩放，层级放到最上面（z 28），3D 模型用特写镜头；配一个从下往上的入场动画 `pet-interactive-dialogue-enter`。
+- **为什么删**：10-19 起互动对话把角色画在聊天窗口里，桌面上这个模式被写死成“不进入”，这一整条从布局传到三个桌宠图层的值和分支再也没走到过。
+- **现在怎么样**：界面和行为都不变。保留的：通话时桌面上同一个角色隐藏、暂停自动走动（`isInteractiveDialogueActive` / `isInteractiveDialogueHidden`）；网页版聊天面板在互动模式下的位置；状态气泡的位置；3D 渲染器自己的“特写”呈现模式（`presentationMode: 'interactive-dialogue'`，Unity 桥协议里也有，以后在聊天窗口里做口型和表情时可能用到）。测试 `scripts/interactive-dialogue-isolation-smoke.ts` 改成检查现在的设计（它从 10-19 起就在检查旧设计、一直是失败的）。

@@ -58,4 +58,36 @@ function resolveChineseAppAliases(appIdOrPath, displayName = '') {
   return (nameKey && CHINESE_ALIASES_BY_APP[nameKey]) || [];
 }
 
-module.exports = { resolveChineseAppAliases };
+// What the window of each app is called in English: its process name and usual title word.
+// Used the other way round: “记事本” finds the window titled “*笔记 - Notepad” (benchmark
+// 2026-11-05: move_window “记事本” found nothing once the title had changed).
+const WINDOW_WORDS_BY_APP = {
+  'notepad.exe': ['Notepad'],
+  'calc.exe': ['Calculator', 'CalculatorApp'],
+  'mspaint.exe': ['Paint', 'mspaint'],
+  'microsoft.screensketch': ['Snipping Tool', 'SnippingTool'],
+  'microsoft.windows.photos': ['Photos'],
+  'microsoft.windowscamera': ['Camera'],
+  'taskmgr.exe': ['Task Manager', 'Taskmgr'],
+  'cmd.exe': ['Command Prompt', 'cmd'],
+  'explorer.exe': ['File Explorer', 'explorer'],
+  'windows.immersivecontrolpanel': ['Settings', 'SystemSettings'],
+  'msedge.exe': ['Microsoft Edge', 'msedge'],
+  'microsoft.windowsterminal': ['Terminal', 'WindowsTerminal'],
+  'microsoft.windowsstore': ['Microsoft Store'],
+};
+const SAME_APP_KEYS = { 'microsoft.windowsnotepad': 'notepad.exe', 'microsoft.windowscalculator': 'calc.exe', 'microsoft.paint': 'mspaint.exe', 'microsoft.microsoftedge': 'msedge.exe', 'microsoft.windows.explorer': 'explorer.exe' };
+
+/** English window words for a Chinese app name (“记事本” → Notepad); empty when it is not one. */
+function resolveWindowQueryAliases(query) {
+  const wanted = String(query || '').replace(/\s+/gu, '').toLowerCase();
+  if (!wanted) return [];
+  const words = [];
+  for (const [key, names] of Object.entries(CHINESE_ALIASES_BY_APP)) {
+    if (!names.some((name) => name.replace(/\s+/gu, '').toLowerCase() === wanted)) continue;
+    words.push(...(WINDOW_WORDS_BY_APP[SAME_APP_KEYS[key] || key] || []));
+  }
+  return [...new Set(words)];
+}
+
+module.exports = { resolveChineseAppAliases, resolveWindowQueryAliases };

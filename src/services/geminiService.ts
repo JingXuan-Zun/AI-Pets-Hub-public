@@ -32,6 +32,8 @@ import {
 } from './geminiWebSearchService';
 import {
   buildCharacterReplySystemInstruction,
+  buildCharacterReplyStableInstruction,
+  buildCharacterReplyTurnContext,
   buildChatMessagePromptText,
   buildHistoryMessagePromptText,
   buildPersonaBeginDialogMessages,
@@ -308,6 +310,7 @@ async function* requestOpenAICompatibleResponseStream(
   signal?: AbortSignal,
   maxTokensOverride?: number,
   toolTurn?: ConversationToolTurn,
+  turnContext = '',
 ) {
   if (!settings.customApiUrl.trim() || !settings.customModelName.trim()) throw new Error('请先配置模型名称和接口地址。');
   const controller = new AbortController();
@@ -319,8 +322,13 @@ async function* requestOpenAICompatibleResponseStream(
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ ...resolveCognitionRequestParams(settings, maxTokensOverride),
         model: settings.customModelName.trim(), stream: true,
+        // Token use per request (incl. cache hits) comes back in the last chunk.
+        stream_options: { include_usage: true },
         messages: [{ role: 'system', content: systemInstruction },
           ...history.map((msg) => ({ role: mapOpenAICompatibleRole(msg.role), content: buildOpenAICompatibleMessageContent(buildHistoryMessagePromptText(msg)) })),
+          // What changes every turn comes after the history, so the persona and the history
+          // before it stay one cacheable prefix.
+          ...(turnContext ? [{ role: 'system', content: turnContext }] : []),
           // Right before the user message so it outweighs the persona's habit of acting things out.
           ...(toolTurn?.tools.length ? [{ role: 'system', content: `${CONVERSATION_TOOL_RULES}\n现在是 ${formatLocalNow(Date.now())}。` }] : []),
           { role: 'user', content: buildOpenAICompatibleMessageContent(userInput, userAttachments, true) },
@@ -669,15 +677,18 @@ async function* requestPetResponseStreamInternal(
   const chatModelAttachments = shouldSendAttachmentsToChatModel(settings) ? userAttachments : [];
 
   if (settings.llmProvider === 'openai') {
+    // Stable persona first, per-turn context after the history (prompt caching, see
+    // buildCharacterReplyStableInstruction).
     yield* requestOpenAICompatibleResponseStream(
       promptHistory,
       modelUserInput,
-      enrichedSystemInstruction,
+      buildCharacterReplyStableInstruction(personality, settings),
       settings,
       chatModelAttachments,
       signal,
       undefined,
       toolTurn,
+      [buildCharacterReplyTurnContext(personality, settings, history, userInput), customWebSearchInstruction].filter(Boolean).join('\n\n'),
     );
     return;
   }

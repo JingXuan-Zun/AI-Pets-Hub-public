@@ -16,10 +16,19 @@ function onOff(value: boolean) {
   return value ? '开' : '关';
 }
 
+/**
+ * Applies a change and writes it to disk, like every other spoken settings change. Without
+ * persist the change only lived until the next restart (benchmark 2026-11-05: quiet hours).
+ */
+function saveConfig(context: PlatformCapabilityContext, next: PetConfig) {
+  context.configRef.current = next;
+  context.onUpdateConfig(next, { persist: true });
+}
+
 function updateLifeCompanion(context: PlatformCapabilityContext, changes: Partial<PetLifeCompanionSettings>) {
   const config = context.configRef.current;
   const lifeCompanion = normalizeLifeCompanionSettings({ ...config.settings.lifeCompanion, ...changes });
-  context.onUpdateConfig({ ...config, settings: { ...config.settings, lifeCompanion } });
+  saveConfig(context, { ...config, settings: { ...config.settings, lifeCompanion } });
   return lifeCompanion;
 }
 
@@ -223,7 +232,7 @@ const setPetVoice: PlatformCapability = {
       packId = pack.id;
       packName = pack.name;
     }
-    context.onUpdateConfig(applyDesktopPetSlotChanges(config, slot.id, {
+    saveConfig(context, applyDesktopPetSlotChanges(config, slot.id, {
       personality: { ...slot.personality, voicePackId: packId },
     }));
     return { ok: true, text: `${slot.personality.name}的声音已换成${packName}。` };
@@ -247,7 +256,7 @@ const setWakeWords: PlatformCapability = {
     const slot = resolvePetSlot(config, petArg, context.petId);
     if (!slot) return missingPet(config, petArg);
     const words = stringArg(args, 'words').replace(/[，、；;]/gu, ',');
-    context.onUpdateConfig(applyDesktopPetSlotChanges(config, slot.id, {
+    saveConfig(context, applyDesktopPetSlotChanges(config, slot.id, {
       personality: { ...slot.personality, wakeWords: words },
     }));
     return { ok: true, text: words ? `以后喊“${words.split(',').map((word) => word.trim()).filter(Boolean).join('”或“')}”就能叫醒${slot.personality.name}。` : `${slot.personality.name}的唤醒词恢复成角色名字。` };
@@ -300,7 +309,7 @@ const setPetPresence: PlatformCapability = {
     if (slot.isPrimary && (enabled === false || visible === false)) return { ok: false, text: `${slot.personality.name}是主角色，不能停用或隐藏。` };
     const nextEnabled = enabled ?? (visible === true ? true : slot.enabled);
     const nextVisible = visible ?? (enabled === true ? true : slot.modelVisible);
-    context.onUpdateConfig(applyDesktopPetSlotChanges(config, slot.id, { enabled: nextEnabled, modelVisible: nextVisible }));
+    saveConfig(context, applyDesktopPetSlotChanges(config, slot.id, { enabled: nextEnabled, modelVisible: nextVisible }));
     return {
       ok: true,
       text: nextEnabled && nextVisible ? `${slot.personality.name}已经出现在桌面上了。` : `${slot.personality.name}已经从桌面上收起来了。`,

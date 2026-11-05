@@ -100,6 +100,10 @@ function normalizeFileManagementAction(value) {
     case 'create_folder':
     case 'create_directory':
       return 'create_directory';
+    case 'write':
+    case 'write_file':
+    case 'write_text_file':
+      return 'write_text_file';
     case 'trash':
     case 'trash_path':
     case 'recycle':

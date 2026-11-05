@@ -515,6 +515,19 @@ const mcpStdioClientService = createMcpStdioClientService({
   projectRoot: path.join(__dirname, '..'),
   reuseSessions: true,
 });
+// chrome-devtools brings her browser to the front when it switches tabs; give the focus back
+// to whatever the user was using (see herBrowserFocusGuard.cjs).
+{
+  const { createHerBrowserFocusGuard } = require('./herBrowserFocusGuard.cjs');
+  const { createPowerShellExecutor } = require('./appLauncher/powerShellExecutor.cjs');
+  const { execFileAsync } = require('./appLauncher/processBridge.cjs');
+  const focusGuard = createHerBrowserFocusGuard({
+    log: (message, details) => runtimeLogger.log('backend', 'mcp', message, details),
+    runPowerShellScript: createPowerShellExecutor({ execFileAsync }).runPowerShellScript,
+  });
+  const callTool = mcpStdioClientService.callTool.bind(mcpStdioClientService);
+  mcpStdioClientService.callTool = (request = {}) => focusGuard.guard(request, () => callTool(request));
+}
 const mcpConfigService = createMcpConfigService({
   log: (message, details) => runtimeLogger.log('backend', 'mcp-config', message, details),
   onSaved: () => {
@@ -800,6 +813,17 @@ if (!gotSingleInstanceLock) {
         getMainWindow: () => windowManager.getMainWindow(),
         ipcMain: trustedIpcMain,
         log: (message, details) => runtimeLogger.log('backend', 'app-update', message, details),
+      });
+      require('./diagnosticsExport.cjs').registerDiagnosticsExport({
+        app,
+        dialog,
+        getLogLines: () => runtimeLogger.getEntries(),
+        getMainWindow: () => windowManager.getMainWindow(),
+        ipcMain: trustedIpcMain,
+        loadMcpConfig: () => mcpConfigService.loadConfig(),
+        loadPersistedConfig: () => JSON.parse(fs.readFileSync(persistedConfigStore.getPaths().primaryPath, 'utf8')),
+        log: (message, details) => runtimeLogger.log('backend', 'diagnostics', message, details),
+        screen,
       });
       if (isLocalTest) {
         if (localTestConfigPath) {

@@ -70,12 +70,13 @@ export function createConversationTaskCard(options: {
   const controller = new AbortController();
   let messageId: string | null = null;
   let run: ChatAgentLoopRun = { goal: options.goal, pendingApproval: null, startedAt: Date.now(), status: 'running', steps: [] };
+  let statusNote = '';
 
   const record = () => {
     const done = run.steps.filter((step) => step.status === 'done').map((step) => step.text);
     const failed = run.steps.filter((step) => step.status === 'failed').map((step) => step.text);
     return [
-      `【任务记录】${run.goal}：${STATUS_TEXT[run.status]}`,
+      `【任务记录】${run.goal}：${statusNote || STATUS_TEXT[run.status]}`,
       done.length ? `做了：${done.join('、')}` : '',
       failed.length ? `没成功：${failed.join('、')}` : '',
     ].filter(Boolean).join('；');
@@ -114,9 +115,10 @@ export function createConversationTaskCard(options: {
   };
 
   const progress: ConversationTaskProgress = {
-    finish: (status) => {
+    finish: (status, note) => {
       if (!messageId) return;
       runningTasks.delete(messageId);
+      statusNote = note ?? '';
       write({
         ...run,
         durationMs: Date.now() - (run.startedAt ?? Date.now()),

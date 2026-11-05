@@ -35,7 +35,8 @@ export interface ConversationToolRuntime {
 }
 
 export interface ConversationTaskProgress {
-  finish: (status: 'done' | 'failed' | 'cancelled' | 'budget') => void;
+  /** `note` replaces the status words, e.g. 被新的消息打断，还没做完. */
+  finish: (status: 'done' | 'failed' | 'cancelled' | 'budget', note?: string) => void;
   stepFinished: (id: string, ok: boolean) => void;
   stepStarted: (id: string, name: string, args: Record<string, unknown>) => void;
 }
@@ -44,6 +45,8 @@ export interface ConversationTool {
   definition: ConversationToolDefinition;
   /** Returns the confirmation text when the call changes something; null runs it directly. */
   confirmation: (args: Record<string, unknown>) => string | null;
+  /** Loads what `confirmation` needs to decide (e.g. which MCP tools are read-only) before it is asked. */
+  prepare?: (args: Record<string, unknown>) => Promise<void>;
   run: (runtime: ConversationToolRuntime, args: Record<string, unknown>) => Promise<string | { compact?: string; content: string; endsReply?: string }>;
   /** Runs one at a time in call order (desktop actions depend on what the previous one did). */
   sequential?: boolean;
@@ -194,6 +197,7 @@ function parseArgs(raw: string): Record<string, unknown> | null {
 
 // Tools report most failures as text rather than throwing ("结果：失败，…").
 const FAILED_OUTPUT = /^(?:失败|结果：失败|不能用|用户没有同意|用户拒绝)/u;
+const PREPARE_TIMEOUT_MS = 10_000;
 
 async function runOne(tools: Map<string, ConversationTool>, runtime: ConversationToolRuntime, call: ConversationToolCall): Promise<ConversationToolResult> {
   const args = parseArgs(call.arguments);
@@ -236,6 +240,14 @@ async function runOneStep(tools: Map<string, ConversationTool>, runtime: Convers
 export async function runConversationToolCalls(runtime: ConversationToolRuntime, calls: ConversationToolCall[]) {
   const tools = buildTools(runtime);
   const results = new Map<string, ConversationToolResult>();
+  await Promise.all(calls.map((call) => {
+    const tool = tools.get(call.name);
+    const args = tool?.prepare ? parseArgs(call.arguments) : null;
+    // Never let preparing hold up the round for long; without it the call just asks.
+    return tool?.prepare && args
+      ? Promise.race([tool.prepare(args).catch(() => undefined), new Promise<void>((resolve) => { setTimeout(resolve, PREPARE_TIMEOUT_MS); })])
+      : undefined;
+  }));
   const direct = calls.filter((call) => {
     const tool = tools.get(call.name);
     const args = tool ? parseArgs(call.arguments) : null;

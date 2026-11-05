@@ -87,11 +87,8 @@ interface PetCompanionLayerProps {
   expressionAction?: DesktopPetSlot['currentAction'] | null;
   isDragging?: boolean;
   isInteractiveDialogueHidden?: boolean;
-  isInteractiveDialogueMode?: boolean;
   isSpeaking?: boolean;
   isTyping?: boolean;
-  interactiveDialoguePosition?: Position | null;
-  interactiveDialogueShellSize?: number;
   latestMessage?: string;
   manualExpressionBinding?: PetModelMotionBinding | null;
   manualMotionBinding?: PetModelMotionBinding | null;
@@ -131,11 +128,8 @@ function arePetCompanionLayerPropsEqual(
     && previousProps.expressionAction === nextProps.expressionAction
     && previousProps.isDragging === nextProps.isDragging
     && previousProps.isInteractiveDialogueHidden === nextProps.isInteractiveDialogueHidden
-    && previousProps.isInteractiveDialogueMode === nextProps.isInteractiveDialogueMode
     && previousProps.isSpeaking === nextProps.isSpeaking
     && previousProps.isTyping === nextProps.isTyping
-    && areOptionalPositionsEqual(previousProps.interactiveDialoguePosition, nextProps.interactiveDialoguePosition)
-    && previousProps.interactiveDialogueShellSize === nextProps.interactiveDialogueShellSize
     && previousProps.latestMessage === nextProps.latestMessage
     && previousProps.manualExpressionBinding === nextProps.manualExpressionBinding
     && previousProps.manualMotionBinding === nextProps.manualMotionBinding
@@ -169,11 +163,8 @@ function PetCompanionLayerComponent({
   expressionAction = null,
   isDragging = false,
   isInteractiveDialogueHidden = false,
-  isInteractiveDialogueMode = false,
   isSpeaking = false,
   isTyping = false,
-  interactiveDialoguePosition = null,
-  interactiveDialogueShellSize = 256,
   latestMessage = '',
   manualExpressionBinding = null,
   manualMotionBinding = null,
@@ -320,9 +311,6 @@ function PetCompanionLayerComponent({
     resolvePetVisualRendererShellSurface({
       avatar3dRuntimeBackend,
       dragMotionState,
-      interactiveDialoguePosition,
-      interactiveDialogueShellSize,
-      isInteractiveDialogueMode,
       isDragging,
       measuredInteractiveVisualBounds,
       measuredWindowShapeVisualBounds,
@@ -336,9 +324,6 @@ function PetCompanionLayerComponent({
   ), [
     avatar3dRuntimeBackend,
     dragMotionState,
-    interactiveDialoguePosition,
-    interactiveDialogueShellSize,
-    isInteractiveDialogueMode,
     isDragging,
     manualMotionAction,
     measuredInteractiveVisualBounds,
@@ -355,8 +340,6 @@ function PetCompanionLayerComponent({
     renderedPosition,
     selectionScoreAreaAttributes,
     shellSize,
-    shouldEmitVisualBounds,
-    shouldLockDragAndScale,
     windowShapeProxyStyle,
   } = renderShellSurface;
   const runtimeViewport = useMemo(() => (
@@ -443,9 +426,7 @@ function PetCompanionLayerComponent({
       videoLibraryRootPath: matchedModelPreset?.videoLibraryRootPath ?? null,
       sequenceFrames: matchedModelPreset?.sequenceFrames,
       onRuntimeEvent,
-      onVisualBoundsChange: shouldEmitVisualBounds
-        ? handleVisualBoundsChange
-        : undefined,
+      onVisualBoundsChange: handleVisualBoundsChange,
       pet2dRenderAdapterState,
       pointerLookTarget,
       presentationMode,
@@ -483,7 +464,6 @@ function PetCompanionLayerComponent({
     matchedModelPreset?.videoEmotionFolderAliases,
     matchedModelPreset?.videoLibraryRootPath,
     sequenceFrameDurationMultiplier,
-    shouldEmitVisualBounds,
     slot.id,
     slot.modelType,
     slot.modelUrl,
@@ -508,7 +488,6 @@ function PetCompanionLayerComponent({
         transform: 'translate(-50%, -50%)',
         zIndex: resolveCompanionPetLayerZIndex({
           isDragging,
-          isInteractiveDialogueMode,
           isSelected: selectedPetId === slot.id,
         }),
       }}
@@ -518,7 +497,7 @@ function PetCompanionLayerComponent({
         data-desktop-pet-debug-box={`${slot.personality.name} shell`}
         data-desktop-pet-debug-box-kind="viewport"
         data-desktop-pet-owner-id={slot.id}
-        className={isInteractiveDialogueMode ? 'pet-interactive-dialogue-enter relative pointer-events-none' : 'relative pointer-events-none'}
+        className="relative pointer-events-none"
         style={avatarShellStyle}
       >
         <AnimatePresence>
@@ -600,16 +579,10 @@ function PetCompanionLayerComponent({
             data-desktop-pet-native-scope="pet"
             data-desktop-pet-id={slot.id}
             className="absolute inset-0 cursor-grab active:cursor-grabbing pointer-events-auto"
-            onPointerDownCapture={(event) => {
-              if (shouldLockDragAndScale && event.button === 0) {
-                return;
-              }
+            onPointerDownCapture={() => {
               notifyPointerDownInteraction();
             }}
             onPointerDown={(event) => {
-              if (shouldLockDragAndScale && event.button === 0) {
-                return;
-              }
               const targetPetId = resolveStackedPetSelectionTargetFromPointerEvent(event, {
                 currentPetId: slot.id,
                 selectedPetId,
@@ -630,10 +603,6 @@ function PetCompanionLayerComponent({
             onPointerMove={handlePointerMove}
             {...selectionScoreAreaAttributes}
             onWheel={(event) => {
-              if (shouldLockDragAndScale) {
-                event.preventDefault();
-                return;
-              }
               notifyWheelInteraction();
               onWheelScale?.(event, slot.id);
             }}
