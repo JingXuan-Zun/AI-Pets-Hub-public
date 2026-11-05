@@ -372,7 +372,7 @@ export const PetQuickActionMenu = memo(function PetQuickActionMenu({
                         }`}
                       >
                         <div className="text-[11px] font-semibold tracking-[0.08em]">互动对话</div>
-                        <div className="mt-1 text-[9px] text-slate-400">进入放大展示模式，锁定拖拽、位移和缩放</div>
+                        <div className="mt-1 text-[9px] text-slate-400">在聊天窗口里面对面聊，像视频通话一样</div>
                       </button>
                     </div>
                   </motion.div>
