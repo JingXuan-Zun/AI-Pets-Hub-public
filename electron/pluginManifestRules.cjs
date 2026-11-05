@@ -44,6 +44,46 @@ function mcpEntry(value) {
   return { args: textList(value.args, 40, 500), command, env, url };
 }
 
+const SETTING_KEY = /^[A-Za-z][A-Za-z0-9_]{0,40}$/u;
+const SETTING_KINDS = new Set(['boolean', 'choice', 'number', 'text']);
+const ENV_NAME = /^[A-Z][A-Z0-9_]{0,60}$/u;
+// Settings the character may read and change: never secrets (the settings manifest refuses them too).
+const SECRET_WORDS = /key|token|secret|password|密钥|令牌|密码/iu;
+
+/** The plugin's own settings (see docs/plugin-format.md); invalid entries are dropped. */
+function pluginSettings(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 20).map((item) => {
+    const key = text(item?.key, 41);
+    const kind = text(item?.kind, 10);
+    const label = text(item?.label, 40);
+    if (!SETTING_KEY.test(key) || !SETTING_KINDS.has(kind) || !label || SECRET_WORDS.test(key) || SECRET_WORDS.test(label)) return null;
+    const choices = kind === 'choice' && Array.isArray(item.choices)
+      ? item.choices.slice(0, 20).map((choice) => ({ label: text(choice?.label, 40) || text(choice?.value, 40), value: text(choice?.value, 60) })).filter((choice) => choice.value)
+      : [];
+    if (kind === 'choice' && !choices.length) return null;
+    const min = Number(item.range?.min);
+    const max = Number(item.range?.max);
+    const range = kind === 'number' && Number.isFinite(min) && Number.isFinite(max) && min <= max ? { max, min } : null;
+    const fallback = kind === 'boolean' ? item.default === true
+      : kind === 'number' ? (Number.isFinite(Number(item.default)) ? Number(item.default) : range?.min ?? 0)
+        : kind === 'choice' ? (choices.some((choice) => choice.value === item.default) ? item.default : choices[0].value)
+          : text(item.default, 200);
+    const env = text(item.env, 61);
+    return {
+      choices,
+      default: fallback,
+      env: ENV_NAME.test(env) ? env : '',
+      forModel: text(item.forModel, 200),
+      key,
+      kind,
+      label,
+      range,
+      risk: item.risk === 'change' ? 'change' : 'personal',
+    };
+  }).filter(Boolean);
+}
+
 /** Checks a parsed plugin.json; returns { manifest } or { error } in words a user understands. */
 function normalizePluginManifest(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'plugin.json 不是一个 JSON 对象。' };
@@ -74,6 +114,7 @@ function normalizePluginManifest(raw) {
         install: text(item?.install, 300),
         name: text(item?.name, 60),
       })).filter((item) => item.name) : [],
+      settings: pluginSettings(raw.settings),
       setup: textList(raw.setup, 12),
       skill,
       troubleshooting: textList(raw.troubleshooting, 12),

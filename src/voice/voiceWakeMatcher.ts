@@ -55,6 +55,9 @@ export interface WakeMatch {
   remainder: string;
 }
 
+/** How many characters (“嗯”“那个”) may come before a call that has one misheard syllable. */
+const MAX_FUZZY_WAKE_START = 2;
+
 export function matchWakePhrase(transcript: string, phrases: string[]): WakeMatch | null {
   const chars = Array.from(transcript);
   const normalizedChars = chars.map((char) => normalizeWakeText(char));
@@ -66,8 +69,10 @@ export function matchWakePhrase(transcript: string, phrases: string[]): WakeMatc
 
   for (const phrase of phrases) {
     const phraseChars = Array.from(phrase);
-    const allowed = phraseChars.length >= 3 ? 1 : 0;
     for (let start = 0; start + phraseChars.length <= compact.length; start += 1) {
+      // One misheard syllable is forgiven only where a call starts (“嗯，小X恋…”): inside a long
+      // stretch of other people's talk or a video, “小X恋” turns up by chance and woke her up.
+      const allowed = phraseChars.length >= 3 && start <= MAX_FUZZY_WAKE_START ? 1 : 0;
       if (countMismatches(compact, start, phraseChars) <= allowed) {
         const lastOriginalIndex = compactIndexes[start + phraseChars.length - 1];
         const remainder = chars.slice(lastOriginalIndex + 1).join('').replace(/^[\s\p{P}]+/u, '').trim();

@@ -1,4 +1,5 @@
 import { loadExternalAgentMcpConfig } from '../agent/agentExternalMcpBridge';
+import { connectsToHerBrowser, herBrowserPort } from './herBrowser';
 import {
   parseAgentExternalSkillLibraryJson,
   removeAgentExternalSkillFromLibrary,
@@ -51,7 +52,7 @@ function describeSkill(skill: AgentExternalSkillDefinition): PluginManifest {
   };
 }
 
-interface McpServerEntry { id: string; title: string; command: string }
+interface McpServerEntry { id: string; title: string; command: string; description: string; args: unknown[] }
 
 function readMcpServers(config: Record<string, unknown>): McpServerEntry[] {
   const servers = config.servers ?? config.mcpServers;
@@ -63,14 +64,15 @@ function readMcpServers(config: Record<string, unknown>): McpServerEntry[] {
     if (!id || server.disabled === true) return [];
     const command = [server.command, ...(Array.isArray(server.args) ? server.args : [])]
       .filter((part): part is string => typeof part === 'string').join(' ');
-    return [{ command, id, title: typeof server.title === 'string' && server.title.trim() ? server.title.trim() : id }];
+    const description = typeof server.description === 'string' ? server.description.trim() : '';
+    return [{ args: Array.isArray(server.args) ? server.args : [], command, description, id, title: typeof server.title === 'string' && server.title.trim() ? server.title.trim() : id }];
   });
 }
 
-function describeMcpServer(server: McpServerEntry): PluginManifest {
+function describeMcpServer(server: McpServerEntry, herBrowserPortNumber: number): PluginManifest {
   const remote = /^https?:\/\//iu.test(server.command);
   return {
-    description: `外部工具服务器，角色可以调用它提供的工具。${server.command ? `启动方式：${server.command.slice(0, 80)}` : ''}`,
+    description: server.description || `外部工具服务器，角色可以调用它提供的工具。${server.command ? `启动方式：${server.command.slice(0, 80)}` : ''}`,
     enabledByDefault: true,
     id: `mcp:${server.id}`,
     kind: 'mcp',
@@ -81,6 +83,7 @@ function describeMcpServer(server: McpServerEntry): PluginManifest {
     source: 'MCP 配置',
     status: { ready: true },
     troubleshooting: ['工具列表为空：在 MCP 管理里点“检查”，看服务器是否启动成功（常见原因是没装 Node 或 Python）。'],
+    ...(connectsToHerBrowser(server.args, herBrowserPortNumber) ? { usesHerBrowser: true } : {}),
   };
 }
 
@@ -166,7 +169,7 @@ export async function listInstalledPlugins(settings: PetConfig['settings']): Pro
     return withPackage(describeSkill(skill), packageId ? packages.get(packageId) : undefined);
   });
   const mcp = readMcpServers(await loadExternalAgentMcpConfig().catch(() => ({})))
-    .map((server) => withPackage(describeMcpServer(server), packages.get(server.id)?.kind === 'mcp' ? packages.get(server.id) : undefined));
+    .map((server) => withPackage(describeMcpServer(server, herBrowserPort(settings)), packages.get(server.id)?.kind === 'mcp' ? packages.get(server.id) : undefined));
   return [...describeNativePlugins(settings), ...skills, ...mcp];
 }
 

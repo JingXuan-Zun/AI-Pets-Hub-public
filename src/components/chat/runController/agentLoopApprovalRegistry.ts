@@ -23,7 +23,7 @@ export function subscribeAgentLoopApprovals(listener: () => void) {
   };
 }
 
-/** Waits for the answer itself, including "allow the rest of this task" ('approve-task'). */
+/** Waits for the answer itself, including "allow for the rest of today" ('approve-day'). */
 export function waitForAgentLoopDecision(messageId: string, signal?: AbortSignal | null) {
   return new Promise<ChatAgentApprovalDecision>((resolve) => {
     const settle = (decision: ChatAgentApprovalDecision) => {

@@ -45,7 +45,9 @@ function setup(idleTimeoutMs = 60000) {
       if (audio.startsWith('crash')) throw new Error('STT worker unavailable');
       if (audio === 'silence') return '';
       if (audio === 'noise') return '。';
-      return `heard:${audio}`;
+      if (audio === 'tv') return 'The.';
+      if (audio === 'korean') return '那야냐还是英 뭐。';
+      return `听到:${audio}`;
     },
     send: async (text) => {
       log.sent.push(text);
@@ -78,14 +80,14 @@ function setup(idleTimeoutMs = 60000) {
   a.handlers().onSpeechStart?.();
   a.handlers().onUtterance('hello', 1200);
   await flush();
-  check(a.log.sent, ['heard:hello'], 'utterance recognized and sent');
+  check(a.log.sent, ['听到:hello'], 'utterance recognized and sent');
   check(a.log.input.slice(-3), ['speaking', 'recognizing', 'idle'], 'recognizing while turning speech into text, then idle');
 
   a.setBusy(true); // reply generating / speaking / queued synthesis
   check([a.capture.paused, a.log.listening.at(-1)], [true, false], 'mic paused (and shown off) while pet has the floor');
   a.handlers().onUtterance('echo-of-pet', 800);
   await flush();
-  check(a.log.sent, ['heard:hello'], 'audio arriving while busy is dropped');
+  check(a.log.sent, ['听到:hello'], 'audio arriving while busy is dropped');
 
   a.setBusy(false);
   advance(CONVERSATION_RESUME_GRACE_MS - 1);
@@ -125,6 +127,23 @@ function setup(idleTimeoutMs = 60000) {
   await flush();
   advance(CONVERSATION_RESUME_GRACE_MS + 1000);
   check([b.log.ended, b.capture.stopped, b.session.isActive()], [['idle'], true, false], 'noise does not keep the mic open');
+
+  // A TV or other people's talk: short English or Korean is not sent; three in a row end it.
+  const t = setup();
+  await t.session.start();
+  t.handlers().onUtterance('tv', 900);
+  await flush();
+  t.handlers().onUtterance('korean', 900);
+  await flush();
+  check([t.log.sent, t.log.ended], [[], []], 'noise from the room is not sent');
+  t.handlers().onUtterance('嗯', 900);
+  await flush();
+  check(t.log.sent, ['听到:嗯'], 'real speech in between counts and resets the noise count');
+  for (const audio of ['tv', 'korean', 'tv']) {
+    t.handlers().onUtterance(audio, 900);
+    await flush();
+  }
+  check([t.log.ended, t.session.isActive()], [['noise'], false], 'three noises in a row end the conversation');
 
   // Manual stop.
   const c = setup();
@@ -171,8 +190,8 @@ function setup(idleTimeoutMs = 60000) {
         handlers = h;
         return { isPaused: () => capture.paused, pause: () => { capture.paused = true; }, resume: () => { capture.paused = false; }, stop: async () => undefined };
       },
-      recognize: async (audio) => `heard:${audio}`,
-      send: (text) => { sent.push(text); return text === 'heard:close-the-emulator' ? new Promise<void>(() => undefined) : Promise.resolve(); },
+      recognize: async (audio) => `听到:${audio}`,
+      send: (text) => { sent.push(text); return text === '听到:close-the-emulator' ? new Promise<void>(() => undefined) : Promise.resolve(); },
       isBusy: () => false, // the task waits on a question and the pet is silent
       subscribeBusy: () => () => undefined,
       onListeningChange: () => undefined,
@@ -189,7 +208,7 @@ function setup(idleTimeoutMs = 60000) {
     check(capture.paused, false, 'microphone listens again while the task still waits');
     (handlers as ConversationCaptureHandlers | null)?.onUtterance('agree', 600);
     await flush();
-    check(sent, ['heard:close-the-emulator', 'heard:agree'], 'the spoken answer reaches the task');
+    check(sent, ['听到:close-the-emulator', '听到:agree'], 'the spoken answer reaches the task');
     session.stop();
   }
 

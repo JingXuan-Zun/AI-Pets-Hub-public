@@ -34,7 +34,7 @@ async function controlSelectedBrowserPage(action, request, port, browserLabel, p
 
 function createBrowserPageController({ ensureControlBrowserSession, resolveBrowserSessionOptions }) {
   return async function controlBrowserPage(action, request, settings) {
-    const session = action === 'open_url'
+    const session = action === 'open_url' || action === 'open_browser'
       ? await ensureControlBrowserSession(settings, request)
       : resolveBrowserSessionOptions(settings);
     if (session.ok === false) {
@@ -49,6 +49,9 @@ function createBrowserPageController({ ensureControlBrowserSession, resolveBrows
 
     if (action === 'open_url') {
       return openBrowserControlPage(action, request, port, browserLabel);
+    }
+    if (action === 'open_browser') {
+      return { action, browserLabel, ok: true, port };
     }
 
     let pages = [];

@@ -34,10 +34,7 @@ export function ApprovalBubbleCard({ approval, onResolve, textColor }: {
         <div className="mt-2 flex flex-wrap justify-center gap-1.5">
           <button type="button" onClick={() => onResolve(approval.id, 'approve')} className={`${button} bg-primary text-primary-foreground hover:bg-primary/90`}>允许</button>
           {approval.irreversible ? null : (
-            <>
-              <button type="button" onClick={() => onResolve(approval.id, 'approve-task')} className={`${button} border border-primary/40 text-primary hover:bg-primary/10`}>这次都允许</button>
-              <button type="button" onClick={() => onResolve(approval.id, 'approve-day')} className={`${button} border border-primary/40 text-primary hover:bg-primary/10`} title="今天的操作都不再问；发送、删除、付款这类还会问">今天都允许</button>
-            </>
+            <button type="button" onClick={() => onResolve(approval.id, 'approve-day')} className={`${button} border border-primary/40 text-primary hover:bg-primary/10`} title="今天的操作都不再问；发送、删除、付款这类还会问">今天都允许</button>
           )}
           <button type="button" onClick={() => onResolve(approval.id, 'deny')} className={`${button} border border-border text-muted-foreground hover:bg-muted`}>不要</button>
         </div>

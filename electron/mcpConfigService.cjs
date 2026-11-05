@@ -39,6 +39,13 @@ function parseJsonConfig(rawText) {
   throw new Error('MCP config "servers" must be an array or object.');
 }
 
+/** Everything that decides how the servers start: all of it except the card's wording. */
+function mcpLaunchKey(config) {
+  const servers = config?.servers ?? config?.mcpServers ?? [];
+  const list = Array.isArray(servers) ? servers : Object.entries(servers).map(([id, server]) => ({ id, ...server }));
+  return JSON.stringify(list.map(({ description: _description, title: _title, ...launch }) => launch));
+}
+
 function createConfigPayload(configPath, exists, rawText, config, error = null) {
   return {
     config,
@@ -93,9 +100,11 @@ function createMcpConfigService(options = {}) {
     }
 
     const nextRawText = `${JSON.stringify(config, null, 2)}\n`;
+    const before = loadConfig();
     fs.writeFileSync(configPath, nextRawText, 'utf8');
     log?.('saved MCP config', { path: configPath });
-    onSaved?.(config);
+    // Only a change in how servers start resets them; new wording on a card (title, description) does not.
+    if (!before.exists || before.error || mcpLaunchKey(before.config) !== mcpLaunchKey(config)) onSaved?.(config);
     return createConfigPayload(configPath, true, nextRawText, config);
   }
 

@@ -1,6 +1,9 @@
-export type AgentMcpContentType = 'json' | 'text';
+export type AgentMcpContentType = 'image' | 'json' | 'text';
 
 export interface AgentMcpToolContent {
+  /** Base64 of a picture (type image). */
+  data?: string;
+  mimeType?: string;
   text: string;
   type: AgentMcpContentType;
 }

@@ -1,4 +1,4 @@
-import type { ComfyUiInputTarget, ComfyUiWorkflowEntry } from './comfyUiWorkflow';
+import { analyzeComfyUiWorkflow, type ComfyUiInputTarget, type ComfyUiWorkflowEntry } from './comfyUiWorkflow';
 
 // Connection and imported workflows for ComfyUI. The access token is not here: it is the
 // top-level setting `comfyUiApiKey`, so it is encrypted and kept out of backups like other keys.
@@ -14,7 +14,7 @@ export type ComfyUiSettings = {
 export const DEFAULT_COMFY_UI_SETTINGS: ComfyUiSettings = {
   defaultWorkflowId: '',
   serverUrl: 'http://127.0.0.1:8188',
-  timeoutSeconds: 300,
+  timeoutSeconds: 900,
   workflows: [],
 };
 
@@ -32,13 +32,17 @@ function normalizeTarget(value: unknown): ComfyUiInputTarget | null {
 
 function normalizeWorkflow(value: unknown): ComfyUiWorkflowEntry | null {
   if (!isRecord(value) || typeof value.id !== 'string' || !isRecord(value.workflow)) return null;
+  const positive = normalizeTarget(value.positive);
+  // Imported before the prompt's place could be found in this kind of workflow: look again.
+  const found = positive ? null : analyzeComfyUiWorkflow(value.workflow as ComfyUiWorkflowEntry['workflow']);
   return {
     description: typeof value.description === 'string' ? value.description : '',
     id: value.id,
     importedAt: typeof value.importedAt === 'number' ? value.importedAt : 0,
     name: typeof value.name === 'string' && value.name.trim() ? value.name : '未命名工作流',
-    negative: normalizeTarget(value.negative),
-    positive: normalizeTarget(value.positive),
+    negative: found ? found.negative : normalizeTarget(value.negative),
+    positive: found ? found.positive : positive,
+    ...(typeof value.sourceName === 'string' && value.sourceName ? { sourceName: value.sourceName } : {}),
     seeds: Array.isArray(value.seeds) ? value.seeds.map(normalizeTarget).filter((target): target is ComfyUiInputTarget => Boolean(target)) : [],
     workflow: value.workflow as ComfyUiWorkflowEntry['workflow'],
   };
@@ -53,7 +57,9 @@ export function normalizeComfyUiSettings(value: unknown): ComfyUiSettings {
   const defaultWorkflowId = typeof raw.defaultWorkflowId === 'string' && workflows.some((entry) => entry.id === raw.defaultWorkflowId)
     ? raw.defaultWorkflowId
     : workflows[0]?.id ?? '';
-  const timeoutSeconds = Number(raw.timeoutSeconds);
+  // 300 was the old default, too short for big workflows with upscaling: move it to the new one.
+  const storedTimeout = Number(raw.timeoutSeconds);
+  const timeoutSeconds = storedTimeout === 300 ? DEFAULT_COMFY_UI_SETTINGS.timeoutSeconds : storedTimeout;
   return {
     defaultWorkflowId,
     serverUrl: typeof raw.serverUrl === 'string' ? raw.serverUrl.trim() : DEFAULT_COMFY_UI_SETTINGS.serverUrl,

@@ -293,16 +293,16 @@ export function useSettingsPanelDraftState({
     handleUpdatePersonality({ traits: nextTraits });
   };
 
+  // “保存接口” saves at once (it used to only change the page's draft while saying “已保存”, so
+  // the key was lost unless the window's own 保存 was pressed too), with the protocol it is for.
   const saveCustomApiSettings = () => {
-    applyConfig({
-      ...localConfig,
-      settings: {
-        ...localConfig.settings,
-        customModelName: customApiDraft.modelName.trim(),
-        customApiUrl: customApiDraft.apiUrl.trim(),
-        customApiKey: customApiDraft.apiKey.trim(),
-      },
-    });
+    const fields = {
+      customApiKey: customApiDraft.apiKey.trim(),
+      customApiUrl: customApiDraft.apiUrl.trim(),
+      customModelName: customApiDraft.modelName.trim(),
+      llmProvider: 'openai' as const,
+    };
+    commitModelConfig((baseConfig) => ({ ...baseConfig, settings: { ...baseConfig.settings, ...fields } }));
     setCustomApiSaveFeedback(true);
   };
 

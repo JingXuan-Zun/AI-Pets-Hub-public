@@ -742,9 +742,11 @@ interface DesktopPetPersistedConfigSaveResultLike {
   error?: string;
 }
 
-type DesktopPetMcpContentTypeLike = 'json' | 'text';
+type DesktopPetMcpContentTypeLike = 'image' | 'json' | 'text';
 
 interface DesktopPetMcpToolContentLike {
+  data?: string;
+  mimeType?: string;
   text: string;
   type: DesktopPetMcpContentTypeLike;
 }
@@ -953,14 +955,28 @@ interface Window {
   webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
   desktopPetShell?: {
     /** ComfyUI workflows, called from the main process (no CORS; the token stays out of page requests). */
+    /** Right-click on a picture in the chat: save it with a dialog, or copy it. */
+    chatImage?: {
+      copy: (dataUrl: string) => Promise<{ error?: string; ok: boolean }>;
+      save: (dataUrl: string, name?: string) => Promise<{ canceled?: boolean; error?: string; ok: boolean; path?: string }>;
+    };
     comfyUi?: {
-      run: (request: { apiKey?: string; serverUrl: string; timeoutMs?: number; workflow: Record<string, unknown> }) => Promise<{
+      /** Stops a run started with that runId (taken out of ComfyUI's queue or interrupted). */
+      cancel?: (runId: string) => Promise<{ error?: string; ok: boolean }>;
+      run: (request: { apiKey?: string; runId?: string; serverUrl: string; timeoutMs?: number; workflow: Record<string, unknown> }) => Promise<{
         durationMs?: number;
         error?: string;
         images?: Array<{ dataUrl: string; mimeType: string; name: string; sizeBytes: number }>;
         ok: boolean;
       }>;
-      test: (request: { apiKey?: string; serverUrl: string }) => Promise<{ device?: string; error?: string; ok: boolean; version?: string }>;
+      test: (request: { apiKey?: string; serverUrl: string }) => Promise<{ device?: string; error?: string; ok: boolean; syncExtension?: boolean; version?: string }>;
+      openExtensionFolder?: () => Promise<{ error?: string; ok: boolean; path?: string }>;
+      /** Canvas copies kept by our ComfyUI extension: by workflow name, and the open one ("_current"). */
+      readSynced?: (request: { apiKey?: string; names: string[]; serverUrl: string }) => Promise<{
+        copies: Array<{ file: string; name: string; prompt: Record<string, unknown>; savedAt: number }>;
+        error?: string;
+        ok: boolean;
+      }>;
     };
     /** The development assistant (Claude Code, headless) working in a project folder. */
     devAgent?: {
@@ -1029,6 +1045,7 @@ interface Window {
       list: () => Promise<{ ok: boolean; plugins: unknown[]; error?: string }>;
       installFolder: (folder: string) => Promise<{ ok: true; manifest: import('./plugins/pluginPackages').PluginPackageManifest; replaced?: boolean } | { ok: false; error: string }>;
       installGitHub: (url: string) => Promise<{ ok: true; manifest: import('./plugins/pluginPackages').PluginPackageManifest; replaced?: boolean } | { ok: false; error: string }>;
+      inspectLink?: (url: string) => Promise<import('./plugins/pluginLinkInstall').PluginLinkFiles | { ok: false; error: string }>;
       uninstall: (id: string) => Promise<{ ok: boolean; error?: string }>;
       readSkill: (id: string) => Promise<{ ok: true; text: string } | { ok: false; error: string }>;
       installMarket?: (url: string, sha256: string) => Promise<{ ok: true; manifest: import('./plugins/pluginPackages').PluginPackageManifest } | { ok: false; error: string }>;
@@ -1062,6 +1079,15 @@ interface Window {
     cancelModelRequest?: (id: string) => Promise<void>;
     probeDeepSeekHarness?: (request?: { pythonPath?: string }) => Promise<{ available: boolean; error?: string | null; pythonVersion?: string | null; sdkVersion?: string | null }>;
     checkDeepSeekHarnessUpdate?: (request?: { pythonPath?: string }) => Promise<{ checked: boolean; error?: string | null; latestVersion?: string | null }>;
+    appUpdate?: {
+      status: () => Promise<import('./appUpdate/appUpdateTypes').AppUpdateStatus>;
+      check: () => Promise<import('./appUpdate/appUpdateTypes').AppUpdateStatus>;
+      download: (version: string) => Promise<{ ok: true; version: string } | { ok: false; error: string }>;
+      restart: () => Promise<{ ok: boolean }>;
+      revert: () => Promise<{ ok: boolean }>;
+      stay: () => Promise<import('./appUpdate/appUpdateTypes').AppUpdateStatus>;
+      setAutoDownload: (enabled: boolean) => Promise<import('./appUpdate/appUpdateTypes').AppUpdateStatus>;
+    };
     prepareDeepSeekHarnessProfile?: (request?: { dshHome?: string }) => Promise<{ error?: string; ok: boolean; profilePath?: string }>;
     validateDeepSeekHarnessSetup?: (request?: { dshHome?: string; model?: string; pythonPath?: string; workspace?: string }) => Promise<{ checks?: Record<string, boolean>; error?: string; ok: boolean; profilePath?: string; sdkVersion?: string | null }>;
     runDeepSeekHarness?: (request?: { apiKey?: string; baseUrl?: string; capabilityBridgeReady?: boolean; dshHome?: string; model?: string; pythonPath?: string; requestId?: string; sessionId?: string; userGoal?: string; workspace?: string }) => Promise<{ cancelled?: boolean; error?: string; finalResponse?: string; ok: boolean }>;

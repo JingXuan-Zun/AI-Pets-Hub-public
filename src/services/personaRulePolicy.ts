@@ -1,5 +1,5 @@
 import type { PetPersonality } from '../types';
-import { resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
+import { activeDialogueCompletionPreset, resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
 
 export type PersonaRuleMode = 'default' | 'user-defined';
 
@@ -15,10 +15,10 @@ export interface PersonaRulePolicy {
 // through, so the default format — which shows bracketed actions — was still added).
 const EXPLICIT_RULE_SIGNAL = /(?:回复|回答|输出).{0,40}(?:格式|规则|模板|结构|只能|必须|不要|禁止)|(?:格式|模板|结构|括号|方括号|附加信息|动作描写|纯文本|JSON|XML|Markdown|标签).{0,40}(?:必须|只能|不要|禁止|固定|按照|使用|输出)|(?:不要|禁止|不准|别|不用|不需要|无需).{0,12}(?:动作|神态|描写|旁白|括号)|\b(?:must|only|do not|don't|format|template|json|xml|markdown)\b/iu;
 
-export function resolvePersonaRulePolicy(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset'> & { name?: string }): PersonaRulePolicy {
+export function resolvePersonaRulePolicy(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset' | 'dialogueCompletionPresetEnabled'> & { name?: string }): PersonaRulePolicy {
   const sourceText = [
     personality.systemInstruction?.trim() ?? '',
-    resolveDialogueCompletionPresetText(personality.dialogueCompletionPreset, personality.name?.trim() ?? ''),
+    resolveDialogueCompletionPresetText(activeDialogueCompletionPreset(personality), personality.name?.trim() ?? ''),
   ].filter(Boolean).join('\n\n');
 
   return {
@@ -27,7 +27,7 @@ export function resolvePersonaRulePolicy(personality: Pick<PetPersonality, 'syst
   };
 }
 
-export function buildPersonaRuleContractInstruction(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset'>) {
+export function buildPersonaRuleContractInstruction(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset' | 'dialogueCompletionPresetEnabled'>) {
   const policy = resolvePersonaRulePolicy(personality);
   if (!policy.sourceText) return '';
 
@@ -45,7 +45,7 @@ export function buildPersonaRuleContractInstruction(personality: Pick<PetPersona
   ].join('\n');
 }
 
-export function buildPersonaBehaviorContractInstruction(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset'>) {
+export function buildPersonaBehaviorContractInstruction(personality: Pick<PetPersonality, 'systemInstruction' | 'dialogueCompletionPreset' | 'dialogueCompletionPresetEnabled'>) {
   const policy = resolvePersonaRulePolicy(personality);
   if (!policy.sourceText) return '';
 

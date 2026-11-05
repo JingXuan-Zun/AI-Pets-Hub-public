@@ -1,4 +1,5 @@
 const { execFile } = require('child_process');
+const { createCommandPathGuard } = require('./commandPathGuard.cjs');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -163,14 +164,17 @@ function runExecFile({ args, cwd, file, onChild, timeoutMs }) {
   });
 }
 
-function createControlledCommandService({ app, log } = {}) {
+function createControlledCommandService({ app, log, protectedRoots = [] } = {}) {
   const activeCommands = new Map();
+  const pathGuard = createCommandPathGuard({ protectedRoots });
 
   async function runControlledCommand(request = {}) {
-    const validation = validateCommand(request?.command ?? request?.script ?? request?.query);
+    const checked = validateCommand(request?.command ?? request?.script ?? request?.query);
     const shellName = normalizeShell(request?.shell);
     const timeoutMs = normalizeTimeoutMs(request?.timeoutMs);
     const cwd = resolveCwd(request?.cwd, app);
+    const protectedReason = checked.ok ? pathGuard.check(checked.command, cwd) : null;
+    const validation = protectedReason ? { ok: false, reason: protectedReason } : checked;
     const requestId = String(request?.requestId || '').trim();
 
     if (!validation.ok) {

@@ -4,6 +4,7 @@ import { getSettingsControlCenterPage } from '../components/settings/settingsCon
 import { listInstalledPlugins } from './pluginCatalog';
 import { fetchMarketPlugins, installMarketPlugin, matchesMarketQuery } from './pluginMarketApi';
 import { PLUGIN_CREATION_CAPABILITIES } from './pluginCreationCapabilities';
+import { PLUGIN_LINK_CAPABILITIES } from './pluginLinkCapabilities';
 import { isPluginEnabledForPet, setPluginEnabledForPet } from './pluginRoleAccess';
 import { PLUGIN_KIND_LABELS, PLUGIN_PERMISSION_LABELS, type PluginManifest } from './pluginTypes';
 
@@ -149,4 +150,4 @@ const installFromMarket: PlatformCapability = {
   title: '从插件市场安装',
 };
 
-export const PLUGIN_CAPABILITIES: PlatformCapability[] = [listPlugins, describePlugin, setPluginEnabled, searchMarket, installFromMarket, ...PLUGIN_CREATION_CAPABILITIES];
+export const PLUGIN_CAPABILITIES: PlatformCapability[] = [listPlugins, describePlugin, setPluginEnabled, searchMarket, installFromMarket, ...PLUGIN_LINK_CAPABILITIES, ...PLUGIN_CREATION_CAPABILITIES];

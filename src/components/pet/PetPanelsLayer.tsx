@@ -6,6 +6,7 @@ import { type DesktopPetChatSendOptions, type DesktopPetGroupChatContinuationMod
 import { type ChatAgentApprovalDecision, type ChatMessage, type DesktopPetChatMode, type PetAction, type PetConfig, type PetConfigUpdateHandler, type PetModelMotionBinding, type PetVisualSize } from '../../types';
 import { type ChatMemorySaveHandler } from '../chat/chatMemorySaveUtils';
 import { LifeCompanionScreenWatchPill } from './LifeCompanionScreenWatchPill';
+import { BackgroundTaskPill } from './BackgroundTaskPill';
 import { DailyApprovalPill } from './DailyApprovalPill';
 import { VoiceMicStatusPill } from './VoiceMicStatusPill';
 import { type AvatarRuntimeEventSummaryByPetId } from '../../pet-runtime/avatar-runtime/avatarRuntimeEventState';
@@ -440,6 +441,11 @@ export const PetPanelsLayer = memo(function PetPanelsLayer({
         ownerId="primary"
       />
       <DailyApprovalPill
+        centerShift={primaryPillCenterShift}
+        offsetBelowCenter={primaryPillOffsetBelowCenter}
+        ownerId="primary"
+      />
+      <BackgroundTaskPill
         centerShift={primaryPillCenterShift}
         offsetBelowCenter={primaryPillOffsetBelowCenter}
         ownerId="primary"

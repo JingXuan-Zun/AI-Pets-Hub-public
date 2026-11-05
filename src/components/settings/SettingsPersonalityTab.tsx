@@ -10,6 +10,7 @@ import { SettingsGroupMemorySection } from './SettingsGroupMemorySection';
 import { SettingsGroupTopicTimeline } from './SettingsGroupTopicTimeline';
 import { SettingsDirectedRelationshipSection } from './SettingsDirectedRelationshipSection';
 import { SettingsModelProviderTools } from './SettingsModelProviderTools';
+import { SettingsApiProfiles } from './SettingsApiProfiles';
 import { SettingsGeminiApiFields } from './SettingsGeminiApiFields';
 import { SettingsOpenAIModelPicker } from './SettingsOpenAIModelPicker';
 import { SettingsSocialEventTimeline } from './SettingsSocialEventTimeline';
@@ -68,6 +69,8 @@ const DEFAULT_EXPANDED_SECTIONS: Record<PersonalitySectionKey, boolean> = {
 
 export interface SettingsPersonalityTabProps {
   customApiDraft: CustomApiDraft;
+  /** Saves at once (no “保存” needed), for actions such as switching API profile. */
+  onCommitConfig?: (build: (config: PetConfig) => PetConfig) => void;
   customApiSaveFeedback: boolean;
   desktopPetSlots: DesktopPetSlot[];
   isCustomApiDirty: boolean;
@@ -217,6 +220,7 @@ export function SettingsPersonalityTab({
   noDragRegionStyle,
   onAddPetSlot,
   onApplyConfig,
+  onCommitConfig,
   onCommitTraitsDraft,
   onRemovePetSlot,
   onSaveCustomApiSettings,
@@ -345,6 +349,20 @@ export function SettingsPersonalityTab({
           onToggle={() => toggleSection('dialogueCompletionPreset')}
           noDragRegionStyle={noDragRegionStyle}
         >
+          <label className="mb-2 flex items-center justify-between gap-3 rounded-sm border border-border bg-background/30 px-3 py-2 text-xs font-semibold text-foreground" style={noDragRegionStyle}>
+            <span>
+              使用这个预设
+              <span className="block text-2xs font-normal leading-4 text-muted-foreground">
+                关掉后预设内容保留，但不发给模型，只用人格提示词。有的模型（比如 Gemini）会把大型预设当成越狱而不认人设，用它时可以关掉。
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 shrink-0 accent-primary"
+              checked={selectedPetSlot.personality.dialogueCompletionPresetEnabled !== false}
+              onChange={(event) => onUpdatePersonality({ dialogueCompletionPresetEnabled: event.target.checked })}
+            />
+          </label>
           <textarea
             id="dialogue-completion-preset"
             className="h-40 w-full rounded-sm border border-border bg-secondary p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary"
@@ -652,6 +670,15 @@ export function SettingsPersonalityTab({
            <option value="gemini">Gemini 协议</option>
            <option value="openai">OpenAI 兼容协议</option>
          </select>
+         <SettingsApiProfiles
+           customApiDraft={customApiDraft}
+           noDragRegionStyle={noDragRegionStyle}
+           settings={settings}
+           onCommitSettings={(patch) => (onCommitConfig
+             ? onCommitConfig((base) => ({ ...base, settings: { ...base.settings, ...patch(base.settings) } }))
+             : applySettings(patch(settings)))}
+           onSetCustomApiDraft={onSetCustomApiDraft}
+         />
        </div> : null}
 
       {isWorkspacePage('model') ? <div className="space-y-4 border-t border-border pt-4">
@@ -678,7 +705,10 @@ export function SettingsPersonalityTab({
          {settings.llmProvider === 'gemini' ? (
            <SettingsGeminiApiFields
              noDragRegionStyle={noDragRegionStyle}
-             onApplySettings={applySettings}
+             // Saves at once, together with the Gemini protocol (see saveCustomApiSettings).
+             onApplySettings={(updates) => (onCommitConfig
+               ? onCommitConfig((base) => ({ ...base, settings: { ...base.settings, ...updates, llmProvider: 'gemini' } }))
+               : applySettings(updates))}
              settings={settings}
            />
          ) : (

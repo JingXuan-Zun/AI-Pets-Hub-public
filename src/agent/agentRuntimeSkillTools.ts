@@ -20,6 +20,8 @@ import {
 } from './agentRuntimeToolPreparation';
 import { createAgentRuntimeResult } from './agentRuntimeToolResult';
 import { isMcpServerEnabledForPet } from '../plugins/pluginCapabilityAccess';
+import { collectMcpResultImages } from './mcpResultImages';
+import { connectsToHerBrowser, ensureHerBrowser, herBrowserPort } from '../plugins/herBrowser';
 import {
   describeAgentImportedSkill,
   loadEnabledAgentImportedSkills,
@@ -139,17 +141,36 @@ export async function executeListMcpTools(toolCall: AgentToolCallCommand, scope:
   );
 }
 
+/** A plugin that works on her browser (--browserUrl to it) needs that browser open first. */
+async function openHerBrowserFor(serverId: string, settings: PetConfig['settings'] | undefined) {
+  if (!settings) return null;
+  const config = await loadExternalAgentMcpConfig();
+  const servers = config.servers ?? config.mcpServers;
+  const server = Array.isArray(servers)
+    ? servers.find((entry) => entry?.id === serverId)
+    : servers && typeof servers === 'object' ? (servers as Record<string, unknown>)[serverId] : null;
+  const args = server && typeof server === 'object' ? (server as Record<string, unknown>).args : null;
+  if (!connectsToHerBrowser(args, herBrowserPort(settings))) return null;
+  const opened = await ensureHerBrowser(settings);
+  return opened.ok ? null : opened.error;
+}
+
 export async function executeCallMcpTool(
-  runtimeOrToolCall: Pick<AgentSkillRuntimeContext, 'signal' | 'petId'> | AgentToolCallCommand,
+  runtimeOrToolCall: Pick<AgentSkillRuntimeContext, 'signal' | 'petId'> & Partial<Pick<AgentSkillRuntimeContext, 'configRef'>> | AgentToolCallCommand,
   maybeToolCall?: AgentToolCallCommand,
 ) {
-  const runtime = maybeToolCall ? runtimeOrToolCall as Pick<AgentSkillRuntimeContext, 'signal' | 'petId'> : {};
+  const runtime = maybeToolCall ? runtimeOrToolCall as Pick<AgentSkillRuntimeContext, 'signal' | 'petId'> & Partial<Pick<AgentSkillRuntimeContext, 'configRef'>> : {};
   const toolCall = maybeToolCall ?? runtimeOrToolCall as AgentToolCallCommand;
   const serverId = getToolStringInput(toolCall, ['serverId']);
   const name = getToolStringInput(toolCall, ['name', 'toolName']);
   if (!isMcpServerEnabledForPet(serverId, runtime.petId)) {
     const text = `扩展「${serverId}」没有给这个角色开启，可以在 设置 → 扩展 → 插件市场 里打开。`;
     return createAgentRuntimeResult({ errorText: text, observations: [`MCP server disabled for this character: ${serverId}`], responseText: text });
+  }
+  const browserProblem = await openHerBrowserFor(serverId, runtime.configRef?.current.settings).catch((error: unknown) => (error instanceof Error ? error.message : String(error)));
+  if (browserProblem) {
+    const text = `她的浏览器打不开：${browserProblem}`;
+    return createAgentRuntimeResult({ errorText: text, observations: [`Her browser did not open for ${serverId}`], responseText: text });
   }
   const requestId = createMcpRequestId(serverId, name);
   const startedAt = Date.now();
@@ -163,7 +184,10 @@ export async function executeCallMcpTool(
     removeAbortListener?.();
   });
   const elapsedMs = Date.now() - startedAt;
-  const text = result.content.map((item) => item.text).join('\n');
+  const images = result.isError ? [] : await collectMcpResultImages(result.content, `${serverId}-${name}`);
+  const words = result.content.filter((item) => item.type !== 'image').map((item) => item.text).join('\n');
+  // She does not see the picture itself; the user does, in the chat.
+  const text = images.length ? `${words}\n（这一步的 ${images.length} 张图片已经发到聊天里给用户看了，用户右键就能保存，不用再另存或复制文件。）`.trim() : words;
   const responseText = result.structuredContent
     ? `${text}\n\nstructuredContent:\n${formatJson(result.structuredContent)}`
     : text;
@@ -180,6 +204,7 @@ export async function executeCallMcpTool(
       `Called MCP tool: ${serverId}/${name}`,
       `MCP tool result: ${result.isError ? 'error' : 'success'} in ${elapsedMs}ms`,
     ],
+    ...(images.length ? { images } : {}),
     ok: !result.isError,
     receipt,
     responseText,

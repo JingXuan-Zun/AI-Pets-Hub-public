@@ -39,7 +39,7 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
 }
 
 function normalizeContentType(value: unknown): AgentMcpContentType {
-  return value === 'json' ? 'json' : 'text';
+  return value === 'json' || value === 'image' ? value : 'text';
 }
 
 function normalizeToolAnnotations(value: unknown): AgentMcpToolAnnotations | undefined {
@@ -116,6 +116,9 @@ function normalizeExternalCallResult(rawResult: unknown): AgentMcpToolCallResult
   const contentItems = Array.isArray(result.content) ? result.content : [];
   const content = contentItems.map((item) => {
     const record = normalizeRecord(item);
+    if (record.type === 'image' && typeof record.data === 'string') {
+      return { data: record.data, mimeType: typeof record.mimeType === 'string' ? record.mimeType : 'image/png', text: '', type: 'image' as const };
+    }
     return {
       text: typeof record.text === 'string' ? record.text : JSON.stringify(item ?? null),
       type: normalizeContentType(record.type),

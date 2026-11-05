@@ -1,6 +1,6 @@
 import { createConversationChatRuntime, createConversationToolActorGate } from './runController/conversationChatRuntime';
 import { beginDelegatedScope, resolveDelegatedSlotId } from './runController/chatDelegation';
-import { resolveChatTargetSlots } from './chatTargetResolutionUtils';
+import { createChatMessageId, resolveChatTargetSlots } from './chatTargetResolutionUtils';
 import { latestPendingAgentLoopApprovalId } from './runController/agentLoopApprovalRegistry';
 import { desktopPetChatStore } from '../../chatStore';
 import type { DesktopPetChatSendOptions } from '../../chatState';
@@ -67,6 +67,14 @@ async function tryResolveTextApproval(context: PetChatMessageSenderContext, inpu
   resetVoiceInputSession(context.voiceInputSessionRef, context.voiceTranscriptRef);
   desktopPetChatStore.setInputValue('');
   desktopPetChatStore.setStatusMessage('');
+  // The answer stays in the chat like anything else the user typed (it used to vanish).
+  desktopPetChatStore.addMessage({
+    chatMode: state.chatMode,
+    id: createChatMessageId('user'),
+    petId: state.chatMode === 'single' ? state.activePetId : null,
+    role: 'user',
+    text: input.outgoingText,
+  });
   pushFrontendRuntimeLog('agent-run', 'text approval resolved pending request', {
     decision,
     messageId: approvalId,

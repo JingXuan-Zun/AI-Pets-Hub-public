@@ -27,7 +27,7 @@ const store = new Map<string, string>();
 const { PLUGIN_CREATION_CAPABILITIES } = await import('../src/plugins/pluginCreationCapabilities');
 const createSkill = PLUGIN_CREATION_CAPABILITIES.find((item) => item.id === 'plugins.create_skill')!;
 const createTool = PLUGIN_CREATION_CAPABILITIES.find((item) => item.id === 'plugins.create_tool')!;
-const config = { personality: { name: '大肥鱼' }, settings: { devAgent: { enabled: false } }, companionPets: [] };
+const config = { personality: { name: '小助手' }, settings: { devAgent: { enabled: false } }, companionPets: [] };
 const context = { configRef: { current: config }, onUpdateConfig: () => {}, petId: 'primary' } as never;
 const args = {
   description: '陪你练日语口语', examples: '我们练日语吧\n纠正我的发音', id: 'japanese-buddy',
@@ -45,7 +45,7 @@ const skill = library.skills.find((item: { sourceName: string }) => item.sourceN
 assert.ok(skill, 'joined the skill library');
 assert.match(skill.instructions, /温柔地指出/u);
 assert.deepEqual(JSON.parse(store.get('desktop-pet.agent-skill-bindings.v1')!).primary, [skill.id], 'turned on for this character');
-assert.equal(service.list()[0].author, '和大肥鱼一起做的');
+assert.equal(service.list()[0].author, '和小助手一起做的');
 
 const updated = await createSkill.run(context, { ...args, instructions: `${args.instructions}\n4. 每次结束总结三个新词。` });
 assert.match(updated.text, /已更新技能插件「日语陪练」v0\.1\.1/u);

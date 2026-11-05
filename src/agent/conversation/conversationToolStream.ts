@@ -107,6 +107,15 @@ export async function* streamConversationWithTools(options: {
         results,
         round,
       });
+      // Switching the chat model mid-reply: the next round would go to the new provider with the
+      // old one's tool calls, which it rejects (Gemini wants its own thought signatures).
+      const ending = results.find((result) => result.endsReply)?.endsReply;
+      if (ending) {
+        if (lastText && !/\s$/u.test(lastText)) yield '\n\n';
+        yield ending;
+        worldOutcome = 'completed';
+        return;
+      }
     }
     worldOutcome = 'max-steps';
     yield '\n\n（这件事步骤太多，我先停在这里，你看看要不要换个说法再试。）';

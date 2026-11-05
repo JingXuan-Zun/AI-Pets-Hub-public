@@ -1,4 +1,5 @@
-import { resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
+import { describeBackgroundTasksForPrompt } from '../agent/background/backgroundTasks';
+import { activeDialogueCompletionPreset, resolveDialogueCompletionPresetText } from './dialogueCompletionPresetText';
 import { buildWorkTaskInstruction } from '../work-tasks/workTaskPrompt';
 import { buildRealWorldTimeSystemInstruction } from '../timeAwareness';
 import {
@@ -146,7 +147,7 @@ function buildCharacterPersonaProfileInstruction(personality: PetPersonality) {
 }
 
 function buildDialogueCompletionPresetInstruction(personality: PetPersonality) {
-  const preset = resolveDialogueCompletionPresetText(personality.dialogueCompletionPreset, personality.name.trim());
+  const preset = resolveDialogueCompletionPresetText(activeDialogueCompletionPreset(personality), personality.name.trim());
   if (!preset) {
     return '';
   }
@@ -1036,6 +1037,7 @@ export function buildCharacterReplySystemInstruction(
       buildCharacterFewShotInstruction(personality),
       buildUserDefinedRoleMemoryInstruction(personality, settings, autoMemorySummary, userInput, history),
       buildWorkTaskInstruction(settings.workTasks),
+      describeBackgroundTasksForPrompt(),
       buildWebLearningInstruction(personality, settings),
       CHARACTER_TOOL_PROTOCOL_INSTRUCTION,
       CHARACTER_DIAGRAM_INSTRUCTION,

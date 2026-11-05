@@ -1031,7 +1031,7 @@ function registerDesktopPetIpcHandlers({
   ipcMain.handle('desktop-pet:get-app-runtime-info', () => {
     return {
       ...(appUsageMetricsService?.getSnapshot?.() ?? {}),
-      appVersion: app.getVersion(),
+      appVersion: global.__appUpdateBoot?.version ?? app.getVersion(),
       buildId: buildInfo?.buildId ?? 'unidentified',
       builtAt: buildInfo?.builtAt ?? null,
     };

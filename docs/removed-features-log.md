@@ -103,3 +103,13 @@
 | 扩展总览、外部接入、DeepSeek Harness | 都是“规划中”的空页面，去掉 |
 
 所有跳到这些旧页面的链接（体检、角色提示、聊天窗口）会自动打开插件市场，有对应插件时直接打开那个插件的页面（`resolveSettingsPageRoute`）。要恢复某一页：把它的 `hidden: true` 去掉。
+
+---
+
+## 2026-11-03 确认卡上的“这次都允许”
+
+**最后还在的提交：`576edf6`**（`src/components/chat/message/AgentLoopRunPanel.tsx`、`src/components/chat/PetStatusBubbleCard.tsx`、`src/components/chat/runController/approvalDecisionText.ts`、测试 `scripts/approval-allow-task-smoke.ts`）
+
+- **当时是做什么的**：她要你同意某一步时，任务卡和模型头上的气泡里除了“允许 / 今天都允许 / 不要”，还有“这次都允许”：这个任务后面的步骤都不再问，下一个任务重新问。说 / 打 / 在 QQ 回“都好”“别问了”也算。
+- **为什么删**：用户觉得和“今天都允许”重复（2026-11-03）。只留“今天都允许”。
+- **现在怎么样**：按钮去掉了；“都好”“都允许”“别问了”“不用再问了”“这次都允许”这些说法现在都算“今天都允许”。QQ / 微信的提问只给“好 / 今天都好 / 不要”。发送、删除、付款、关闭程序这类撤不回的照样每次都问；拒绝一次今天的授权就失效，这些都没变。

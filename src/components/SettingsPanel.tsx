@@ -593,6 +593,7 @@ export default function SettingsPanel({
               noDragRegionStyle,
               onAddPetSlot: handleAddPetSlot,
               onApplyConfig: applyConfig,
+              onCommitConfig: commitModelConfig,
               onCommitTraitsDraft: commitTraitsDraft,
               onRemovePetSlot: handleRemovePetSlot,
               onSaveCustomApiSettings: saveCustomApiSettings,
