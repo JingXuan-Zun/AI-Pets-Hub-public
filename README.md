@@ -20,6 +20,7 @@
   <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><strong>⬇️ Download for Windows</strong></a> ・
   <a href="#quick-start">🚀 Quick start</a> ・
   <a href="#features">✨ Features</a> ・
+  <a href="#faq">❓ FAQ</a> ・
   <a href="#contact">💌 Community</a>
 </p>
 
@@ -42,7 +43,8 @@
 - 🗣️ **Settings by voice** — "Bigger text", "make yourself bigger", "read slower" — changes apply instantly
 - 🎙️ **Characters with real voices** — GPT-SoVITS voices with swappable voice packs; say a wake word and just talk
 - 🧠 **They remember you** — Characters propose what to remember and save it only after you approve; every character shares what they know "about you"
-- 👀 **Life companion** — Only with your consent does a character look at what you're doing and check in on you; disconnect with one click
+- 👀 **Life companion** — Only with your consent does a character look at what you're doing and check in on you; she can keep you company while you game; disconnect with one click
+- 📞 **Interactive dialogue** — Like a video call: the character appears in the chat window and talks with you face to face (preview)
 - 📱 **Chat from your phone** — Connect QQ or WeChat to chat with her, send pictures, and get her voice replies on your phone; her drawings and questions that need your OK reach you there too
 - 🧩 **Plugin market** — Install from the online plugin market in one click; send her a plugin's GitHub link and she explains what it is and installs it only after you agree; nothing fits? Build one together
 - 🌐 **Her own browser** — She browses, clicks, fills in forms and takes screenshots in her own browser with her own accounts, kept apart from yours
@@ -88,7 +90,7 @@ The key difference from "have the model emit a list of commands and run them" is
 - **Works with elevated windows** — For apps running as administrator (such as game launchers), clicks and typing go through a local helper authorized once per session, so the pet itself never needs to run as administrator.
 - **Safety boundaries** — Tool output is treated as data, never as instructions; agent file tools stay away from credentials and app data; IPC is trusted only from the bundled app page.
 
-See the [project overview](./docs/project-overview.en.md) for the full Agent Runtime.
+See [How it works](./docs/project-overview.en.md#the-conversation-loop-chatting-and-doing-are-one-thing) for the conversation loop, confirmation rules and desktop actions in full.
 
 </details>
 
@@ -226,10 +228,17 @@ See [`docs/voice-pack-format.md`](./docs/voice-pack-format.md) for the voice pac
 - **Asks before looking** — When a character wants to know what you're doing, it asks first; screen watching starts only after you agree.
 - **Disconnect anytime** — A disconnect button sits under the pet, and saying no in chat disconnects immediately.
 - **Checks in on you** — Mood, affection, time of day, and quiet hours decide when it's a good moment to say something.
+- **Gaming buddy** — While you play, she glances at the game now and then and says a word at the right moment; how often is adjustable (Settings → Advanced → Game companion), and you can stop it anytime.
 
 <p align="center">
   <img src="./docs/image/screenshot-screen-consent.webp" alt="Left: the character asks before looking; right: watching, with a disconnect button" width="680">
 </p>
+
+### 📞 Interactive Dialogue (preview)
+
+- **Face to face** — Right-click the pet and choose "Interactive dialogue": the character appears in the chat window and talks to you like on a video call; that character steps off the desktop during the call and comes back when you hang up.
+- **Tuned per character** — Settings → Advanced → Interactive dialogue: how big the character is, where it stands, and the size of the chat panel, with a live preview.
+- **In progress** — Lip sync and expressions that follow what she says, and starting a call herself ("let's video chat").
 
 ### 🛠️ Say It, She Does It
 
@@ -270,8 +279,10 @@ See [The Agent Loop](#agent-loop) above for how it works.
 - **WeChat** — Scan a QR code with phone WeChat (official ClawBot channel, no desktop WeChat needed); family members can each connect; her voice is sent as a short video.
 - **ComfyUI image generation** — Connect your own ComfyUI (another computer on your network works too), say "draw…" and she writes the prompt and draws in the background; the image appears in the chat and on QQ / WeChat; with the sync extension, settings you change in ComfyUI are picked up automatically.
 - **Model setups** — Save several model setups (OpenAI-compatible / Gemini) and switch with one click when one has trouble, or just tell her "switch to the backup model".
+- **Dev assistant** — Hand coding work (fix a bug, add a feature, build a plugin) to Claude Code or a compatible coding model; she tells you the result when it is done, and you choose which project folders it may change.
 - **Skills** — Import skill instructions the character can draw on during a conversation.
 - **Persona sharing** — Import or share reusable persona presets.
+- **Small helpers** — Weather, and a look at a project folder on your computer (what it is, how to start it) with starting it for you.
 - **More runtimes** — Unity Bridge and DeepSeek Harness Bridge.
 
 ### 🔄 Updates
@@ -282,6 +293,54 @@ See [The Agent Loop](#agent-loop) above for how it works.
 - **Safe if something breaks** — The version list is signed and every file is checked; a version that fails to start rolls back to the last one that worked, and you are told.
 - Available from **v0.4.0**: if you are on v0.3.x, download the full v0.4.0 once.
 - **Export diagnostics** — If something goes wrong, click "Export diagnostics" in the same place and send the text file to whoever helps you: versions, a settings summary and recent runtime logs, without chat text or keys.
+
+---
+
+<a id="faq"></a>
+
+## ❓ FAQ
+
+<details>
+<summary><b>Does it cost money?</b></summary>
+
+The app is free for non-commercial use. Chatting and tasks use your own model service, billed by that provider. OpenAI-compatible services such as DeepSeek are inexpensive, and long chats reuse the provider's cache where possible.
+</details>
+
+<details>
+<summary><b>Do I need a GPU?</b></summary>
+
+Not for chat, tasks or memory. Local GPT-SoVITS character voices work best with an NVIDIA GPU; without one, start with the browser voice or an online voice service.
+</details>
+
+<details>
+<summary><b>Where do the character models come from?</b></summary>
+
+You bring your own: 2D images / videos, Live2D, VRM, or MMD (PMX + VMD). Make sure you have the right to use them. The screenshots use demo characters.
+</details>
+
+<details>
+<summary><b>Where is my data stored?</b></summary>
+
+Chats, memories, character settings and configuration stay on your computer; API keys are encrypted by the system and never go into the repository or the build.
+</details>
+
+<details>
+<summary><b>How do I update, and can I go back?</b></summary>
+
+Settings → Overview → click "Current version": every version with its notes, pick one to switch, including older ones (from v0.4.0).
+</details>
+
+<details>
+<summary><b>Windows says it protected my PC. What now?</b></summary>
+
+The app is not code-signed yet, so SmartScreen warns about it. Make sure the file comes from this repository's Releases page (compare the SHA-256 there), then choose "More info → Run anyway".
+</details>
+
+<details>
+<summary><b>How do I report a problem?</b></summary>
+
+Settings → Overview → Current version → **Export diagnostics**, then send the text file to the QQ group or [Issues](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/issues); it contains no chat text and no keys.
+</details>
 
 ---
 
@@ -317,7 +376,8 @@ The project is in early public development: the core experience works, and some 
 | Reminders / to-dos / pomodoro | ✅ Ready | Data stays on your machine |
 | Memory approval and "about you" memory | ✅ Ready | Deeper Neural Persona integration with chat is in progress |
 | Voice and wake words | ✅ Ready | GPT-SoVITS must be installed separately; a GPU is recommended |
-| Life companion | 🧪 Preview | Screen watching needs your consent and can be disconnected anytime |
+| Life companion / gaming buddy | 🧪 Preview | Screen watching needs your consent and can be disconnected anytime; very small numbers in games can be misread |
+| Interactive dialogue (video call) | 🧪 Preview | The character talks with you in the chat window; lip sync and expressions are in progress |
 | 2D / Live2D / VRM / MMD characters | ⚙️ Needs assets | Runtimes are ready; bring your own models and motions |
 | Plugin market / install from a link | ✅ Ready | Skills, MCP tools, plugin packages; GitHub plugins install only after you agree |
 | QQ / WeChat | ✅ Ready | QQ needs SnowLuma; WeChat uses the official ClawBot channel, voice is sent as a short video |
@@ -340,7 +400,7 @@ The project is in early public development: the core experience works, and some 
 
 **Focus areas**
 
-- Interactive dialogue: talk with your character face to face, like a video call.
+- Interactive dialogue, next step: lip sync and expressions that follow what she says, and her suggesting a call herself.
 - A plugin process host: plugins in any language running in their own process, with clearer permissions.
 - Importing characters from other desktop-pet platforms (starting with VPet character animations, only from copies you installed yourself).
 - Characters that go online to learn and slowly grow their own personality (what they learn is kept only with your OK).
@@ -376,6 +436,9 @@ src/agent/conversation/   The conversation loop: chat, tools, task cards, spoken
 src/agent/loop/           Desktop operations: observe → act → verify
 src/platform-capabilities/ Settings, characters, and data the character can change by voice
 src/productivity/         Reminders, to-dos, and pomodoro
+src/plugins/              Plugin system: market, install from a link, MCP, her browser
+src/qq-bridge/ · src/weixin-bridge/  Phone QQ / WeChat connections
+src/appUpdate/            In-app updates (main-process side in electron/appUpdate*.cjs)
 src/pet-runtime/          2D / Live2D / VRM / MMD character runtimes
 src/neural-memory/        Memory proposals, approval, and the memory workspace
 src/character-graph/      Character graph and Neural Persona
@@ -384,9 +447,10 @@ src/voice/                Speech synthesis, recognition, and wake words
 src/social-group/         Group interaction
 docs/                     Project overview, voice pack format, maintenance notes
 scripts/                  Checks, builds, and maintenance scripts
+services/plugin-market/   Cloudflare Worker for the plugin market and updates
 ```
 
-This is a map of entry points; see the [project overview](./docs/project-overview.en.md) for the full module list.
+This is a map of entry points; see [How it works](./docs/project-overview.en.md) for how each part works.
 
 </details>
 
@@ -427,9 +491,9 @@ This table is a summary for convenience; the [LICENSE](./LICENSE) text governs.
 
 Issues and pull requests are welcome! For larger changes, please open an issue to discuss first. When reporting a problem, please include:
 
-- Your Windows version and the app version / commit
+- Diagnostics: Settings → Overview → Current version → **Export diagnostics** (versions, system and recent logs, with chat text and keys already removed)
 - Steps to reproduce, expected result, and actual result
-- Relevant logs or screenshots (**remove API keys, tokens, personal paths, and chat content first**)
+- Screenshots (**cover API keys and chat content first**)
 - For agent issues, the task description and the steps shown in the run panel
 
 Please read the [privacy checklist](./docs/PUBLIC_PRIVACY_WORKFLOW.md) before contributing.
