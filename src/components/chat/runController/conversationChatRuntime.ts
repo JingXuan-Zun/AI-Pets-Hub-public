@@ -1,3 +1,4 @@
+import { compressImageAttachment } from '../../../services/chatImageCompression';
 import { delegatedScopeFields } from './chatDelegation';
 import { isDailyApprovalActive, isIrreversibleApproval } from '../../../agent/approval/dailyApproval';
 import { announceBackgroundOutcome } from '../../../agent/background/announceBackgroundOutcome';
@@ -79,15 +80,17 @@ ${input.detail}`) };
     }
   };
   const presentImages: ConversationToolRuntime['presentImages'] = (images, caption) => {
-    desktopPetChatStore.addMessage({
-      attachments: images.map((image, index) => ({
-        dataUrl: image.dataUrl,
-        id: createChatMessageId(`image-${index}`),
-        kind: 'image',
-        mimeType: image.mimeType,
-        name: image.name,
-        sizeBytes: image.sizeBytes,
-      })),
+    // Full-size screenshots are several MB each and the whole chat is copied between windows and
+    // saved on every change: a smaller JPEG goes into the chat (chatImageCompression.ts).
+    void Promise.all(images.map((image, index) => compressImageAttachment({
+      dataUrl: image.dataUrl,
+      id: createChatMessageId(`image-${index}`),
+      kind: 'image',
+      mimeType: image.mimeType,
+      name: image.name,
+      sizeBytes: image.sizeBytes,
+    }))).then((attachments) => desktopPetChatStore.addMessage({
+      attachments,
       chatMode,
       createdAt: Date.now(),
       id: createChatMessageId('agent-image'),
@@ -96,7 +99,7 @@ ${input.detail}`) };
       ...delegatedScopeFields(targetSlot.id),
       role: 'model',
       text: caption,
-    });
+    }));
   };
   // A long job (a drawing) runs on after this reply ends; when it is done its pictures are
   // shown and she says how it went, in this same chat.
@@ -133,6 +136,7 @@ ${input.detail}`) };
     petId: targetSlot.id,
     presentImages,
     progress: taskCard.progress,
+    request: sourceText,
     runInBackground,
     requestApproval,
     signal: taskCard.signal,

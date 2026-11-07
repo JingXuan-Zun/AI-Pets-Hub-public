@@ -1,8 +1,3 @@
-import type { PetStats } from '../types';
-
-export type LifeCompanionNeedLevel = 'critical' | 'high' | 'low' | 'normal';
-export type LifeCompanionMood = 'close' | 'distant' | 'hungry' | 'steady' | 'tired';
-
 export interface PetLifeCompanionSettings {
   /** Minutes before activity awareness may start another conversation. */
   desktopActivityAwarenessIntervalMinutes: number;
@@ -10,43 +5,32 @@ export interface PetLifeCompanionSettings {
   affectionEnabled: boolean;
   /** When a task needs permission the character asks out loud, and reminds (shaking the chat) if unanswered. */
   approvalVoicePromptEnabled: boolean;
+  /** Each character keeps a small "what is on her mind" state (mood, concerns) that shapes who speaks and what she brings up (cognition layer, 2026-11-06). */
+  characterCognitionEnabled: boolean;
+  /**
+   * Her feelings toward the user only grow (user, 2026-11-06: "角色们永远都保持最高的好感度，不会掉只会
+   * 增加"): affection stays at the top, hunger no longer costs affection, and the cognition layer
+   * never turns her cold toward the user, whatever a persona reading says.
+   */
+  feelingsNeverDrop: boolean;
+  /** 角色之间互通近况: characters know what the others are up to (docs/cross-chat-character-awareness-design-20261008.md). */
+  crossChatAwarenessEnabled: boolean;
   hungerEnabled: boolean;
   startupGreetingEnabled: boolean;
-  llmTextPromptCooldownMinutes: number;
-  llmTextPromptEnabled: boolean;
-  maxRandomIntervalMinutes: number;
-  minRandomIntervalMinutes: number;
+  /**
+   * Characters may speak first when something on their mind has built up (cognition layer
+   * phase 2, src/character-cognition/proactiveSpeechRules.ts holds the limits).
+   */
   proactiveEnabled: boolean;
   quietHoursEnabled: boolean;
   quietHoursEnd: string;
   quietHoursStart: string;
-  randomInteractionEnabled: boolean;
   /** The user let the character watch the screen; stays on until they disconnect. */
   screenWatchConsented: boolean;
   /** Seconds between looks while watching the screen. */
   screenWatchIntervalSeconds: number;
-  textPromptCooldownMinutes: number;
-  textPromptEnabled: boolean;
 }
 
-export interface LifeCompanionStatus {
-  affectionLevel: LifeCompanionNeedLevel;
-  hungerLevel: LifeCompanionNeedLevel;
-  mood: LifeCompanionMood;
-  proactiveReady: boolean;
-  summary: string;
-}
-
-const DEFAULT_MIN_RANDOM_INTERVAL_MINUTES = 30;
-const DEFAULT_MAX_RANDOM_INTERVAL_MINUTES = 180;
-const DEFAULT_LLM_TEXT_PROMPT_COOLDOWN_MINUTES = 240;
-const DEFAULT_TEXT_PROMPT_COOLDOWN_MINUTES = 120;
-const MIN_RANDOM_INTERVAL_MINUTES = 5;
-const MAX_RANDOM_INTERVAL_MINUTES = 720;
-const MIN_LLM_TEXT_PROMPT_COOLDOWN_MINUTES = 30;
-const MAX_LLM_TEXT_PROMPT_COOLDOWN_MINUTES = 1440;
-const MIN_TEXT_PROMPT_COOLDOWN_MINUTES = 15;
-const MAX_TEXT_PROMPT_COOLDOWN_MINUTES = 1440;
 export const LIFE_COMPANION_AWARENESS_INTERVAL_RANGE = { max: 120, min: 1 } as const;
 export const LIFE_COMPANION_SCREEN_WATCH_INTERVAL_RANGE = { max: 900, min: 30 } as const;
 const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/u;
@@ -56,21 +40,17 @@ export const DEFAULT_LIFE_COMPANION_SETTINGS: PetLifeCompanionSettings = {
   desktopActivityAwarenessEnabled: false,
   affectionEnabled: true,
   approvalVoicePromptEnabled: true,
+  characterCognitionEnabled: true,
+  feelingsNeverDrop: true,
+  crossChatAwarenessEnabled: false,
   hungerEnabled: true,
   startupGreetingEnabled: true,
-  llmTextPromptCooldownMinutes: DEFAULT_LLM_TEXT_PROMPT_COOLDOWN_MINUTES,
-  llmTextPromptEnabled: false,
-  maxRandomIntervalMinutes: DEFAULT_MAX_RANDOM_INTERVAL_MINUTES,
-  minRandomIntervalMinutes: DEFAULT_MIN_RANDOM_INTERVAL_MINUTES,
   proactiveEnabled: false,
   quietHoursEnabled: true,
   quietHoursEnd: '09:00',
   quietHoursStart: '23:00',
-  randomInteractionEnabled: false,
   screenWatchConsented: false,
   screenWatchIntervalSeconds: 300,
-  textPromptCooldownMinutes: DEFAULT_TEXT_PROMPT_COOLDOWN_MINUTES,
-  textPromptEnabled: false,
 };
 
 function booleanValue(value: unknown, fallback: boolean) {
@@ -96,31 +76,6 @@ export function normalizeLifeCompanionSettings(value: unknown): PetLifeCompanion
   const input = value && typeof value === 'object'
     ? value as Partial<PetLifeCompanionSettings>
     : {};
-  const minRandomIntervalMinutes = integerRangeValue(
-    input.minRandomIntervalMinutes,
-    DEFAULT_LIFE_COMPANION_SETTINGS.minRandomIntervalMinutes,
-    MIN_RANDOM_INTERVAL_MINUTES,
-    MAX_RANDOM_INTERVAL_MINUTES,
-  );
-  const maxRandomIntervalMinutes = integerRangeValue(
-    input.maxRandomIntervalMinutes,
-    DEFAULT_LIFE_COMPANION_SETTINGS.maxRandomIntervalMinutes,
-    minRandomIntervalMinutes,
-    MAX_RANDOM_INTERVAL_MINUTES,
-  );
-  const llmTextPromptCooldownMinutes = integerRangeValue(
-    input.llmTextPromptCooldownMinutes,
-    DEFAULT_LIFE_COMPANION_SETTINGS.llmTextPromptCooldownMinutes,
-    MIN_LLM_TEXT_PROMPT_COOLDOWN_MINUTES,
-    MAX_LLM_TEXT_PROMPT_COOLDOWN_MINUTES,
-  );
-  const textPromptCooldownMinutes = integerRangeValue(
-    input.textPromptCooldownMinutes,
-    DEFAULT_LIFE_COMPANION_SETTINGS.textPromptCooldownMinutes,
-    MIN_TEXT_PROMPT_COOLDOWN_MINUTES,
-    MAX_TEXT_PROMPT_COOLDOWN_MINUTES,
-  );
-
   return {
     desktopActivityAwarenessIntervalMinutes: integerRangeValue(
       input.desktopActivityAwarenessIntervalMinutes,
@@ -134,26 +89,18 @@ export function normalizeLifeCompanionSettings(value: unknown): PetLifeCompanion
     ),
     affectionEnabled: booleanValue(input.affectionEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.affectionEnabled),
     approvalVoicePromptEnabled: booleanValue(input.approvalVoicePromptEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.approvalVoicePromptEnabled),
+    characterCognitionEnabled: booleanValue(input.characterCognitionEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.characterCognitionEnabled),
+    feelingsNeverDrop: booleanValue(input.feelingsNeverDrop, DEFAULT_LIFE_COMPANION_SETTINGS.feelingsNeverDrop),
+    crossChatAwarenessEnabled: booleanValue(input.crossChatAwarenessEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.crossChatAwarenessEnabled),
     hungerEnabled: booleanValue(input.hungerEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.hungerEnabled),
     startupGreetingEnabled: booleanValue(
       input.startupGreetingEnabled,
       DEFAULT_LIFE_COMPANION_SETTINGS.startupGreetingEnabled,
     ),
-    llmTextPromptCooldownMinutes,
-    llmTextPromptEnabled: booleanValue(
-      input.llmTextPromptEnabled,
-      DEFAULT_LIFE_COMPANION_SETTINGS.llmTextPromptEnabled,
-    ),
-    maxRandomIntervalMinutes,
-    minRandomIntervalMinutes,
     proactiveEnabled: booleanValue(input.proactiveEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.proactiveEnabled),
     quietHoursEnabled: booleanValue(input.quietHoursEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.quietHoursEnabled),
     quietHoursEnd: timeOfDayValue(input.quietHoursEnd, DEFAULT_LIFE_COMPANION_SETTINGS.quietHoursEnd),
     quietHoursStart: timeOfDayValue(input.quietHoursStart, DEFAULT_LIFE_COMPANION_SETTINGS.quietHoursStart),
-    randomInteractionEnabled: booleanValue(
-      input.randomInteractionEnabled,
-      DEFAULT_LIFE_COMPANION_SETTINGS.randomInteractionEnabled,
-    ),
     screenWatchConsented: booleanValue(input.screenWatchConsented, DEFAULT_LIFE_COMPANION_SETTINGS.screenWatchConsented),
     screenWatchIntervalSeconds: integerRangeValue(
       input.screenWatchIntervalSeconds,
@@ -161,76 +108,5 @@ export function normalizeLifeCompanionSettings(value: unknown): PetLifeCompanion
       LIFE_COMPANION_SCREEN_WATCH_INTERVAL_RANGE.min,
       LIFE_COMPANION_SCREEN_WATCH_INTERVAL_RANGE.max,
     ),
-    textPromptCooldownMinutes,
-    textPromptEnabled: booleanValue(input.textPromptEnabled, DEFAULT_LIFE_COMPANION_SETTINGS.textPromptEnabled),
-  };
-}
-
-function affectionLevel(value: number): LifeCompanionNeedLevel {
-  if (value <= 20) {
-    return 'critical';
-  }
-  if (value <= 45) {
-    return 'low';
-  }
-  if (value >= 80) {
-    return 'high';
-  }
-
-  return 'normal';
-}
-
-function hungerLevel(value: number): LifeCompanionNeedLevel {
-  if (value >= 90) {
-    return 'critical';
-  }
-  if (value >= 70) {
-    return 'high';
-  }
-  if (value <= 20) {
-    return 'low';
-  }
-
-  return 'normal';
-}
-
-function resolveMood(stats: PetStats): LifeCompanionMood {
-  if (stats.hunger >= 75) {
-    return 'hungry';
-  }
-  if (stats.fatigue >= 80) {
-    return 'tired';
-  }
-  if (stats.affection >= 80) {
-    return 'close';
-  }
-  if (stats.affection <= 35) {
-    return 'distant';
-  }
-
-  return 'steady';
-}
-
-export function createLifeCompanionStatus(
-  stats: PetStats,
-  settings: PetLifeCompanionSettings,
-): LifeCompanionStatus {
-  const normalizedSettings = normalizeLifeCompanionSettings(settings);
-  const mood = resolveMood(stats);
-  const proactiveReady = normalizedSettings.proactiveEnabled
-    && normalizedSettings.randomInteractionEnabled
-    && normalizedSettings.minRandomIntervalMinutes <= normalizedSettings.maxRandomIntervalMinutes;
-
-  return {
-    affectionLevel: affectionLevel(stats.affection),
-    hungerLevel: hungerLevel(stats.hunger),
-    mood,
-    proactiveReady,
-    summary: [
-      `mood=${mood}`,
-      `affection=${Math.round(stats.affection)}`,
-      `hunger=${Math.round(stats.hunger)}`,
-      `proactive=${proactiveReady ? 'ready' : 'off'}`,
-    ].join(' '),
   };
 }

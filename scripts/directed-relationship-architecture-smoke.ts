@@ -15,7 +15,6 @@ const files = [
   'src/character-relationship/directedRelationshipCandidateReview.ts',
   'src/character-relationship/directedRelationshipCandidateGroups.ts',
   'src/character-relationship/directedRelationshipCandidates.ts',
-  'src/character-relationship/directedRelationshipShadowReport.ts',
   'src/components/chat/group/relationship/groupRelationshipSignalProtocol.ts',
   'src/components/chat/group/relationship/groupRelationshipCandidateCapture.ts',
   'src/components/chat/group/role/groupRoleSignalProtocol.ts',
@@ -30,7 +29,6 @@ const files = [
   'src/components/settings/SettingsDirectedRelationshipCandidateInbox.tsx',
   'src/components/settings/SettingsDirectedRelationshipCandidateActions.tsx',
   'src/components/settings/SettingsDirectedRelationshipCandidateGroups.tsx',
-  'src/components/settings/SettingsDirectedRelationshipShadowReport.tsx',
   'src/components/settings/useSettingsDirectedRelationshipCandidateReview.ts',
 ];
 

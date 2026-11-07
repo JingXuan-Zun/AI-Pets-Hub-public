@@ -51,7 +51,7 @@ let config = {
 const approvals: string[] = [];
 let approve = true;
 const runtime: ConversationToolRuntime = {
-  configRef: { get current() { return config; } } as { current: PetConfig },
+  configRef: { get current() { return config; }, set current(next) { config = next; } } as { current: PetConfig },
   onUpdateConfig: (next) => { config = next; },
   petId: 'primary',
   requestApproval: async ({ title }) => { approvals.push(title); return approve; },
@@ -173,12 +173,13 @@ await runConversationToolCalls(desktopRuntime, [call('click', { button: 'double'
 check(desktopApprovals.length, 1, 'later clicks and keys run inside the scope');
 check(executed, ['click', 'double_click', 'press_keys'], 'sequential calls keep their order');
 await runConversationToolCalls(desktopRuntime, [call('type_text', { target: '1', text: '你好' })]);
-check(desktopApprovals.length, 2, 'typing is confirmed every time');
+// Since 2026-10-20 typing inside an approved task runs without asking again (loopApproval.ts).
+check(desktopApprovals.length, 1, 'typing inside the approved task needs no new question');
 await runConversationToolCalls(desktopRuntime, [call('read_window', { window: '下载' }), call('drag', { from: '1', to: '300,400' })]);
 check([inputs[0]?.action, inputs[0]?.fromX, inputs[0]?.toX, inputs[0]?.toY], ['drag', 1040, 300, 400], 'drag from an element to a point');
 check('expectedForegroundHwnd' in inputs[0], false, 'cross-window drag has no foreground guard');
 await runConversationToolCalls(desktopRuntime, [call('drag', { from: '1', to: '2' })]);
-check(desktopApprovals.length, 3, 'dragging into the recycle bin is confirmed');
+check(desktopApprovals.length, 2, 'dragging into the recycle bin is confirmed');
 await runConversationToolCalls(desktopRuntime, [call('scroll', { amount: 3, direction: 'down' })]);
 check([inputs.at(-1)?.action, inputs.at(-1)?.notches, inputs.at(-1)?.x], ['scroll', -3, 1350], 'scroll at the window center');
 const [bad] = await runConversationToolCalls(desktopRuntime, [call('click', { target: '99' })]);

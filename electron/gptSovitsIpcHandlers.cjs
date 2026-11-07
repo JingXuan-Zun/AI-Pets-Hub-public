@@ -2,7 +2,7 @@ const INSTALL_PROGRESS_CHANNEL = 'desktop-pet:gpt-sovits-install-progress';
 
 // Registered on the trusted (sender-guarded) ipcMain; failures resolve to a health-shaped object
 // so the renderer never sees Electron's "Error invoking remote method" wrapper or stack traces.
-function registerGptSovitsIpcHandlers({ gptSovitsService, ipcMain, log = () => undefined }) {
+function registerGptSovitsIpcHandlers({ gptSovitsService, installStarterVoice, ipcMain, log = () => undefined }) {
   const handle = (channel, handler, fallbackError) => {
     ipcMain.handle(channel, async (event, request) => {
       try {
@@ -22,6 +22,14 @@ function registerGptSovitsIpcHandlers({ gptSovitsService, ipcMain, log = () => u
       if (event?.sender && !event.sender.isDestroyed()) event.sender.send(INSTALL_PROGRESS_CHANNEL, progress ?? null);
     },
   }), 'GPT-SoVITS 运行环境安装失败。');
+  // One click for 小玲's real voice (starterVoiceInstall.cjs); progress uses the same channel.
+  if (installStarterVoice) {
+    handle('desktop-pet:install-starter-voice', (settings, event) => installStarterVoice(settings, {
+      onProgress: (progress) => {
+        if (event?.sender && !event.sender.isDestroyed()) event.sender.send(INSTALL_PROGRESS_CHANNEL, progress ?? null);
+      },
+    }), '小玲的声音安装失败。');
+  }
 }
 
 module.exports = { GPT_SOVITS_INSTALL_PROGRESS_CHANNEL: INSTALL_PROGRESS_CHANNEL, registerGptSovitsIpcHandlers };

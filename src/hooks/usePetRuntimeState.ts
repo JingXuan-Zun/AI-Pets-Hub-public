@@ -15,10 +15,12 @@ import { usePetRuntimeNeedMonitors } from './usePetRuntimeNeedMonitors';
 import { usePetRuntimeSpeechController } from './usePetRuntimeSpeechController';
 import { useGptSovitsAutoWarmup } from './useGptSovitsAutoWarmup';
 import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
-import { useLifeCompanionScheduler } from './useLifeCompanionScheduler';
 import { useProductivityScheduler } from '../productivity/useProductivityScheduler';
 import { usePersistedChatHistory } from './usePersistedChatHistory';
 import { useDesktopActivityAwareness } from './useDesktopActivityAwareness';
+import { isOnboardingActive, onChatModelConfigured, startOnboardingOnLaunch } from '../onboarding/onboardingController';
+import { isChatModelConfigured } from '../onboarding/onboardingApiSetup';
+import { setSharedConfig } from '../onboarding/onboardingConfigSource';
 import { useLifeCompanionScreenWatch } from './useLifeCompanionScreenWatch';
 
 export function usePetRuntimeState() {
@@ -113,11 +115,6 @@ export function usePetRuntimeState() {
     hungryStartedAtRef,
     lowEnergyLoggedRef,
   });
-  useLifeCompanionScheduler({
-    addLog,
-    config,
-    configRef,
-  });
   useDesktopActivityAwareness(configRef);
   useLifeCompanionScreenWatch({
     applyConfig: applyConfigStateUpdate,
@@ -125,11 +122,34 @@ export function usePetRuntimeState() {
     consented: config.settings.lifeCompanion.screenWatchConsented,
   });
 
+  // First run (no chat model yet): 小玲's guide speaks instead of the startup greeting.
+  const onboardingStartedRef = useRef(false);
+  useEffect(() => {
+    if (!chatHistoryReady || onboardingStartedRef.current || !isOnboardingActive(configRef.current)) return undefined;
+    onboardingStartedRef.current = true;
+    startupGreetingScheduledRef.current = true;
+    const timer = window.setTimeout(() => { void startOnboardingOnLaunch(configRef.current); }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [chatHistoryReady, configRef]);
+
+  // The model was set up in the settings window (or the key changed while the guide is open).
+  const lastModelKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    setSharedConfig(config);
+    const settings = config.settings;
+    const key = isChatModelConfigured(settings) ? `${settings.llmProvider}|${settings.customApiUrl}|${settings.customApiKey}|${settings.geminiApiKey}` : null;
+    const previous = lastModelKeyRef.current;
+    lastModelKeyRef.current = key;
+    if (!chatHistoryReady || !key || key === previous || previous === undefined) return;
+    void onChatModelConfigured(config);
+  }, [chatHistoryReady, config]);
+
   useEffect(() => {
     if (
       !chatHistoryReady
       || !config.settings.lifeCompanion.startupGreetingEnabled
       || startupGreetingScheduledRef.current
+      || isOnboardingActive(configRef.current)
     ) {
       return undefined;
     }

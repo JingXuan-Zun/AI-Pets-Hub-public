@@ -11,7 +11,6 @@ import {
 } from '../../group-memory';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
-import { SettingsSmallGroupCandidatePanel } from './SettingsSmallGroupCandidatePanel';
 
 type PanelProps = {
   noDragRegionStyle?: CSSProperties;
@@ -104,8 +103,6 @@ export function SettingsGroupMemorySubgroupPanel(props: PanelProps) {
         仅支持人工创建和调整；自动组团、自动传播与自动写入保持关闭。
       </p>
       <div className="space-y-2">
-        <SettingsSmallGroupCandidatePanel groupMemoryRepository={props.repository}
-          relationshipRepository={props.relationshipRepository} slots={props.slots} />
         <SubgroupCreator {...props} />
         {props.repository.subgroups.map((subgroup) => (
           <SubgroupCard {...props} key={subgroup.id} subgroup={subgroup} />

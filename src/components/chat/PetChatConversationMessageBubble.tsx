@@ -16,6 +16,7 @@ import { formatMessageTime, MessageMetaRow, resolveUserBubbleBackgroundStyle } f
 import { resolveConversationMessageLabel } from './petChatConversationMessageUtils';
 import { StoryNarrativeText } from './story/StoryNarrativeText';
 import { MessageDiagram } from './message/MessageDiagram';
+import { MessageQuickReplies } from './message/MessageQuickReplies';
 import { splitMessageDiagrams } from './message/messageDiagrams';
 
 function PetChatConversationMessageBubbleComponent({
@@ -204,6 +205,7 @@ function PetChatConversationMessageBubbleComponent({
               {diagramParts.drawing ? <div className="mt-2 text-2xs text-muted-foreground">正在画示意图…</div> : null}
             </div>
           )}
+          <MessageQuickReplies message={message} onSendMessage={onSendMessage} />
           <PetChatAgentApprovalPanel
             message={message}
             onResolveAgentApproval={onResolveAgentApproval}

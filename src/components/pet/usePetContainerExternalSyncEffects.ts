@@ -77,12 +77,14 @@ export function usePetContainerExternalSyncEffects({
       companionStatsTickAtRef.current += tickMs;
 
       let hasChanges = false;
+      const feelingsNeverDrop = currentConfig.settings.lifeCompanion?.feelingsNeverDrop !== false;
       const nextCompanionPets = currentConfig.companionPets.map((pet) => {
         if (!pet.enabled) {
-          return pet;
+          // Hidden characters do not get hungry, but their feelings still sit at the top.
+          return feelingsNeverDrop && pet.stats.affection !== 100 ? (hasChanges = true, { ...pet, stats: { ...pet.stats, affection: 100 } }) : pet;
         }
 
-        const nextStats = applyPassivePetStatsTick(pet.stats, tickMs);
+        const nextStats = applyPassivePetStatsTick(pet.stats, tickMs, 0, feelingsNeverDrop);
         if (
           nextStats.hunger === pet.stats.hunger
           && nextStats.fatigue === pet.stats.fatigue

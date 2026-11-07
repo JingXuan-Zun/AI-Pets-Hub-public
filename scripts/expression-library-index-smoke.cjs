@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 const crypto = require('node:crypto');
+const withoutCwd = (text) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const source = fs.readFileSync(require.resolve('../electron/expressionLibraryIndex.cjs'), 'utf8');
 const names = ['INDEX_VERSION', 'UNCLASSIFIED_ID', 'createId', 'nowIso', 'createCategory', 'createEmptyIndex', 'normalizeIndex', 'publicState'];
 const old = process.argv[2] ? fs.readFileSync(process.argv[2], 'utf8') : null;
@@ -41,7 +42,7 @@ function run(text, original, fixture) {
   return { result, state, category, empty, trace };
 }
 const hash = crypto.createHash('sha256');
-for (const fixture of fixtures) { const actual = run(source, false, fixture); if (old) assert.deepEqual(actual, run(old, true, fixture)); hash.update(JSON.stringify(actual)); }
+for (const fixture of fixtures) { const actual = run(source, false, fixture); if (old) assert.deepEqual(actual, run(old, true, fixture)); hash.update(withoutCwd(JSON.stringify(actual))); }
 const digest = hash.digest('hex');
-if (!old) assert.equal(digest, '06d49f271748da6681fca4dbb49a908dbf80ae18f7b8544d98cc556793838620');
+if (!old) assert.equal(digest, '469381946a061dffe9877986cca2a6feaac41e7ce3d5568bab89632129530ea5');
 console.log('Expression library index passed: ' + fixtures.length + ' defaults/version/mode/snapshot/public-state cases; deterministic ID/time order; ' + digest);

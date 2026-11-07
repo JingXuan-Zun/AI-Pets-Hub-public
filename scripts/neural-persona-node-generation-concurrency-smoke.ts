@@ -12,8 +12,6 @@ const sourceFiles = [
   'src/character-graph/neural-persona/neuralPersonaNodeGenerationTypes.ts',
   'src/services/neuralPersonaNodeGenerationBatchRecovery.ts',
   'src/services/neuralPersonaConfiguredNodeGenerationProvider.ts',
-  'src/components/settings/useNeuralPersonaNodeGeneration.ts',
-  'src/components/settings/NeuralPersonaNodeGenerationPanel.tsx',
 ];
 
 function inspectSource(relativePath: string) {

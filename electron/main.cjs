@@ -38,6 +38,7 @@ const { startAppUpdates } = require('./appUpdateIpc.cjs');
 const { createWeixinBridgeService, registerWeixinBridgeIpcHandlers } = require('./weixinBridgeService.cjs');
 const { createGptSovitsService } = require('./gptSovitsService.cjs');
 const { registerGptSovitsIpcHandlers } = require('./gptSovitsIpcHandlers.cjs');
+const { createStarterVoiceInstaller } = require('./starterVoiceInstall.cjs');
 const { createSystemExpressionCatalogService } = require('./systemExpressionCatalog.cjs');
 const { registerDesktopPetIpcHandlers } = require('./ipcHandlers.cjs');
 const { createTrustedIpcMain, installNavigationGuards } = require('./ipcSenderGuard.cjs');
@@ -694,6 +695,12 @@ registerKnownFoldersIpcHandlers({
 });
 registerGptSovitsIpcHandlers({
   gptSovitsService,
+  installStarterVoice: createStarterVoiceInstaller({
+    app,
+    gptSovitsService,
+    log: (message, details) => runtimeLogger.log('backend', 'gpt-sovits', message, details),
+    projectRoot: path.join(__dirname, '..'),
+  }),
   ipcMain: trustedIpcMain,
   log: (message, details) => runtimeLogger.log('backend', 'gpt-sovits', message, details),
 });

@@ -13,7 +13,7 @@ function units(value: string) {
   return [...new Set([...words, ...characters])];
 }
 
-function latestTopicText(messages: ChatMessage[]) {
+export function latestTopicText(messages: ChatMessage[]) {
   const latestUser = [...messages].reverse().find((message) => (
     message.role === 'user' && message.chatMode === 'group'
   ));

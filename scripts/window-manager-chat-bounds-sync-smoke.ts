@@ -56,7 +56,8 @@ export function exerciseChatBoundsSync(factories=actual) {
     }
     assert.equal(threw===error,dependencyFailed);
     if(threw===error)assert.equal(calls.at(-1)?.[0],failure);
-    if(!failure&&!race&&state==='live'&&active)assert.equal(calls.filter(c=>c[0]==='setBounds').length,change==='none'?0:2);
+    // Since the video-call view (04cb10b) the window is placed once on entering it, then left to the user.
+    if(!failure&&!race&&state==='live'&&active)assert.equal(calls.filter(c=>c[0]==='setBounds').length,1);
     outputs.push({state,active,was,width,height,change,failure,race,calls,previous,current:current?.id??null,threw:threw===error?'dependency':threw?'TypeError':null});
   }
 }

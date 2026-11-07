@@ -4,6 +4,7 @@ const path = require('node:path');
 const ts = require('typescript');
 const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
+const withoutCwd = (text) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const file = require.resolve('../electron/areaPickerWindow.cjs'), rootFile = require.resolve('../electron/areaPickerService.cjs');
 const source = fs.readFileSync(file, 'utf8'), tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
 assert.ok(source.split('\n').length <= 300);
@@ -74,10 +75,10 @@ function main() {
     for (const stage of ['normal', 'create', 'sync', 'schedule', 'renderer', 'broadcast', 'show', 'resolve', 'unregister', 'top']) {
       const actual = run(initial, context, events, pending, quitting, stage, false);
       if (oldFunction) assert.deepEqual(actual, run(initial, context, events, pending, quitting, stage, true));
-      hash.update(JSON.stringify(actual) + '\n'); cases++;
+      hash.update(withoutCwd(JSON.stringify(actual) + '\n')); cases++;
     }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, 'a82255de539d945786f45108cf364fd00232078745c9f798adf1979faef72ee5', 'Reviewed picker window options/events/stale/quit/error behavior');
+  assert.equal(fingerprint, 'f86f050629fbc9ab1ddd6a74c65665161d26a2a124c5ddf709452c74cdda0be5', 'Reviewed picker window options/events/stale/quit/error behavior');
   console.log('Area picker window passed: ' + cases + ' reuse/context/loading/stale/closed/quitting/error cases; controlled windows.');
 }
 try { main(); } catch (error) { console.error(error); process.exitCode = 1; }

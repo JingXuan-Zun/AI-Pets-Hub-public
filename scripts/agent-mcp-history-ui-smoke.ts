@@ -5,7 +5,8 @@ const preloadSource = readProjectFile('electron/preload.cjs');
 const bridgeSource = readProjectFile('src/desktopShellBridge.ts');
 const runtimeSource = readProjectFile('src/desktopShellRuntime.ts');
 const viteEnvSource = readProjectFile('src/vite-env.d.ts');
-const sectionSource = readProjectFile('src/components/settings/SettingsMcpSection.tsx');
+// Since 2026-09-15 the section renders its editor and panels through SettingsMcpAdvancedWorkspace.
+const sectionSource = readProjectFile('src/components/settings/SettingsMcpSection.tsx') + readProjectFile('src/components/settings/SettingsMcpAdvancedWorkspace.tsx');
 const operationalPanelsSource = readProjectFile('src/components/settings/SettingsMcpOperationalPanels.tsx');
 const panelSource = readProjectFile('src/components/settings/SettingsMcpHistoryPanel.tsx');
 const controlsSource = readProjectFile('src/components/settings/SettingsMcpHistoryControls.tsx');

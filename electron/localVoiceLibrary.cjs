@@ -97,7 +97,8 @@ function resolveVoiceRootPath({ app, projectRoot }) {
     packagedExeDir ? path.join(packagedExeDir, 'local-models', 'voice') : null,
     packagedExeDir ? path.join(packagedExeDir, '..', 'local-models', 'voice') : null,
     packagedExeDir ? path.join(packagedExeDir, '..', '..', 'local-models', 'voice') : null,
-    path.join(process.resourcesPath || '', 'local-models', 'voice'),
+    // Only with a real resources folder: an empty one used to mean "relative to the current directory".
+    process.resourcesPath ? path.join(process.resourcesPath, 'local-models', 'voice') : null,
     appRootPath ? path.join(appRootPath, 'local-models', 'voice') : null,
     projectRoot ? path.join(projectRoot, 'local-models', 'voice') : null,
   ].filter(Boolean);

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { assessAgentCommandResult } from '../src/agent/agentResultAssessment';
-import { createAgentContextFromResult } from '../src/agent/agentChatContext';
 import { createAgentToolStateSummary } from '../src/agent/resultAssessment/resultEvidenceAssessment';
 import { type AgentChatCommand } from '../src/agent/agentChatCommand';
 import { readProjectSources } from './smokeTestHarness.ts';
@@ -12,7 +11,7 @@ const {
   controllerSource,
 } = readProjectSources({
   commandSource: 'src/agent/agentChatCommand.ts',
-  contextSource: 'src/agent/agentChatContext.ts',
+  contextSource: 'src/components/chat/runController/executionReceipt.ts',
   typesSource: 'src/types.ts',
   controllerSource: 'src/components/chat/agentRunController.ts',
 });
@@ -58,7 +57,7 @@ assert.match(
 assert.match(
   contextSource,
   /stateSummary: result\.stateSummary \?\? null/u,
-  'agent context should persist standardized state summaries',
+  'agent execution receipt context should persist standardized state summaries',
 );
 
 assert.match(
@@ -145,9 +144,6 @@ assert.ok(successfulLaunch.stateSummary?.changedState?.includes('process-list'))
 assert.ok(successfulLaunch.stateSummary?.verificationEvidence?.some((item) => item.includes('focused-window matched')));
 assert.equal(successfulLaunch.stateSummary?.structuredEvidence?.targetMatched, 'Google Chrome');
 assert.equal(successfulLaunch.stateSummary?.structuredEvidence?.finalWindow?.processName, 'chrome.exe');
-
-const context = createAgentContextFromResult(launchCommand, successfulLaunch);
-assert.deepEqual(context.stateSummary, successfulLaunch.stateSummary);
 
 const stateSummary = createAgentToolStateSummary(launchCommand, failedLaunch);
 assert.ok(stateSummary?.recommendedRecovery?.includes('tool:launch_local_app'));

@@ -135,6 +135,7 @@ function str(args: Record<string, unknown>, key: string) {
 }
 
 export const conversationDesktopIconTool: ConversationTool = {
+  changesState: () => true,
   confirmation: (args) => `把桌面图标「${str(args, 'name')}」挪到${str(args, 'screen') || '副屏'}${str(args, 'position')}`,
   definition: {
     function: {

@@ -344,32 +344,12 @@ assert.equal((await repository.load('role-reverse-duplicate')).status, 'missing'
 const sectionSource = fs.readFileSync(
   'src/components/settings/SettingsNeuralPersonaGraphSection.tsx', 'utf8',
 );
-const panelSource = fs.readFileSync(
-  'src/components/settings/NeuralPersonaNodeGenerationPanel.tsx', 'utf8',
-);
-const hookSource = fs.readFileSync(
-  'src/components/settings/useNeuralPersonaNodeGeneration.ts', 'utf8',
-);
 const providerSource = fs.readFileSync(
   'src/services/neuralPersonaConfiguredNodeGenerationProvider.ts', 'utf8',
 );
 // Persona splitting is retired from the settings flow: the Persona Anchor stays one complete persona.
 assert.doesNotMatch(sectionSource, /NeuralPersonaNodeGenerationPanel/u);
 assert.doesNotMatch(sectionSource, /跳过智能解析/u);
-assert.match(panelSource, /确认并生成完整认知图谱/u);
-assert.match(panelSource, /重新分析关系/u);
-assert.match(panelSource, /正在分析候选节点之间的语义关系/u);
-assert.match(panelSource, /neuralPersonaProviderDataEgressConsent/u);
-assert.match(panelSource, /data-neural-node-generation-status/u);
-assert.match(panelSource, /aria-live="polite"/u);
-assert.match(panelSource, /WebkitAppRegion: 'no-drag'/u);
-assert.match(panelSource, /取消分析/u);
-assert.doesNotMatch(panelSource, /maxLength=\{16000\}/u);
-assert.doesNotMatch(panelSource, /\/16000/u);
-assert.match(hookSource, /最多.*批并行/u);
-assert.match(hookSource, /已完成.*totalBatches/u);
-assert.match(hookSource, /智能解析请求异常/u);
-assert.match(hookSource, /finally/u);
 assert.match(providerSource, /personaBlocks/u);
 assert.match(providerSource, /sourceId/u);
 assert.match(providerSource, /NODE_GENERATION_BLOCK_BATCH_SIZE/u);

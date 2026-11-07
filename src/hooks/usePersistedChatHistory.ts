@@ -8,6 +8,21 @@ import {
 
 const CHAT_HISTORY_SAVE_DELAY_MS = 400;
 
+/** Older full-size screenshots in the saved history become smaller JPEGs, one message at a time. */
+async function compressLargeHistoryImages(isDisposed: () => boolean) {
+  const { compressImageAttachment, hasLargeInlineImage } = await import('../services/chatImageCompression');
+  const ids = desktopPetChatStore.getState().messages.filter(hasLargeInlineImage).map((message) => message.id).filter(Boolean) as string[];
+  for (const id of ids) {
+    if (isDisposed()) return;
+    const message = desktopPetChatStore.getState().messages.find((item) => item.id === id);
+    if (!message?.attachments) continue;
+    const attachments = await Promise.all(message.attachments.map(compressImageAttachment));
+    if (attachments.some((item, index) => item !== message.attachments?.[index])) {
+      desktopPetChatStore.updateMessage(id, (current) => ({ ...current, attachments }));
+    }
+  }
+}
+
 export function usePersistedChatHistory() {
   const [isReady, setIsReady] = useState(false);
 
@@ -62,6 +77,7 @@ export function usePersistedChatHistory() {
         });
         window.addEventListener('pagehide', onPageHide);
         setIsReady(true);
+        void compressLargeHistoryImages(() => disposed);
       });
 
     return () => {

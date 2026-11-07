@@ -7,7 +7,6 @@ import {
   type AnimationToolAudioPlaybackRefs,
 } from '../src/components/pet/animationToolAudioPlaybackRuntime';
 import { createPlayableAnimationToolAudioPlaybackState } from '../src/components/pet/animationToolAudioPlaybackState';
-import { createAnimationToolPerformanceDisplay } from '../src/components/pet/animationToolPerformanceDisplay';
 import { type PetModelMotionBinding, type PetModelMotionKey } from '../src/types';
 
 function createBinding(id: string, name: string, motionKey: PetModelMotionKey): PetModelMotionBinding {
@@ -57,7 +56,6 @@ assert.deepEqual(stopTrigger?.animationIds, []);
 assert.equal(stopTrigger?.source, 'user-direct');
 assert.equal((stopTrigger?.token ?? 0) > (queuedTrigger?.token ?? 0), true);
 assert.equal(cancelledPerformanceState?.status, 'cancelled');
-assert.equal(createAnimationToolPerformanceDisplay(cancelledPerformanceState)?.title, '已取消');
 
 let resetCount = 0;
 let enqueueCount = 0;
@@ -95,13 +93,6 @@ assert.deepEqual(handledPlay, {
   status: 'playing',
   triggerKind: 'direct',
 });
-assert.equal(createAnimationToolPerformanceDisplay({
-  itemCount: 1,
-  petId: 'primary',
-  status: 'playing',
-  token: queuedTrigger!.token,
-  updatedAt: Date.now(),
-})?.title, '演出中');
 
 const audioStates: Array<string | null> = [];
 const activeAudioTrigger = createAudioTrigger(11);

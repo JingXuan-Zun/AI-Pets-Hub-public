@@ -52,8 +52,9 @@ export function applyPassivePetStatsTick(
   stats: PetStats,
   tickMs = PET_STATS_TICK_MS,
   hungryDurationMs = 0,
+  feelingsNeverDrop = false,
 ): PetStats {
-  return applyLifeCompanionPassiveGrowthTick({ hungryDurationMs, stats, tickMs }).nextStats;
+  return applyLifeCompanionPassiveGrowthTick({ feelingsNeverDrop, hungryDurationMs, stats, tickMs }).nextStats;
 }
 
 export function applyFoodConsumedStats(stats: PetStats): PetStats {

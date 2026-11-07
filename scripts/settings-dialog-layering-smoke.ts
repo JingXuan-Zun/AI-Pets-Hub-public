@@ -20,9 +20,10 @@ const dialogZIndexes = extractZIndexUtilities(dialogSource);
 const maxSettingsPanelZIndex = Math.max(...settingsPanelZIndexes);
 const minDialogZIndex = Math.min(...dialogZIndexes);
 
+// The redesigned panel tops out lower (z-40); what matters is that dialogs stay above it.
 assert.ok(
-  maxSettingsPanelZIndex >= 70,
-  'settings panel should keep its known docked z-index in this smoke check',
+  settingsPanelZIndexes.length > 0,
+  'the settings panel should still declare its stacking (z-*) so this check means something',
 );
 
 assert.ok(

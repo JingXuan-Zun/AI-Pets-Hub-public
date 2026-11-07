@@ -1075,6 +1075,7 @@ export function buildCharacterReplyTurnContext(
       buildWorkTaskInstruction(settings.workTasks),
       describeBackgroundTasksForPrompt(),
       buildWebLearningInstruction(personality, settings),
+      personality.cognitionNote ?? '',
     ]
       .filter(Boolean)
       .join('\n\n'),
@@ -1103,6 +1104,7 @@ export function buildCharacterReplySystemInstruction(
       buildWorkTaskInstruction(settings.workTasks),
       describeBackgroundTasksForPrompt(),
       buildWebLearningInstruction(personality, settings),
+      personality.cognitionNote ?? '',
       CHARACTER_TOOL_PROTOCOL_INSTRUCTION,
       CHARACTER_DIAGRAM_INSTRUCTION,
       personaRulePolicy.mode === 'default' ? CHARACTER_REPLY_FORMAT_INSTRUCTION : '',

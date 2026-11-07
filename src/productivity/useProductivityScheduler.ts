@@ -3,7 +3,7 @@ import { desktopPetChatStore } from '../chatStore';
 import { createChatMessageId } from '../components/chat/multiPetChat';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
 import { speakCompanionLine } from '../life-companion/companionLineSpeech';
-import { resolveLifeCompanionPromptTarget } from '../life-companion/lifeCompanionTextPromptPublisher';
+import { resolveLifeCompanionPromptTarget } from '../life-companion/companionLineTarget';
 import { getDesktopPetSlot } from '../multiPetRoster';
 import type { PetConfig, PetConfigUpdateHandler } from '../types';
 import {

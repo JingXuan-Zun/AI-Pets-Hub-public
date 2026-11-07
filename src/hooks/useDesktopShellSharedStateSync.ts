@@ -6,6 +6,31 @@ import { cloneCaptureOptions } from '../services/desktopCapture';
 import { type PetConfig, type PetVisualSize } from '../types';
 
 const SHARED_STATE_SYNC_DELAY_IDLE_MS = 900;
+
+let lastSentChatState: DesktopPetSharedState['chatState'] | null = null;
+
+/**
+ * The chat history can be tens of MB (pictures in messages). Most syncs (a pet moving, a stat
+ * ticking) do not change it, and copying it over IPC every time froze the pet for ~80 ms about
+ * once a second while dragging. Unchanged, only a marker goes; the main process keeps the last copy.
+ */
+export function withoutUnchangedChatState(state: DesktopPetSharedState) {
+  if (lastSentChatState && state.chatState === lastSentChatState) {
+    return { ...state, chatState: undefined, chatStateUnchanged: true } as unknown as DesktopPetSharedState;
+  }
+  const previous = lastSentChatState;
+  lastSentChatState = state.chatState;
+  // Typing / speaking flags change often while the messages stay the same.
+  if (previous && state.chatState.messages === previous.messages) {
+    return { ...state, chatState: { ...state.chatState, messages: undefined }, chatMessagesUnchanged: true } as unknown as DesktopPetSharedState;
+  }
+  return state;
+}
+
+/** For tests: forget what was sent (a new main process starts with nothing). */
+export function resetSharedChatStateMemory() {
+  lastSentChatState = null;
+}
 const SHARED_STATE_SYNC_DELAY_ACTIVE_MS = 96;
 
 interface UseDesktopShellSharedStateSyncOptions {
@@ -74,7 +99,7 @@ export function useDesktopShellSharedStateSync({
       sharedStateSyncDelayRef.current = SHARED_STATE_SYNC_DELAY_IDLE_MS;
       const pendingState = pendingSharedStateSyncRef.current;
       if (pendingState) {
-        desktopPetShellRuntime.syncSharedState(pendingState);
+        desktopPetShellRuntime.syncSharedState(withoutUnchangedChatState(pendingState));
       }
       return;
     }
@@ -99,7 +124,7 @@ export function useDesktopShellSharedStateSync({
         return;
       }
 
-      desktopPetShellRuntime.syncSharedState(pendingState);
+      desktopPetShellRuntime.syncSharedState(withoutUnchangedChatState(pendingState));
     }, nextSyncDelay);
   }, []);
 

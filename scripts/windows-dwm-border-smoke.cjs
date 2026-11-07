@@ -87,16 +87,23 @@ async function main() {
   const settingsAssemblySource = readModuleProjectFunction(
     'electron/windowManager/settingsWindowControllers.cjs', 'createSettingsWindowControllers',
   );
-  assert.match(windowManagerSource, /createSettingsWindowControllers\(\{[\s\S]*?setSettingsWindow: \(win\) => \{ settingsWindow = win; \}/u);
+  // Since the window-manager split the settings window is owned through managerState (ownership adapters).
+  const ownershipSource = fs.readFileSync(path.join(projectRoot, 'electron', 'windowManager', 'windowOwnershipStateAdapters.cjs'), 'utf8');
+  const settingsControllersSource = fs.readFileSync(path.join(projectRoot, 'electron', 'windowManager', 'settingsWindowControllers.cjs'), 'utf8');
+  assert.match(ownershipSource, /setSettingsWindow: \(win\) => \{ managerState\.settingsWindow = win; \}/u);
+  assert.match(settingsControllersSource, /createSettingsWindowControllers\(\{[\s\S]*?\.\.\.windowOwnershipState\.settingsOwnership/u);
+  assert.ok(windowManagerSource.length > 0);
   assert.match(settingsAssemblySource, /createSettingsWindowCreator\(\{[\s\S]*?getSettingsWindow, setSettingsWindow,[\s\S]*?disableDwmSystemBorderForWindow, logWindowEvent,/u);
   assert.match(
     settingsCreatorSource,
     /setSettingsWindow\(nextSettingsWindow\);[\s\S]*disableDwmSystemBorderForWindow\(nextSettingsWindow\)/u,
     'the settings window should remove the native DWM border so every CSS edge has the same color',
   );
+  // Since the split the root passes baseDirectory: __dirname down and settingsWindowControllers forwards it.
+  assert.match(windowManagerSource, /path, baseDirectory: __dirname, sessionPartition, windowOwnershipState,/u);
   assert.match(
-    windowManagerSource,
-    /getBrowserWindowIconOptions, SETTINGS_PANEL_WINDOW_BOUNDS, path, baseDirectory: __dirname, sessionPartition,/u,
+    settingsControllersSource,
+    /getBrowserWindowIconOptions, SETTINGS_PANEL_WINDOW_BOUNDS, path,\s*baseDirectory, sessionPartition,/u,
     'settings options should receive the original dependencies and preload directory',
   );
   assert.match(settingsAssemblySource, /createSettingsWindowOptionsBuilder\(\{\s*getBrowserWindowIconOptions, SETTINGS_PANEL_WINDOW_BOUNDS, path, baseDirectory, sessionPartition,/u);

@@ -1,4 +1,7 @@
+import { describeStatusBoardFor, readStatusFacts } from '../../character-status/characterStatusBoard';
 import { delegatedScopeFields } from './runController/chatDelegation';
+import { describeCognitionForReply } from '../../character-cognition/characterCognitionRules';
+import { readCharacterCognition } from '../../character-cognition/characterCognitionStore';
 import { desktopPetChatStore } from '../../chatStore';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type ChatMessage, type ChatMessageImageAttachment, type DesktopPetChatMode, type PetConfig } from '../../types';
@@ -97,7 +100,7 @@ export async function requestPetResponseStream(options: {
       config.customModelPresets,
     ),
   );
-  const scopedPersonality = animationToolInstruction
+  const scopedWithMotions = animationToolInstruction
     ? {
         ...baseScopedPersonality,
         systemInstruction: [
@@ -106,6 +109,15 @@ export async function requestPetResponseStream(options: {
         ].filter(Boolean).join('\n\n'),
       }
     : baseScopedPersonality;
+  // What is on her mind right now (only her own), when the cognition layer is on.
+  const cognition = config.settings.lifeCompanion?.characterCognitionEnabled === false ? null : readCharacterCognition(targetSlot.id);
+  const statusNote = config.settings.lifeCompanion?.crossChatAwarenessEnabled
+    ? describeStatusBoardFor(targetSlot.id, readStatusFacts(), Date.now())
+    : '';
+  const innerNote = [cognition ? describeCognitionForReply(cognition, Date.now()) : '', statusNote].filter(Boolean).join('\n\n');
+  const scopedPersonality = innerNote
+    ? { ...scopedWithMotions, cognitionNote: innerNote }
+    : scopedWithMotions;
   const roleKnowledgeAttachment = resolveRoleKnowledgeAttachment(scopedPersonality, promptText);
 
   pushFrontendRuntimeLog('角色知识库', roleKnowledgeAttachment

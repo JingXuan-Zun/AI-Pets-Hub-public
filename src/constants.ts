@@ -1,3 +1,5 @@
+// What the starter 小玲 knows about the project (the public capability notes).
+import STARTER_PROJECT_KNOWLEDGE from '../docs/starter/about-ai-pets-hub.md?raw';
 import petCharacter26 from './assets/pet-character-26-optimized.png';
 import walkFramePlaceholder from './assets/walk-01-placeholder.png';
 import testSquare200 from './assets/test-square-200.svg';
@@ -260,7 +262,7 @@ function buildDefaultPetPersonality(name: string) {
   };
 }
 
-export const DEFAULT_PERSONALITY = buildDefaultPetPersonality('小玲');
+export const DEFAULT_PERSONALITY = { ...buildDefaultPetPersonality('小玲'), knowledgeBase: STARTER_PROJECT_KNOWLEDGE };
 export function createDefaultCompanionPet(slotNumber: number, positionIndex: number): CompanionPetConfig {
   const fallbackPosition = DEFAULT_COMPANION_PET_POSITIONS[positionIndex] ?? { x: 0, y: 0 };
   const modelUrl = slotNumber === 2
@@ -454,10 +456,6 @@ export const DEFAULT_CONFIG: PetConfig = {
     chatBubbleEnabled: true,
     chatStreamingEnabled: true,
     groupChatTurnDelayMs: 6000,
-    groupParallelRoleGenerationEnabled: false,
-    groupAutomaticMemoryWriteEnabled: false,
-    groupAutomaticRelationshipEvolutionEnabled: false,
-    groupAutomaticSubgroupEvolutionEnabled: false,
     expressionReply: { ...DEFAULT_EXPRESSION_REPLY_SETTINGS },
   },
 };

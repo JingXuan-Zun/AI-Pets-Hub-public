@@ -13,11 +13,7 @@ import { SettingsModelProviderTools } from './SettingsModelProviderTools';
 import { SettingsApiProfiles } from './SettingsApiProfiles';
 import { SettingsGeminiApiFields } from './SettingsGeminiApiFields';
 import { SettingsOpenAIModelPicker } from './SettingsOpenAIModelPicker';
-import { SettingsSocialEventTimeline } from './SettingsSocialEventTimeline';
-import { SettingsSocialTrendPanel } from './SettingsSocialTrendPanel';
-import { SettingsRelationshipEvidenceWindowPanel } from './SettingsRelationshipEvidenceWindowPanel';
 import { SettingsGroupChatSpeed } from './SettingsGroupChatSpeed';
-import { SettingsGroupSocialControls } from './SettingsGroupSocialControls';
 import { DEFAULT_NEURAL_PERSONA_FEATURE_FLAGS } from '../../character-graph/neural-persona';
 import { resolveNeuralPersonaSettingsPreviewEnabled } from './neuralPersonaPreviewGate';
 import { NeuralMemoryChatToggle } from './NeuralMemoryChatToggle';
@@ -279,11 +275,6 @@ export function SettingsPersonalityTab({
       /> : null}
 
       {isWorkspacePage('multi-agent') ? <SettingsGroupChatSpeed
-        config={localConfig}
-        noDragRegionStyle={noDragRegionStyle}
-        onApplyConfig={onApplyConfig}
-      /> : null}
-      {isWorkspacePage('multi-agent') ? <SettingsGroupSocialControls
         config={localConfig}
         noDragRegionStyle={noDragRegionStyle}
         onApplyConfig={onApplyConfig}
@@ -582,28 +573,6 @@ export function SettingsPersonalityTab({
 
         {isWorkspacePage('multi-agent') ? <SettingsGroupTopicTimeline
           repository={localConfig.groupTopicRepository}
-          roleNames={Object.fromEntries(desktopPetSlots.map((slot) => [slot.id, slot.personality.name]))}
-          noDragRegionStyle={noDragRegionStyle}
-        /> : null}
-
-        {isWorkspacePage('multi-agent') ? <SettingsSocialEventTimeline
-          directedRelationshipRepository={localConfig.directedRelationshipRepository}
-          groupMemoryRepository={localConfig.groupMemoryRepository}
-          groupTopicRepository={localConfig.groupTopicRepository}
-          roleNames={Object.fromEntries(desktopPetSlots.map((slot) => [slot.id, slot.personality.name]))}
-          noDragRegionStyle={noDragRegionStyle}
-        /> : null}
-
-        {isWorkspacePage('multi-agent') ? <SettingsSocialTrendPanel
-          groupMemoryRepository={localConfig.groupMemoryRepository}
-          relationshipRepository={localConfig.directedRelationshipRepository}
-          roleNames={Object.fromEntries(desktopPetSlots.map((slot) => [slot.id, slot.personality.name]))}
-          noDragRegionStyle={noDragRegionStyle}
-        /> : null}
-
-        {isWorkspacePage('multi-agent') ? <SettingsRelationshipEvidenceWindowPanel
-          groupMemoryRepository={localConfig.groupMemoryRepository}
-          repository={localConfig.directedRelationshipRepository}
           roleNames={Object.fromEntries(desktopPetSlots.map((slot) => [slot.id, slot.personality.name]))}
           noDragRegionStyle={noDragRegionStyle}
         /> : null}

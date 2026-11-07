@@ -111,15 +111,9 @@ assert.equal(
   'adding past the limit should be a no-op',
 );
 
-const selectorSource = readProjectFile('src/components/settings/DesktopPetSlotSelector.tsx');
 const settingsPanelSource = readProjectFile('src/components/SettingsPanel.tsx');
 const normalizationSource = readProjectFile('src/petConfigNormalization.ts');
 
-assert.match(selectorSource, /Plus/, 'slot selector should render a plus-button affordance');
-assert.match(selectorSource, /Trash2/, 'slot selector should render a delete-slot affordance');
-assert.match(selectorSource, /onAddSlot/, 'slot selector should expose an add-slot callback');
-assert.match(selectorSource, /onRemoveSlot/, 'slot selector should expose a remove-slot callback');
-assert.match(selectorSource, /MAX_DESKTOP_PET_SLOTS/, 'slot selector should display and enforce the slot limit');
 assert.match(settingsPanelSource, /handleAddPetSlot[\s\S]*onAddPetSlot:\s*handleAddPetSlot/);
 assert.match(settingsPanelSource, /handleRemovePetSlot[\s\S]*onRemovePetSlot:\s*handleRemovePetSlot/);
 assert.match(

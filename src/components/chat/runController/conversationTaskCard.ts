@@ -119,6 +119,8 @@ export function createConversationTaskCard(options: {
       if (!messageId) return;
       runningTasks.delete(messageId);
       statusNote = note ?? '';
+      // The first job a new user got done: the starter guide may offer 小玲's real voice once.
+      if (status === 'done') void import('../../../onboarding/onboardingVoiceHint').then((hint) => hint.offerRealVoiceOnce()).catch(() => undefined);
       write({
         ...run,
         durationMs: Date.now() - (run.startedAt ?? Date.now()),

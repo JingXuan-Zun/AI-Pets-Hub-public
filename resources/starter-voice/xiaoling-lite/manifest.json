@@ -1,0 +1,20 @@
+{
+ "name": "小玲（轻量）",
+ "version": "v2ProPlus",
+ "description": "小玲的声音（轻量版）：只有参考录音，跑在共享底模上，不需要训练权重。",
+ "author": "AI Pets Hub",
+ "emotions": {
+  "neutral": {
+   "wav": "refs/neutral.wav",
+   "text": "你该休息了，别担心，明天我也会在这里等你的。"
+  },
+  "happy": {
+   "wav": "refs/happy.wav",
+   "text": "今天的任务都完成了，真棒，夸夸你哦。"
+  },
+  "surprised": {
+   "wav": "refs/surprised.wav",
+   "text": "你看我早就说过，千劫是个很温柔的人，现在你也能明白了吧。"
+  }
+ }
+}

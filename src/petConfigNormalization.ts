@@ -872,10 +872,6 @@ export function normalizePetConfig(input: Partial<PetConfig> | PetConfig | null 
       chatStreamingEnabled: rawSettings.chatStreamingEnabled !== false,
       expressionReply: normalizeExpressionReplySettings(rawSettings.expressionReply),
       groupChatTurnDelayMs: normalizeGroupChatTurnDelayMs(rawSettings.groupChatTurnDelayMs),
-      groupParallelRoleGenerationEnabled: rawSettings.groupParallelRoleGenerationEnabled === true,
-      groupAutomaticMemoryWriteEnabled: rawSettings.groupAutomaticMemoryWriteEnabled === true,
-      groupAutomaticRelationshipEvolutionEnabled: rawSettings.groupAutomaticRelationshipEvolutionEnabled === true,
-      groupAutomaticSubgroupEvolutionEnabled: rawSettings.groupAutomaticSubgroupEvolutionEnabled === true,
     },
   };
 }

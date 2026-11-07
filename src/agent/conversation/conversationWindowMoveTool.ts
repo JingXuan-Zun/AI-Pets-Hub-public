@@ -19,6 +19,7 @@ interface WindowMoveResult {
 }
 
 export const conversationWindowMoveTool: ConversationTool = {
+  changesState: () => true,
   // Rearranging windows changes no data, so it runs without asking (like focusing a window).
   confirmation: () => null,
   definition: {

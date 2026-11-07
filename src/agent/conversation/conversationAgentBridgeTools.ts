@@ -1,7 +1,8 @@
 import type { AgentChatCommand, AgentChatCommandResult, AgentToolCallName } from '../agentChatCommand';
 import { ensureMcpToolsListed, isReadOnlyMcpCall } from '../agentMcpRegistry';
-import { describeChromeDevtoolsTips, describeHerBrowserAccounts, describeMcpServersForPet, isChromeDevtoolsServer, refreshMcpServerDirectory } from '../../plugins/mcpServerDirectory';
+import { describeChromeDevtoolsTips, describeHerBrowserAccounts, describeMcpServersForPet, isChromeDevtoolsServer, isUnreviewedMcpServer, refreshMcpServerDirectory } from '../../plugins/mcpServerDirectory';
 import { herBrowserPort } from '../../plugins/herBrowser';
+import { HER_BROWSER_REQUEST } from './conversationRequestHints';
 import { runCharacterAnimationSkill } from '../agentCharacterSkillRuntime';
 import { buildAgentPermissionRoute } from '../agentPermissionRouter';
 import { getDesktopPetSlot, PRIMARY_DESKTOP_PET_SLOT_ID } from '../../multiPetRoster';
@@ -42,6 +43,8 @@ interface BridgeSpec {
   name: string;
   /** True when the call only reads (e.g. loading a skill's instructions), whatever the old policy says. */
   readOnly?: (args: Record<string, unknown>) => boolean;
+  /** The call changes something on the computer (see ConversationTool.changesState). */
+  changesState?: (args: Record<string, unknown>) => boolean;
   /** Loads what readOnly needs before the confirmation is decided. */
   prepare?: (args: Record<string, unknown>) => Promise<void>;
   properties: Record<string, unknown>;
@@ -63,6 +66,12 @@ function clip(value: string, max = 80) {
   return value.length > max ? `${value.slice(0, max)}…` : value;
 }
 
+/** A call that runs without a card: the server says the tool is read-only and the server is not an unreviewed one. */
+function trustedReadOnlyMcpCall(args: Record<string, unknown>) {
+  const serverId = str(args, 'server_id');
+  return !isUnreviewedMcpServer(serverId) && isReadOnlyMcpCall(serverId, str(args, 'tool_name'), jsonText(args, 'arguments_json'), isChromeDevtoolsServer(serverId));
+}
+
 const BRIDGE_SPECS: BridgeSpec[] = [
   {
     call: (args) => {
@@ -76,6 +85,7 @@ const BRIDGE_SPECS: BridgeSpec[] = [
     },
     description: '应用自带的浏览器：open_url 打开网页，read_page 读取当前页面的文字（总结网页、视频页、文章时用），list_tabs / focus_tab 管理标签页。要读网页内容用它；只是给用户打开网页看用 open_url 工具。',
     describe: (args) => (str(args, 'action') === 'open_url' ? `在应用浏览器里打开：${clip(str(args, 'url'), 100)}` : `浏览器：${str(args, 'action')}`),
+    changesState: (args) => str(args, 'action') === 'open_url',
     name: 'browser',
     properties: {
       action: { enum: ['open_url', 'read_page', 'list_tabs', 'focus_tab', 'status'], type: 'string' },
@@ -95,6 +105,7 @@ const BRIDGE_SPECS: BridgeSpec[] = [
     },
     description: '在电脑上运行一条简单命令（默认 PowerShell），返回输出。打开文件、写文本文件不要用命令，用 files 的 open_file / write。只查询信息的命令（Get-Process、Get-ChildItem、Test-Path、tasklist、ipconfig 等）直接运行；会改动东西的命令会请用户确认。查信息时命令往往比点界面更快更稳。限制：一次一条，不能用管道 |、重定向、分号或 && 连接；不能删除、关机、结束进程。',
     describe: (args) => `运行命令：${clip(str(args, 'command'), 120)}`,
+    changesState: (args) => !isReadOnlyCommand(str(args, 'command')),
     name: 'run_command',
     readOnly: (args) => isReadOnlyCommand(str(args, 'command')),
     properties: {
@@ -133,6 +144,7 @@ const BRIDGE_SPECS: BridgeSpec[] = [
       const screen = str(args, 'screen') === 'secondary' ? '副屏' : str(args, 'screen') === 'primary' ? '主屏' : '';
       return str(args, 'action') === 'execute' ? `按刚才的预览移动${screen}桌面图标` : `预览${screen}桌面图标的整理方案`;
     },
+    changesState: (args) => str(args, 'action') === 'execute',
     name: 'desktop_icons',
     properties: {
       action: { enum: ['preview', 'execute'], type: 'string' },
@@ -176,12 +188,13 @@ const BRIDGE_SPECS: BridgeSpec[] = [
         ? `已接入：${installed}。用户要做的事这些扩展能做时就用它们（先 list 再 call）；用一个扩展打开的网页或程序，后面也用这个扩展继续操作（应用自带的 browser 看不到它打开的网页）。${accounts}`
         : '现在没有接入任何扩展。'}`;
     },
-    describe: (args) => `调用扩展工具 ${str(args, 'server_id')}/${str(args, 'tool_name')}`,
+    describe: (args) => `调用${isUnreviewedMcpServer(str(args, 'server_id')) ? '未审核插件的' : ''}扩展工具 ${str(args, 'server_id')}/${str(args, 'tool_name')}`,
+    changesState: (args) => str(args, 'action') === 'call' && !trustedReadOnlyMcpCall(args) && !isReadOnlyMcpCall(str(args, 'server_id'), str(args, 'tool_name'), jsonText(args, 'arguments_json'), isChromeDevtoolsServer(str(args, 'server_id'))),
     name: 'mcp',
     // Listing only reads; a call skips the card when the server declares that tool read-only
     // (its tools are listed first if she calls one straight away).
     prepare: async (args) => { if (str(args, 'action') === 'call') await ensureMcpToolsListed(str(args, 'server_id')); },
-    readOnly: (args) => str(args, 'action') !== 'call' || isReadOnlyMcpCall(str(args, 'server_id'), str(args, 'tool_name'), jsonText(args, 'arguments_json'), isChromeDevtoolsServer(str(args, 'server_id'))),
+    readOnly: (args) => str(args, 'action') !== 'call' || trustedReadOnlyMcpCall(args),
     properties: {
       action: { enum: ['list', 'call'], type: 'string' },
       arguments_json: { description: 'call 的参数，JSON 字符串', type: 'string' },
@@ -215,6 +228,7 @@ const BRIDGE_SPECS: BridgeSpec[] = [
     },
     description: '本机项目（代码、游戏、工具目录）：inspect 只读分析目录结构和启动方式；run 运行 inspect 给出的候选动作（action_index）。',
     describe: (args) => `运行本机项目里的动作：${clip(str(args, 'path') || '上次检查的项目')}`,
+    changesState: (args) => str(args, 'action') === 'run',
     name: 'local_project',
     properties: {
       action: { enum: ['inspect', 'run'], type: 'string' },
@@ -239,6 +253,7 @@ function formatResult(result: AgentChatCommandResult) {
 function bridgeTool(spec: BridgeSpec, petId: string | null | undefined, herBrowserPortNumber: number): ConversationTool {
   return {
     ...(spec.prepare ? { prepare: spec.prepare } : {}),
+    ...(spec.changesState ? { changesState: spec.changesState } : {}),
     confirmation: (args) => {
       const call = spec.call(args);
       if (typeof call === 'string' || spec.readOnly?.(args)) return null;
@@ -328,6 +343,9 @@ const webSearchTool: ConversationTool = {
   run: async (runtime, args) => {
     const query = str(args, 'query');
     if (!query) return '需要 query。';
+    if (HER_BROWSER_REQUEST.test(runtime.request ?? '')) {
+      return '不能用：用户要你用你自己的浏览器去查。接入了浏览器扩展（如 chrome-devtools）就用 mcp 打开网页再读，否则用 browser 的 open_url 打开网页、read_page 读内容。';
+    }
     const { buildExternalWebSearchInstruction } = await import('../../services/geminiService');
     const { settings, personality } = runtime.configRef.current;
     const text = await buildExternalWebSearchInstruction(query, personality, settings, 'allow', 'tool');

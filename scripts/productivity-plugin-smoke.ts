@@ -5,6 +5,8 @@ import { collectDueProductivityEvents, fallbackProductivityLine } from '../src/p
 import { DEFAULT_PRODUCTIVITY_SETTINGS, normalizeProductivitySettings } from '../src/productivity/productivitySettings';
 import { nextRepeatTime, parseLocalTime } from '../src/productivity/productivityTime';
 import type { PetConfig } from '../src/types';
+import { DEFAULT_CONFIG } from '../src/constants';
+import { normalizePetConfig } from '../src/petConfigNormalization';
 
 let cases = 0;
 const check = (actual: unknown, expected: unknown, label: string) => { assert.deepEqual(actual, expected, label); cases++; };
@@ -23,13 +25,15 @@ check(nextRepeatTime(at(2026, 10, 9, 8, 0), 'weekdays', now), at(2026, 10, 12, 8
 check(nextRepeatTime(at(2026, 10, 9, 8, 0), 'none', now), null, 'no repeat');
 
 // 2. Capabilities: registered, personal changes need no confirmation, reads are reads.
-let config = { settings: { productivity: DEFAULT_PRODUCTIVITY_SETTINGS } } as unknown as PetConfig;
+// A full default config: the tool list also asks other providers (roster, animations) about it.
+const baseConfig = normalizePetConfig(DEFAULT_CONFIG);
+let config = { ...baseConfig, settings: { ...baseConfig.settings, productivity: DEFAULT_PRODUCTIVITY_SETTINGS } } as PetConfig;
 const configRef = { current: config };
 const context = { configRef, onUpdateConfig: (next: PetConfig) => { config = next; configRef.current = next; } };
 const run = (capability: string, args: Record<string, unknown> = {}) => runPlatformCapability(context, { args, capability });
 check(['reminders.add', 'todos.complete', 'pomodoro.start'].map((id) => getPlatformCapability(id)?.risk), ['personal', 'personal', 'personal'], 'changes are personal');
 check(getPlatformCapability('reminders.list')?.risk, 'read', 'listing is a read');
-const toolNames = listConversationToolDefinitions({}).map((tool) => tool.function.name);
+const toolNames = listConversationToolDefinitions({ configRef, petId: null }).map((tool) => tool.function.name);
 check(['cap_reminders__add', 'cap_todos__list', 'cap_pomodoro__start'].every((name) => toolNames.includes(name)), true, 'exposed to the conversation loop');
 
 const added = await run('reminders.add', { in_minutes: 30, text: '喝水' });

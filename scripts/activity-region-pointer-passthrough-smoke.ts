@@ -910,7 +910,9 @@ assert.equal(
   'quick action menu center should stay on the anchor when the visual bounds are vertically balanced',
 );
 
-const windowManagerSource = readModuleProjectFile('electron/windowManager.cjs');
+// The manager's state moved into windowManagerState.cjs (managerState.*) in the window-manager split.
+const windowManagerSource = readModuleProjectFile('electron/windowManager.cjs')
+  + readModuleProjectFile('electron/windowManager/windowManagerState.cjs');
 const windowStackTopmostSource = readProjectFile('electron/windowManager/windowStackTopmost.cjs');
 const mainWindowLoadEventsSource = readProjectFile('electron/windowManager/mainWindowLoadEvents.cjs');
 const mainWindowPresentationEventsSource = readProjectFile('electron/windowManager/mainWindowPresentationEvents.cjs');
@@ -970,7 +972,7 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /getMainWindow: \(\) => mainWindow, getInputProxyWindow: \(\) => postDragInputProxyWindow/,
+  /getMainWindow: \(\) => managerState\.mainWindow, getInputProxyWindow: \(\) => managerState\.postDragInputProxyWindow/,
   'window stack should read the current root-owned main and input windows',
 );
 
@@ -1048,7 +1050,7 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /markMainWindowCanShow: \(\) => \{ mainWindowCanShow = true; \}/,
+  /markMainWindowCanShow: \(\) => \{ managerState\.mainWindowCanShow = true; \}/,
   'main window readiness should update the root-owned Electron readiness flag',
 );
 
@@ -1132,7 +1134,7 @@ assert.match(
 
 assert.match(
   windowManagerSource,
-  /let petDragNativeShapeActive = false/,
+  /petDragNativeShapeActive: false/,
   'main process should keep an explicit pet-drag native shape session active until renderer drag lifecycle ends',
 );
 assert.match(

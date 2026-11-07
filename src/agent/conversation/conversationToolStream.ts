@@ -12,6 +12,7 @@ import {
   type ConversationToolRuntime,
 } from './conversationTools';
 import { createConversationToolSink, type ConversationToolTurn } from './conversationToolTypes';
+import { describeGoalCheckOutcome, type GoalVerification } from './conversationGoalCheck';
 
 export const CONVERSATION_LOOP_MAX_ROUNDS = 8;
 /** Operating the computer takes a round per action (each one needs to see the last result). */
@@ -25,6 +26,9 @@ export interface ConversationLoopEvent {
 
 /** Tool results that tell her to stop and ask the user (see conversationDesktopTools). */
 const STOP_AND_ASK = /【注意】|先停下/u;
+/** Added after a round that changed something on the computer, while the result is unchecked. */
+const VERIFY_REMINDER = '（这一步改动了电脑上的东西。整件事做完后，先调用 verify_goal 核对结果，再告诉用户做完了没有。）';
+
 
 /**
  * One model reply that may call tools: each round streams its text, then the tool calls run
@@ -58,6 +62,12 @@ export async function* streamConversationWithTools(options: {
   // step limit). If she then answers without tools, the task is not done: she is waiting for
   // the user's decision, and the card should say so instead of 已完成.
   let toldToStop = false;
+  // Goal checks (2026-11-06): a tool succeeding is not the task succeeding. After anything that
+  // changed the computer she is asked to verify_goal before saying it is done; the card reports
+  // the last check, or that there was none.
+  const canVerify = tools.some((tool) => tool.function.name === 'verify_goal');
+  let uncheckedChange = false;
+  let lastVerification: GoalVerification | null = null;
   try {
     for (let round = 1; round <= maxRounds; round += 1) {
       const sink = createConversationToolSink();
@@ -81,7 +91,8 @@ export async function* streamConversationWithTools(options: {
         return;
       }
       if (!sink.toolCalls.length) {
-        if (worldOutcome) worldOutcome = anyToolSucceeded && !toldToStop ? 'completed' : 'failed';
+        const checkFailed = Boolean(lastVerification?.failed) && !uncheckedChange;
+        if (worldOutcome) worldOutcome = anyToolSucceeded && !toldToStop && !checkFailed ? 'completed' : 'failed';
         stoppedFromOutside = false;
         return;
       }
@@ -102,6 +113,19 @@ export async function* streamConversationWithTools(options: {
       const results = await runConversationToolCalls(options.runtime, sink.toolCalls);
       anyToolSucceeded ||= results.some((result) => result.ok);
       toldToStop = results.some((result) => STOP_AND_ASK.test(result.content));
+      // In call order: a check covers the changes made before it, not the ones after it.
+      results.forEach((result) => {
+        if (result.verification) {
+          lastVerification = result.verification;
+          uncheckedChange = false;
+        } else if (result.changedState && canVerify) {
+          uncheckedChange = true;
+        }
+      });
+      const lastChanging = [...results].reverse().find((result) => result.changedState);
+      if (canVerify && uncheckedChange && lastChanging && !STOP_AND_ASK.test(lastChanging.content)) {
+        lastChanging.content = `${lastChanging.content}\n${VERIFY_REMINDER}`;
+      }
       publishAgentRuntimeWorldProgress({ continuation: { taskState }, stepIndex: round, type: 'tool-result' });
       if (results.some((result) => result.compact)) {
         compactable.splice(0).forEach((entry) => { entry.message.content = entry.compact; });
@@ -150,7 +174,11 @@ export async function* streamConversationWithTools(options: {
     if (worldOutcome) {
       options.runtime.progress?.finish(
         worldOutcome === 'completed' ? 'done' : worldOutcome === 'cancelled' ? 'cancelled' : worldOutcome === 'max-steps' ? 'budget' : 'failed',
-        stoppedFromOutside ? '被新的消息打断，还没做完' : toldToStop ? '卡住了，停下来问你怎么办' : undefined,
+        stoppedFromOutside
+          ? '被新的消息打断，还没做完'
+          : toldToStop
+            ? '卡住了，停下来问你怎么办'
+            : worldOutcome === 'completed' || worldOutcome === 'failed' ? describeGoalCheckOutcome(lastVerification, uncheckedChange) : undefined,
       );
     }
   }

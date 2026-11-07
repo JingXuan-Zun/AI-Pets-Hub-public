@@ -81,8 +81,17 @@ function handleRpcLine(state, line) {
   pending.resolve(message.result ?? {});
 }
 
+// One JSON-RPC line can hold a screenshot (a few MB of base64); far more than that without a
+// line break is a broken or hostile server, and it would only grow in memory (2026-11-06).
+const MAX_STDOUT_LINE_CHARS = 48 * 1024 * 1024;
+
 function handleStdoutChunk(state, chunk) {
   state.stdoutBuffer += chunk;
+  if (state.stdoutBuffer.length > MAX_STDOUT_LINE_CHARS && state.stdoutBuffer.indexOf('\n') < 0) {
+    state.stdoutBuffer = '';
+    closeMcpProcess(state, 'output-too-large');
+    return;
+  }
   let newlineIndex = state.stdoutBuffer.indexOf('\n');
   while (newlineIndex >= 0) {
     const line = state.stdoutBuffer.slice(0, newlineIndex).trim();
@@ -200,6 +209,7 @@ async function withMcpSession(server, log, callback) {
 module.exports = {
   closeMcpProcess,
   createMcpProcess,
+  handleStdoutChunk,
   initializeMcpSession,
   sendRpc,
   withMcpSession,

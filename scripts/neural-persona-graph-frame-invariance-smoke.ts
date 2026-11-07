@@ -4,7 +4,6 @@ import {
   type NeuralPersonaGraphViewEdge,
   type NeuralPersonaLayoutNode,
 } from '../src/character-graph/neural-persona';
-import { NEURAL_PERSONA_GRAPH_TARGET_FPS } from '../src/components/settings/neuralPersonaGraphFrameRate';
 
 const nodes: NeuralPersonaLayoutNode[] = [
   {
@@ -53,7 +52,6 @@ function distance(left: { x: number; y: number }, right: { x: number; y: number 
 
 const at60 = runAtFrameRate(60);
 const at144 = runAtFrameRate(144);
-assert.equal(NEURAL_PERSONA_GRAPH_TARGET_FPS, 60);
 const deltas = Object.fromEntries(Object.keys(at60).map((nodeId) => [
   nodeId,
   distance(at60[nodeId], at144[nodeId]),

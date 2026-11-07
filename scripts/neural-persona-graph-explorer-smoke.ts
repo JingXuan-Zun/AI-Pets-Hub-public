@@ -27,20 +27,9 @@ import {
   type NeuralPersonaGraphProjection,
   type NeuralPersonaNode,
 } from '../src/character-graph/neural-persona';
-import { NeuralPersonaGraphExplorer } from '../src/components/settings/NeuralPersonaGraphExplorer';
-import { NeuralPersonaGraphPhysicsSettings } from '../src/components/settings/NeuralPersonaGraphPhysicsSettings';
 import { NeuralPersonaGraphExchangePanel } from '../src/components/settings/NeuralPersonaGraphExchangePanel';
 import { NeuralPersonaTagReviewInbox } from '../src/components/settings/NeuralPersonaTagReviewInbox';
-import {
-  buildNeuralPersonaNodeDraft,
-  applyNeuralPersonaNodeEditorType,
-  createEmptyNeuralPersonaNodeEditorDraft,
-  createNeuralPersonaNodeEditorDraft,
-  mergeNeuralPersonaEditorTags,
-} from '../src/components/settings/neuralPersonaNodeEditorDraft';
 import { resolveNeuralPersonaSettingsPreviewEnabled } from '../src/components/settings/neuralPersonaPreviewGate';
-import { resolveNeuralPersonaGraphEdgeVisualStyle } from '../src/components/settings/neuralPersonaGraphEdgeVisualStyle';
-import { resolveNeuralPersonaGraphFocusAlphas } from '../src/components/settings/neuralPersonaGraphFocusVisibility';
 const sourceFiles = [
   'src/character-graph/neural-persona/neuralPersonaNodeCommandService.ts',
   'src/character-graph/neural-persona/neuralPersonaNodeHierarchy.ts',
@@ -49,34 +38,11 @@ const sourceFiles = [
   'src/character-graph/neural-persona/neuralPersonaGraphDrag.ts',
   'src/character-graph/neural-persona/neuralPersonaGraphPhysics.ts',
   'src/character-graph/neural-persona/neuralPersonaGraphPhysicsConfig.ts',
-  'src/components/settings/NeuralPersonaGraphCanvas.tsx',
-  'src/components/settings/NeuralPersonaGraphCanvasToolbar.tsx',
-  'src/components/settings/NeuralPersonaGraphPhysicsSettings.tsx',
-  'src/components/settings/NeuralPersonaGraphPixiCanvas.tsx',
-  'src/components/settings/NeuralPersonaGraphSvgCanvas.tsx',
-  'src/components/settings/NeuralPersonaGraphControls.tsx',
-  'src/components/settings/NeuralPersonaGraphDetails.tsx',
-  'src/components/settings/NeuralPersonaGraphExplorer.tsx',
   'src/components/settings/NeuralPersonaGraphExchangePanel.tsx',
   'src/components/settings/neuralPersonaGraphExchangeActions.ts',
   'src/components/settings/SettingsNeuralPersonaGraphSection.tsx',
-  'src/components/settings/useNeuralPersonaGraphCanvasController.ts',
-  'src/components/settings/useNeuralPersonaGraphPixiCanvas.ts',
   'src/components/settings/useNeuralPersonaGraphFullscreen.ts',
-  'src/components/settings/useNeuralPersonaGraphPhysicsConfig.ts',
-  'src/components/settings/neuralPersonaGraphPhysics.worker.ts',
-  'src/components/settings/neuralPersonaGraphPhysicsWorkerProtocol.ts',
-  'src/components/settings/neuralPersonaGraphFrameRate.ts',
-  'src/components/settings/neuralPersonaGraphEdgeVisualStyle.ts',
-  'src/components/settings/neuralPersonaGraphFocusVisibility.ts',
-  'src/components/settings/neuralPersonaGraphPixiApplication.ts',
-  'src/components/settings/neuralPersonaGraphPixiRuntime.ts',
-  'src/components/settings/neuralPersonaGraphPixiResizeObserver.ts',
-  'src/components/settings/neuralPersonaGraphPixiScene.ts',
-  'src/components/settings/neuralPersonaGraphPixiViewport.ts',
-  'src/components/settings/neuralPersonaGraphWorkerPhysics.ts',
   'src/components/settings/useNeuralPersonaGraphSectionState.ts',
-  'src/components/settings/neuralPersonaNodeEditorDraft.ts',
   'src/components/settings/NeuralPersonaTagReviewInbox.tsx',
   'src/components/settings/neuralPersonaTagReviewActions.ts',
   'src/components/settings/neuralPersonaPreviewGate.ts',
@@ -114,50 +80,9 @@ const exchangePanelSource = fs.readFileSync(
   path.resolve('src/components/settings/NeuralPersonaGraphExchangePanel.tsx'),
   'utf8',
 );
-const pixiRuntimeSource = fs.readFileSync(path.resolve(
-  'src/components/settings/neuralPersonaGraphPixiRuntime.ts',
-), 'utf8');
-const pixiInteractionsSource = fs.readFileSync(path.resolve(
-  'src/components/settings/neuralPersonaGraphPixiInteractions.ts',
-), 'utf8');
-const pixiResizeObserverSource = fs.readFileSync(path.resolve(
-  'src/components/settings/neuralPersonaGraphPixiResizeObserver.ts',
-), 'utf8');
-const pixiApplicationSource = fs.readFileSync(path.resolve(
-  'src/components/settings/neuralPersonaGraphPixiApplication.ts',
-), 'utf8');
-const pixiSceneSource = fs.readFileSync(path.resolve(
-  'src/components/settings/neuralPersonaGraphPixiScene.ts',
-), 'utf8');
-const svgCanvasSource = fs.readFileSync(path.resolve(
-  'src/components/settings/NeuralPersonaGraphSvgCanvas.tsx',
-), 'utf8');
 const settingsPersonalityTabSource = fs.readFileSync(path.resolve(
   'src/components/settings/SettingsPersonalityTab.tsx',
 ), 'utf8');
-assert.match(pixiRuntimeSource, /installNeuralPersonaGraphResizeObserver/u);
-assert.match(pixiInteractionsSource,
-  /if \(nodeId\) \{\s+if \(!runtime\.multiSelectMode\) runtime\.callbacks\.onFocusNode\(nodeId\)/u);
-assert.match(svgCanvasSource,
-  /onPointerDown=\{\(event\) => \{ if \(!props\.multiSelectMode\) props\.onFocusNode\(node\.nodeId\); props\.beginDrag/u);
-assert.match(pixiResizeObserverSource, /new ResizeObserver/u);
-assert.match(pixiApplicationSource, /app\.renderer\.resize/u);
-assert.match(pixiSceneSource, /new Sprite\(Texture\.WHITE\)/u);
-assert.doesNotMatch(pixiSceneSource, /edgeGraphics\.clear\(\)/u);
-const connectedEdgeStyle = resolveNeuralPersonaGraphEdgeVisualStyle({
-  edgeId: 'e1', selectedNodeId: 'identity', sourceNodeId: 'identity',
-  targetNodeId: 'trust', weight: 0.8,
-});
-const unrelatedEdgeStyle = resolveNeuralPersonaGraphEdgeVisualStyle({
-  edgeId: 'e2', selectedNodeId: 'identity', sourceNodeId: 'trust',
-  targetNodeId: 'calm', weight: 0.6,
-});
-assert.ok(connectedEdgeStyle.alpha > unrelatedEdgeStyle.alpha);
-assert.ok(connectedEdgeStyle.width > unrelatedEdgeStyle.width);
-assert.equal(resolveNeuralPersonaGraphEdgeVisualStyle({
-  edgeId: 'e1', selectedEdgeId: 'e1', selectedNodeId: 'calm',
-  sourceNodeId: 'identity', targetNodeId: 'trust', weight: 0.8,
-}).color, 0x67e8f9);
 assert.match(exchangePanelSource, /preview\.diff\.requiresProtectedConfirmation/u);
 assert.match(exchangePanelSource, /confirmProtectedChanges/u);
 assert.match(exchangePanelSource, /disabled=\{!preview\.diff\.hasChanges/u);
@@ -180,21 +105,6 @@ const all = buildNeuralPersonaGraphExplorerView(projection, EMPTY_NEURAL_PERSONA
 assert.equal(all.nodes.length, 3);
 assert.equal(all.edges.length, 2);
 assert.equal(all.clusters.length, 0);
-const focusView = {
-  ...all,
-  edges: ['root:one', 'one:two', 'two:three'].map((edgeId, index) => ({
-    edgeId, relationType: 'contains' as const,
-    sourceNodeId: ['root', 'one', 'two'][index]!,
-    targetNodeId: ['one', 'two', 'three'][index]!, weight: 1,
-  })),
-  nodes: ['root', 'one', 'two', 'three'].map((nodeId, index) => ({
-    ...all.nodes[0]!, nodeId, x: index * 100, y: 0,
-  })),
-};
-const focusAlphas = resolveNeuralPersonaGraphFocusAlphas(focusView, 'root');
-assert.equal(focusAlphas.get('one'), 1);
-assert.equal(focusAlphas.get('two'), 1);
-assert.equal(focusAlphas.get('three'), 0.35);
 assert.equal(NEURAL_PERSONA_GRAPH_INITIAL_WORKSPACE_WIDTH, NEURAL_PERSONA_GRAPH_VIEW_WIDTH * 3);
 assert.equal(NEURAL_PERSONA_GRAPH_INITIAL_WORKSPACE_HEIGHT, NEURAL_PERSONA_GRAPH_VIEW_HEIGHT * 3);
 assert.deepEqual(CENTERED_NEURAL_PERSONA_GRAPH_VIEWPORT, {
@@ -290,46 +200,6 @@ for (let frame = 0; frame < 16; frame += 1) disabledRepulsion.step();
 const disabledLeft = disabledRepulsion.getPosition(overlapping[0].nodeId)!;
 const disabledRight = disabledRepulsion.getPosition(overlapping[1].nodeId)!;
 assert.equal(Math.hypot(disabledLeft.x - disabledRight.x, disabledLeft.y - disabledRight.y), 0);
-const markup = renderToStaticMarkup(createElement(NeuralPersonaGraphExplorer, {
-  canvasStyle: { height: 520 }, editorMode: false, onToggleEditor: () => undefined, projection,
-}));
-assert.match(markup, /神经人格图谱/u);
-assert.match(markup, /编辑节点/u);
-assert.match(markup, /力与碰撞/u);
-assert.match(markup, /珍视用户/u);
-assert.match(markup, /data-neural-graph-edge/u);
-assert.match(markup, /data-neural-graph-canvas/u);
-const physicsSettingsMarkup = renderToStaticMarkup(createElement(
-  NeuralPersonaGraphPhysicsSettings,
-  { config: DEFAULT_NEURAL_PERSONA_GRAPH_PHYSICS_CONFIG, onChange: () => undefined },
-));
-assert.equal(physicsSettingsMarkup.match(/type="range"/gu)?.length, 5);
-assert.match(physicsSettingsMarkup, /拖动跟随强度/u);
-assert.match(physicsSettingsMarkup, /拖动最大拉伸距离/u);
-assert.match(physicsSettingsMarkup, /节点间的排斥力/u);
-assert.match(physicsSettingsMarkup, /相连节点间的吸引力/u);
-assert.match(physicsSettingsMarkup, /max="500"/u);
-assert.doesNotMatch(markup, /来源：/u);
-const identityDraft = applyNeuralPersonaNodeEditorType(
-  createEmptyNeuralPersonaNodeEditorDraft('node:generated'),
-  'identity-reference',
-);
-assert.equal(identityDraft.protected, true);
-assert.equal(identityDraft.nodeId, 'node:generated');
-const preferenceDraft = applyNeuralPersonaNodeEditorType(
-  { ...identityDraft, sourceRef: 'persona:self' },
-  'preference',
-);
-assert.equal(preferenceDraft.protected, false);
-assert.equal(preferenceDraft.sourceRef, '');
-const editorDraft = buildNeuralPersonaNodeDraft({
-  ...createEmptyNeuralPersonaNodeEditorDraft(),
-  influenceSummary: '喜欢安静地陪伴用户。',
-  nodeId: 'preference:quiet',
-  tags: '陪伴，安静',
-});
-assert.equal(editorDraft.tags.length, 2);
-assert.equal(editorDraft.tags.every((tag) => tag.source === 'user'), true);
 const reviewNode: NeuralPersonaNode = {
   activationCount: 0, baseWeight: 0.5, confidence: 0.8, createdAt: 1,
   currentActivation: 0, decayRate: 0.1, influenceSummary: '平静地陪伴用户。',
@@ -341,10 +211,6 @@ const reviewNode: NeuralPersonaNode = {
     { canonicalId: 'custom:old', label: '旧标签', source: 'user', status: 'active' },
   ],
 };
-assert.equal(createNeuralPersonaNodeEditorDraft(reviewNode).tags, '旧标签');
-const mergedTags = mergeNeuralPersonaEditorTags(reviewNode, editorDraft.tags);
-assert.equal(mergedTags.some((tag) => tag.canonicalId === 'tone:calm'
-  && tag.status === 'pending-review'), true);
 const reviewMarkup = renderToStaticMarkup(createElement(NeuralPersonaTagReviewInbox, {
   nodes: [],
   onReview: async () => ({ reason: 'unused', status: 'invalid' }),

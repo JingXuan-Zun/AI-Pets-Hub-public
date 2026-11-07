@@ -41,6 +41,7 @@ export function usePassivePetStatsTicker({
           ? 0
           : now - hungryStartedAtRef.current;
         const growthResult = applyLifeCompanionPassiveGrowthTick({
+          feelingsNeverDrop: prev.settings.lifeCompanion?.feelingsNeverDrop !== false,
           hungryDurationMs,
           stats: prev.stats,
           tickMs: PET_STATS_TICK_MS,

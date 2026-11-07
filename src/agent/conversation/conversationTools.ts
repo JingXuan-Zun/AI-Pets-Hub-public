@@ -11,6 +11,7 @@ import { conversationDesktopIconTool } from './conversationDesktopIconTool';
 import { conversationWindowMoveTool } from './conversationWindowMoveTool';
 import { conversationFileTool } from './conversationFileTools';
 import type { ConversationToolCall, ConversationToolDefinition } from './conversationToolTypes';
+import type { GoalVerification } from './conversationGoalCheck';
 import { collectConversationTools, registerConversationToolProvider, type ConversationToolScope } from './conversationToolProviders';
 
 /** What the tools can reach in the app; supplied by the chat session. */
@@ -22,6 +23,8 @@ export interface ConversationToolRuntime {
   executeAgentCommand?: AgentChatCommandHandler;
   onUpdateConfig: PetConfigUpdateHandler;
   petId: string | null;
+  /** The user's message this reply answers (tools that must follow an explicit wish read it). */
+  request?: string;
   /** Shows pictures in the chat as a message from this character (e.g. a drawing it made). */
   presentImages?: (images: Array<{ dataUrl: string; mimeType: string; name: string; sizeBytes?: number }>, caption: string) => void;
   /** Long jobs (a drawing) run on after the reply; see PlatformCapabilityContext.runInBackground. */
@@ -42,17 +45,24 @@ export interface ConversationTaskProgress {
 }
 
 export interface ConversationTool {
+  /**
+   * The call changes something on the computer (a window, a file, a page), so the task should end
+   * with verify_goal. Settings, reminders and other capabilities check their own writes.
+   */
+  changesState?: (args: Record<string, unknown>) => boolean;
   definition: ConversationToolDefinition;
   /** Returns the confirmation text when the call changes something; null runs it directly. */
   confirmation: (args: Record<string, unknown>) => string | null;
   /** Loads what `confirmation` needs to decide (e.g. which MCP tools are read-only) before it is asked. */
   prepare?: (args: Record<string, unknown>) => Promise<void>;
-  run: (runtime: ConversationToolRuntime, args: Record<string, unknown>) => Promise<string | { compact?: string; content: string; endsReply?: string }>;
+  run: (runtime: ConversationToolRuntime, args: Record<string, unknown>) => Promise<string | { compact?: string; content: string; endsReply?: string; verification?: GoalVerification }>;
   /** Runs one at a time in call order (desktop actions depend on what the previous one did). */
   sequential?: boolean;
 }
 
 export interface ConversationToolResult {
+  /** The call worked and changed something on the computer (see ConversationTool.changesState). */
+  changedState?: boolean;
   /** Shorter form that replaces this result in later rounds once a newer one has `compact` too. */
   compact?: string;
   content: string;
@@ -61,6 +71,8 @@ export interface ConversationToolResult {
   id: string;
   name: string;
   ok: boolean;
+  /** verify_goal: how the end state checked out. */
+  verification?: GoalVerification;
 }
 
 const CAPABILITY_PREFIX = 'cap_';
@@ -166,6 +178,7 @@ registerConversationToolProvider({
   id: 'desktop-session',
   order: 70,
   tools: (scope) => (scope.desktop?.tools ?? []).map((desktopTool) => ({
+    changesState: () => Boolean(desktopTool.changesState),
     confirmation: () => null,
     definition: desktopTool.definition,
     run: (_runtime, args) => desktopTool.run(args),
@@ -225,9 +238,11 @@ async function runOneStep(tools: Map<string, ConversationTool>, runtime: Convers
   }
   try {
     const output = await tool.run(runtime, args);
+    const content = typeof output === 'string' ? output : output.content;
+    const changedState = Boolean(tool.changesState?.(args)) && !FAILED_OUTPUT.test(content);
     return typeof output === 'string'
-      ? { content: output, id: call.id, name: call.name, ok: true }
-      : { ...output, id: call.id, name: call.name, ok: true };
+      ? { changedState, content: output, id: call.id, name: call.name, ok: true }
+      : { ...output, changedState, id: call.id, name: call.name, ok: true };
   } catch (error) {
     return fail(`执行出错：${error instanceof Error ? error.message : String(error)}`);
   }

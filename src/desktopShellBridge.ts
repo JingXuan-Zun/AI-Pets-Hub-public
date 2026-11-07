@@ -1089,6 +1089,7 @@ export const desktopPetShellBridge = {
     return window.desktopPetShell?.startGptSovitsService?.(settings) ?? Promise.resolve(null);
   },
   listGptSovitsModels: () => window.desktopPetShell?.listGptSovitsModels?.() ?? Promise.resolve(null),
+  installStarterVoice: (settings?: unknown) => window.desktopPetShell?.installStarterVoice?.(settings) ?? Promise.resolve(null),
   installGptSovitsRuntime: (settings?: unknown) => {
     pushRuntimeLog('IPC', '安装 GPT-SoVITS 运行环境', summarizeVoiceSettings(settings));
     return window.desktopPetShell?.installGptSovitsRuntime?.(settings) ?? Promise.resolve(null);

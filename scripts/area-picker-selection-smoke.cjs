@@ -4,6 +4,7 @@ const path = require('node:path');
 const ts = require('typescript');
 const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
+const withoutCwd = (text) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const rootFile = require.resolve('../electron/areaPickerService.cjs');
 const source = fs.readFileSync(rootFile, 'utf8');
 const retired = ['getNativeAreaPickerPowerShellScript', 'getNativeAreaPickerPollingPowerShellScript'];
@@ -107,10 +108,10 @@ async function main() {
   for (const action of ['submit', 'cancel', 'escape', 'close', 'closed', 'dispose']) for (const loading of [false, true]) for (const shortcut of ['normal', 'false', 'throw']) for (const empty of [false, true]) {
     const actual = await run(action, loading, shortcut, empty, false);
     if (oldSource) assert.deepEqual(actual, await run(action, loading, shortcut, empty, true));
-    hash.update(JSON.stringify(actual) + '\n'); cases++;
+    hash.update(withoutCwd(JSON.stringify(actual) + '\n')); cases++;
   }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, '694d1e82bd625843be68682cf1822c58f9f5a8c12669750efc1b614fe7c7e566', 'Reviewed production selection/window/shortcut behavior');
+  assert.equal(fingerprint, '1b14ea051639c82e90fbf71d88eb15f0fd7e1bf1419dcf13279ab130455244ba', 'Reviewed production selection/window/shortcut behavior');
   console.log('Area picker selection passed: ' + cases + ' loading/shortcut/empty/submit/cancel/close/dispose/reuse cases; actual root, controlled Electron.');
 }
 module.exports = { runSelection: run };

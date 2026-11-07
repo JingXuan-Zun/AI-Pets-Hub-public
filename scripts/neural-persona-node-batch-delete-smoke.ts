@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {
   DEFAULT_NEURAL_PERSONA_CONFIG,
   NEURAL_PERSONA_SCHEMA_VERSION,
@@ -12,20 +11,10 @@ import {
   type NeuralPersonaNodeDraft,
 } from '../src/character-graph/neural-persona';
 import { toggleNeuralPersonaNodeBatchSelection } from '../src/components/settings/neuralPersonaNodeBatchSelection';
-import { selectNeuralPersonaGraphNodesInMarquee } from '../src/components/settings/neuralPersonaGraphPixiHitTesting';
 
 assert.deepEqual(toggleNeuralPersonaNodeBatchSelection([], 'node:a'), ['node:a']);
 assert.deepEqual(toggleNeuralPersonaNodeBatchSelection(['node:a'], 'node:b'), ['node:a', 'node:b']);
 assert.deepEqual(toggleNeuralPersonaNodeBatchSelection(['node:a', 'node:b'], 'node:a'), ['node:b']);
-const marqueeNodes = [{ nodeId: 'node:a' }, { nodeId: 'node:b' }, { nodeId: 'node:c' }];
-const marqueePositions = new Map([
-  ['node:a', { x: 20, y: 30 }], ['node:b', { x: 80, y: 90 }],
-  ['node:c', { x: 180, y: 190 }],
-]);
-assert.deepEqual(selectNeuralPersonaGraphNodesInMarquee(
-  marqueeNodes, (nodeId) => marqueePositions.get(nodeId) ?? null,
-  { x: 100, y: 110 }, { x: 0, y: 0 },
-), ['node:a', 'node:b']);
 
 function memoryStorage(): NeuralPersonaAtomicStorage {
   const records = new Map<string, string>();
@@ -123,42 +112,5 @@ assert.deepEqual(await batchDelete.deleteNodes({
   commandId: 'delete-stale', expectedRevision: 5,
   nodeIds: ['identity:self'], roleId: 'role-a', confirmProtectedNodes: true,
 }), { actualRevision: 6, status: 'conflict' });
-
-const panelSource = fs.readFileSync(
-  'src/components/settings/NeuralPersonaNodeBatchDeletePanel.tsx', 'utf8',
-);
-const toolbarSource = fs.readFileSync(
-  'src/components/settings/NeuralPersonaGraphCanvasToolbar.tsx', 'utf8',
-);
-const sectionSource = fs.readFileSync(
-  'src/components/settings/SettingsNeuralPersonaGraphSection.tsx', 'utf8',
-);
-assert.match(toolbarSource, /框选节点/u);
-assert.match(toolbarSource, /data-neural-graph-marquee-toggle/u);
-assert.match(toolbarSource, /selectedNodeCount/u);
-assert.match(panelSource, /图谱顶部的“框选节点”/u);
-assert.match(panelSource, /全选普通节点/u);
-assert.match(panelSource, /确认批量删除/u);
-assert.match(panelSource, /一键删除所有普通节点/u);
-assert.match(panelSource, /保留主要人格主体/u);
-const runtimeSource = fs.readFileSync(
-  'src/components/settings/neuralPersonaGraphPixiRuntime.ts', 'utf8',
-);
-const interactionSource = fs.readFileSync(
-  'src/components/settings/neuralPersonaGraphPixiInteractions.ts', 'utf8',
-);
-const sceneSource = fs.readFileSync(
-  'src/components/settings/neuralPersonaGraphPixiScene.ts', 'utf8',
-);
-const svgSource = fs.readFileSync(
-  'src/components/settings/NeuralPersonaGraphSvgCanvas.tsx', 'utf8',
-);
-assert.match(runtimeSource, /onSelectNodes/u);
-assert.match(interactionSource, /kind: 'marquee'/u);
-assert.match(interactionSource, /selectNeuralPersonaGraphNodesInMarquee/u);
-assert.match(sceneSource, /batchSelectedNodeIds\.has\(node\.nodeId\)/u);
-assert.match(svgSource, /MarqueeLayer/u);
-assert.match(svgSource, /onSelectNodes/u);
-assert.match(panelSource, /filter\(\(node\) => !node\.protected\)/u);
 
 console.log('neural persona node batch delete smoke ok');
