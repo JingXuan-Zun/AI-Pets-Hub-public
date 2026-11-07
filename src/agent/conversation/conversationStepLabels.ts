@@ -39,6 +39,7 @@ export function describeConversationStep(name: string, args: Record<string, unkn
     case 'scroll': return '滚动页面';
     case 'drag': return '拖动';
     case 'wait': return '等待界面加载';
+    case 'verify_goal': return '核对结果';
     case 'files': return FILE_ACTIONS[text(args, 'action')] ?? '处理文件';
     case 'move_desktop_icon': return `把桌面图标${quoted(text(args, 'name'))}挪到${text(args, 'screen') || '副屏'}`;
     case 'memory': return text(args, 'action') === 'forget' ? '删除记忆' : '查看记忆';

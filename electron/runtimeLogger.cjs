@@ -37,6 +37,19 @@ function summarizeRuntimeValue(value, depth = 0) {
   return typeof value;
 }
 
+// API keys never reach the log, whatever path they came by (a key pasted into the chat during
+// first-run setup is part of the message text the IPC log summarizes).
+const SECRET_PATTERNS = [
+  /\bsk-[A-Za-z0-9_-]{16,}/gu,
+  /\b(Bearer\s+)[A-Za-z0-9._~+/=-]{16,}/giu,
+];
+
+function maskSecrets(line) {
+  return SECRET_PATTERNS.reduce((text, pattern) => text.replace(pattern, (match, prefix) => (
+    typeof prefix === 'string' && prefix ? `${prefix}***` : `${match.slice(0, 3)}…${match.slice(-4)}`
+  )), String(line));
+}
+
 function createRuntimeLogger(options = {}) {
   const {
     limit = MAX_RUNTIME_LOG_ENTRIES,
@@ -64,7 +77,8 @@ function createRuntimeLogger(options = {}) {
     });
   }
 
-  function append(line) {
+  function append(rawLine) {
+    const line = maskSecrets(rawLine);
     entries = [line, ...entries].slice(0, Math.max(20, limit));
 
     if (typeof persist === 'function') {
@@ -91,5 +105,6 @@ function createRuntimeLogger(options = {}) {
 
 module.exports = {
   createRuntimeLogger,
+  maskSecrets,
   summarizeRuntimeValue,
 };

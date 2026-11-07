@@ -154,7 +154,8 @@ assertIncludes(
 );
 assertIncludes(
   chatWindowSource,
-  'onPointerDown={isInteractiveDialogue ? undefined : startWindowDrag}',
+  // The video-call view (04cb10b) stays draggable like the normal chat window.
+  'onPointerDown: startWindowDrag',
   'chat window should route standalone pointer drag through the current-window move hook',
 );
 assertIncludes(
@@ -170,7 +171,7 @@ assertIncludes(
 assertIncludes(
   chatWindowSource,
   "const isInteractiveDialogue = interactiveDialogueActive && chatMode === 'single';",
-  'only single-chat interactive dialogue should disable standalone window dragging',
+  'the video-call view is single-chat only',
 );
 assertIncludes(
   chatAutoScrollSource,
@@ -189,8 +190,8 @@ assertIncludes(
 );
 assertIncludes(
   chatWindowSource,
-  'onToggleMaximize={isInteractiveDialogue ? undefined : toggleMaximizeWindow}',
-  'chat window should offer maximize/restore outside interactive dialogue',
+  'onToggleMaximize={toggleMaximizeWindow}',
+  'chat window should offer maximize/restore (also in the video-call view since 04cb10b)',
 );
 [
   'useStandaloneWindowCompactFrame',
@@ -371,7 +372,7 @@ assertIncludes(
 );
 assertIncludes(
   chatWindowSource,
-  'relative flex h-screen w-screen min-h-0 flex-col overflow-hidden',
+  'relative flex h-screen w-screen min-h-0',
   'chat window should keep the original single-shell layout',
 );
 assertIncludes(windowFrameControlsSource, 'onPointerDownCapture={handlePointerDownCapture}', 'compact handles should capture pointerdown before stopping bubbling');
@@ -415,7 +416,7 @@ assertIncludes(
 );
 assert.match(
   chatWindowSource,
-  /useStandaloneWindowDrag\(\{[\s\S]*?isMaximized,\s*\}\);/u,
+  /useStandaloneWindowDrag\(\{[\s\S]*?isMaximized,?\s*\}\);/u,
   'chat window drag should know whether the window is maximized',
 );
 

@@ -14,7 +14,6 @@ const moduleDirectories = new Map([
   ['src/agent/resultAssessment/resultEvidenceAssessment.ts', 'src/agent/resultAssessment'],
   ['src/agent/capabilities/recoveryObservation/recoveryObservationBudget.ts', 'src/agent/capabilities/recoveryObservation'],
   ['src/agent/desktopObservation/windowAppObservation.ts', 'src/agent/desktopObservation'],
-  ['src/agent/agentChatContext.ts', 'src/agent/chatContext'],
   ['src/agent/desktopTools/windowUiInteraction.ts', 'src/agent/desktopTools'],
   ['src/agent/runtime/agentApprovedDispatchResolution.ts', 'src/agent/runtime/approvedDispatch'],
   ['src/agent/runtime/agentApprovalContinuationRuntime.ts', 'src/agent/runtime/approvalContinuation'],

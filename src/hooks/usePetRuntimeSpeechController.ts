@@ -1,3 +1,4 @@
+import { isChatModelConfigured } from '../onboarding/onboardingApiSetup';
 import { useCallback, useRef, type MutableRefObject } from 'react';
 import { desktopPetChatStore } from '../chatStore';
 import { pushFrontendRuntimeError, pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
@@ -140,6 +141,11 @@ export function usePetRuntimeSpeechController({
     // The life companion switches for these lines were shown in settings but never checked.
     const lifeCompanion = configRef.current.settings.lifeCompanion;
     if (trigger.kind === 'affection-milestone' && lifeCompanion?.affectionEnabled === false) return;
+    // With feelings that only grow, affection just sits at the top (each launch jumps it there):
+    // that jump is not a milestone worth a line.
+    if (trigger.kind === 'affection-milestone' && lifeCompanion?.feelingsNeverDrop !== false) return;
+    // No chat model yet (first run): these lines cannot be made; the guide is talking instead.
+    if (!isChatModelConfigured(configRef.current.settings)) return;
     if (trigger.kind !== 'affection-milestone' && lifeCompanion?.hungerEnabled === false) return;
     autoSpeechQueueRef.current = autoSpeechQueueRef.current
       .catch(() => undefined)

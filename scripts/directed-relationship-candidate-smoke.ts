@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import {
   approveDirectedRelationshipCandidate,
   buildDirectedRelationshipContextPacket,
-  buildDirectedRelationshipShadowReport,
   createDirectedRelationshipCandidate,
   EMPTY_DIRECTED_RELATIONSHIP_REPOSITORY,
   enqueueDirectedRelationshipCandidate,
@@ -69,5 +68,4 @@ assert.equal(repository.records[0]?.dimensions.trust, 70);
 const normalized = normalizeDirectedRelationshipRepository(JSON.parse(JSON.stringify(repository)));
 assert.equal(normalized.candidates.length, repository.candidates.length);
 assert.equal(normalized.shadowObservations.length, repository.shadowObservations.length);
-assert.equal(buildDirectedRelationshipShadowReport(normalized).writeMode, 'manual-approval-only');
 console.log('directed relationship candidate smoke ok');

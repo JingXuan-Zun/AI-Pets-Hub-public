@@ -65,19 +65,20 @@ for (const [label, source] of [
   assert.doesNotMatch(source, /border-[lt] border-primary\/25/, `${label} should not keep the old faint left/top border`);
 }
 
+// The activity region frame turned blue (#2F80ED) in the pink glass theme; sizes are what matter.
 assertIncludes(
   activityLayerSource,
-  'left-0 right-0 top-0 h-4 cursor-ns-resize border-t border-primary/45 bg-gradient-to-b from-primary/10 to-transparent',
+  'left-0 right-0 top-0 h-4 cursor-ns-resize border-t border-[#2F80ED]/70 bg-gradient-to-b from-[#2F80ED]/10 to-transparent',
   'activity region top handle should use the old-package h-4 interactive border',
 );
 assertIncludes(
   activityLayerSource,
-  'bottom-0 left-0 top-0 w-4 cursor-ew-resize border-l border-primary/45 bg-gradient-to-r from-primary/10 to-transparent',
+  'bottom-0 left-0 top-0 w-4 cursor-ew-resize border-l border-[#2F80ED]/70 bg-gradient-to-r from-[#2F80ED]/10 to-transparent',
   'activity region left handle should use the old-package w-4 interactive border',
 );
 assertIncludes(
   activityLayerSource,
-  'left-0 top-0 h-5 w-5 cursor-nwse-resize border-l border-t border-primary/45 bg-gradient-to-br from-primary/10 to-transparent',
+  'left-0 top-0 h-5 w-5 cursor-nwse-resize border-l border-t border-[#2F80ED]/70 bg-gradient-to-br from-[#2F80ED]/10 to-transparent',
   'activity region corner handle should use the old-package h-5/w-5 interactive corner',
 );
 assertIncludes(

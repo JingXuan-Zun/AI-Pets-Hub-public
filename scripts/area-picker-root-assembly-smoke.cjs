@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const ts = require('typescript');
 const crypto = require('node:crypto');
 const { runSelection } = require('./area-picker-selection-smoke.cjs');
+const withoutCwd = (text) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const rootFile = require.resolve('../electron/areaPickerService.cjs');
 const old = process.argv[2] ? fs.readFileSync(process.argv[2], 'utf8') : null;
 if (old) {
@@ -23,9 +24,9 @@ async function main() {
   for (const action of ['submit', 'cancel', 'escape', 'close', 'closed', 'dispose']) for (const loading of [false, true]) for (const shortcut of ['normal', 'false', 'throw']) for (const empty of [false, true]) {
     const actual = await runSelection(action, loading, shortcut, empty, false);
     if (old) assert.deepEqual(actual, await runSelection(action, loading, shortcut, empty, old));
-    hash.update(JSON.stringify(actual) + '\n'); cases++;
+    hash.update(withoutCwd(JSON.stringify(actual) + '\n')); cases++;
   }
-  assert.equal(hash.digest('hex'), '694d1e82bd625843be68682cf1822c58f9f5a8c12669750efc1b614fe7c7e566', 'Assembly preserves actual root window/selection/shortcut/timer behavior');
+  assert.equal(hash.digest('hex'), '1b14ea051639c82e90fbf71d88eb15f0fd7e1bf1419dcf13279ab130455244ba', 'Assembly preserves actual root window/selection/shortcut/timer behavior');
   console.log('Area root assembly passed: ' + cases + ' real-root selection/loading/shortcut/close/dispose/reuse cases; controlled Electron.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

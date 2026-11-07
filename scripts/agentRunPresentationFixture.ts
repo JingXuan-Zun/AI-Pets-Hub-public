@@ -29,7 +29,6 @@ export function createAgentRunPresentationFixture(baselineSource?: string, basel
     chatStore: { desktopPetChatStore: store },
     frontendRuntimeLogger: { pushFrontendRuntimeLog: (...args: any[]) => effects.push(['log', ...args]) },
     multiPetChat: { createChatMessageId: (prefix: string) => `${prefix}-${++ids}` },
-    agentRuntimeUiStatusProjection: { isAgentTaskRuntimeWaitingApproval: (result: any) => result.status === 'needs-approval' },
     agentProgressMessageProjection: { updateAgentProgressMessage: (options: unknown) => effects.push(['progress', options]) },
     groupTaskApprovalLifecycle: { runGroupTaskExplanationLifecycle: async (options: any) => {
       effects.push(['explain', options.roleId]); await options.execute();

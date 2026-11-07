@@ -73,7 +73,7 @@ assert.match(
 );
 assert.match(
   actionHandlersSource,
-  /handleOpenControlsPanel[\s\S]*selectPanelPet\(panelPetId \|\| PRIMARY_DESKTOP_PET_SLOT_ID\)[\s\S]*openSettingsPanel\('controls'\)/,
+  /handleOpenControlsPanel[\s\S]*selectPanelPet\(panelPetId \|\| PRIMARY_DESKTOP_PET_SLOT_ID\)[\s\S]*openSettingsPanel\('motion-expression'\)/,
   'opening controls from the pet menu should first sync the active panel pet target',
 );
 assert.match(
@@ -83,7 +83,7 @@ assert.match(
 );
 assert.match(
   sharedStateSyncSource,
-  /if \(nextSyncDelay <= 0\)[\s\S]*desktopPetShellRuntime\.syncSharedState\(pendingState\)/,
+  /if \(nextSyncDelay <= 0\)[\s\S]*desktopPetShellRuntime\.syncSharedState\(withoutUnchangedChatState\(pendingState\)\)/,
   'zero-delay shared-state sync should send immediately instead of waiting for a timer',
 );
 assert.match(

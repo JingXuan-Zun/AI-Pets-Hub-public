@@ -8,5 +8,4 @@ export * from './directedRelationshipCandidateGroups';
 export * from './directedRelationshipCandidateScreening';
 export * from './directedRelationshipOperations';
 export * from './directedRelationshipRepository';
-export * from './directedRelationshipShadowReport';
 export * from './directedRelationshipTypes';

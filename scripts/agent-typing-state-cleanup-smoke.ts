@@ -30,7 +30,7 @@ assert.match(preparedExecution, /await runPreparedChatSendRequest\(\{ \.\.\.cont
 for (const route of ['single', 'story']) for (const fail of [false, true]) {
   const effects: string[] = [];
   const expectedError = new Error(`${route} failed`);
-  const senderContext = { activeChatRequestTokenRef: { current: 7 }, groupChatContinuationEnabledRef: { current: false } };
+  const senderContext = { activeChatRequestTokenRef: { current: 7 }, configRef: { current: {} }, groupChatContinuationEnabledRef: { current: false } };
   const exported = { exports: null as any };
   const dispatch = async (kind: string) => { effects.push(kind); if (fail) throw expectedError; };
   const source = sendExecution + '\n' + preparedExecution + '\nmodule.exports = executePetChatMessageSend;';
@@ -45,6 +45,10 @@ for (const route of ['single', 'story']) for (const fail of [false, true]) {
     createConversationToolActorGate: () => () => true,
     createConversationChatRuntime: () => null,
     runPreparedChatSendRequest: async () => dispatch(route),
+    // The dev-assistant route ("让 Claude Code 改…") takes nothing here.
+    runDelegatedRequest: async () => false,
+    // The first-run guide only answers while no chat model is set up; here it lets the message through.
+    handleOnboardingMessage: async () => false,
     finalizeChatSendRequest: (token: number, tokenRef: unknown, continuationRef: unknown) => {
       assert.equal(token, 7);
       assert.equal(tokenRef, senderContext.activeChatRequestTokenRef);

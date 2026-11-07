@@ -15,7 +15,6 @@ import { SettingsDirectedRelationshipEditor } from './SettingsDirectedRelationsh
 import { SettingsDirectedRelationshipList } from './SettingsDirectedRelationshipList';
 import { SettingsDirectedRelationshipTimeline } from './SettingsDirectedRelationshipTimeline';
 import { SettingsDirectedRelationshipCandidateInbox } from './SettingsDirectedRelationshipCandidateInbox';
-import { SettingsDirectedRelationshipShadowReport } from './SettingsDirectedRelationshipShadowReport';
 import { useSettingsDirectedRelationshipCandidateReview } from './useSettingsDirectedRelationshipCandidateReview';
 import { SettingsDirectedRelationshipBehaviorTimeline } from './SettingsDirectedRelationshipBehaviorTimeline';
 
@@ -70,7 +69,6 @@ export function SettingsDirectedRelationshipSection(props: {
         noDragRegionStyle={props.noDragRegionStyle} onCancelEdit={() => setEditingRecord(null)}
         onSave={save} slots={props.slots}
       />
-      <SettingsDirectedRelationshipShadowReport repository={props.repository} />
       {candidateReview.feedback && <p className="text-2xs text-muted-foreground">{candidateReview.feedback}</p>}
       <SettingsDirectedRelationshipCandidateInbox
         candidates={props.repository.candidates} noDragRegionStyle={props.noDragRegionStyle}

@@ -69,7 +69,7 @@ const createSkill: PlatformCapability = {
       'plugin.json': `${JSON.stringify(manifest, null, 2)}\n`,
     });
     if (!written.ok) return { ok: false, text: 'error' in written ? written.error : '写不进去。' };
-    const installed = await installPluginFromFolder(written.folder, context.petId);
+    const installed = await installPluginFromFolder(written.folder, context.petId, 'created');
     if (!installed.ok) return { ok: false, text: `做好了但装不上：${'error' in installed ? installed.error : ''}` };
     return {
       ok: true,
@@ -145,7 +145,7 @@ const createTool: PlatformCapability = {
       workspacePath: written.folder,
     });
     if (!result.ok) return { ok: false, text: `开发助手没做成：${result.error ?? '未知原因'}。草稿在 ${written.folder}，可以让用户看看或稍后再试。` };
-    const installed = await installPluginFromFolder(written.folder, context.petId);
+    const installed = await installPluginFromFolder(written.folder, context.petId, 'created');
     if (!installed.ok) return { ok: false, text: `写好了但装不上：${'error' in installed ? installed.error : ''}` };
     const diagnostic = await shell.inspectMcpServer?.({ serverId: id });
     const toolNames = diagnostic?.ok

@@ -6,6 +6,10 @@ import {
 } from '../../life-companion/lifeCompanionSettings';
 import type { PetConfig, PetStats } from '../../types';
 import { SettingsLifeCompanionPanel } from './SettingsLifeCompanionPanel';
+import { SettingsCharacterCognitionPanel } from './SettingsCharacterCognitionPanel';
+import { SettingsProactiveSpeechStatus } from './SettingsProactiveSpeechStatus';
+import { SettingsCharacterStatusBoard } from './SettingsCharacterStatusBoard';
+import { setCognitionPaused } from '../../character-cognition/characterCognitionStore';
 import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
 function SwitchCard(props: {
@@ -126,6 +130,48 @@ export function SettingsDesktopActivityAwarenessTab(props: {
       >
         <span className="block">开启后，角色会看你当前前台的窗口画面并陪你聊天：按下面的间隔看一次，切换窗口后会提前看；有话想说时才开口。每次观看会调用一次视觉识别，间隔越短调用越多。</span>
         <span className="block">随时可以断开：点桌宠下方的“断开”，在聊天里说“不用看了”“不准看了”，或在这里关闭。需要先在视觉设置里启用视觉模型。</span>
+      </SwitchCard>
+      <SwitchCard
+        checked={lifeCompanion.characterCognitionEnabled}
+        label="角色的心里活动"
+        onChange={(checked) => {
+          setCognitionPaused(!checked);
+          update({ characterCognitionEnabled: checked });
+        }}
+        title="角色的心里活动"
+        footer={lifeCompanion.characterCognitionEnabled ? <SettingsCharacterCognitionPanel config={props.config} /> : null}
+      >
+        <span className="block">每个角色心里有自己的心情和惦记的事：从她的人设读出起点（人设里定好的感情永远不会变差；打开下面“对你的感情只增不减”时对所有角色都成立），聊天后会自己变化。群聊里谁更想说话、她回复时想起什么，都由这个决定。</span>
+        <span className="block">下面能看到每个角色此刻在想什么。每段对话结束后会调用一次模型更新，关闭后不再调用。</span>
+      </SwitchCard>
+      <SwitchCard
+        checked={lifeCompanion.proactiveEnabled}
+        label="主动找你聊天"
+        onChange={(checked) => update({ proactiveEnabled: checked })}
+        title="主动找你聊天"
+        footer={lifeCompanion.proactiveEnabled ? <SettingsProactiveSpeechStatus /> : null}
+      >
+        <span className="block">角色心里惦记的事攒够了，才会主动来找你说（用她自己的语气，说的就是她惦记的那件事）；没有想说的就不打扰。需要先打开上面的“角色的心里活动”。</span>
+        <span className="block">每个角色每小时最多 1 次，全部加起来每小时最多 2 次、两次至少隔 20 分钟；你说完话 10 分钟内、安静时段、你不在电脑前时都不会开口；每天最多 8 次。你离开一阵子回来时，只有最想说话的那一个会跟你打招呼。</span>
+      </SwitchCard>
+      <SwitchCard
+        checked={lifeCompanion.crossChatAwarenessEnabled}
+        label="角色之间互通近况"
+        onChange={(checked) => update({ crossChatAwarenessEnabled: checked })}
+        title="角色之间互通近况"
+        footer={lifeCompanion.crossChatAwarenessEnabled ? <SettingsCharacterStatusBoard /> : null}
+      >
+        <span className="block">角色会知道彼此最近在做什么，也会知道别的角色跟你说过关于她的事。比如 A 跟你说“B 在图书馆看书”，你去找 B 时，她会顺着接下去。</span>
+        <span className="block">只记角色自己说的话，你说的话不会被传出去；只记在做什么、在哪，不记感情和私密话题。需要先打开上面的“角色的心里活动”（聊完一段后顺带整理，不额外调用模型）。</span>
+      </SwitchCard>
+      <SwitchCard
+        checked={lifeCompanion.feelingsNeverDrop}
+        label="对你的感情只增不减"
+        onChange={(checked) => update({ feelingsNeverDrop: checked })}
+        title="对你的感情只增不减"
+      >
+        <span className="block">开启后，所有角色的好感度保持在最高，不会因为饿了或别的原因下降；心里活动也不会让她对你变冷淡，不管人设里有没有写。</span>
+        <span className="block">关闭后，好感度会随照顾情况变化（饿太久会下降），心情只按人设来。</span>
       </SwitchCard>
       <SwitchCard
         checked={lifeCompanion.approvalVoicePromptEnabled}

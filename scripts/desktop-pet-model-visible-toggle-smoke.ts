@@ -68,7 +68,6 @@ assert.equal(
   'hidden-model companions should be excluded from the render slot collection',
 );
 
-const selectorSource = readProjectFile('src/components/settings/DesktopPetSlotSelector.tsx');
 const renderStateSource = readProjectFile('src/components/pet/usePetContainerCompanionRenderState.ts');
 const settingsPanelSource = readProjectFile('src/components/SettingsPanel.tsx');
 const movementHelpersSource = readProjectFile('src/components/pet/usePetContainerMovementHelpers.ts');
@@ -81,8 +80,6 @@ const companionInteractionSource = readProjectFile('src/pet-runtime/interactions
 const visualBoundsControllerSource = readProjectFile('src/components/pet/usePetVisualBoundsController.ts');
 const avatarRuntimeEventHandlerSource = readProjectFile('src/components/pet/usePetContainerAvatarRuntimeEventHandler.ts');
 
-assert.match(selectorSource, /onSetSlotModelVisible/);
-assert.match(selectorSource, /\\u663e\\u793a\\u6a21\\u578b ON/);
 assert.match(renderStateSource, /getVisibleDesktopPetModelSlots/);
 assert.match(settingsPanelSource, /handleUpdatePetModelVisible[\s\S]*modelVisible:\s*visible/);
 assert.match(movementHelpersSource, /companionPets\.filter\(\(pet\) => pet\.enabled && pet\.modelVisible\)/);

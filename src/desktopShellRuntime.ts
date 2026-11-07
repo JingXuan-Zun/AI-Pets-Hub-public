@@ -97,6 +97,7 @@ export const desktopPetShellRuntime = {
   startGptSovitsService: desktopPetShellBridge.startGptSovitsService,
   listGptSovitsModels: desktopPetShellBridge.listGptSovitsModels,
   installGptSovitsRuntime: desktopPetShellBridge.installGptSovitsRuntime,
+  installStarterVoice: desktopPetShellBridge.installStarterVoice,
   onGptSovitsInstallProgress: desktopPetShellBridge.onGptSovitsInstallProgress,
   getRuntimeLogs: desktopPetShellBridge.getRuntimeLogs,
   detectBrowserSearch: desktopPetShellBridge.detectBrowserSearch,

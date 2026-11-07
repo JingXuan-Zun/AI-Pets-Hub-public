@@ -1,7 +1,9 @@
 import { PRIMARY_DESKTOP_PET_SLOT_ID, type DesktopPetSlot } from '../../../../multiPetRoster';
 import type { ChatMessage } from '../../../../types';
 import { isChatMessageInMode } from '../../chatMessageScopeUtils';
-import { resolveGroupRoleFatiguePenalty, resolveGroupRoleTopicRelevance } from './groupAttentionRelevance';
+import { latestTopicText, resolveGroupRoleFatiguePenalty, resolveGroupRoleTopicRelevance } from './groupAttentionRelevance';
+import { groupAttentionBonus } from '../../../../character-cognition/characterCognitionRules';
+import { isCognitionPaused, readCharacterCognition } from '../../../../character-cognition/characterCognitionStore';
 
 export type GroupAttentionCandidate = {
   roleId: string;
@@ -32,11 +34,18 @@ function replyTargets(message: ChatMessage) {
 
 export function rankGroupAttention(options: {
   candidateSlots: DesktopPetSlot[];
+  /** Each character's own mind (cognition layer); off = the plain rules only. */
+  cognitionEnabled?: boolean;
   messages: ChatMessage[];
+  now?: number;
 }) {
   const recent = groupModelMessages(options.messages);
   const latestSpeakerId = recent.at(-1) ? petId(recent.at(-1)!) : null;
   const pendingTargetIds = latestSpeakerId ? replyTargets(recent.at(-1)!) : [];
+  const cognitionOn = options.cognitionEnabled !== false && !isCognitionPaused();
+  const now = options.now ?? Date.now();
+  const topicText = latestTopicText(options.messages);
+  const lastSpeakerCognition = cognitionOn && latestSpeakerId ? readCharacterCognition(latestSpeakerId) : null;
 
   return options.candidateSlots
     .map((slot, index): GroupAttentionCandidate & { index: number; slot: DesktopPetSlot } => {
@@ -47,8 +56,13 @@ export function rankGroupAttention(options: {
       const isLastSpeaker = slot.id === latestSpeakerId;
       const topicRelevance = resolveGroupRoleTopicRelevance(slot, options.messages);
       const fatiguePenalty = resolveGroupRoleFatiguePenalty(slot);
+      // Her own mind: wanting to talk, the topic touching what she is thinking about, the last
+      // speaker wanting to talk to her. Being addressed (+100) still wins.
+      const mind = cognitionOn && !isLastSpeaker
+        ? groupAttentionBonus({ cognition: readCharacterCognition(slot.id), lastSpeakerCognition, name: slot.personality.name, now, topicText })
+        : { bonus: 0, reasons: [] as string[] };
       const score = (isPendingTarget ? 100 : 0) + (messagesByRole === 0 ? 10 : 0)
-        + topicRelevance - fatiguePenalty
+        + topicRelevance - fatiguePenalty + mind.bonus
         - (isLastSpeaker ? 8 : 0) - (messagesByRole * 2) - repliesToRole;
       const reasons = [
         ...(isPendingTarget ? ['pending-reply'] : []),
@@ -57,6 +71,7 @@ export function rankGroupAttention(options: {
         ...(!isPendingTarget && !isLastSpeaker ? ['independent-perspective'] : []),
         ...(topicRelevance > 0 ? ['topic-relevance'] : []),
         ...(fatiguePenalty > 0 ? ['fatigue-penalty'] : []),
+        ...mind.reasons,
       ];
       return { roleId: slot.id, score, reasons, index, slot };
     })

@@ -1179,6 +1179,7 @@ interface Window {
     onUnityBridgeStatus?: (callback: (status: DesktopPetUnityBridgeStatusLike | null) => void) => () => void;
     onUnityBridgeEvent?: (callback: (event: DesktopPetUnityBridgeEventLike | null) => void) => () => void;
     listDisplays?: () => Promise<DesktopPetDisplayLike[]>;
+    getSystemIdleSeconds?: () => Promise<number>;
     getSystemInfo?: () => Promise<DesktopPetSystemInfoLike | null>;
     listCaptureSources?: (request?: DesktopPetCaptureSourceListRequestLike) => Promise<DesktopPetCaptureSourceLike[]>;
     listDesktopIcons?: (options?: {
@@ -1563,6 +1564,7 @@ interface Window {
     startGptSovitsService?: (settings?: unknown) => Promise<unknown>;
     listGptSovitsModels?: () => Promise<unknown>;
     installGptSovitsRuntime?: (settings?: unknown) => Promise<unknown>;
+    installStarterVoice?: (settings?: unknown) => Promise<unknown>;
     onGptSovitsInstallProgress?: (callback: (progress: unknown) => void) => () => void;
     pushRuntimeLog?: (scope?: string, message?: string, details?: unknown) => void;
     getRuntimeLogs?: () => Promise<string[]>;

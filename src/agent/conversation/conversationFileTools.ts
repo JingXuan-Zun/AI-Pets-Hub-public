@@ -50,7 +50,11 @@ async function call<T>(promise: Promise<unknown> | undefined): Promise<T> {
   return (await promise ?? {}) as T;
 }
 
+// Actions that change files (or open one in a program); the task then ends with verify_goal.
+const CHANGING_FILE_ACTIONS = new Set(['write', 'rename', 'move', 'copy', 'create_folder', 'trash', 'open_file']);
+
 export const conversationFileTool: ConversationTool = {
+  changesState: (args) => CHANGING_FILE_ACTIONS.has(str(args, 'action')),
   confirmation: () => null,
   definition: {
     function: {

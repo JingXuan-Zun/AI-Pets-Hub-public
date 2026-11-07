@@ -15,6 +15,7 @@ import { detectLatestGroupUserAttention } from './group/attention/groupUserAtten
 import { applyGroupRoleTopicSignal } from './group/topic/groupTopicSignal';
 import { analyzeGroupConversationProgress } from './group/topic/groupConversationProgressPolicy';
 import { planGroupDialogueTurn } from './group/orchestration/groupDialogueDirector';
+import { ensureGenerationBatch, resolvePreferredSpeakerSlots } from './group/orchestration/groupTurnPreparation';
 import { rankGroupAttention } from './group/attention/attentionPolicy';
 import type { GroupRelationshipTurnCaptureInput } from './group/relationship/groupRelationshipCandidateCapture';
 import { continueGroupBatchAfterRoleFailure } from './group/orchestration/groupBatchFailureContinuation';
@@ -79,17 +80,8 @@ function prepareNextGroupTurn(
     record: snapshot,
   });
   if (decision.action === 'wait-task' || decision.action === 'close-topic') return null;
-  const queuedRoleIds = snapshot.turnQueue;
   const userTopicRoleIds = snapshot.groupUserTopicState?.remainingRoleIds ?? [];
-  const preferredRoleIds = decision.action === 'answer-user'
-    ? userTopicRoleIds
-    : (decision.candidateRoleIds.length > 0 ? decision.candidateRoleIds : queuedRoleIds);
-  const slotsById = new Map(options.targetSlots.map((slot) => [slot.id, slot]));
-  const preferredSlots = preferredRoleIds.flatMap((roleId) => {
-    const slot = slotsById.get(roleId);
-    return slot ? [slot] : [];
-  });
-  const candidateTargetSlots = preferredSlots.length > 0 ? preferredSlots : undefined;
+  const candidateTargetSlots = resolvePreferredSpeakerSlots(options.targetSlots, decision, snapshot.turnQueue, userTopicRoleIds);
   const speakerQueue = createGroupChatSpeakerQueue({
     candidateTargetSlots,
     messages,
@@ -99,18 +91,7 @@ function prepareNextGroupTurn(
   if (speakerQueue.length === 0) {
     return null;
   }
-  const activeBatch = runtime.controller.getSnapshot().generationBatch;
-  if (!activeBatch || activeBatch.status === 'completed' || activeBatch.status === 'cancelled') {
-    const latestUserMessage = [...messages].reverse().find((message) => (
-      message.role === 'user' && message.chatMode === 'group'
-    ));
-    runtime.controller.beginGenerationBatch({
-      batchId: `${options.requestToken}-batch-${messages.length}`,
-      candidateRoleIds: speakerQueue.map((plan) => plan.targetSlot.id),
-      contextVersion: `${messages.length}:${snapshot.updatedAt}`,
-      sourceMessageId: latestUserMessage?.id ?? null,
-    });
-  }
+  ensureGenerationBatch(options.requestToken, runtime, messages, speakerQueue, snapshot.updatedAt);
   const selectedPlan = decision.action === 'summarize-topic'
     ? createGroupChatSpeakerPlan({
       interactionPlan: speakerQueue[0], intent: 'summarize-topic', targetSlot: speakerQueue[0].targetSlot,

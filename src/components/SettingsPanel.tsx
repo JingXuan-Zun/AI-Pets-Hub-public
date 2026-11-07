@@ -654,6 +654,10 @@ export default function SettingsPanel({
             }}
             voiceTab={SettingsVoiceTab}
             voiceTabProps={{
+              // The one-click voice install switches to her voice at once (no 保存 needed).
+              onCommitSettings: (updates: Partial<PetConfig['settings']>) => {
+                commitModelConfig((baseConfig) => ({ ...baseConfig, settings: { ...baseConfig.settings, ...updates } }));
+              },
               browserTtsHealth,
               browserTtsHealthLoading,
               browserTtsInstallFeedback,

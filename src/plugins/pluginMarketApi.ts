@@ -53,7 +53,7 @@ export async function installMarketPlugin(plugin: Pick<MarketPlugin, 'id' | 'sha
   const bridge = window.desktopPetShell?.plugins;
   if (!bridge?.installMarket) return { error: '当前环境不能安装插件（需要桌面版）。', ok: false as const };
   const result = await bridge.installMarket(`${PLUGIN_MARKET_API_URL}/plugins/${encodeURIComponent(plugin.id)}/download`, plugin.sha256);
-  return activatePluginPackage(result as { ok: true; manifest: PluginPackageManifest } | { ok: false; error: string }, petId);
+  return activatePluginPackage(result as { ok: true; manifest: PluginPackageManifest } | { ok: false; error: string }, petId, 'market');
 }
 
 export async function publishPluginPackage(packageId: string) {

@@ -10,6 +10,7 @@ import { exerciseWindowManagerIcons } from './window-manager-icons-smoke.ts';
 
 const require = createRequire(import.meta.url);
 const actual = require('../electron/windowManager/windowResourceResolvers.cjs').createWindowResourceResolvers;
+const withoutCwd = (text: string) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const name = 'createWindowResourceResolvers', calls = ['createWindowBoundsResolver', 'createWindowIconResolver'];
 const names = ['getCompactWindowBounds', 'getSettingsWindowBounds', 'getSettingsPanelWindowBounds', 'getChatPanelWindowBounds',
   'isInteractiveDialogueChatActive', 'getResolvedChatPanelWindowLimits', 'getResolvedChatPanelWindowBounds', 'getBrowserWindowIconOptions', 'resolveTrayIcon'];
@@ -98,7 +99,7 @@ const outcomes = { bounds: exerciseWindowManagerBounds((deps: any) => {
   const { getBrowserWindowIconOptions, resolveTrayIcon } = actual(deps); return { getBrowserWindowIconOptions, resolveTrayIcon };
 }) };
 assert.deepEqual(outcomes.bounds, exerciseWindowManagerBounds()); assert.deepEqual(outcomes.icons, exerciseWindowManagerIcons());
-const digest = hash(JSON.stringify(outcomes)); assert.equal(digest, '5362b101f2cf8cf907b4c04d73d69f7a26155c0b0c12eb4f49cac329735cd6b2');
+const digest = hash(withoutCwd(JSON.stringify(outcomes))); assert.equal(digest, 'c59c5259723947d8938337153981e2e2f0630f2093d4ecf10ec4c4b991a37440');
 const rootTree = parse(rootText), rootFactory = rootTree.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'createWindowManager') as ts.FunctionDeclaration;
 const bindings = declarations(rootFactory, rootTree, [name]); assert.equal(bindings.length, 1);
 assert.deepEqual((bindings[0].name as ts.ObjectBindingPattern).elements.map(node => node.name.getText(rootTree)), names);

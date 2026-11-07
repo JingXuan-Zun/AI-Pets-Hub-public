@@ -52,6 +52,11 @@ export interface ModelRequestParam {
 }
 
 export interface PetPersonality {
+  /**
+   * This request only, never saved: what is on her mind right now (cognition layer, see
+   * src/character-cognition). Added to the per-turn context after the chat history.
+   */
+  cognitionNote?: string;
   name: string;
   traits: string[];
   greeting: string;
@@ -496,10 +501,6 @@ export interface PetConfig {
     chatBubbleEnabled: boolean;
     chatStreamingEnabled: boolean;
     groupChatTurnDelayMs: number;
-    groupParallelRoleGenerationEnabled: boolean;
-    groupAutomaticMemoryWriteEnabled: boolean;
-    groupAutomaticRelationshipEvolutionEnabled: boolean;
-    groupAutomaticSubgroupEvolutionEnabled: boolean;
     expressionReply: ExpressionReplySettings;
   };
 }
@@ -767,6 +768,13 @@ export interface ChatGroupTaskEvent {
   summary?: string;
 }
 
+/** A button under a message (first-run guide): send a phrase, open a link, or open a settings page. */
+export interface ChatQuickReply {
+  kind: 'send' | 'link' | 'settings';
+  label: string;
+  value: string;
+}
+
 export interface ChatMessage {
   id?: string;
   role: 'user' | 'model';
@@ -796,6 +804,8 @@ export interface ChatMessage {
   storyDefinition?: import('./components/chat/story/storyTypes').StoryDefinition;
   storyId?: string | null;
   storyMessageKind?: 'character' | 'narration';
+  /** Buttons shown under this message while it is the latest one. */
+  quickReplies?: ChatQuickReply[];
 }
 
 export type PetAutoSpeechTrigger = (

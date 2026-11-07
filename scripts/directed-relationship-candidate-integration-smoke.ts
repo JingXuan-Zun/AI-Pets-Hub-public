@@ -26,7 +26,7 @@ assert.match(response, /stripGroupRoleSignalMarkers/u);
 assert.match(stream, /stripGroupRoleSignalMarkers/u);
 assert.match(visible, /stripGroupRoleSignalMarkers/u);
 assert.match(section, /SettingsDirectedRelationshipCandidateInbox/u);
-assert.match(section, /SettingsDirectedRelationshipShadowReport/u);
+assert.doesNotMatch(section, /SettingsDirectedRelationshipShadowReport/u, 'shadow report removed 2026-11-06; characters decide candidates themselves');
 assert.match(inbox, /反向正式关系/u);
 assert.match(inbox, /反方向待审核候选/u);
 assert.match(actions, /撤销审核/u);

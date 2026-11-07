@@ -6,6 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { classifyLoopActionRisk } from '../src/agent/loop/loopApproval';
 import { FAILED_RESULT, SIGN_IN_TITLE, SIGN_IN_WALL } from '../src/agent/conversation/desktopDeadEnds';
+import { HER_BROWSER_REQUEST } from '../src/agent/conversation/conversationRequestHints';
+
+// "用你的浏览器查" sends web_search back to her own browser (2026-11-06).
+for (const said of ['用你的浏览器查一下 Node.js 的版本', '帮我做个表格：1）用你的浏览器查一下 Electron 的版本；2）……', '用你自己的浏览器打开B站', '在你的浏览器里看看', '你打开网页查查天气']) {
+  assert.ok(HER_BROWSER_REQUEST.test(said), said);
+}
+for (const said of ['查一下 Node.js 的版本', '我的浏览器卡住了', '帮我搜搜明天的天气', '打开网页版微信']) {
+  assert.ok(!HER_BROWSER_REQUEST.test(said), said);
+}
 
 const require = createRequire(import.meta.url);
 
@@ -52,5 +61,5 @@ const fakeSpawn = (command: string, args: string[]) => { spawned.push([command, 
   await assert.rejects(service.openFile(shell, doc, 'excel', fakeSpawn), /默认程序或记事本/u);
   assert.deepEqual(opened, [doc]);
   fs.rmSync(dir, { force: true, recursive: true });
-  console.log('stability findings smoke ok: 26 checks');
+  console.log('stability findings smoke ok: 35 checks');
 })();

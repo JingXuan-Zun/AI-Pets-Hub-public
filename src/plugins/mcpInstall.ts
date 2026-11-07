@@ -50,13 +50,14 @@ export async function testMcpServer(server: Pick<McpServerDraft, 'command' | 'id
 /** Saves the servers and tries each once; `pointedAtHerBrowser` when a browser plugin was set to use her browser. */
 export async function addMcpServers(
   servers: McpServerDraft[],
-  options: { envValues?: Record<string, string>; onProgress?: (serverId: string, result: McpTestResult) => void; settings?: PetConfig['settings'] } = {},
+  options: { envValues?: Record<string, string>; onProgress?: (serverId: string, result: McpTestResult) => void; origin?: 'link' | 'user'; settings?: PetConfig['settings'] } = {},
 ) {
   const browserUrl = herBrowserUrl(options.settings);
   const pointed = servers.map((server) => pointAtHerBrowser(server.args, browserUrl));
+  const origin = options.origin ?? 'user';
   const entries = servers.map((server, index) => (server.url
-    ? { id: server.id, title: server.title, url: server.url }
-    : { args: pointed[index].args, command: server.command, env: Object.fromEntries(Object.keys(server.env).map((key) => [key, options.envValues?.[key] ?? server.env[key]])), id: server.id, title: server.title }));
+    ? { id: server.id, origin, title: server.title, url: server.url }
+    : { args: pointed[index].args, command: server.command, env: Object.fromEntries(Object.keys(server.env).map((key) => [key, options.envValues?.[key] ?? server.env[key]])), id: server.id, origin, title: server.title }));
   await updateMcpServers((current) => [...current.filter((item) => !entries.some((entry) => entry.id === item.id)), ...entries]);
   const results = await Promise.all(servers.map((server) => testMcpServer(server, options.settings, (result) => options.onProgress?.(server.id, result))));
   return { pointedAtHerBrowser: pointed.some((item) => item.changed), results: servers.map((server, index) => ({ id: server.id, result: results[index] })) };

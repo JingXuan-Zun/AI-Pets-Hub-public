@@ -98,6 +98,20 @@ export async function installGptSovitsRuntime(settings: PetConfig['settings']): 
   }
 }
 
+/** One click for 小玲's real voice: her bundled lite pack plus the GPT-SoVITS runtime. */
+export async function installStarterVoice(settings: PetConfig['settings']): Promise<BrowserTtsInstallResult & { modelId: string | null }> {
+  try {
+    const raw = await desktopPetShellRuntime.installStarterVoice(settings) as { modelId?: unknown } | null;
+    const result = normalizeBrowserTtsInstallResult(raw);
+    return { ...result, modelId: result.ok && typeof raw?.modelId === 'string' ? raw.modelId : null };
+  } catch (error) {
+    return {
+      ok: false, executable: null, messages: [], missingPackages: [], modelId: null,
+      error: getVoiceErrorMessage(error, '小玲的声音安装失败。'),
+    };
+  }
+}
+
 export function onGptSovitsInstallProgress(callback: (progress: BrowserTtsInstallProgress) => void) {
   return desktopPetShellRuntime.onGptSovitsInstallProgress((progress) => {
     callback(normalizeBrowserTtsInstallProgress(progress));

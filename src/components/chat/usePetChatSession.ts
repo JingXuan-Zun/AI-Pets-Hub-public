@@ -15,6 +15,9 @@ import {
   type NeuralMemoryReplyCompletedEvent,
 } from '../../neural-memory/useNeuralMemoryProposalCapture';
 import { useCharacterMemoryMaintenance } from '../../character-memory/useCharacterMemoryMaintenance';
+import { useCharacterCognition } from '../../character-cognition/useCharacterCognition';
+import { useProactiveSpeech } from '../../character-cognition/useProactiveSpeech';
+import { useRelationshipSelfReview } from '../../character-cognition/useRelationshipSelfReview';
 import { useSharedUserMemoryCapture } from '../../character-memory/useSharedUserMemoryCapture';
 import { useVoiceWakeListener } from './useVoiceWakeListener';
 import { useApprovalVoiceListener } from './useApprovalVoiceListener';
@@ -111,11 +114,15 @@ export function usePetChatSession({
   const captureNeuralMemoryProposals = useNeuralMemoryProposalCapture({ configRef, onUpdateConfig });
   const maintainCharacterMemory = useCharacterMemoryMaintenance({ configRef, onUpdateConfig });
   const captureSharedUserMemory = useSharedUserMemoryCapture({ configRef, onUpdateConfig });
+  const updateCharacterCognition = useCharacterCognition({ configRef });
+  useProactiveSpeech({ configRef });
+  useRelationshipSelfReview({ configRef, onUpdateConfig });
   const onReplyCompleted = useCallback((event: NeuralMemoryReplyCompletedEvent) => {
     captureSharedUserMemory(event);
     captureNeuralMemoryProposals(event);
     maintainCharacterMemory(event);
-  }, [captureNeuralMemoryProposals, captureSharedUserMemory, maintainCharacterMemory]);
+    updateCharacterCognition(event);
+  }, [captureNeuralMemoryProposals, captureSharedUserMemory, maintainCharacterMemory, updateCharacterCognition]);
   const runPetResponseTurn = usePetChatResponseTurn({
     activeChatRequestTokenRef,
     configRef,

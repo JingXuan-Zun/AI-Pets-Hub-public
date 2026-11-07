@@ -43,7 +43,7 @@ function parseJsonConfig(rawText) {
 function mcpLaunchKey(config) {
   const servers = config?.servers ?? config?.mcpServers ?? [];
   const list = Array.isArray(servers) ? servers : Object.entries(servers).map(([id, server]) => ({ id, ...server }));
-  return JSON.stringify(list.map(({ description: _description, title: _title, ...launch }) => launch));
+  return JSON.stringify(list.map(({ description: _description, origin: _origin, title: _title, ...launch }) => launch));
 }
 
 function createConfigPayload(configPath, exists, rawText, config, error = null) {

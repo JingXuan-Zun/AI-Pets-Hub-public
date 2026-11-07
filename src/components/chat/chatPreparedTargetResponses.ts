@@ -45,8 +45,8 @@ function createSingleChatTurns(options: TargetResponseOptions) {
   }));
 }
 
-function createTargetResponseContext(options: TargetResponseOptions) {
-  const request = options.preparedRequest;
+/** Nicknames the user just gave characters in this message, remembered and merged with earlier ones. */
+function resolveGroupAliasesForRequest(request: TargetResponseOptions['preparedRequest']) {
   const currentChatState = desktopPetChatStore.getState();
   const temporaryAliasesById = request.isGroupMode
     ? resolveTemporaryGroupPetAliases(
@@ -58,13 +58,18 @@ function createTargetResponseContext(options: TargetResponseOptions) {
   if (Object.keys(temporaryAliasesById).length > 0) {
     desktopPetChatStore.rememberGroupPetAliases(temporaryAliasesById);
   }
-  const resolvedTemporaryAliasesById = {
+  return {
     ...currentChatState.groupPetAliasesById,
     ...Object.fromEntries(Object.entries(temporaryAliasesById).map(([petId, aliases]) => ([
       petId,
       [...(currentChatState.groupPetAliasesById[petId] ?? []), ...aliases],
     ]))),
   };
+}
+
+function createTargetResponseContext(options: TargetResponseOptions) {
+  const request = options.preparedRequest;
+  const resolvedTemporaryAliasesById = resolveGroupAliasesForRequest(request);
   const addressedSlots = request.isGroupMode
     ? resolveUserAddressedGroupChatSlots(
       request.outgoingText,

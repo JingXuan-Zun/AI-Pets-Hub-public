@@ -24,7 +24,7 @@ assert.equal(
 );
 assert.match(modelCardsSource, /已保存地址/u);
 assert.match(modelCardsSource, /resolveStoredAssetDisplayPath/u);
-assert.match(videoBindingsSource, /已保存地址/u);
-assert.match(videoBindingsSource, /resolveStoredAssetDisplayPath/u);
+// Since e78b90f video bindings are plain folder paths (no stored URL to decode).
+assert.match(videoBindingsSource, /已绑定文件夹：\{bindingPath\}/u);
 
 console.log('settings video asset path smoke passed');

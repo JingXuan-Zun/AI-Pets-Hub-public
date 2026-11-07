@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { type DesktopPetAnimationToolTrigger } from '../src/chatState';
 import { createPlayableAnimationToolAudioPlaybackState } from '../src/components/pet/animationToolAudioPlaybackState';
-import { createAnimationToolAudioPlaybackDisplay } from '../src/components/pet/animationToolAudioPlaybackDisplay';
 
 const trigger = {
   animationIds: ['wave_hello'],
@@ -23,8 +22,6 @@ const playingState = createPlayableAnimationToolAudioPlaybackState({
 assert.equal(playingState?.resumeSupported, false);
 assert.equal(playingState?.playbackPositionMs, 0);
 assert.match(playingState?.resumeUnsupportedReason ?? '', /saved playback position/u);
-assert.match(createAnimationToolAudioPlaybackDisplay(playingState)?.resumeDetail ?? '', /saved playback position/u);
-assert.equal(createAnimationToolAudioPlaybackDisplay(playingState)?.detail, 'song.mp3');
 
 const endedState = createPlayableAnimationToolAudioPlaybackState({
   petId: 'primary',

@@ -25,7 +25,8 @@ assert.equal(normalized.customPrompt, '采用冷峻的悬疑笔法，所有线�
 
 normalized.source = 'random';
 const replacement = prepareStoryDraftForGeneration(normalized, 'random');
-assert.equal(replacement.title, '');
+// Since 2026-09-17 a random refresh keeps what the user wrote (title, premise, constraints).
+assert.equal(replacement.title, '雾港来信');
 assert.equal(replacement.customPromptEnabled, true);
 assert.equal(replacement.customPrompt, normalized.customPrompt);
 

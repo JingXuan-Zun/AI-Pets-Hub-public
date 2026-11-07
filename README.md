@@ -143,11 +143,13 @@ There are also check scripts for Agent, Neural Persona, MCP, Skills, and the des
 
 ## 🔑 First-run Setup
 
-After launch, open the **Settings center** and configure what you need:
+On first launch, **the default character Xiaoling walks you through setting up a model by voice and text**: she explains how to get an API key from the DeepSeek platform, and you can simply paste the key to her (she tries it right away and tells you if the key is wrong, the balance is empty, or the network is down). Once it works, she asks whether you'd like to hear what she can do.
+
+To adjust things later, open the **Settings center**:
 
 1. **🤖 Model service** (required): pick Gemini or any OpenAI-compatible API and enter the API key, base URL, and model name. Chat and the agent both depend on it.
 2. **🎭 Characters**: name your character, write its personality and system prompt, and import 2D / Live2D / 3D models and motions.
-3. **🔊 Voice** (optional): choose browser speech, the OpenAI / Gemini speech APIs, or local GPT-SoVITS; pick a voice pack for each pet and set wake words.
+3. **🔊 Voice** (optional): the computer's built-in voice is used by default; for Xiaoling's real voice, click "One-click install" in Settings → AI → Voice. You can also use the OpenAI / Gemini speech APIs or other GPT-SoVITS voice packs, and set wake words.
 4. **👀 Life companion / 🛠️ Agent** (optional): enable as you like — screen watching and desktop actions always ask for your consent first.
 
 > [!TIP]
@@ -211,6 +213,7 @@ A pink glass look across the chat window and settings center; the settings cente
 
 ### 🔊 Voice
 
+- **Xiaoling's real voice in one click** — One button at the top of Settings → AI → Voice installs the local voice runtime and her voice, then switches to it. No Python on the computer? One is prepared automatically; with an NVIDIA card the accelerated build is installed, otherwise the CPU build.
 - **A voice for every character** — GPT-SoVITS support: lite voice packs need only a few reference recordings, trained packs sound closer to the original; each pet slot can use a different voice.
 - **Many voice sources** — Browser speech, OpenAI / Gemini speech APIs, a local voice runtime, or GPT-SoVITS.
 - **Hands-free conversation** — Just talk to your character; each one has its own wake words, matched by sound so misheard homophones still work.
@@ -227,7 +230,8 @@ See [`docs/voice-pack-format.md`](./docs/voice-pack-format.md) for the voice pac
 
 - **Asks before looking** — When a character wants to know what you're doing, it asks first; screen watching starts only after you agree.
 - **Disconnect anytime** — A disconnect button sits under the pet, and saying no in chat disconnects immediately.
-- **Checks in on you** — Mood, affection, time of day, and quiet hours decide when it's a good moment to say something.
+- **Speaks up when something's on her mind** — Each character has her own mood and things she keeps thinking about (seeded from her persona, changing as you talk). Only when something has built up does she come to you, and she talks about exactly that; otherwise she leaves you be. There are limits, and she stays quiet right after you spoke, in quiet hours, and while you're away.
+- **Between characters** — In group chat, what's on each one's mind decides who wants to speak; relationship changes are decided by the characters themselves, by their personas; and you can turn on "characters share recent news" (off by default) so they know what the others are up to — what you say is never passed on.
 - **Gaming buddy** — While you play, she glances at the game now and then and says a word at the right moment; how often is adjustable (Settings → Advanced → Game companion), and you can stop it anytime.
 
 <p align="center">
@@ -368,6 +372,8 @@ Settings → Overview → Current version → **Export diagnostics**, then send 
 
 The project is in early public development: the core experience works, and some capabilities are still being polished.
 
+What she can and can't do, when she asks you, and what data leaves your computer: see the [capability notes](./docs/starter/about-ai-pets-hub.md) (in Chinese; the starter Xiaoling answers questions from them).
+
 | Module | Status | Notes |
 | --- | :---: | --- |
 | Desktop companions and windows | ✅ Ready | Pets, chat, and settings run independently and share state |
@@ -375,7 +381,8 @@ The project is in early public development: the core experience works, and some 
 | Say it, she does it (conversation agent) | ✅ Ready | 20 everyday tasks tested, all completed, including tasks across several apps; she stops and asks when an app needs a sign-in or activation |
 | Reminders / to-dos / pomodoro | ✅ Ready | Data stays on your machine |
 | Memory approval and "about you" memory | ✅ Ready | Deeper Neural Persona integration with chat is in progress |
-| Voice and wake words | ✅ Ready | GPT-SoVITS must be installed separately; a GPU is recommended |
+| First-run guide (Xiaoling) | ✅ Ready | Xiaoling sets up the model with you on first launch |
+| Voice and wake words | ✅ Ready | Xiaoling's real voice installs in one click (a few GB to download; faster with a GPU) |
 | Life companion / gaming buddy | 🧪 Preview | Screen watching needs your consent and can be disconnected anytime; very small numbers in games can be misread |
 | Interactive dialogue (video call) | 🧪 Preview | The character talks with you in the chat window; lip sync and expressions are in progress |
 | 2D / Live2D / VRM / MMD characters | ⚙️ Needs assets | Runtimes are ready; bring your own models and motions |
@@ -404,8 +411,7 @@ The project is in early public development: the core experience works, and some 
 - A plugin process host: plugins in any language running in their own process, with clearer permissions.
 - Importing characters from other desktop-pet platforms (starting with VPet character animations, only from copies you installed yourself).
 - Characters that go online to learn and slowly grow their own personality (what they learn is kept only with your OK).
-- Let Neural Persona, long-term memory, and character relationships play a bigger part in everyday chat.
-- Let characters share recent news, so each one knows what you have talked about with the others.
+- Let Neural Persona and long-term memory play a bigger part in everyday chat.
 
 </details>
 

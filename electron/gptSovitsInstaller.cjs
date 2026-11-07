@@ -1,6 +1,8 @@
 const { getPythonCandidates, pathExists } = require('./localVoiceRuntimePathUtils.cjs');
 const { createInstallProgressReporter, formatSpawnFailure } = require('./localVoiceRuntimeCommandUtils.cjs');
-const { buildGptSovitsInstallSteps } = require('./gptSovitsInstallPlan.cjs');
+const path = require('path');
+const { BASE_PYTHON_CHECK, PIP_MIRROR_INDEX_URL, buildGptSovitsInstallSteps } = require('./gptSovitsInstallPlan.cjs');
+const { ensurePortablePython, portablePythonPaths } = require('./gptSovitsPortablePython.cjs');
 
 const NOT_INSTALLED_STATUSES = new Set(['missing-runtime', 'missing-dependencies', 'missing-source']);
 
@@ -27,7 +29,59 @@ async function runStep(context, step, progress) {
   });
   if (result.ok) return null;
   writeLog('GPT-SoVITS install step failed', { step: step.id, detail: formatSpawnFailure(result) });
+  // PyPI is slow or unreachable from some networks (China): one more try through a mirror.
+  if (step.pipMirrorRetry) {
+    progress.push('换一个下载源再试一次...');
+    const retry = await runCommand(candidate, [...step.args, '--index-url', PIP_MIRROR_INDEX_URL], {
+      cwd: paths.home,
+      env: getSharedEnv(),
+      onStdoutLine: (line) => writeLog(`GPT-SoVITS install (mirror): ${line}`),
+      onStderrLine: (line) => writeLog(`GPT-SoVITS install stderr (mirror): ${line}`),
+    });
+    if (retry.ok) return null;
+    writeLog('GPT-SoVITS install step failed on the mirror too', { step: step.id, detail: formatSpawnFailure(retry) });
+  }
   return step.id === 'check-python' ? '需要 Python 3.10–3.12，请检查内置 Python 运行环境。' : `${step.label.replace(/\.+$/u, '')}失败，请检查网络后重试。`;
+}
+
+/**
+ * The Python that creates the venv: the first candidate that really is 3.10–3.12; when there is
+ * none, a portable one is downloaded next to the runtime (gptSovitsPortablePython.cjs).
+ */
+async function resolveBasePython({ candidates, runCommand, getSharedEnv, paths, progress, writeLog, ensurePortable }) {
+  const runtimeRoot = path.dirname(paths.home);
+  const portable = portablePythonPaths(runtimeRoot).executable;
+  const ordered = [{ label: 'portable', executable: portable, args: [] }, ...candidates];
+  for (const candidate of ordered) {
+    if (candidate.label === 'portable' && !pathExists(portable)) continue;
+    const result = await runCommand(candidate, ['-c', BASE_PYTHON_CHECK], {
+      cwd: paths.home, env: getSharedEnv(), onStderrLine: () => undefined, onStdoutLine: () => undefined,
+    });
+    if (result.ok) return candidate;
+  }
+  const executable = await ensurePortable({ runtimeRoot, onProgress: (line) => progress.push(line), writeLog });
+  return { label: 'portable', executable, args: [] };
+}
+
+/** Only needed while the venv does not exist yet; returns { candidate } or { error }. */
+async function pickBasePython(context, progress) {
+  const { paths, projectRoot, writeLog } = context;
+  if (pathExists(paths.venvPython)) return { candidate: null };
+  try {
+    return {
+      candidate: await resolveBasePython({
+        candidates: getPythonCandidates('', { projectRoot }),
+        ensurePortable: context.ensurePortablePython ?? ensurePortablePython,
+        getSharedEnv: context.getSharedEnv,
+        paths,
+        progress,
+        runCommand: context.runCommand,
+        writeLog,
+      }),
+    };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 // Installs the isolated venv, torch, dependencies, pinned source and pretrained assets; one run at a time.
@@ -41,12 +95,15 @@ function createGptSovitsInstaller(context) {
     const steps = buildGptSovitsInstallSteps({
       paths, installScript: ensureInstallScript(), device: settings?.gptSovitsDevice, venvExists: pathExists(paths.venvPython),
     });
+    progress.setStage('running');
+    const base = await pickBasePython(context, progress);
+    if (base.error) return buildResult(progress, false, base.error);
+    const baseCandidate = base.candidate;
     const stepContext = {
       ...context,
-      getBaseCandidate: () => getPythonCandidates('', { projectRoot })[0] ?? null,
+      getBaseCandidate: () => baseCandidate ?? getPythonCandidates('', { projectRoot })[0] ?? null,
       getVenvCandidate: () => python.getCandidate(),
     };
-    progress.setStage('running');
     for (const step of steps) {
       const error = await runStep(stepContext, step, progress);
       if (error) return buildResult(progress, false, error);
@@ -70,4 +127,4 @@ function createGptSovitsInstaller(context) {
   };
 }
 
-module.exports = { createGptSovitsInstaller };
+module.exports = { createGptSovitsInstaller, resolveBasePython };

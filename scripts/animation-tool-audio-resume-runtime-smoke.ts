@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { type DesktopPetAnimationToolAudioPlaybackState, type DesktopPetAnimationToolTrigger } from '../src/chatState';
-import { createAnimationToolAudioPlaybackDisplay } from '../src/components/pet/animationToolAudioPlaybackDisplay';
 import {
   createAnimationToolAudioPlaybackSession,
 } from '../src/components/pet/animationToolAudioPlaybackSession';
@@ -105,7 +104,6 @@ assert.equal(publishedStates[0]?.status, 'paused');
 assert.equal(publishedStates[0]?.durationMs, 7500);
 assert.equal(publishedStates[0]?.resumeSupported, true);
 assert.equal(publishedStates[0]?.playbackPositionMs, 2400);
-assert.match(createAnimationToolAudioPlaybackDisplay(publishedStates[0])?.detail ?? '', /2\.4s \/ 7\.5s/u);
 
 assert.equal(controlAnimationToolAudioRuntime(refs, publishStatus, {
   animationIds: [],

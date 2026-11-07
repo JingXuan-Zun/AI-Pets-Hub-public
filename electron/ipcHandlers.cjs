@@ -3,11 +3,25 @@ const { registerMcpHistoryIpcHandlers } = require('./mcpHistoryIpcHandlers.cjs')
 const { registerModelRequestIpc } = require('./modelRequestIpc.cjs');
 const { createWindowMaximizeToggle } = require('./windowMaximizeToggle.cjs');
 
-const { BrowserWindow, dialog } = require('electron');
+const { BrowserWindow, dialog, powerMonitor } = require('electron');
 const { createConfigSaveFailureNotifier } = require('./configSaveFailureNotice.cjs');
 
 const CURRENT_WINDOW_COMPACT_MINIMUM_SIZE_KEY = '__desktopPetCompactMinimumSizeActive';
 const currentWindowOriginalMinimumSize = new WeakMap();
+
+/**
+ * The pet window leaves out what did not change in the (large) chat state: the whole chat state, or
+ * just its messages. The last full copy fills the gap, so other windows still get everything.
+ */
+function mergeSharedState(previous, nextState) {
+  if (!nextState) return null;
+  const { chatMessagesUnchanged, chatStateUnchanged, ...rest } = nextState;
+  if (chatStateUnchanged && previous?.chatState) return { ...rest, chatState: previous.chatState };
+  if (chatMessagesUnchanged && previous?.chatState) {
+    return { ...rest, chatState: { ...rest.chatState, messages: previous.chatState.messages } };
+  }
+  return rest;
+}
 
 function summarizeArgs(args) {
   if (!Array.isArray(args) || args.length === 0) {
@@ -354,11 +368,14 @@ function registerDesktopPetIpcHandlers({
   }, { logArgs: false });
 
   ipcMain.on('desktop-pet:sync-shared-state', (_event, nextState) => {
-    const normalizedState = nextState ?? null;
+    // The pet window leaves the (large) chat state out when it did not change: keep the last one.
+    const previous = windowManager.getSharedState();
+    const normalizedState = mergeSharedState(previous, nextState);
+    const chatUnchanged = Boolean(nextState?.chatStateUnchanged || nextState?.chatMessagesUnchanged);
     windowManager.setSharedState(normalizedState);
     // Keep the durable copy in the main process as well. This covers the
     // short window in which a renderer is closed before its async save runs.
-    if (Array.isArray(normalizedState?.chatState?.messages)
+    if (!chatUnchanged && Array.isArray(normalizedState?.chatState?.messages)
       && normalizedState.chatState.messages.length > 0) {
       persistedChatHistoryStore?.save?.(normalizedState.chatState.messages);
     }
@@ -405,6 +422,10 @@ function registerDesktopPetIpcHandlers({
     logArgs: false,
     summarizeResult: (result) => ({ count: Array.isArray(result) ? result.length : 0 }),
   });
+
+  // Seconds since the last keyboard / mouse input (proactive speech waits while the user is away).
+  // Asked every minute, so not logged.
+  ipcMain.handle('desktop-pet:get-system-idle-seconds', () => powerMonitor.getSystemIdleTime());
 
   registerLoggedHandle(ipcMain, runtimeLogger, 'desktop-pet:get-system-info', async () => {
     return systemInfoService.getSystemInfo();
@@ -1193,5 +1214,6 @@ function registerDesktopPetIpcHandlers({
 }
 
 module.exports = {
+  mergeSharedState,
   registerDesktopPetIpcHandlers,
 };

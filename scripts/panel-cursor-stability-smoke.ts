@@ -30,9 +30,13 @@ assertIncludes('src/index.css', 'textarea,');
 assertIncludes('src/index.css', '[contenteditable="true"],');
 assertIncludes('src/index.css', '[role="textbox"]');
 assertIncludes('components/ui/input.tsx', 'cursor-text');
-assertIncludes('src/components/ChatWindow.tsx', 'onPointerDown={interactiveDialogueActive ? undefined : startWindowDrag}');
+// Since 2026-10-19 the interactive dialogue lives in the chat window, which stays draggable;
+// the message area never starts a drag, empty gaps only when clicked directly.
+assertIncludes('src/components/ChatWindow.tsx', 'onPointerDown: startWindowDrag,');
+assertIncludes('src/components/ChatWindow.tsx', 'if (event.target === event.currentTarget) startWindowDrag(event);');
 assertIncludes('src/components/SettingsPanel.tsx', 'onPointerDown={standalone ? standaloneWindowDrag.startWindowDrag : startPanelDrag}');
 assertIncludes('src/components/chat/EmbeddedPetChatPanelHeader.tsx', 'onPointerDown={dragDisabled ? undefined : onStartDrag}');
-assertIncludes('src/components/chat/EmbeddedPetChatPanelConversation.tsx', 'composerProps={{ onPointerDown: onStartDrag }}');
+// Since 2026-09-20 the composer does not drag the panel during an interactive dialogue.
+assertIncludes('src/components/chat/EmbeddedPetChatPanelConversation.tsx', 'composerProps={isInteractiveDialogue ? undefined : { onPointerDown: onStartDrag }}');
 
 console.log('panel cursor stability smoke passed');

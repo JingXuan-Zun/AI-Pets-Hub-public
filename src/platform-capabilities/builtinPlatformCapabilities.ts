@@ -50,7 +50,7 @@ const lifeCompanionStatus: PlatformCapability = {
       text: [
         `看屏幕陪伴：${settings.screenWatchConsented ? `已开启，每 ${settings.screenWatchIntervalSeconds} 秒看一次` : '关闭'}`,
         `大致感知你在做什么：${onOff(settings.desktopActivityAwarenessEnabled)}`,
-        `主动聊天：${settings.proactiveEnabled ? `开，间隔 ${settings.minRandomIntervalMinutes}–${settings.maxRandomIntervalMinutes} 分钟` : '关'}`,
+        `主动聊天：${settings.proactiveEnabled ? '开（角色心里有惦记的事才开口）' : '关'}`,
         `安静时段：${settings.quietHoursEnabled ? `${settings.quietHoursStart}–${settings.quietHoursEnd}` : '关'}`,
         `需要权限时开口问、没回应再提醒：${onOff(settings.approvalVoicePromptEnabled)}`,
       ].join('\n'),
@@ -83,42 +83,24 @@ const screenWatch: PlatformCapability = {
 };
 
 const proactiveChat: PlatformCapability = {
-  args: [
-    { description: 'Turn proactive chat on or off.', key: 'enabled', type: 'boolean' },
-    { description: 'Shortest minutes between proactive messages (5–720).', key: 'minMinutes', type: 'number' },
-    { description: 'Longest minutes between proactive messages (5–720).', key: 'maxMinutes', type: 'number' },
-  ],
-  description: 'Turn proactive chat (the character starting conversations on its own) on/off or change how often it happens.',
-  describe: (args) => {
-    const enabled = booleanArg(args, 'enabled');
-    const min = numberArg(args, 'minMinutes');
-    const max = numberArg(args, 'maxMinutes');
-    return [
-      enabled === null ? '' : `${enabled ? '开启' : '关闭'}主动聊天`,
-      min !== null || max !== null ? `间隔改为 ${min ?? '原来的'}–${max ?? '原来的'} 分钟` : '',
-    ].filter(Boolean).join('，') || '调整主动聊天';
-  },
+  args: [{ description: 'Turn proactive chat on or off.', key: 'enabled', required: true, type: 'boolean' }],
+  description: 'Turn proactive chat (characters starting a conversation on their own when something is on their mind) on or off. How often is fixed by rules, not a setting.',
+  describe: (args) => `${booleanArg(args, 'enabled') === false ? '关闭' : '开启'}主动聊天`,
   group: '生活陪伴',
   id: 'life_companion.proactive',
   risk: 'change',
   run: (context, args) => {
     const enabled = booleanArg(args, 'enabled');
-    const min = numberArg(args, 'minMinutes');
-    const max = numberArg(args, 'maxMinutes');
-    if (enabled === null && min === null && max === null) return { ok: false, text: '要怎么调整主动聊天？可以开关，或改间隔分钟数。' };
-    const settings = updateLifeCompanion(context, {
-      ...(enabled === null ? {} : { proactiveEnabled: enabled }),
-      ...(min === null ? {} : { minRandomIntervalMinutes: min }),
-      ...(max === null ? {} : { maxRandomIntervalMinutes: max }),
-    });
+    if (enabled === null) return { ok: false, text: '要开启还是关闭主动聊天？' };
+    updateLifeCompanion(context, { proactiveEnabled: enabled });
     return {
       ok: true,
-      text: settings.proactiveEnabled
-        ? `主动聊天已开启，大约每 ${settings.minRandomIntervalMinutes}–${settings.maxRandomIntervalMinutes} 分钟会主动找你说话。`
+      text: enabled
+        ? '主动聊天已开启：角色心里有惦记的事、攒够了才会主动找你。每个角色每小时最多 1 次，全部加起来每小时最多 2 次、两次至少隔 20 分钟；你说完话 10 分钟内、安静时段、你不在电脑前时都不会开口；每天最多 8 次。'
         : '主动聊天已关闭。',
     };
   },
-  title: '调整主动聊天',
+  title: '开关主动聊天',
 };
 
 const approvalVoicePrompt: PlatformCapability = {

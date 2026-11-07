@@ -52,9 +52,9 @@ function describeSkill(skill: AgentExternalSkillDefinition): PluginManifest {
   };
 }
 
-interface McpServerEntry { id: string; title: string; command: string; description: string; args: unknown[] }
+interface McpServerEntry { id: string; title: string; command: string; description: string; args: unknown[]; origin?: string; secretEnv: boolean }
 
-function readMcpServers(config: Record<string, unknown>): McpServerEntry[] {
+export function readMcpServers(config: Record<string, unknown>): McpServerEntry[] {
   const servers = config.servers ?? config.mcpServers;
   const entries = Array.isArray(servers)
     ? servers.map((server) => [typeof server?.id === 'string' ? server.id : '', server] as const)
@@ -62,14 +62,19 @@ function readMcpServers(config: Record<string, unknown>): McpServerEntry[] {
   return entries.flatMap(([id, raw]) => {
     const server = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
     if (!id || server.disabled === true) return [];
-    const command = [server.command, ...(Array.isArray(server.args) ? server.args : [])]
-      .filter((part): part is string => typeof part === 'string').join(' ');
+    // A remote server is given as `url` (no command): it uses the network, it runs no program here.
+    const command = typeof server.url === 'string' && server.url.trim()
+      ? server.url.trim()
+      : [server.command, ...(Array.isArray(server.args) ? server.args : [])]
+        .filter((part): part is string => typeof part === 'string').join(' ');
     const description = typeof server.description === 'string' ? server.description.trim() : '';
-    return [{ args: Array.isArray(server.args) ? server.args : [], command, description, id, title: typeof server.title === 'string' && server.title.trim() ? server.title.trim() : id }];
+    const env = server.env && typeof server.env === 'object' ? Object.keys(server.env as Record<string, unknown>) : [];
+    const secretEnv = env.some((key) => /(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|COOKIE|AUTH)/iu.test(key));
+    return [{ args: Array.isArray(server.args) ? server.args : [], command, description, id, ...(typeof server.origin === 'string' ? { origin: server.origin } : {}), secretEnv, title: typeof server.title === 'string' && server.title.trim() ? server.title.trim() : id }];
   });
 }
 
-function describeMcpServer(server: McpServerEntry, herBrowserPortNumber: number): PluginManifest {
+export function describeMcpServer(server: McpServerEntry, herBrowserPortNumber: number): PluginManifest {
   const remote = /^https?:\/\//iu.test(server.command);
   return {
     description: server.description || `外部工具服务器，角色可以调用它提供的工具。${server.command ? `启动方式：${server.command.slice(0, 80)}` : ''}`,
@@ -77,10 +82,10 @@ function describeMcpServer(server: McpServerEntry, herBrowserPortNumber: number)
     id: `mcp:${server.id}`,
     kind: 'mcp',
     name: server.title,
-    permissions: remote ? ['network'] : ['run-program'],
+    permissions: [remote ? 'network' : 'run-program', ...(server.secretEnv ? ['credentials' as const] : [])],
     roleScoped: true,
     settingsPageId: 'platform-mcp',
-    source: 'MCP 配置',
+    source: server.origin === 'link' ? '她从链接装的（未审核）' : server.origin === 'market' ? '插件市场' : 'MCP 配置',
     status: { ready: true },
     troubleshooting: ['工具列表为空：在 MCP 管理里点“检查”，看服务器是否启动成功（常见原因是没装 Node 或 Python）。'],
     ...(connectsToHerBrowser(server.args, herBrowserPortNumber) ? { usesHerBrowser: true } : {}),
@@ -145,7 +150,7 @@ function describeNativePlugins(settings: PetConfig['settings']): PluginManifest[
 }
 
 /** A plugin that came as a package: its own description, author and help replace the generic ones. */
-function withPackage(plugin: PluginManifest, pack: PluginPackageManifest | undefined): PluginManifest {
+export function withPackage(plugin: PluginManifest, pack: PluginPackageManifest | undefined): PluginManifest {
   if (!pack) return plugin;
   return {
     ...plugin,
@@ -153,7 +158,9 @@ function withPackage(plugin: PluginManifest, pack: PluginPackageManifest | undef
     examples: pack.examples.length ? pack.examples : plugin.examples,
     name: pack.name || plugin.name,
     packageId: pack.id,
-    permissions: pack.permissions.length ? pack.permissions : plugin.permissions,
+    // A package lists its own permissions, but cannot hide what it really is: an MCP server
+    // runs a program (or uses the network) whatever the package says (2026-11-06).
+    permissions: [...new Set([...pack.permissions, ...plugin.permissions])],
     requires: pack.requires,
     setup: pack.setup,
     source: `插件包 v${pack.version}${pack.author ? ` · ${pack.author}` : ''}`,

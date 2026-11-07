@@ -12,7 +12,6 @@ import {
   isLifeCompanionExhausted,
   isLifeCompanionHungry,
 } from '../src/life-companion/lifeCompanionGrowthController.ts';
-import { createLifeCompanionGrowthStatus } from '../src/life-companion/lifeCompanionGrowthStatus.ts';
 import {
   PET_FOOD_AFFECTION_REWARD,
   PET_FOOD_FATIGUE_RECOVERY,
@@ -71,44 +70,26 @@ assert.deepEqual(foodGrowth.nextStats, {
 });
 assert.deepEqual(applyFoodConsumedStats({ affection: 98, fatigue: 2, hunger: 3 }), foodGrowth.nextStats);
 assert.deepEqual(getLifeCompanionReachedStatMilestones(39, 81), [40, 60, 80]);
-assert.deepEqual(createLifeCompanionGrowthStatus({ affection: 64, fatigue: 20, hunger: 10 }), {
-  affectionLabel: '64%',
-  fatigueLabel: '20%',
-  hungerLabel: '10%',
-  priority: 'normal',
-  summary: 'growth state stable',
-});
-assert.equal(createLifeCompanionGrowthStatus({ affection: 64, fatigue: 20, hunger: 82 }).priority, 'watch');
-assert.equal(createLifeCompanionGrowthStatus({ affection: 64, fatigue: 96, hunger: 82 }).priority, 'critical');
 
 const {
   controllerSource,
-  growthStatusSource,
   mathSource,
   tickerSource,
   panelSource,
-  growthStatusRowSource,
 } = readProjectSources({
   controllerSource: 'src/life-companion/lifeCompanionGrowthController.ts',
-  growthStatusSource: 'src/life-companion/lifeCompanionGrowthStatus.ts',
   mathSource: 'src/components/pet/petStatsMath.ts',
   tickerSource: 'src/hooks/usePassivePetStatsTicker.ts',
   panelSource: 'src/components/settings/SettingsLifeCompanionPanel.tsx',
-  growthStatusRowSource: 'src/components/settings/SettingsLifeCompanionGrowthStatusRow.tsx',
 });
 
 assert.match(controllerSource, /LifeCompanionGrowthResult/u);
 assert.doesNotMatch(controllerSource, /speakText|queueAnimationToolTrigger|enqueueTriggeredPetSpeech|mcp/iu);
-assert.match(growthStatusSource, /createLifeCompanionGrowthStatus/u);
-assert.doesNotMatch(growthStatusSource, /speakText|queueAnimationToolTrigger|enqueueTriggeredPetSpeech|mcp/iu);
 assert.match(mathSource, /applyLifeCompanionPassiveGrowthTick/u);
 assert.match(mathSource, /applyLifeCompanionFoodConsumedGrowth/u);
 assert.match(tickerSource, /applyLifeCompanionPassiveGrowthTick/u);
-assert.match(panelSource, /SettingsLifeCompanionGrowthStatusRow/u);
-assert.match(growthStatusRowSource, /createLifeCompanionGrowthStatus/u);
+assert.match(panelSource, /好感 \{Math\.round\(stats\.affection\)\}/u, 'the panel shows the stats in Chinese');
 assert.ok(controllerSource.split(/\r?\n/u).length <= 140);
-assert.ok(growthStatusSource.split(/\r?\n/u).length <= 90);
-assert.ok(growthStatusRowSource.split(/\r?\n/u).length <= 80);
 assert.ok(mathSource.split(/\r?\n/u).length <= 130);
 
 console.log('life companion growth controller smoke passed');

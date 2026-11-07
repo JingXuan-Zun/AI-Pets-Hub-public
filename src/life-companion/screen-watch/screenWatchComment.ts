@@ -3,7 +3,7 @@ import { createChatMessageId } from '../../components/chat/multiPetChat';
 import { getDesktopPetSlot } from '../../multiPetRoster';
 import type { PetConfig } from '../../types';
 import { speakCompanionLine } from '../companionLineSpeech';
-import { resolveLifeCompanionPromptTarget } from '../lifeCompanionTextPromptPublisher';
+import { resolveLifeCompanionPromptTarget } from '../companionLineTarget';
 import { LIFE_COMPANION_ACTIVITY_FALLBACK_LINES, type LifeCompanionActivity } from './lifeCompanionActivity';
 
 const MAX_LINE_LENGTH = 240;

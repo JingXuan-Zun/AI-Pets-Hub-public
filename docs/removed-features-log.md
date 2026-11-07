@@ -7,6 +7,59 @@
 
 ---
 
+## 2026-11-06 旧的神经人格图谱浏览器界面，以及其他没人引用的前端文件（共 61 个）
+
+**最后还在的提交：`03223ab`**
+
+删了什么：
+- `src/components/settings/` 里旧的神经人格图谱浏览器（47 个文件）：Pixi/SVG 两种画布（`NeuralPersonaGraphCanvas*`、`NeuralPersonaGraphPixiCanvas`、`NeuralPersonaGraphSvgCanvas`、`neuralPersonaGraphPixi*`）、物理模拟的 Web Worker（`neuralPersonaGraphPhysics.worker.ts`、`neuralPersonaGraphWorkerPhysics.ts`、`neuralPersonaGraphPhysicsWorkerProtocol.ts`）、力与碰撞滑杆、节点/连线样式、激活高亮、聚焦淡出、帧率、诊断开关、节点编辑草稿、框选批量删除面板（`NeuralPersonaNodeBatchDeletePanel.tsx`），以及“智能解析”把人设拆成节点的面板和 hook（`NeuralPersonaNodeGeneration*`、`useNeuralPersonaNodeGeneration*`）、`NeuralPersonaChatRuntimePanel.tsx`。
+- MCP 打包版生产证据那一套（`settingsMcpPackaged*.ts`、`settingsMcpPolicyEvidence.ts`、`settingsMcpLifecycleHardeningEvidence.ts`，9 个文件），连同只用来跑它们的命令行脚本 `scripts/agent-mcp-packaged-{harness-comparison,production-evidence,production-report-builder,production-run-collector,production-run-plan,read-only-coverage}.ts`（不在 package.json 里，文档里也没提）。
+- 其他零散的：`src/agent/agentChatContext.ts`、`src/agent/agentProductionSessionContract.ts`、`src/agent/chatContext/workingMemory.ts`、`src/agent/runtime/deepseekHarness{AdapterContract,RendererTransport}.ts`、`src/components/chat/agentRuntimeUiStatusProjection.ts`、`src/components/pet/animationTool{AudioPlaybackDisplay,AudioPlaybackProgress,PerformanceDisplay}.ts`、`src/components/pet/live2dRenderedVisualBounds.ts`、`src/components/settings/DesktopPetSlotSelector.tsx`。
+- 只测这些文件的 14 个 smoke 和手动调试页 `scripts/harness/neural-persona-graph.{html,tsx}`。
+
+为什么删：`36e766e`（2026-10-03，Obsidian 风格的记忆工作区 + 轻量图谱）替换了旧图谱界面，但旧文件没删；“智能解析”拆人设后来也确认是错误方向（人格锚点保持一份完整人设）。用 TypeScript 从 `src/main.tsx` 扫了一遍导入关系（静态 import、动态 `import()`、re-export、`import.meta.glob`、`new Worker(new URL(...))` 都算），再查了 `electron/` 和 package.json 里所有脚本，这 61 个文件都没有任何地方在用。
+
+保留并继续用的：`src/services/` 下的 `neuralPersonaConfiguredModelAbExecutor.ts`、`neuralPersonaConfiguredNodeGenerationProvider.ts`、`neuralPersonaGeneratedNodeRelationshipAnalysis.ts`、`neuralPersonaNodeGenerationBatchRecovery.ts`。应用里虽然没用到，但 package.json 的回复质量 A/B 跑分脚本和几个 smoke 还在用。`src/character-graph/neural-persona/` 里的图谱数据、布局、物理计算没动。同时测了旧界面和现用代码的 smoke（图谱浏览器、批量删除、节点生成、桌宠槽位、动画音频、MCP 进度总览等）只删了测旧文件的那部分，其余照旧在测。`scripts/projectModuleSource.mjs` 里 `agentChatContext.ts` 那一条也去掉了。
+
+---
+
+## 2026-11-06 群体记忆 / 关系的“上线前审核”层，以及群聊系统页的四个空开关
+
+**最后还在的提交：`b6b8b15`**
+
+删了什么（用户 11-06 看过评估后同意）：
+- `src/group-memory/` 里“自动写入准备度”那一整套：准备度评估、对比、审核回执、审核历史、趋势、趋势审批、人工放行审核、回滚演练清单、影子语料导入和模板、候选影子评估，以及它们的导入导出（21 个文件）。
+- `src/social-trend/`（关系证据影子报告、证据窗口、社交趋势）、`src/social-timeline/`（社交事件时间线）、`src/social-group/`（小团体候选），整目录。
+- `src/character-relationship/directedRelationshipShadowReport.ts`。
+- 设置里对应的约 90 个面板和下载按钮，以及只测这些东西的 29 个 smoke。
+- 群聊系统页“社会 Agent 开关”的四个开关（多人并行生成、自动长期记忆、自动关系演化、自动小团体演化）：代码里没有任何地方读它们，开关本身不起作用；配置字段一并去掉。
+
+为什么删：这是为“将来让系统自动写群体记忆、自动改关系”准备的一套分阶段上线审核流程，但底下的数据一直是空的（群体记忆 0 条，关系 0 条，12 条关系候选没人审），这套审核也从没用过。关系现在由角色自己按人设决定（`src/character-cognition/useRelationshipSelfReview.ts`），不需要这层审核。
+
+保留并继续用的：群体记忆的存储、冲突检查、候选、小组、证据范围修正、归档；消息气泡上的“存到群体记忆”按钮；群聊每轮把群体记忆和角色关系读进提示词的那条路；关系的存储、编辑、时间线、候选收件箱。
+
+---
+
+## 2026-11-06 旧的“主动陪伴”随机定时器（固定草稿、英文提示、调试面板）
+
+**最后还在的提交：`c404006`**（`src/hooks/useLifeCompanionScheduler.ts`；`src/life-companion/` 下的 `lifeCompanionRuntimeScheduler.ts`、`lifeCompanionInteractionRunner.ts`、`lifeCompanionTextPromptPublisher.ts`、`lifeCompanionLlmPrompt.ts`、`lifeCompanionLlmPromptController.ts`、`lifeCompanionLlmBackoff.ts`、`lifeCompanionRuntimeStatus.ts`、`lifeCompanionGrowthStatus.ts`；设置页的 `SettingsLifeCompanionFields.tsx`、`SettingsLifeCompanionRuntimeStatusRow.tsx`、`SettingsLifeCompanionRuntimeControls.tsx`、`SettingsLifeCompanionGrowthStatusRow.tsx`）
+
+旧做法：开了“主动”和“随机”两个开关后，按 30–180 分钟的随机间隔触发一次；用饥饿、好感这类数值挑一句固定草稿（“X好像有点饿了，要不要陪我聊聊吃点什么？”），可选再用一段英文任务说明让模型改写一句；失败有退避；设置页里是一排英文调试按钮（Proactive / Random / Text prompt / LLM prompt / 冷却分钟数）和运行状态行。
+
+为什么删：这正是“主动说话像 AI”的原因（2026-10-21 记录）：动机是数值、提示是英文、没有具体缘由。改成认知层第二步：角色心里惦记的事攒够了才开口，用她自己的人设和最近的私聊写这句话，频率按用户定的上限（`src/character-cognition/proactiveSpeechRules.ts`），设置里只剩一个“主动找你聊天”开关和状态说明。安静时段判断（`isLifeCompanionQuietHour`）、手动暂停（`lifeCompanionRuntimeOverride.ts`）保留继续用；旧设置里的随机间隔、冷却等字段读配置时直接丢弃。
+
+---
+
+## 2026-11-06 旧的任务结果展示模块（审批卡、运行轨迹、阶段创建、角色转述）
+
+**最后还在的提交：`99a5fc1`**（文件都在 `src/components/chat/runController/` 下：`conversationApprovalCard.ts`、`sessionMessageProjection.ts`、`sessionVisibleText.ts`、`personaText.ts`、`runTraceCreation.ts`、`workStageCreation.ts`）
+
+做什么的：旧 Agent 路线和对话循环早期版本用来在聊天里贴一张“需要你同意”的审批卡、生成任务阶段和运行轨迹、把内部结果改写成角色口吻的那一套。
+
+为什么删：`0609b19`（一个任务一张卡）之后，审批和步骤都改由 `conversationTaskCard.ts` 显示，这 6 个文件已经没有任何地方在用，只剩一个测试还在测它们。还在用的部分（执行回执、停止时把未完成步骤标成已停止）保留，测试也改成只测这些。
+
+---
+
 ## 2026-10-19 主桌宠的“随机瞟一眼”（固定看右上方）
 
 **最后还在的提交：`04cb10b`**（文件 `src/pet-runtime/core/useMainPetVisionController.ts`）

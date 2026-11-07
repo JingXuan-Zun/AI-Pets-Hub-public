@@ -1,5 +1,5 @@
 const BLOCKED_HOST_ENVIRONMENT_KEYS = new Set(['NODE_OPTIONS', 'NODE_PATH']);
-const SENSITIVE_HOST_ENVIRONMENT_KEY = /(?:^|_)(?:ACCESS_?KEY|API_?KEY|AUTH|CREDENTIALS?|PASSWORD|PASSWD|PRIVATE_?KEY|SECRET|TOKEN)(?:_|$)/iu;
+const SENSITIVE_HOST_ENVIRONMENT_KEY = /(?:^|_)(?:ACCESS_?KEY|API_?KEY|AUTH|CREDENTIALS?|PASSWORD|PASSWD|PRIVATE_?KEY|SECRET|TOKEN|KEY|PAT|COOKIE)(?:_|$)/iu;
 
 function shouldBlockInheritedEnvironmentKey(key) {
   const normalizedKey = String(key || '').trim().toUpperCase();

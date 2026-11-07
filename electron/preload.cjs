@@ -324,6 +324,7 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     };
   },
   listDisplays: () => ipcRenderer.invoke('desktop-pet:list-displays'),
+  getSystemIdleSeconds: () => ipcRenderer.invoke('desktop-pet:get-system-idle-seconds'),
   getSystemInfo: () => ipcRenderer.invoke('desktop-pet:get-system-info'),
   listCaptureSources: (request) => ipcRenderer.invoke('desktop-pet:list-capture-sources', request ?? {}),
   listDesktopIcons: (options) => ipcRenderer.invoke('desktop-pet:list-desktop-icons', options ?? {}),
@@ -394,6 +395,7 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   startGptSovitsService: (settings) => ipcRenderer.invoke('desktop-pet:start-gpt-sovits-service', settings ?? {}),
   listGptSovitsModels: () => ipcRenderer.invoke('desktop-pet:list-gpt-sovits-models'),
   installGptSovitsRuntime: (settings) => ipcRenderer.invoke('desktop-pet:install-gpt-sovits-runtime', settings ?? {}),
+  installStarterVoice: (settings) => ipcRenderer.invoke('desktop-pet:install-starter-voice', settings ?? {}),
   onGptSovitsInstallProgress: (callback) => {
     if (typeof callback !== 'function') {
       return () => {};

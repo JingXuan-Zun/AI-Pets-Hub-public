@@ -114,6 +114,13 @@ export default defineConfig(() => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify: file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // Folders that are not web source: worktrees of background sessions (a whole copy of the
+      // project), the voice runtime's Python venv (tens of thousands of files) and local models.
+      // Watching them cost gigabytes of memory, and deleting a worktree set off a reload storm
+      // that made dragging the pet stutter (2026-11-07).
+      watch: {
+        ignored: ['**/.claude/**', '**/python/**', '**/local-models/**', '**/.desktop-test-*/**'],
+      },
     },
   };
 });

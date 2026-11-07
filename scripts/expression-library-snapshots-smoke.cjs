@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 const crypto = require('node:crypto');
+const withoutCwd = (text) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const source = fs.readFileSync(require.resolve('../electron/expressionLibraryService.cjs'), 'utf8');
 const rules = fs.readFileSync(require.resolve('../electron/expressionLibrarySnapshots.cjs'), 'utf8');
 const switchSource = fs.readFileSync(require.resolve('../electron/expressionLibrarySwitchActions.cjs'), 'utf8');
@@ -73,9 +74,9 @@ async function main() {
   for (const blank of [false, true]) for (const failure of ['none', 'load', 'ensure', 'scan', 'save']) {
     const config = { mode, current, snapshot, history, blank, failure };
     const actual = await run(source, config); if (old) assert.deepEqual(actual, await run(old, config));
-    hash.update(JSON.stringify(actual)); cases++;
+    hash.update(withoutCwd(JSON.stringify(actual))); cases++;
   }
-  const digest = hash.digest('hex'); if (!old) assert.equal(digest, '59f893b6608d71183c0058b5c74b7cbc2d3c18d709f7142462fb5854d32a10c4');
+  const digest = hash.digest('hex'); if (!old) assert.equal(digest, 'f72796508fd18e8f8c0cddd1cbd9d05500df163a44e1d19e2ad33083161fd7e4');
   console.log('Expression snapshots passed: ' + cases + ' library/default/restore/duplicate/history/blank/error cases; archive identity and phase order; ' + digest);
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

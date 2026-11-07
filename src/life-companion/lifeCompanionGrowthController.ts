@@ -43,6 +43,8 @@ export function isLifeCompanionExhausted(
 }
 
 export function applyLifeCompanionPassiveGrowthTick(options: {
+  /** Affection stays at the top and hunger never costs it (lifeCompanion.feelingsNeverDrop). */
+  feelingsNeverDrop?: boolean;
   hungryDurationMs?: number;
   stats: PetStats;
   tickMs?: number;
@@ -55,12 +57,12 @@ export function applyLifeCompanionPassiveGrowthTick(options: {
     options.stats.fatigue + LIFE_COMPANION_BASE_FATIGUE_INCREASE_PER_TICK * tickRatio,
     4,
   );
-  let affection = clampGrowthStat(options.stats.affection, 4);
+  let affection = options.feelingsNeverDrop ? 100 : clampGrowthStat(options.stats.affection, 4);
 
   if ((options.hungryDurationMs ?? 0) >= LIFE_COMPANION_HUNGER_PENALTY_DELAY_MS) {
     const hungerPenalty = LIFE_COMPANION_HUNGER_PENALTY_PER_MINUTE * (tickMs / 60000);
 
-    affection = clampGrowthStat(affection - hungerPenalty, 4);
+    if (!options.feelingsNeverDrop) affection = clampGrowthStat(affection - hungerPenalty, 4);
     fatigue = clampGrowthStat(fatigue + hungerPenalty, 4);
   }
 

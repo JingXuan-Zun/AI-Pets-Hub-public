@@ -95,22 +95,28 @@ export async function updateMcpServers(update: (servers: Array<Record<string, un
   if (!saved?.ok) throw new Error(saved?.error ?? 'MCP 配置保存失败。');
 }
 
-async function registerMcpServer(manifest: PluginPackageManifest) {
+/**
+ * Where a plugin came from (2026-11-06). Only `link` — installed by the character from a link
+ * the user sent, not reviewed — is untrusted: its tools' own "read-only" claims are ignored.
+ */
+export type PluginOrigin = 'created' | 'link' | 'market' | 'user';
+
+async function registerMcpServer(manifest: PluginPackageManifest, origin: PluginOrigin) {
   const mcp = manifest.mcp;
   if (!mcp) throw new Error('插件没有写启动方式。');
   const server = mcp.url
-    ? { description: manifest.description, id: manifest.id, title: manifest.name, url: mcp.url }
-    : { args: mcp.args, command: mcp.command, cwd: manifest.folder, description: manifest.description, env: mcp.env, id: manifest.id, title: manifest.name };
+    ? { description: manifest.description, id: manifest.id, origin, title: manifest.name, url: mcp.url }
+    : { args: mcp.args, command: mcp.command, cwd: manifest.folder, description: manifest.description, env: mcp.env, id: manifest.id, origin, title: manifest.name };
   await updateMcpServers((servers) => [...servers.filter((item) => item.id !== manifest.id), server]);
 }
 
 /** After the main process copied the files: make the plugin usable, turned on for petId. */
-export async function activatePluginPackage(result: PackageResult | undefined | null, petId: string): Promise<PackageResult> {
+export async function activatePluginPackage(result: PackageResult | undefined | null, petId: string, origin: PluginOrigin = 'user'): Promise<PackageResult> {
   if (!result) return { error: '当前环境不能安装插件（需要桌面版）。', ok: false };
   if ('error' in result) return result;
   try {
     if (result.manifest.kind === 'skill') await registerSkill(result.manifest, petId);
-    else await registerMcpServer(result.manifest);
+    else await registerMcpServer(result.manifest, origin);
     // Its settings (defaults or what the user chose before a reinstall) reach it right away.
     const { applyPluginSettings } = await import('./pluginPackageSettings');
     await applyPluginSettings(result.manifest);
@@ -120,12 +126,12 @@ export async function activatePluginPackage(result: PackageResult | undefined | 
   }
 }
 
-export async function installPluginFromFolder(folder: string, petId: string) {
-  return activatePluginPackage(await bridge()?.installFolder(folder) as PackageResult | undefined, petId);
+export async function installPluginFromFolder(folder: string, petId: string, origin: PluginOrigin = 'user') {
+  return activatePluginPackage(await bridge()?.installFolder(folder) as PackageResult | undefined, petId, origin);
 }
 
-export async function installPluginFromGitHub(url: string, petId: string) {
-  return activatePluginPackage(await bridge()?.installGitHub(url) as PackageResult | undefined, petId);
+export async function installPluginFromGitHub(url: string, petId: string, origin: PluginOrigin = 'user') {
+  return activatePluginPackage(await bridge()?.installGitHub(url) as PackageResult | undefined, petId, origin);
 }
 
 export async function uninstallPluginPackage(manifest: Pick<PluginPackageManifest, 'id' | 'kind'>) {

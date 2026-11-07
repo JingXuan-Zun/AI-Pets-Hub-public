@@ -47,8 +47,11 @@ export function usePetContainerCharacterRuntimeBridge({
       return;
     }
 
-    mainWindowReadyMarkedRef.current = true;
+    // Marked only once the frame really ran: in development React mounts twice and cancels the
+    // first frame, which used to leave the window never reported ready (renderer-ready timeout,
+    // then a needless reload ~10 s after start).
     const frameId = window.requestAnimationFrame(() => {
+      mainWindowReadyMarkedRef.current = true;
       desktopPetShellRuntime.markMainWindowReadyToShow();
     });
 

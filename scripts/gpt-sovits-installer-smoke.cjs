@@ -48,8 +48,9 @@ function makeInstaller({ failStep = null, healthStatus = 'stopped', venvReady = 
   ]);
   check(first === second, true, 'concurrent installs share one run');
   check([first.ok, first.error, ok.getCleared()], [true, null, 1], 'success clears probe cache');
-  check(ok.calls.map(([, id]) => id), ['check', 'venv', 'pip', 'torch', 'pip', 'source', 'models'], 'all steps ran in order');
-  check(ok.calls.slice(2).every(([executable]) => executable === 'venv-py'), true, 'post-venv steps use the venv python');
+  // The first check picks a Python 3.10–3.12 (or downloads a portable one) before the venv exists.
+  check(ok.calls.map(([, id]) => id), ['check', 'check', 'venv', 'pip', 'torch', 'pip', 'source', 'models'], 'all steps ran in order');
+  check(ok.calls.slice(3).every(([executable]) => executable === 'venv-py'), true, 'post-venv steps use the venv python');
   check(first.messages.some((line) => line.includes('secret')), false, 'raw pip output stays out of user progress');
   check(first.messages.includes('正在下载推理代码...'), true, 'install script lines are shown');
   check(ok.logs.some((line) => line.includes('secret')), true, 'raw pip output kept in log');
@@ -60,6 +61,12 @@ function makeInstaller({ failStep = null, healthStatus = 'stopped', venvReady = 
   check([failed.ok, failed.error], [false, '安装 PyTorch 显卡版（约 3.3GB，耗时较长）失败，请检查网络后重试。'], 'failure message names the step');
   check(failing.calls.map(([, id]) => id).includes('source'), false, 'stops at first failure');
   check(failing.getCleared(), 0, 'no cache clear on failure');
+
+  // pip failing on PyPI gets one more try through the mirror before the install stops.
+  const pipFailing = makeInstaller({ failStep: 'pip' });
+  const pipFailed = await pipFailing.install({});
+  const pipCalls = pipFailing.calls.map(([, id]) => id).filter((id) => id === 'pip').length;
+  check([pipFailed.ok, pipCalls, pipFailed.messages.includes('换一个下载源再试一次...')], [false, 2, true], 'pip retried through the mirror once');
 
   const unhealthy = await makeInstaller({ healthStatus: 'missing-source' }).install({});
   check([unhealthy.ok, unhealthy.error], [false, 'health says no'], 'post-install health gate');

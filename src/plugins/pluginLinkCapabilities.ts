@@ -81,11 +81,11 @@ const installLink: PlatformCapability = {
     if (!approved) return { ok: false, text: '用户没有同意，没有安装。' };
 
     if (plan.kind === 'package') {
-      const result = await installPluginFromGitHub(url, context.petId);
+      const result = await installPluginFromGitHub(url, context.petId, 'link');
       if (!result.ok) return { ok: false, text: `安装失败：${'error' in result ? result.error : ''}` };
       return { ok: true, text: `已安装「${result.manifest.name}」，并为你开启。可以用 plugins.describe 看它怎么用。` };
     }
-    const added = await addMcpServers(plan.servers, { settings: context.configRef.current.settings });
+    const added = await addMcpServers(plan.servers, { origin: 'link', settings: context.configRef.current.settings });
     const lines = added.results.map(({ id, result }) => (result.status === 'ok'
       ? `「${id}」装好了，能用 ${result.tools.length} 个工具。${result.summary ?? ''}`
       : `「${id}」加上了，但还没跑起来：${result.status === 'failed' ? result.message : ''}`));

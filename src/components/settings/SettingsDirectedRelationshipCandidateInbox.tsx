@@ -17,7 +17,7 @@ const REASON_LABELS: Record<string, string> = {
   'self-relationship': '不能建立自身关系',
   'target-not-active': '目标不在当前群聊',
   'transient-language': '临时、玩笑或测试表达',
-  'valid-change-requires-review': '有效候选，等待人工审核',
+  'valid-change-requires-review': '有效候选，等角色自己决定',
 };
 
 function DeltaText({ candidate }: { candidate: DirectedRelationshipCandidate }) {
@@ -87,7 +87,7 @@ export function SettingsDirectedRelationshipCandidateInbox(props: {
     <div className="space-y-3">
       <div>
         <h4 className="text-2xs font-semibold text-foreground">关系变化候选箱</h4>
-        <p className="mt-1 text-2xs leading-4 text-muted-foreground">角色输出只会进入这里；未批准候选不会进入正式关系或角色 Context。</p>
+        <p className="mt-1 text-2xs leading-4 text-muted-foreground">群聊里看出的关系变化先放在这里，由这段关系的那个角色按自己的人设决定接不接受（启动 3 分钟后、之后每 10 分钟处理一次）；你也可以在这里直接批准或拒绝。</p>
       </div>
       <SettingsDirectedRelationshipBatchActions approvableCount={approvable.length}
         noDragRegionStyle={props.noDragRegionStyle} onApproveAll={props.onApproveAll}

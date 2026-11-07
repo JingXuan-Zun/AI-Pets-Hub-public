@@ -23,6 +23,14 @@ import {
   type LoopWindowObservation,
 } from '../loop/observationTiers';
 import type { ConversationToolDefinition } from './conversationToolTypes';
+import {
+  formatGoalVerification,
+  GOAL_CHECK_KINDS,
+  parseGoalChecks,
+  verifyGoalChecks,
+  type GoalCheckReaders,
+  type GoalVerification,
+} from './conversationGoalCheck';
 
 // Fine-grained desktop tools for the conversation loop. The model reads a window as a
 // numbered element list, acts on an element id (or a screen point), and every action
@@ -44,18 +52,27 @@ export interface DesktopToolDependencies {
   observeScreen: () => Promise<LoopWindowObservation>;
   observeWindows: () => Promise<{ active: LoopWindow | null; windows: LoopWindow[] }>;
   sleep: (ms: number) => Promise<void>;
+  /** What verify_goal reads besides windows: screens, files, her browser's tabs. */
+  goalReaders: Pick<GoalCheckReaders, 'listBrowserPages' | 'listDisplays' | 'readFile'>;
 }
 
 export interface DesktopToolResult {
   /** Shorter form that replaces this result once a newer observation exists. */
   compact?: string;
   content: string;
+  /** verify_goal only: how the end state checked out. */
+  verification?: GoalVerification;
 }
 
 export interface ConversationDesktopTool {
+  /** The step changes something on the computer, so the task needs a final check (verify_goal). */
+  changesState?: boolean;
   definition: ConversationToolDefinition;
   run: (args: Record<string, unknown>) => Promise<DesktopToolResult>;
 }
+
+// Desktop steps that change something; a task that used one ends with verify_goal.
+const CHANGING_DESKTOP_TOOLS = new Set(['launch_app', 'open_url', 'close_tab', 'close_window', 'click', 'type_text', 'press_keys', 'drag']);
 
 export interface ConversationDesktopSession {
   tools: ConversationDesktopTool[];
@@ -105,6 +122,27 @@ function defaultDependencies(settings: PetConfig['settings']): DesktopToolDepend
     observeScreen: observeLoopScreen,
     observeWindows: observeLoopWindows,
     sleep: (ms) => new Promise((resolve) => { globalThis.setTimeout(resolve, ms); }),
+    goalReaders: {
+      listBrowserPages: async () => {
+        try {
+          const result = (await desktopPetShellRuntime.controlBrowser({ action: 'list_tabs', settings }) ?? {}) as { ok?: boolean; pages?: Array<{ title?: string; type?: string; url?: string }> };
+          if (!result.ok || !Array.isArray(result.pages)) return null;
+          return result.pages.filter((page) => !page.type || page.type === 'page').map((page) => ({ title: page.title ?? '', url: page.url ?? '' }));
+        } catch {
+          return null;
+        }
+      },
+      listDisplays: async () => {
+        const displays = await (typeof window === 'undefined' ? undefined : window.desktopPetShell?.listDisplays?.());
+        return Array.isArray(displays) ? displays as Awaited<ReturnType<GoalCheckReaders['listDisplays']>> : [];
+      },
+      readFile: async (path) => {
+        const read = (await desktopPetShellRuntime.readTextFile({ maxBytes: 200_000, path }) ?? {}) as { content?: string; ok?: boolean; text?: string };
+        if (read.ok) return { ok: true, text: read.text ?? read.content ?? '' };
+        const info = (await desktopPetShellRuntime.getPathInfo({ path }) ?? {}) as { exists?: boolean };
+        return { exists: Boolean(info.exists), ok: false };
+      },
+    },
   };
 }
 
@@ -525,6 +563,46 @@ ${formatLoopWindows(windows, active)}` };
         : { content: `等待后：${change}` };
     }),
   ];
+  // verify_goal: the end state of a task that changed something, checked against a fresh look
+  // at the computer (see conversationGoalCheck.ts).
+  tools.push(tool('verify_goal', [
+    '核对任务结果。改动了电脑上东西的任务（开软件、打字、点按钮、移窗口、写文件、打开网页……）全部做完后、告诉用户“做完了”之前调用一次。',
+    '把用户要的最终结果拆成 1～6 条能检查的：window_open 某个窗口开着（screen 可写 primary 主屏 / secondary 副屏）；window_closed 窗口已关；window_text 窗口里有某段文字；',
+    'file_exists / file_absent / file_contains 文件存在 / 已不在 / 里面有某段文字（target 写完整路径）；browser_page 她的浏览器里开着某个网页（target 写标题或网址里的字）；other 其他没法自动核对的。',
+    'target 写窗口标题里的字或程序名（如 Notepad、Calculator）。会重新看一遍电脑来核对，不看之前工具说了什么。',
+  ].join(''), {
+    checks: {
+      description: '要核对的几条',
+      items: {
+        properties: {
+          kind: { enum: GOAL_CHECK_KINDS, type: 'string' },
+          screen: { description: 'window_open：应该在哪块屏幕（可选）', enum: ['primary', 'secondary'], type: 'string' },
+          target: { description: '窗口标题 / 程序名、文件完整路径、网页标题或网址里的字，或 other 的说明', type: 'string' },
+          text: { description: 'window_text / file_contains：应该出现的文字', type: 'string' },
+        },
+        required: ['kind', 'target'],
+        type: 'object',
+      },
+      type: 'array',
+    },
+  }, ['checks'], async (args) => {
+    const checks = parseGoalChecks(args.checks);
+    if (!checks.length) return { content: '需要 checks：至少一条能核对的结果（kind + target）。' };
+    const verification = await verifyGoalChecks(checks, {
+      ...deps.goalReaders,
+      listWindows: async () => {
+        ({ active, windows } = await deps.observeWindows());
+        return windows;
+      },
+      readWindowText: async (window) => {
+        const seen = await deps.observeElements(window);
+        return seen.elements.map((element) => element.label).join('\n');
+      },
+    });
+    const content = formatGoalVerification(verification);
+    return { compact: content.split('\n')[0], content, verification };
+  }));
+
   // Every result is checked for dead ends: a sign-in / activation wall, or several failed steps
   // in a row. Either way she is told to stop and tell the user instead of retrying.
   let failuresInARow = 0;
@@ -555,5 +633,5 @@ ${formatLoopWindows(windows, active)}` };
       return { ...result, ...(result.compact ? { compact: `${result.compact}${tail}` } : {}), content: `${result.content}${tail}` };
     },
   });
-  return { tools: tools.map(withDeadEndCheck) };
+  return { tools: tools.map((entry) => ({ ...withDeadEndCheck(entry), changesState: CHANGING_DESKTOP_TOOLS.has(entry.definition.function.name) })) };
 }

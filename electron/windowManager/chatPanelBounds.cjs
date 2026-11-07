@@ -38,6 +38,17 @@ function createChatPanelLimitsResolver({ captureService, isInteractiveDialogueCh
   return getResolvedChatPanelWindowLimits;
 }
 
+// 互动对话默认 16:9：高度占屏幕八成左右，太宽时按宽度收。
+function resolveInteractiveDefaultSize(workArea) {
+  let height = Math.round(workArea.height * 0.82);
+  let width = Math.round(height * 16 / 9);
+  if (width > workArea.width * 0.92) {
+    width = Math.round(workArea.width * 0.92);
+    height = Math.round(width * 9 / 16);
+  }
+  return { width, height };
+}
+
 function createChatPanelBoundsResolver({ getResolvedChatPanelWindowLimits, getActiveChatPanelWindowBoundsPreset, isInteractiveDialogueChatActive, INTERACTIVE_CHAT_PANEL_CENTER_Y_RATIO }) {
   function getResolvedChatPanelWindowBounds(currentBounds = null) {
     const limits = getResolvedChatPanelWindowLimits();
@@ -56,17 +67,11 @@ function createChatPanelBoundsResolver({ getResolvedChatPanelWindowLimits, getAc
 
     if (isInteractiveDialogueChatActive()) {
       if (!currentBounds) {
-        // 互动对话默认 16:9：高度占屏幕八成左右，太宽时按宽度收。
-        let fitHeight = Math.round(workArea.height * 0.82);
-        let fitWidth = Math.round(fitHeight * 16 / 9);
-        if (fitWidth > workArea.width * 0.92) {
-          fitWidth = Math.round(workArea.width * 0.92);
-          fitHeight = Math.round(fitWidth * 9 / 16);
-        }
+        const fit = resolveInteractiveDefaultSize(workArea);
         return resolveInteractiveChatPanelPosition(
           workArea,
-          Math.max(limits.minWidth, fitWidth),
-          Math.max(limits.minHeight, fitHeight),
+          Math.max(limits.minWidth, fit.width),
+          Math.max(limits.minHeight, fit.height),
           INTERACTIVE_CHAT_PANEL_CENTER_Y_RATIO,
         );
       }

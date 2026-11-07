@@ -22,7 +22,6 @@ import {
 import { SettingsGroupMemoryHistory } from './SettingsGroupMemoryHistory';
 import { SettingsGroupMemoryEvidenceScopePanel } from './SettingsGroupMemoryEvidenceScopePanel';
 import { SettingsGroupMemoryReviewPanel } from './SettingsGroupMemoryReviewPanel';
-import { SettingsGroupMemoryShadowCorpusPreview } from './SettingsGroupMemoryShadowCorpusPreview';
 import { SettingsGroupMemorySubgroupPanel } from './SettingsGroupMemorySubgroupPanel';
 import { useSettingsGroupMemoryManagement } from './useSettingsGroupMemoryManagement';
 import { useSettingsGroupMemoryCandidateManagement } from './useSettingsGroupMemoryCandidateManagement';
@@ -167,8 +166,6 @@ function MemoryManagementPanels({
 }) {
   return (
     <>
-      <SettingsGroupMemoryShadowCorpusPreview noDragRegionStyle={noDragRegionStyle}
-        repository={repository} />
       <SettingsGroupMemoryCandidateInbox
         actions={candidateActions}
         noDragRegionStyle={noDragRegionStyle}

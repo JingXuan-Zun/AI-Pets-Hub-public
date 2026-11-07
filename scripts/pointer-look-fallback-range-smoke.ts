@@ -200,7 +200,6 @@ assert.equal(
 
 const petAvatarLayerSource = readProjectFile('src/components/pet/PetAvatarLayer.tsx');
 const petCompanionLayerSource = readProjectFile('src/components/pet/PetCompanionLayer.tsx');
-const desktopPetSlotSelectorSource = readProjectFile('src/components/settings/DesktopPetSlotSelector.tsx');
 const settingsPanelSource = readProjectFile('src/components/SettingsPanel.tsx');
 const constantsSource = readProjectFile('src/constants.ts');
 const petConfigNormalizationSource = readProjectFile('src/petConfigNormalization.ts');
@@ -253,11 +252,6 @@ assert.match(
   petCompanionLayerSource,
   /trackingLostHoldMs:\s*slot\.modelType === 'live2d' \? 5000 : undefined[\s\S]*trackingStillReturnMs:\s*slot\.modelType === 'live2d' \? 10000 : undefined/,
   'companion Live2D pointer look should pass the 5s leave hold and 10s still-return timing into the shared tracker',
-);
-assert.match(
-  desktopPetSlotSelectorSource,
-  /onSetSlotPointerLookEnabled[\s\S]*slot\.pointerLookEnabled[\s\S]*\\u89c6\\u7ebf\\u8ffd\\u8e2a ON/,
-  'desktop pet slot selector should expose the pointer look toggle inside each slot card',
 );
 assert.match(
   settingsPanelSource,

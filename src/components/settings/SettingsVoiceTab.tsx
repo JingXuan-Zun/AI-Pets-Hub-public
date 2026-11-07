@@ -1,3 +1,4 @@
+import { SettingsStarterVoiceCard } from './SettingsStarterVoiceCard';
 import { type CSSProperties } from 'react';
 import { type BrowserTtsHealth, type BrowserTtsInstallProgress, type BrowserTtsInstallResult, type LocalVoiceAssets, type LocalVoiceHealth, type LocalVoiceInstallProgress, type LocalVoiceInstallResult, type PetConfig, type VoiceApiProtocol } from '../../types';
 import {
@@ -24,6 +25,8 @@ import {
 } from './settingsVoiceUtils';
 
 export interface SettingsVoiceTabProps {
+  /** Applies and saves right away (used by the one-click voice install). */
+  onCommitSettings?: (updates: Partial<PetConfig['settings']>) => void;
   browserTtsHealth: BrowserTtsHealth;
   browserTtsHealthLoading: boolean;
   browserTtsInstallProgress: BrowserTtsInstallProgress | null;
@@ -65,6 +68,7 @@ export function SettingsVoiceTab({
   onRefreshBrowserTtsHealth,
   onRefreshLocalVoiceHealth,
   onStartBrowserTtsService,
+  onCommitSettings,
 }: SettingsVoiceTabProps) {
   const { settings } = localConfig;
   const localTtsVoiceToneStability = clampLocalTtsVoiceToneStability(
@@ -148,6 +152,7 @@ export function SettingsVoiceTab({
 
   return (
     <div className="m-0 space-y-6">
+      <SettingsStarterVoiceCard settings={settings} applySettings={onCommitSettings ?? applySettings} />
       <SettingsVoiceGeneralSection
         settings={settings}
         noDragRegionStyle={noDragRegionStyle}

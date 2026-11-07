@@ -5,10 +5,13 @@ import ts from 'typescript';
 
 export function assertImplementationModuleGraph(options: {
   entry: string;
+  /** Other files outside the directory that also use its modules (they count as entries too). */
+  extraEntries?: string[];
   directory: string;
   maxEntryLines?: number;
 }) {
-  const files = [options.entry, ...readdirSync(options.directory)
+  const extraEntries = options.extraEntries ?? [];
+  const files = [options.entry, ...extraEntries, ...readdirSync(options.directory)
     .filter(file => /\.(?:tsx?|cjs)$/u.test(file)).map(file => `${options.directory}/${file}`)];
   const dependencies = new Map<string, string[]>();
   const allImports = new Map<string, string[]>();
@@ -63,5 +66,6 @@ export function assertImplementationModuleGraph(options: {
     for (const target of allImports.get(file) ?? []) collect(target);
   }
   collect(options.entry);
+  extraEntries.forEach(collect);
   assert.deepEqual(files.filter(file => !reachable.has(file)), [], 'Implementation modules must remain reachable');
 }

@@ -19,6 +19,8 @@ const RUNTIME_REQUIREMENTS = [
 ];
 
 const BASE_PYTHON_CHECK = 'import sys; sys.exit(0 if (3, 10) <= sys.version_info[:2] <= (3, 12) else 3)';
+// Used when PyPI itself fails (slow or blocked networks).
+const PIP_MIRROR_INDEX_URL = 'https://pypi.tuna.tsinghua.edu.cn/simple';
 
 function buildGptSovitsInstallSteps({ paths, installScript, device, venvExists }) {
   const torchIndex = device === 'cpu' ? TORCH_INDEX_URLS.cpu : TORCH_INDEX_URLS.cuda;
@@ -29,14 +31,14 @@ function buildGptSovitsInstallSteps({ paths, installScript, device, venvExists }
     ...(venvExists ? [] : [
       { id: 'venv', runner: 'base', label: '创建独立运行环境...', args: ['-m', 'venv', paths.venvDir] },
     ]),
-    { id: 'pip', runner: 'venv', label: '升级 pip...', args: pip('--upgrade', 'pip') },
+    { id: 'pip', runner: 'venv', label: '升级 pip...', args: pip('--upgrade', 'pip'), pipMirrorRetry: true },
     {
       id: 'torch',
       runner: 'venv',
       label: device === 'cpu' ? '安装 PyTorch（CPU 版）...' : '安装 PyTorch 显卡版（约 3.3GB，耗时较长）...',
       args: pip(...TORCH_PACKAGES, '--index-url', torchIndex),
     },
-    { id: 'requirements', runner: 'venv', label: '安装语音依赖...', args: pip(...RUNTIME_REQUIREMENTS) },
+    { id: 'requirements', runner: 'venv', label: '安装语音依赖...', args: pip(...RUNTIME_REQUIREMENTS), pipMirrorRetry: true },
     {
       id: 'source', runner: 'venv', label: '下载推理代码...',
       args: [installScript, 'source', '--source-dir', paths.sourceDir, '--commit', GPT_SOVITS_COMMIT],
@@ -48,4 +50,4 @@ function buildGptSovitsInstallSteps({ paths, installScript, device, venvExists }
   ];
 }
 
-module.exports = { GPT_SOVITS_COMMIT, RUNTIME_REQUIREMENTS, TORCH_INDEX_URLS, buildGptSovitsInstallSteps };
+module.exports = { BASE_PYTHON_CHECK, GPT_SOVITS_COMMIT, PIP_MIRROR_INDEX_URL, RUNTIME_REQUIREMENTS, TORCH_INDEX_URLS, buildGptSovitsInstallSteps };

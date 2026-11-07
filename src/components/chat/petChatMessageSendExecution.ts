@@ -1,3 +1,4 @@
+import { handleOnboardingMessage } from '../../onboarding/onboardingController';
 import { createConversationChatRuntime, createConversationToolActorGate } from './runController/conversationChatRuntime';
 import { beginDelegatedScope, resolveDelegatedSlotId } from './runController/chatDelegation';
 import { createChatMessageId, resolveChatTargetSlots } from './chatTargetResolutionUtils';
@@ -200,6 +201,11 @@ export async function executePetChatMessageSend(
   options?: DesktopPetChatSendOptions,
 ) {
   const input = resolveSendInput(textOverride, options);
+  // First run, no model yet: 小玲's guide answers (a pasted key is never kept in the history).
+  if (await handleOnboardingMessage({ config: context.configRef.current, onUpdateConfig: context.onUpdateConfig, text: input.outgoingText })) {
+    desktopPetChatStore.setInputValue('');
+    return;
+  }
   const initialState = desktopPetChatStore.getState();
   const isResetCommand = /^\/reset$/iu.test(input.outgoingText.trim());
   if (

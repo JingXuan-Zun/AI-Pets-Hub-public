@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 const crypto = require('node:crypto');
+const withoutCwd = (text) => text.split(JSON.stringify(process.cwd()).slice(1, -1)).join('<cwd>'); // digest must not depend on the checkout folder
 const source = fs.readFileSync(require.resolve('../electron/expressionLibraryService.cjs'), 'utf8');
 const helper = fs.readFileSync(require.resolve('../electron/expressionLibraryCategoryFiles.cjs'), 'utf8');
 const old = process.argv[2] ? fs.readFileSync(process.argv[2], 'utf8') : null;
@@ -69,9 +70,9 @@ async function main() {
   for (const action of methods) for (const mode of ['managed', 'external']) for (const category of ['valid', 'invalid', 'unclassified', 'root'])
   for (const count of [0, 1, 2]) for (const failure of ['none', 'load', 'resolve', 'available', 'mkdir', 'validate', 'rename', 'rename-second', 'rm', 'copy', 'copy-second', 'scan', 'save']) {
     const config = { action, mode, category, count, failure }, actual = await run(source, config);
-    if (old) assert.deepEqual(actual, await run(old, config)); hash.update(JSON.stringify(actual)); cases++;
+    if (old) assert.deepEqual(actual, await run(old, config)); hash.update(withoutCwd(JSON.stringify(actual))); cases++;
   }
-  const digest = hash.digest('hex'); if (!old) assert.equal(digest, '2ee140df5dbc2100e67fe1e1666836d7925910ecd3910fdc9ece0fe875fdeaed');
+  const digest = hash.digest('hex'); if (!old) assert.equal(digest, '515bc116a237ed69571cdea65a7ec48fecd3feebcff781386453a4fedc39733b');
   console.log('Expression category files passed: ' + cases + ' delete/import/mode/root/path/partial-error cases; mutations and IO order; ' + digest);
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

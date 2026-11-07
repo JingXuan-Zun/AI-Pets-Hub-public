@@ -5,7 +5,6 @@ import {
   type NeuralPersonaGraphViewEdge,
   type NeuralPersonaGraphViewNode,
 } from '../src/character-graph/neural-persona';
-import { hitNeuralPersonaGraphNode } from '../src/components/settings/neuralPersonaGraphPixiHitTesting';
 
 function node(nodeId: string, type: NeuralPersonaGraphViewNode['type']): NeuralPersonaGraphViewNode {
   return {
@@ -71,11 +70,6 @@ assert.ok(maximumEdgeLength <= 340,
 const outer = [...content].sort((left, right) => radius(right) - radius(left))[0];
 const physics = createNeuralPersonaGraphPhysics(layout.nodes, fixture.edges);
 const before = { ...physics.getPosition(outer.nodeId)! };
-const zoomedOutPointer = { x: before.x + 40, y: before.y };
-assert.equal(hitNeuralPersonaGraphNode(
-  { clusters: [], edges: [], nodes: [outer], tagIds: [] }, physics.getPosition,
-  zoomedOutPointer, 10 / 0.2,
-), outer.nodeId, 'zoomed-out nodes must keep a usable ten-pixel screen hit target');
 physics.pin(outer.nodeId);
 physics.movePinned(outer.nodeId, { x: before.x + 180, y: before.y - 120 });
 const dragged = physics.getPosition(outer.nodeId)!;

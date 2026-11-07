@@ -11,6 +11,8 @@ export interface McpServerDirectoryEntry {
   args: unknown[];
   description: string;
   id: string;
+  /** 'link' = installed by the character from a link, not reviewed (see PluginOrigin). */
+  origin?: string;
   title: string;
 }
 
@@ -29,7 +31,7 @@ export function readMcpServerDirectory(config: unknown): McpServerDirectoryEntry
     const server = value && typeof value === 'object' ? value as Record<string, unknown> : {};
     if (!id || server.disabled === true) return [];
     const text = (field: unknown) => (typeof field === 'string' ? field.trim() : '');
-    return [{ args: Array.isArray(server.args) ? server.args : [], description: text(server.description), id, title: text(server.title) || id }];
+    return [{ args: Array.isArray(server.args) ? server.args : [], description: text(server.description), id, ...(text(server.origin) ? { origin: text(server.origin) } : {}), title: text(server.title) || id }];
   });
 }
 
@@ -46,6 +48,14 @@ export function refreshMcpServerDirectory(force = false) {
     .catch(() => undefined)
     .finally(() => { pending = null; });
   return pending;
+}
+
+/**
+ * A server she installed from a link the user sent (not reviewed). Its tools' own read-only
+ * claims are not trusted: every call asks (2026-11-06).
+ */
+export function isUnreviewedMcpServer(serverId: string, list = entries) {
+  return list.find((item) => item.id === serverId)?.origin === 'link';
 }
 
 /** The chrome-devtools-mcp server, whatever id the user gave it. */
