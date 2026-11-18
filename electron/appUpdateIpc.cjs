@@ -10,9 +10,16 @@ const DAILY_MS = 24 * 60 * 60_000;
 const HEALTHY_AFTER_MS = 10_000;
 
 function startAppUpdates({ app, dialog, getMainWindow, ipcMain, log, enabled }) {
-  const service = createAppUpdateService({ app, log });
+  // A test can point the app at another list; it still has to be signed with our key.
+  const testSources = String(process.env.DESKTOP_PET_APP_UPDATE_SOURCES || '').split(',').map((item) => item.trim()).filter(Boolean);
+  const service = createAppUpdateService({ app, log, ...(testSources.length ? { sources: testSources } : {}) });
+  service.finishInstall();
   const restart = () => {
-    app.relaunch();
+    // A downloaded new exe starts once this one has quit (Electron waits for the exit, so the
+    // single-instance lock is free by then); otherwise the same exe with its next hot update.
+    const newExe = service.restartTarget();
+    if (newExe) app.relaunch({ args: [], execPath: newExe });
+    else app.relaunch();
     app.exit(0);
   };
   const handle = (channel, handler) => ipcMain.handle(channel, async (_event, request) => {
@@ -47,7 +54,8 @@ function startAppUpdates({ app, dialog, getMainWindow, ipcMain, log, enabled }) 
   const autoUpdate = async () => {
     const ready = await service.autoUpdate().catch((error) => { log?.('app update check failed', { error: error?.message }); return null; });
     if (!ready) return;
-    const choice = await ask('有新版本', `v${ready.version} 已经下载好了，重启后生效。`, ready.notes || '', ['现在重启', '稍后']);
+    const what = ready.action === 'install' ? '新的安装包已经下载好了，重启后换成新的，旧的会自动删掉' : '已经下载好了，重启后生效';
+    const choice = await ask('有新版本', `v${ready.version} ${what}。`, ready.notes || '', ['现在重启', '稍后']);
     if (choice === 0) restart();
   };
   setTimeout(() => { void autoUpdate(); }, FIRST_CHECK_MS);

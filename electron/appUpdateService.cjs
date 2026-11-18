@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { unzipSync } = require('fflate');
 const { APP_UPDATE_PUBLIC_KEY, APP_UPDATE_SOURCES } = require('./appUpdateKey.cjs');
+const { canInstallFull, downloadFullExe, finishFullInstall, portableExePath } = require('./appUpdateFullInstall.cjs');
 const {
   checkVersionFolder,
   compareVersions,
@@ -40,18 +41,19 @@ function verifyCatalog(raw, publicKey = APP_UPDATE_PUBLIC_KEY) {
  * Every version, newest first, with what can be done with it on this install — forward or back:
  * someone who finds a new version worse can go back to an earlier one.
  */
-function describeVersions(versions, { bad = [], builtInVersion, current, next, shell }) {
+function describeVersions(versions, { bad = [], builtInVersion, canInstall = () => false, current, next, shell }) {
   const listed = versions.filter((entry) => entry && typeof entry.version === 'string');
   // The exe's own version is always there to go back to, listed or not.
   const all = listed.some((entry) => entry.version === builtInVersion) ? listed : [...listed, { kind: 'full', version: builtInVersion }];
   return all
     .sort((a, b) => compareVersions(b.version, a.version))
     .map((entry) => {
-      const base = { kind: entry.kind === 'full' ? 'full' : 'hot', notes: String(entry.notes ?? ''), page: entry.page ?? '', publishedAt: entry.publishedAt ?? '', size: entry.zip?.size ?? 0, version: entry.version };
+      const base = { kind: entry.kind === 'full' ? 'full' : 'hot', notes: String(entry.notes ?? ''), page: entry.page ?? '', publishedAt: entry.publishedAt ?? '', size: entry.zip?.size ?? entry.exe?.size ?? 0, version: entry.version };
       if (entry.version === current) return { ...base, action: 'current' };
       if (entry.version === next) return { ...base, action: 'pending' };
       if (entry.version === builtInVersion) return { ...base, action: 'builtin' };
-      if (base.kind === 'full') return { ...base, action: 'full' };
+      // A new exe this app can download and switch to by itself; otherwise its release page.
+      if (base.kind === 'full') return { ...base, action: canInstall(entry) ? 'install' : 'full' };
       if (bad.includes(entry.version)) return { ...base, action: 'failed' };
       // Made for another exe (or another Electron / dependencies): only that full installer fits.
       if (entry.base !== builtInVersion || entry.shell !== shell || !entry.zip) return { ...base, action: 'needs-full' };
@@ -59,7 +61,7 @@ function describeVersions(versions, { bad = [], builtInVersion, current, next, s
     });
 }
 
-function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, sources = APP_UPDATE_SOURCES, publicKey = APP_UPDATE_PUBLIC_KEY, electronVersion = process.versions.electron }) {
+function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, sources = APP_UPDATE_SOURCES, publicKey = APP_UPDATE_PUBLIC_KEY, electronVersion = process.versions.electron, portableExe = portableExePath() }) {
   const boot = global.__appUpdateBoot ?? { builtIn: true, version: app.getVersion() };
   const appPath = app.getAppPath();
   const builtInPackage = JSON.parse(fs.readFileSync(path.join(appPath, 'package.json'), 'utf8'));
@@ -68,13 +70,14 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
   let catalog = null;
   let checkedAt = 0;
   let downloading = null;
+  let progress = null;
   let lastError = '';
 
-  /** The version the next launch runs. */
-  const nextLaunch = (state) => state.pending ?? state.active ?? builtInPackage.version;
+  /** The version the next launch runs: a downloaded new exe, else a hot update, else the exe's own. */
+  const nextLaunch = (state) => state.fullInstall?.version ?? state.pending ?? state.active ?? builtInPackage.version;
   const context = () => {
     const state = readState(root);
-    return { bad: state.bad ?? [], builtInVersion: builtInPackage.version, current: boot.version, next: nextLaunch(state), shell };
+    return { bad: state.bad ?? [], builtInVersion: builtInPackage.version, canInstall: (entry) => canInstallFull(entry, portableExe), current: boot.version, next: nextLaunch(state), shell };
   };
 
   function status() {
@@ -87,6 +90,7 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
       current: boot.version,
       downloading,
       error: lastError,
+      progress,
       notice: boot.notice ?? null,
       ok: true,
       /** Set when a restart switches to another version. */
@@ -161,6 +165,7 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
     const entry = catalog?.versions.find((item) => item.version === version);
     const described = catalog ? describeVersions([entry].filter(Boolean), context())[0] : null;
     if (!entry || !described) return { error: '版本列表里没有这个版本。', ok: false };
+    if (described.action === 'install') return installFull(entry);
     if (described.action !== 'download') return { error: described.action === 'needs-full' || described.action === 'full' ? '这个版本要下载完整安装包。' : '这个版本不用下载。', ok: false };
     // Already here from before (going back to a version used earlier): no download.
     const existing = versionFolder(root, version);
@@ -192,6 +197,38 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
     }
   }
 
+  /** A new exe next to the current one; the restart starts it (restartTarget). */
+  async function installFull(entry) {
+    downloading = entry.version;
+    progress = { received: 0, total: entry.exe.size };
+    try {
+      const fallbackFolder = path.join(root, 'installers');
+      const onProgress = (received) => { progress = { received, total: entry.exe.size }; };
+      const newExe = await downloadFullExe(entry, { fallbackFolder, fetchImpl, onProgress, portableExe });
+      const previous = readState(root).fullInstall;
+      if (previous?.newExe && previous.newExe !== newExe) fs.rmSync(previous.newExe, { force: true });
+      writeState(root, { ...readState(root), fullInstall: { newExe, oldExe: portableExe, version: entry.version } });
+      log?.('app update: new exe ready', { version: entry.version });
+      return { ok: true, version: entry.version };
+    } catch (error) {
+      lastError = error.message;
+      log?.('app update: exe download failed', { error: error.message, version: entry.version });
+      return { error: error.message, ok: false };
+    } finally {
+      downloading = null;
+      progress = null;
+    }
+  }
+
+  /** The exe a restart should start instead of this one, or null. Hot updates are left behind. */
+  function restartTarget() {
+    const state = readState(root);
+    const newExe = state.fullInstall?.newExe;
+    if (!newExe || !fs.existsSync(newExe)) return null;
+    writeState(root, { ...state, active: null, pending: null });
+    return newExe;
+  }
+
   /** Keeps the running version and the one waiting for the next launch. */
   function removeOldVersions() {
     const state = readState(root);
@@ -205,14 +242,17 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
   /** Back to the exe's own code from the next launch on. */
   function revert() {
     const state = readState(root);
-    writeState(root, { ...state, active: null, pending: null });
+    if (state.fullInstall?.newExe && state.fullInstall.newExe !== portableExe) fs.rmSync(state.fullInstall.newExe, { force: true });
+    writeState(root, { ...state, active: null, fullInstall: null, pending: null });
     return { ok: true };
   }
 
   /** Cancel a switch that has not happened yet (stay on the running version). */
   function stay() {
     const state = readState(root);
-    writeState(root, { ...state, active: boot.builtIn === false ? boot.version : null, pending: null });
+    // A downloaded new exe that is not wanted any more goes too.
+    if (state.fullInstall?.newExe && state.fullInstall.newExe !== portableExe) fs.rmSync(state.fullInstall.newExe, { force: true });
+    writeState(root, { ...state, active: boot.builtIn === false ? boot.version : null, fullInstall: null, pending: null });
     return status();
   }
 
@@ -221,20 +261,23 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
     return status();
   }
 
-  /** The newest version this install can take as a hot update, when downloading by itself is on. */
+  /** The newest version this install can take (hot update or new exe), when downloading by itself is on. */
   async function autoUpdate() {
     if (readState(root).autoDownload === false) return null;
     await check();
     // Only forward, and not over a switch the user chose (going back to an earlier version).
     const current = status();
     if (current.pending) return null;
-    const next = current.versions.find((item) => item.action === 'download' && compareVersions(item.version, current.current) > 0);
+    const next = current.versions.find((item) => (item.action === 'download' || item.action === 'install') && compareVersions(item.version, current.current) > 0);
     if (!next) return null;
     const result = await download(next.version);
     return result.ok ? next : null;
   }
 
-  return { autoUpdate, check, download, revert, setAutoDownload, status, stay };
+  /** First start of a new exe: remove the one it replaced. */
+  const finishInstall = () => finishFullInstall({ log, portableExe, readState, root, writeState });
+
+  return { autoUpdate, check, download, finishInstall, restartTarget, revert, setAutoDownload, status, stay };
 }
 
 module.exports = { createAppUpdateService, describeVersions, verifyCatalog };

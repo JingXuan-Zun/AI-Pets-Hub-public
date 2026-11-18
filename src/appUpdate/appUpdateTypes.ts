@@ -1,9 +1,10 @@
 // What the main process says about hot updates (electron/appUpdateService.cjs).
 
 /** current = running now; pending = runs after a restart; download = can be switched to here (newer or
- *  earlier); builtin = the installer's own version; full / needs-full = only a full installer fits;
+ *  earlier); builtin = the installer's own version; install = a new exe this app downloads and switches
+ *  to by itself; full / needs-full = only a full installer from its release page fits;
  *  failed = did not start before. */
-export type AppUpdateAction = 'builtin' | 'current' | 'download' | 'failed' | 'full' | 'needs-full' | 'pending';
+export type AppUpdateAction = 'builtin' | 'current' | 'download' | 'failed' | 'full' | 'install' | 'needs-full' | 'pending';
 
 export interface AppUpdateVersion {
   action: AppUpdateAction;
@@ -26,6 +27,8 @@ export interface AppUpdateStatus {
   downloading: string | null;
   error: string;
   notice: string | null;
+  /** Bytes of a new exe downloaded so far, while one is downloading. */
+  progress?: { received: number; total: number } | null;
   ok: boolean;
   /** The version a restart switches to, when it is not the running one. */
   pending: string | null;

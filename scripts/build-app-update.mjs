@@ -2,7 +2,9 @@
 //
 // Full release (after electron-builder made the exe): record what is inside it, so later hot
 // updates know which files changed, and list the full version:
-//   node scripts/build-app-update.mjs --full --asar release/<dir>/win-unpacked/resources/app.asar --notes "…"
+//   node scripts/build-app-update.mjs --full --asar release/<dir>/win-unpacked/resources/app.asar --exe release/v<version>/AI-Desktop-Pet-<version>.exe --notes "…"
+// With --exe the list also carries that exe (name, size, sha256, R2 + GitHub addresses), so
+// installed copies download and switch to it from inside the app; upload the exe to both.
 // Hot update (after `npm run build` for the new version): zip only the files that differ from the
 // installed exe's, and list it:
 //   node scripts/build-app-update.mjs --hot --base 0.4.0 --notes "…"
@@ -107,7 +109,15 @@ if (args.includes('--full')) {
   const hashes = asarHashes(asarPath);
   fs.writeFileSync(path.join(out, `files-${version}.json`), `${JSON.stringify({ electronVersion, files: hashes, shell: shellFingerprint(pkg, electronVersion), version }, null, 2)}\n`);
   console.log(`files-${version}.json: ${Object.keys(hashes).length} files in the exe.`);
-  publish({ kind: 'full', notes, page: `${REPO}/releases/tag/v${version}`, publishedAt, version });
+  const exePath = option('exe');
+  if (exePath && !fs.existsSync(exePath)) throw new Error(`--exe not found: ${exePath}`);
+  const exe = exePath ? (() => {
+    const bytes = fs.readFileSync(exePath);
+    const name = path.basename(exePath);
+    console.log(`${name}: ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB, listed for in-app install.`);
+    return { name, sha256: sha256(bytes), size: bytes.byteLength, urls: [`${R2}/${name}`, `${REPO}/releases/download/v${version}/${name}`] };
+  })() : undefined;
+  publish({ ...(exe ? { exe } : {}), kind: 'full', notes, page: `${REPO}/releases/tag/v${version}`, publishedAt, shell: shellFingerprint(pkg, electronVersion), version });
 } else if (args.includes('--hot')) {
   const baseVersion = option('base');
   const base = JSON.parse(fs.readFileSync(path.join(out, `files-${baseVersion}.json`), 'utf8'));

@@ -11,6 +11,7 @@ const LABELS: Record<AppUpdateVersion['action'], string> = {
   download: '',
   failed: '上次没装好',
   full: '完整安装包',
+  install: '新安装包',
   'needs-full': '要换安装包',
   pending: '重启后用这个',
 };
@@ -40,14 +41,21 @@ export function SettingsAppUpdatePanel() {
 
   if (!bridge) return <p className="text-xs text-muted-foreground">只有桌面版能检查更新。</p>;
 
-  const download = async (version: string) => {
+  const download = async (version: string, wholeExe = false) => {
     setBusy(version);
-    setMessage(`正在准备 v${version}（只下载和安装包不一样的文件）…`);
+    setMessage(wholeExe ? `正在下载 v${version} 的安装包…` : `正在准备 v${version}（只下载和安装包不一样的文件）…`);
+    // A whole exe takes a while: show how far it is.
+    const timer = wholeExe ? window.setInterval(() => void bridge.status().then(setStatus), 1000) : null;
     const result = await bridge.download(version);
-    setMessage(result.ok ? `v${version} 准备好了，重启后换过去。` : `没换成：${'error' in result ? result.error : ''}`);
+    if (timer !== null) window.clearInterval(timer);
+    const ready = wholeExe ? `v${version} 的安装包下载好了。点“重启换到 v${version}”就换成新的，旧的会自动删掉。` : `v${version} 准备好了，重启后换过去。`;
+    setMessage(result.ok ? ready : `没换成：${'error' in result ? result.error : ''}`);
     setStatus(await bridge.status());
     setBusy(null);
   };
+  const progressText = status?.progress?.total
+    ? `${Math.floor((status.progress.received / status.progress.total) * 100)}%（${formatSize(status.progress.received)} / ${formatSize(status.progress.total)}）`
+    : '';
   const revert = async () => {
     await bridge.revert();
     setMessage(`重启后回到安装包自带的 v${status?.builtInVersion ?? ''}。`);
@@ -73,7 +81,7 @@ export function SettingsAppUpdatePanel() {
   };
   const isNewer = (version: string) => version.localeCompare(status?.current ?? '', undefined, { numeric: true }) > 0;
 
-  const upToDate = status && !status.versions.some((item) => (item.action === 'download' || item.action === 'full') && isNewer(item.version));
+  const upToDate = status && !status.versions.some((item) => (item.action === 'download' || item.action === 'full' || item.action === 'install') && isNewer(item.version));
 
   return (
     <div className="space-y-3">
@@ -110,12 +118,16 @@ export function SettingsAppUpdatePanel() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="font-bold text-foreground">v{item.version}</span>
-                  <span className="text-2xs text-muted-foreground">{item.kind === 'hot' ? `热更新 ${formatSize(item.size)}` : '完整版'}{item.publishedAt ? ` · ${item.publishedAt.slice(0, 10)}` : ''}</span>
+                  <span className="text-2xs text-muted-foreground">{item.kind === 'hot' ? `热更新 ${formatSize(item.size)}` : `完整版${item.size ? ` ${formatSize(item.size)}` : ''}`}{item.publishedAt ? ` · ${item.publishedAt.slice(0, 10)}` : ''}</span>
                   {LABELS[item.action] ? <span className="rounded-full bg-muted px-2 py-0.5 text-2xs text-muted-foreground">{LABELS[item.action]}</span> : null}
                 </div>
                 {item.action === 'download' ? (
                   <button type="button" disabled={Boolean(busy)} onClick={() => void download(item.version)} className="inline-flex items-center gap-1 rounded-md border border-primary/40 px-2.5 py-1 text-2xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
                     {busy === item.version ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}{isNewer(item.version) ? '更新到这个版本' : '换回这个版本'}
+                  </button>
+                ) : item.action === 'install' ? (
+                  <button type="button" disabled={Boolean(busy)} onClick={() => void download(item.version, true)} className="inline-flex items-center gap-1 rounded-md border border-primary/40 px-2.5 py-1 text-2xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+                    {busy === item.version ? <><Loader2 className="h-3 w-3 animate-spin" />{progressText || '下载中'}</> : <><Download className="h-3 w-3" />{isNewer(item.version) ? '下载并安装' : '换回这个版本'}{item.size ? `（${formatSize(item.size)}）` : ''}</>}
                   </button>
                 ) : item.action === 'builtin' ? (
                   <button type="button" onClick={() => void revert()} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:bg-muted">
@@ -138,7 +150,7 @@ export function SettingsAppUpdatePanel() {
           <input type="checkbox" checked={status?.autoDownload ?? true} onChange={(event) => void bridge.setAutoDownload(event.target.checked).then(setStatus)} />
           有新版本时自动在后台下载（重启前会问你）
         </label>
-        <span className="text-2xs text-muted-foreground">要退回更早的版本：在上面的列表里选；换了安装包的版本要下载那个版本的完整安装包。</span>
+        <span className="text-2xs text-muted-foreground">要退回更早的版本：在上面的列表里选；要换安装包的版本会在软件里下载新的 exe，放在现在这个 exe 旁边，重启后换过去。</span>
       </div>
     </div>
   );
