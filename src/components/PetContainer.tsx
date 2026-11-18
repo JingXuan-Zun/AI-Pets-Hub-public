@@ -613,7 +613,6 @@ export default function PetContainer({
   usePetContainerAgentVoiceInputBridge({
     startVoiceInputSession: voiceInputController.startVoiceInputSession,
     stopVoiceInput: voiceInputController.stopVoiceInput,
-    voiceInputControllerRef: agentCommandBridge.voiceInputControllerRef,
   });
 
   useEffect(() => {

@@ -181,20 +181,21 @@ function completeNextGroupTurn(
   );
   onTopicSnapshotChanged?.(runtime);
 }
+function pausesGroupForUser(options: ContinueGroupChatConversationOptions, runtime: GroupChatRuntime) {
+  if (pauseForUserIfNeeded(options)) return true;
+  // Infinite mode is autonomous: a director "ask-user" decision must not
+  // stop the loop. The user can still stop it explicitly or send an input.
+  return runtime.controller.getSnapshot().mode !== 'infinite'
+    && pauseGroupForDirectorIfNeeded({ runtime, targetSlots: options.targetSlots });
+}
 async function runGroupContinuationLoop(
   options: ContinueGroupChatConversationOptions,
   runtime: GroupChatRuntime,
 ): Promise<ContinueGroupChatConversationResult> {
   while (options.canContinue()) {
-    if (pauseForUserIfNeeded(options)) return 'paused-for-user';
-    // Infinite mode is autonomous: a director "ask-user" decision must not
-    // stop the loop. The user can still stop it explicitly or send an input.
-    if (runtime.controller.getSnapshot().mode !== 'infinite'
-      && pauseGroupForDirectorIfNeeded({ runtime, targetSlots: options.targetSlots })) return 'paused-for-user';
+    if (pausesGroupForUser(options, runtime)) return 'paused-for-user';
     await options.waitForNextGroupChatTurn();
-    if (pauseForUserIfNeeded(options)) return 'paused-for-user';
-    if (runtime.controller.getSnapshot().mode !== 'infinite'
-      && pauseGroupForDirectorIfNeeded({ runtime, targetSlots: options.targetSlots })) return 'paused-for-user';
+    if (pausesGroupForUser(options, runtime)) return 'paused-for-user';
     if (!options.canContinue()) {
       runtime.complete();
       return 'completed';
@@ -220,6 +221,10 @@ async function runGroupContinuationLoop(
       runtime.cancel();
       return 'completed';
     }
+    // Stopped while this reply was being written, and the reply still came back whole (stop and
+    // the last word arriving together): the session is already cancelled, and moving it on to the
+    // next speaker threw "Invalid group session transition: cancelled -> waiting-next-speaker".
+    if (runtime.controller.getSnapshot().status === 'cancelled') return 'completed';
     completeNextGroupTurn(
       runtime, turn, result, options.onTopicSnapshotChanged, options.onRelationshipTurnComplete,
     );

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {
   applyDesktopPetSlotChanges,
+  getDesktopPetSlot,
   getRenderableDesktopPetSlots,
   getVisibleDesktopPetModelSlots,
+  isPrimaryDesktopPetShown,
 } from '../src/multiPetRoster';
 import { readProjectFile } from './smokeTestHarness.ts';
 
@@ -68,7 +70,26 @@ assert.equal(
   'hidden-model companions should be excluded from the render slot collection',
 );
 
-const renderStateSource = readProjectFile('src/components/pet/usePetContainerCompanionRenderState.ts');
+// Slot 1 can be hidden or turned off like any other slot.
+const hiddenPrimaryConfig = applyDesktopPetSlotChanges(config, 'primary', { modelVisible: false });
+assert.equal(hiddenPrimaryConfig.primaryPetModelVisible, false);
+assert.equal(isPrimaryDesktopPetShown(hiddenPrimaryConfig), false);
+assert.equal(getVisibleDesktopPetModelSlots(hiddenPrimaryConfig).some((slot) => slot.id === 'primary'), false);
+assert.equal(getRenderableDesktopPetSlots(hiddenPrimaryConfig).some((slot) => slot.id === 'primary'), true,
+  'a hidden slot 1 still answers in chat');
+
+const disabledPrimaryConfig = applyDesktopPetSlotChanges(config, 'primary', { enabled: false });
+assert.equal(getDesktopPetSlot(disabledPrimaryConfig, 'primary')?.enabled, false);
+assert.deepEqual(getRenderableDesktopPetSlots(disabledPrimaryConfig).map((slot) => slot.id), ['companion-pet-2'],
+  'a disabled slot 1 leaves chat targets');
+assert.equal(isPrimaryDesktopPetShown(config), true, 'old configs without the fields keep slot 1 on');
+
+const everyoneOff = applyDesktopPetSlotChanges(disabledPrimaryConfig, 'companion-pet-2', { enabled: false });
+assert.deepEqual(getRenderableDesktopPetSlots(everyoneOff).map((slot) => slot.id), ['primary'],
+  'with every slot off, slot 1 still answers chat and voice');
+assert.equal(getVisibleDesktopPetModelSlots(everyoneOff).length, 0);
+
+const renderStateSource =readProjectFile('src/components/pet/usePetContainerCompanionRenderState.ts');
 const settingsPanelSource = readProjectFile('src/components/SettingsPanel.tsx');
 const movementHelpersSource = readProjectFile('src/components/pet/usePetContainerMovementHelpers.ts');
 const collisionSyncSource = readProjectFile('src/components/pet/usePetContainerCompanionCollisionSyncEffect.ts');

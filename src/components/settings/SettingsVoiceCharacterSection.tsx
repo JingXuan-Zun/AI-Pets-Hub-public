@@ -16,7 +16,7 @@ function CharacterVoiceRow({ slot, packs, globalPackName, noDragRegionStyle, onU
   const name = personality.name.trim() || slot.label;
   const voicePackId = personality.voicePackId?.trim() ?? '';
   const missing = voicePackId && packs.length > 0 && !packs.some((pack) => pack.id === voicePackId);
-  const hidden = !slot.isPrimary && !slot.enabled;
+  const hidden = !slot.enabled;
   return (
     <div className="space-y-2 rounded-sm border border-border bg-background/50 p-2">
       <div className="flex items-center gap-2 text-xs font-medium">

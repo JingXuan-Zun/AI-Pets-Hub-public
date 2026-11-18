@@ -33,7 +33,9 @@ import {
 import { normalizeGroupMemoryEvidenceScopeSnapshots } from './groupMemoryEvidenceScope';
 import { normalizeGroupMemoryEvidenceScopeCorrections } from './groupMemoryEvidenceScopeCorrection';
 
-const LEGACY_HEADER_PATTERN = /^\[群体记忆｜([^｜]+)｜id=([^｜]+)｜source=([^｜]+)｜topic=([^｜]+)｜confidence=([\d.]+)(?:｜createdAt=(\d+))?\]$/u;
+// The header ends with createdAt=<ms> (written before 2026-11-09) or 记于=<date> (written since;
+// see formatGroupMemoryRecord). The date form has no year, so those records take the load time.
+const LEGACY_HEADER_PATTERN = /^\[群体记忆｜([^｜]+)｜id=([^｜]+)｜source=([^｜]+)｜topic=([^｜]+)｜confidence=([\d.]+)(?:｜(?:createdAt=(\d+)|记于=[^｜\]]+))?\]$/u;
 const VALID_OPERATION_KINDS = new Set<GroupMemoryOperationKind>([
   'invalidate', 'move-group', 'restore', 'resolve-conflict', 'rollback',
 ]);

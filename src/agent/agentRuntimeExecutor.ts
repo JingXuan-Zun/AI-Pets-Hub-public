@@ -1,6 +1,5 @@
 import { executeUsePlatformCapability } from './agentRuntimePlatformCapabilityTools';
 import { isAgentRuntimeCancellationRequested } from './agentRuntimeCancellation';
-import { createDesktopObservationExecutor } from './executor/desktopObservationExecution';
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
 import { type PetConfig, type PetConfigUpdateHandler } from '../types';
 import {
@@ -11,65 +10,22 @@ import {
 } from './agentChatCommand';
 import { buildAgentPermissionRoute } from './agentPermissionRouter';
 import { listAgentToolNames } from './agentToolRegistry';
-import {
-  executeAnalyzeGameScreen,
-  executeListCaptureSources,
-  executeLocateScreenElements,
-  executeManageGameCompanionLoop,
-  executeSummarizeVisualSnapshot,
-} from './agentRuntimeVisualTools';
-import {
-  executeDesktopAction,
-  executeDesktopInput,
-} from './agentRuntimeDesktopTools';
-import {
-  executeAppLaunch,
-  executeOpenResource,
-} from './agentRuntimeDesktopLaunchTools';
-import {
-  executeCloseWindow,
-  executeFocusWindow,
-} from './agentRuntimeWindowTools';
-import {
-  executeBrowserSearch,
-  executeControlBrowser,
-} from './agentRuntimeBrowserTools';
-import {
-  executeGetActiveWindowInfo,
-  executeGetCursorPosition,
-  executeGetDefaultAppForUri,
-  executeListRunningApps,
-  executeObserveWindowsAndApps,
-} from './agentRuntimeDesktopObservationTools';
-import { executeDesktopSequence } from './agentRuntimeDesktopSequenceTools';
+import { executeManageGameCompanionLoop } from './agentRuntimeVisualTools';
+import { executeAppLaunch } from './agentRuntimeDesktopLaunchTools';
+import { executeControlBrowser } from './agentRuntimeBrowserTools';
 import {
   executeDesktopIconPlacement,
-  executeDesktopIconPlacementToolCall,
   executeDesktopOrganization,
   executeDesktopOrganizationToolCall,
   type AgentRuntimeDesktopOrganizationContext,
 } from './agentRuntimeDesktopOrganizationTools';
-import {
-  executeFileManagementAction,
-  executeGetPathInfo,
-  executeListDirectory,
-  executeLocalFileAction,
-  executeReadTextFile,
-  executeSearchFiles,
-} from './agentRuntimeLocalFileTools';
 import { executeMemoryAction } from './agentRuntimeMemoryTools';
 import {
   createAgentRuntimeResult,
   enrichAgentRuntimeToolResult,
 } from './agentRuntimeToolResult';
+import { getToolBooleanInput, getToolStringInput, prepareAgentRuntimeToolCall } from './agentRuntimeToolPreparation';
 import {
-  getToolBooleanInput,
-  getToolNumberInput,
-  getToolStringInput,
-  prepareAgentRuntimeToolCall,
-} from './agentRuntimeToolPreparation';
-import {
-  executeGetDisplayInfo,
   executeGetSystemInfo,
   executeInspectLocalProject,
   executeRunControlledCommand,
@@ -80,34 +36,11 @@ import {
   executeUpdatePetSettings,
 } from './agentRuntimePetSettingsTools';
 import {
-  executeGetVoiceStatus,
-  executeSetVoiceInput,
-  executeStartVoiceInputSession,
-  executeStopVoiceInputSession,
-  executeSwitchTtsProvider,
-  executeWarmupLocalVoice,
-} from './agentRuntimeVoiceTools';
-import {
   executeAgentSkill,
   executeCallMcpTool,
   executeListAgentSkills,
   executeListMcpTools,
 } from './agentRuntimeSkillTools';
-interface AgentRuntimeVoiceInputControllerResult {
-  errorText?: string | null;
-  followUp?: string | null;
-  observations?: string[];
-  ok?: boolean;
-  responseText: string;
-  verification?: string | null;
-}
-
-interface AgentRuntimeVoiceInputController {
-  start: (options?: { agentPrefix?: boolean }) => (
-    Promise<AgentRuntimeVoiceInputControllerResult> | AgentRuntimeVoiceInputControllerResult
-  );
-  stop: () => Promise<AgentRuntimeVoiceInputControllerResult> | AgentRuntimeVoiceInputControllerResult;
-}
 
 export interface AgentRuntimeGameCompanionLoopStartOptions {
   focus?: string | null;
@@ -135,7 +68,6 @@ export interface AgentRuntimeExecutorContext extends AgentRuntimeDesktopOrganiza
   lastLocalProjectInspectionRef: { current: DesktopPetLocalProjectInspectionLike | null };
   onUpdateConfig: PetConfigUpdateHandler;
   signal?: AbortSignal | null;
-  voiceInputControllerRef?: { current: AgentRuntimeVoiceInputController | null };
 }
 
 interface AgentRuntimeToolHandlerContext {
@@ -213,11 +145,6 @@ function createUnsupportedResult(message?: string): AgentChatCommandResult {
   };
 }
 
-const executeDesktopObservation = createDesktopObservationExecutor({
-  isAgentRuntimeCancellationRequested,
-  createAgentRuntimeCancelledResult,
-});
-
 async function executeRememberLocalApp(
   context: AgentRuntimeExecutorContext,
   alias: string,
@@ -247,111 +174,22 @@ async function executeRememberLocalApp(
 }
 
 const AGENT_RUNTIME_TOOL_HANDLERS: Record<AgentToolCallName, AgentRuntimeToolHandler> = {
-  get_display_info: () => executeGetDisplayInfo(),
   get_system_info: ({ toolCall }) => executeGetSystemInfo(
     getToolBooleanInput(toolCall, 'includeDisplays') !== false,
   ),
   get_pet_settings: ({ runtime, toolCall }) => executeGetPetSettings(runtime, toolCall),
   update_pet_settings: ({ runtime, toolCall }) => executeUpdatePetSettings(runtime, toolCall),
   use_platform_capability: ({ runtime, toolCall }) => executeUsePlatformCapability(runtime, toolCall),
-  get_voice_status: ({ runtime, toolCall }) => executeGetVoiceStatus(runtime, toolCall),
   inspect_local_project: ({ command, runtime, toolCall }) => (
     executeInspectLocalProject(runtime, toolCall, command.sourceText)
   ),
   run_local_project_action: ({ runtime, toolCall }) => executeRunLocalProjectAction(runtime, toolCall),
-  browser_search: ({ runtime, toolCall }) => {
-    const query = getToolStringInput(toolCall, ['query', 'keyword', 'keywords', 'url', 'website', 'site', 'target']);
-    if (!query) {
-      return {
-        responseText: '我还需要知道要搜索什么，或者要打开哪个网址。',
-      };
-    }
-
-    return executeBrowserSearch(runtime, query, getToolBooleanInput(toolCall, 'forceNewPage'));
-  },
-  observe_windows_and_apps: ({ toolCall }) => executeObserveWindowsAndApps(toolCall),
-  search_web: ({ runtime, toolCall }) => {
-    const query = getToolStringInput(toolCall, ['query', 'keyword', 'keywords', 'target']);
-    if (!query) {
-      return {
-        responseText: '需要先知道要搜索什么。',
-      };
-    }
-
-    return executeBrowserSearch(runtime, query, getToolBooleanInput(toolCall, 'forceNewPage'));
-  },
   control_browser: ({ runtime, toolCall }) => executeControlBrowser(runtime, toolCall),
-  execute_desktop_action: ({ runtime, toolCall }) => executeDesktopAction(runtime, toolCall),
-  execute_desktop_input: ({ toolCall }) => executeDesktopInput(toolCall),
-  execute_desktop_sequence: ({ runtime, toolCall }) => executeDesktopSequence(runtime, toolCall),
-  execute_desktop_observation: ({ command, runtime, toolCall }) => (
-    executeDesktopObservation(runtime, toolCall, command.sourceText)
-  ),
   run_controlled_command: ({ runtime, toolCall }) => executeRunControlledCommand(runtime, toolCall),
-  locate_screen_elements: ({ command, runtime, toolCall }) => (
-    executeLocateScreenElements(runtime, toolCall, command.sourceText)
-  ),
-  execute_local_file_action: ({ toolCall }) => executeLocalFileAction(toolCall),
-  execute_file_management_action: ({ toolCall }) => executeFileManagementAction(toolCall),
   execute_memory_action: ({ runtime, toolCall }) => executeMemoryAction(runtime, toolCall),
-  get_default_app_for_uri: ({ toolCall }) => executeGetDefaultAppForUri(
-    getToolStringInput(toolCall, ['uriScheme', 'scheme', 'protocol']) || 'https',
-  ),
-  list_running_apps: ({ toolCall }) => executeListRunningApps(
-    getToolStringInput(toolCall, ['query', 'target', 'name']),
-    getToolBooleanInput(toolCall, 'includeWindows'),
-  ),
-  get_active_window_info: () => executeGetActiveWindowInfo(),
-  list_capture_sources: ({ runtime, toolCall }) => executeListCaptureSources(runtime, toolCall),
-  summarize_visual_snapshot: ({ command, runtime, toolCall }) => (
-    executeSummarizeVisualSnapshot(runtime, toolCall, command.sourceText)
-  ),
-  analyze_game_screen: ({ command, runtime, toolCall }) => (
-    executeAnalyzeGameScreen(runtime, toolCall, command.sourceText)
-  ),
   manage_game_companion_loop: ({ runtime, toolCall }) => (
     executeManageGameCompanionLoop(runtime, toolCall)
   ),
-  get_cursor_position: () => executeGetCursorPosition(),
-  focus_window: ({ toolCall }) => {
-    const query = getToolStringInput(toolCall, ['query', 'target', 'title', 'processName', 'name']);
-    if (!query) {
-      return {
-        responseText: '需要先知道要唤出哪个窗口。',
-      };
-    }
-
-    return executeFocusWindow(query);
-  },
-  close_window: ({ toolCall }) => executeCloseWindow(toolCall),
-  open_resource: ({ toolCall }) => {
-    const target = getToolStringInput(toolCall, ['target', 'query', 'url', 'path', 'website', 'site', 'targetUrl']);
-    if (!target) {
-      return {
-        responseText: '需要先知道要打开的网址、文件、文件夹或应用。',
-      };
-    }
-
-    return executeOpenResource(
-      target,
-      getToolStringInput(toolCall, ['resourceType']),
-      getToolBooleanInput(toolCall, 'forceNew'),
-    );
-  },
-  launch_local_app: ({ toolCall }) => {
-    const appName = getToolStringInput(toolCall, ['query', 'appName', 'name']);
-    if (!appName) {
-      return {
-        responseText: '我还需要知道要打开哪个应用。',
-      };
-    }
-
-    return executeAppLaunch(
-      appName,
-      getToolBooleanInput(toolCall, 'forceNew'),
-      getToolBooleanInput(toolCall, 'forceRefresh'),
-    );
-  },
   remember_local_app: ({ runtime, toolCall }) => {
     const alias = getToolStringInput(toolCall, ['alias', 'name']);
     const appPath = getToolStringInput(toolCall, ['path', 'appPath']);
@@ -363,68 +201,6 @@ const AGENT_RUNTIME_TOOL_HANDLERS: Record<AgentToolCallName, AgentRuntimeToolHan
 
     return executeRememberLocalApp(runtime, alias, appPath);
   },
-  get_path_info: ({ toolCall }) => {
-    const localPath = getToolStringInput(toolCall, ['path', 'target', 'query']);
-    if (!localPath) {
-      return {
-        errorText: '缺少本机绝对路径。',
-        ok: false,
-        responseText: '要读取路径信息，需要先提供本机绝对路径。',
-      };
-    }
-
-    return executeGetPathInfo(localPath);
-  },
-  list_directory: ({ toolCall }) => {
-    const localPath = getToolStringInput(toolCall, ['path', 'folderPath', 'query']);
-    if (!localPath) {
-      return {
-        errorText: '缺少目录绝对路径。',
-        ok: false,
-        responseText: '要列出目录，需要先提供本机文件夹绝对路径。',
-      };
-    }
-
-    return executeListDirectory(localPath, {
-      includeHidden: getToolBooleanInput(toolCall, 'includeHidden'),
-      limit: getToolNumberInput(toolCall, 'limit'),
-    });
-  },
-  search_files: ({ toolCall }) => {
-    const localPath = getToolStringInput(toolCall, ['path', 'folderPath', 'rootPath', 'queryRoot']);
-    const query = getToolStringInput(toolCall, ['query', 'nameQuery', 'fileName', 'pattern']);
-    if (!localPath || !query) {
-      return {
-        errorText: '缺少搜索目录或文件名关键词。',
-        ok: false,
-        responseText: '要搜索文件，需要同时提供搜索根目录的绝对路径和文件名关键词。',
-      };
-    }
-
-    return executeSearchFiles(localPath, query, {
-      extensions: getToolStringInput(toolCall, ['extensions', 'extension']) || undefined,
-      includeHidden: getToolBooleanInput(toolCall, 'includeHidden'),
-      limit: getToolNumberInput(toolCall, 'limit'),
-      maxDepth: getToolNumberInput(toolCall, 'maxDepth'),
-    });
-  },
-  read_text_file: ({ toolCall }) => {
-    const localPath = getToolStringInput(toolCall, ['path', 'filePath', 'query']);
-    if (!localPath) {
-      return {
-        errorText: '缺少文本文件绝对路径。',
-        ok: false,
-        responseText: '要读取文本文件，需要先提供文件的本机绝对路径。',
-      };
-    }
-
-    return executeReadTextFile(localPath, getToolNumberInput(toolCall, 'maxBytes'));
-  },
-  set_voice_input: ({ runtime, toolCall }) => executeSetVoiceInput(runtime, toolCall),
-  start_voice_input_session: ({ runtime, toolCall }) => executeStartVoiceInputSession(runtime, toolCall),
-  stop_voice_input_session: ({ runtime }) => executeStopVoiceInputSession(runtime),
-  switch_tts_provider: ({ runtime, toolCall }) => executeSwitchTtsProvider(runtime, toolCall),
-  warmup_local_voice: ({ runtime }) => executeWarmupLocalVoice(runtime),
   list_agent_skills: ({ runtime, toolCall }) => executeListAgentSkills(toolCall, runtime),
   execute_agent_skill: ({ runtime, toolCall }) => executeAgentSkill(runtime, toolCall),
   list_mcp_tools: ({ runtime, toolCall }) => executeListMcpTools(toolCall, runtime),
@@ -432,7 +208,6 @@ const AGENT_RUNTIME_TOOL_HANDLERS: Record<AgentToolCallName, AgentRuntimeToolHan
   organize_desktop_icons: ({ command, runtime, toolCall }) => (
     executeDesktopOrganizationToolCall(runtime, toolCall, command.sourceText)
   ),
-  place_desktop_icon: ({ runtime, toolCall }) => executeDesktopIconPlacementToolCall(runtime, toolCall),
 };
 
 function assertAgentRuntimeToolCoverage() {

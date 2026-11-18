@@ -28,14 +28,19 @@ async function getNativeWindowCaptureSources(dependencies, options = {}) {
   }
 
   try {
-    const stdout = await new Promise((resolve, reject) => {
+    const script = getNativeWindowCaptureSourcesPowerShellScript(options);
+    const timeout = options.includeThumbnails === false ? 1800 : 4500;
+    // Warm PowerShell worker registered by the app (electron/powerShellHost.cjs), else spawn.
+    const powerShellHost = globalThis[Symbol.for('desktop-pet.powershell-host')];
+    const hosted = powerShellHost ? await powerShellHost.run(script, { timeoutMs: timeout }) : null;
+    const stdout = hosted ? hosted.stdout : await new Promise((resolve, reject) => {
       execFile(
         'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', getNativeWindowCaptureSourcesPowerShellScript(options)],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
         {
           windowsHide: true,
           encoding: 'utf8',
-          timeout: options.includeThumbnails === false ? 1800 : 4500,
+          timeout,
           maxBuffer: 12 * 1024 * 1024,
         },
         (error, output) => {

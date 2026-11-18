@@ -111,7 +111,7 @@ async function main() {
     hash.update(withoutCwd(JSON.stringify(actual) + '\n')); cases++;
   }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, '1b14ea051639c82e90fbf71d88eb15f0fd7e1bf1419dcf13279ab130455244ba', 'Reviewed production selection/window/shortcut behavior');
+  assert.equal(fingerprint, '4417f094a32ebc8fed83bec6606252917e93119cc482035e4795d0a83721487e', 'Reviewed production selection/window/shortcut behavior');
   console.log('Area picker selection passed: ' + cases + ' loading/shortcut/empty/submit/cancel/close/dispose/reuse cases; actual root, controlled Electron.');
 }
 module.exports = { runSelection: run };

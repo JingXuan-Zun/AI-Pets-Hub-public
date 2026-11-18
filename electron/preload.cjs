@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     }
   },
   loadPersistedConfigSync: () => ipcRenderer.sendSync('desktop-pet:load-persisted-config-sync'),
+  appStartedAt: () => Number(ipcRenderer.sendSync('desktop-pet:app-started-at')) || 0,
+  autoLaunch: {
+    get: () => ipcRenderer.invoke('desktop-pet:auto-launch-get'),
+    set: (enabled) => ipcRenderer.invoke('desktop-pet:auto-launch-set', enabled === true),
+  },
   savePersistedConfig: (config) => ipcRenderer.invoke('desktop-pet:save-persisted-config', config ?? null),
   probeDeepSeekHarness: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-probe', request ?? {}),
   checkDeepSeekHarnessUpdate: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-update-check', request ?? {}),
@@ -35,6 +40,11 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
   loadPersistedChatHistory: () => ipcRenderer.invoke('desktop-pet:load-persisted-chat-history'),
   savePersistedChatHistory: (messages) => ipcRenderer.invoke('desktop-pet:save-persisted-chat-history', messages ?? []),
   archiveChatHistory: (messages) => ipcRenderer.invoke('desktop-pet:archive-chat-history', messages ?? []),
+  reportImage: {
+    render: (request) => ipcRenderer.invoke('desktop-pet:render-report-image', {
+      height: Number(request?.height), html: String(request?.html ?? ''), width: Number(request?.width),
+    }),
+  },
   chatImage: {
     copy: (dataUrl) => ipcRenderer.invoke('desktop-pet:chat-image-copy', { dataUrl: String(dataUrl ?? '') }),
     save: (dataUrl, name) => ipcRenderer.invoke('desktop-pet:chat-image-save', { dataUrl: String(dataUrl ?? ''), name: String(name ?? '') }),

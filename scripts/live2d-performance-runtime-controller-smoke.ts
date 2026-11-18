@@ -269,6 +269,28 @@ assert.equal(
 );
 complexStandingHarness.controller.destroy();
 
+// High-refresh displays (165 Hz: a model update every ~6 ms). The model restores its saved
+// parameters after every update, so each update must get its breathing/sway write; skipping
+// every other one made the body jump between two poses (2026-11-07).
+const highRefreshHarness = createHarness();
+highRefreshHarness.controller.setState({ action: 'IDLE', visible: true });
+const beforeHighRefreshWrites = highRefreshHarness.readWriteCount('ParamBreath');
+for (let frame = 0; frame < 20; frame += 1) {
+  nowMs = 5000 + frame * 6;
+  highRefreshHarness.listenerStore.get('beforeModelUpdate')?.();
+}
+assert.equal(
+  highRefreshHarness.readWriteCount('ParamBreath') - beforeHighRefreshWrites,
+  20,
+  'every model update at 165 Hz must write the breathing parameter',
+);
+assert.equal(
+  highRefreshHarness.readWriteCount('ParamBodyAngleY') - beforeHighRefreshWrites,
+  20,
+  'every model update at 165 Hz must write the body sway',
+);
+highRefreshHarness.controller.destroy();
+
 idleHarness.controller.destroy();
 assert.equal(
   idleHarness.listenerStore.has('beforeModelUpdate'),

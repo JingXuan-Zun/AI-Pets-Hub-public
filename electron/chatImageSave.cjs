@@ -22,7 +22,18 @@ function suggestedName(name, mimeType) {
   return `${base}.${extension}`;
 }
 
-function registerChatImageSaveIpcHandlers({ BrowserWindow, app, clipboard, dialog, ipcMain, nativeImage }) {
+// Electron 44 removed clipboard.writeImage; images go through clipboard.write([ClipboardItem]).
+// The old call stays for older runtimes (and the checks that run without the new API).
+async function writeImageToClipboard({ clipboard, ClipboardItem }, image) {
+  if (typeof clipboard.write === 'function' && typeof ClipboardItem === 'function') {
+    const png = image.toPNG();
+    await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
+    return;
+  }
+  clipboard.writeImage(image);
+}
+
+function registerChatImageSaveIpcHandlers({ BrowserWindow, app, clipboard, ClipboardItem, dialog, ipcMain, nativeImage }) {
   ipcMain.handle('desktop-pet:chat-image-save', async (event, request) => {
     try {
       const { bytes, mimeType } = decodeDataUrl(request?.dataUrl);
@@ -39,12 +50,12 @@ function registerChatImageSaveIpcHandlers({ BrowserWindow, app, clipboard, dialo
       return { error: error instanceof Error ? error.message : String(error), ok: false };
     }
   });
-  ipcMain.handle('desktop-pet:chat-image-copy', (_event, request) => {
+  ipcMain.handle('desktop-pet:chat-image-copy', async (_event, request) => {
     try {
       decodeDataUrl(request?.dataUrl);
       const image = nativeImage.createFromDataURL(request.dataUrl);
       if (image.isEmpty()) throw new Error('这张图复制不了');
-      clipboard.writeImage(image);
+      await writeImageToClipboard({ clipboard, ClipboardItem }, image);
       return { ok: true };
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error), ok: false };

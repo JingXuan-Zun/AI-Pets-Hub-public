@@ -44,8 +44,16 @@ function executeTemporaryPowerShellScript({ app, execFile, fs, path }, script, o
   });
 }
 
+// A warm PowerShell worker registered by the app (electron/powerShellHost.cjs) runs the script
+// without starting powershell.exe; when there is none, or it cannot run it, spawn as before.
 function createCapturePowerShellRunner(dependencies) {
-  return executeTemporaryPowerShellScript.bind(null, dependencies);
+  const spawnScript = executeTemporaryPowerShellScript.bind(null, dependencies);
+  return (script, options = {}) => {
+    const powerShellHost = globalThis[Symbol.for('desktop-pet.powershell-host')];
+    if (!powerShellHost) return spawnScript(script, options);
+    return powerShellHost.run(script, { timeoutMs: options.timeout ?? 5000 })
+      .then((hosted) => (hosted ? hosted.stdout : spawnScript(script, options)));
+  };
 }
 
 module.exports = { createCapturePowerShellRunner };

@@ -549,11 +549,28 @@ ${formatLoopWindows(windows, active)}` };
       await ensureWindows();
       const before = { active, observation, windows };
       const known = new Set(windows.map((window) => window.hwnd));
-      for (let waited = 0; waited < seconds; waited += 1) {
-        await deps.sleep(1000);
+      // A launcher like WeGame goes from sign-in to its main page inside the same window: no new
+      // window, same title. Waiting only for those made every wait run its full length
+      // (2026-11-08). Now the window's contents are read too, and a change ends the wait.
+      const watched = focus ?? (active && !OWN_WINDOW.test(active.title) ? active : null);
+      const firstLabels = watched && observation?.window.hwnd === watched.hwnd
+        ? observation.elements.map((element) => element.label).join('\n')
+        : null;
+      // Real time decides (reading the window takes time too); the count caps it either way.
+      const deadline = Date.now() + seconds * 1000;
+      for (let round = 0; round < seconds && Date.now() < deadline; round += 1) {
+        await deps.sleep(Math.min(1000, Math.max(0, deadline - Date.now())));
         ({ active, windows } = await deps.observeWindows());
         if (until && windows.some((window) => `${window.title} ${window.processName}`.toLowerCase().includes(until))) break;
         if (windows.some((window) => !known.has(window.hwnd) && !OWN_WINDOW.test(window.title))) break;
+        const live = watched ? windows.find((window) => window.hwnd === watched.hwnd) : null;
+        if (live && live.title !== watched?.title) break;
+        if (live && (until || firstLabels !== null)) {
+          const seen = await deps.observeElements(live);
+          const labels = seen.elements.map((element) => element.label).join('\n');
+          if (until && labels.normalize('NFKC').toLowerCase().includes(until)) break;
+          if (!until && firstLabels !== null && labels !== firstLabels && seen.elements.length > 0) break;
+        }
       }
       focus = followReplacedWindow(focus, windows, active);
       const current = focus ? await observe(focus) : null;
@@ -570,6 +587,7 @@ ${formatLoopWindows(windows, active)}` };
     '把用户要的最终结果拆成 1～6 条能检查的：window_open 某个窗口开着（screen 可写 primary 主屏 / secondary 副屏）；window_closed 窗口已关；window_text 窗口里有某段文字；',
     'file_exists / file_absent / file_contains 文件存在 / 已不在 / 里面有某段文字（target 写完整路径）；browser_page 她的浏览器里开着某个网页（target 写标题或网址里的字）；other 其他没法自动核对的。',
     'target 写窗口标题里的字或程序名（如 Notepad、Calculator）。会重新看一遍电脑来核对，不看之前工具说了什么。',
+    '核对的是用户要的最终结果（例如“启动英雄联盟”就核对游戏客户端开着），不要核对中途用过的启动器、安装器这类会自己关掉或缩到托盘的窗口。',
   ].join(''), {
     checks: {
       description: '要核对的几条',
@@ -596,7 +614,9 @@ ${formatLoopWindows(windows, active)}` };
       },
       readWindowText: async (window) => {
         const seen = await deps.observeElements(window);
-        return seen.elements.map((element) => element.label).join('\n');
+        // Labels and OCR miss what is typed in a document (OCR dropped Notepad's second line);
+        // the document's own text is read first.
+        return [seen.documentText ?? '', ...seen.elements.map((element) => element.label)].filter(Boolean).join('\n');
       },
     });
     const content = formatGoalVerification(verification);

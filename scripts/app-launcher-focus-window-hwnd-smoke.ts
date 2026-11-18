@@ -3,17 +3,9 @@ import { readModuleProjectSources as readProjectSources } from './projectModuleS
 
 const {
   appLauncherSource,
-  windowToolsSource,
 } = readProjectSources({
   appLauncherSource: 'electron/appLauncherService.cjs',
-  windowToolsSource: 'src/agent/agentRuntimeWindowTools.ts',
 });
-
-assert.match(
-  windowToolsSource,
-  /desktopPetShellRuntime\.focusWindow\(\{ hwnd, pid, query \}\)/u,
-  'the runtime focus tool must forward hwnd and pid to the desktop shell bridge',
-);
 assert.match(
   appLauncherSource,
   /async function focusWindow\(request = \{\}\) \{[\s\S]*const requestedPid = Number\(request\?\.pid\)[\s\S]*const requestedHwnd = Number\(request\?\.hwnd \|\| request\?\.windowHandle\)/u,

@@ -1,29 +1,6 @@
 import assert from 'node:assert/strict';
 import { readModuleProjectFile as readProjectFile } from './projectModuleSource.mjs';
-
-const source = readProjectFile('src/agent/agentRuntimeDesktopObservationTools.ts');
 const appLauncherSource = readProjectFile('electron/appLauncherService.cjs');
-
-assert.match(
-  source,
-  /export function resolveObserveWindowsAndAppsScopes/u,
-  'observe_windows_and_apps should centralize scope defaults',
-);
-assert.match(
-  source,
-  /includeInstalledApps: requestedScopes\.includeInstalledApps \?\? false/u,
-  'observe_windows_and_apps should default to the fast path without full installed-app indexing',
-);
-assert.match(
-  source,
-  /includeTaskbarPinned: hasExplicitScope \? requestedScopes\.includeTaskbarPinned \?\? false : true/u,
-  'an explicit running-app scope should not implicitly trigger taskbar shortcut resolution',
-);
-assert.match(
-  source,
-  /const scopes = resolveObserveWindowsAndAppsScopes\(toolCall\)[\s\S]*\.\.\.scopes/u,
-  'the observation tool should forward the resolved scope set',
-);
 
 assert.match(
   appLauncherSource,

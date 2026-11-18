@@ -78,7 +78,7 @@ const qqBridge: DiagnosticItem = {
     const result = await testOneBot(qq.wsUrl, config.settings.qqBridgeAccessToken ?? '');
     return 'account' in result
       ? { status: 'ok', summary: `QQ 连接正常（${result.account}）。` }
-      : { advice: '确认电脑上的 QQ 登录的是小号，并且 SnowLuma（launcher.bat 的窗口）正在运行。', status: 'problem', summary: `QQ 连不上：${result.error}` };
+      : { advice: '确认电脑上的 QQ 登录的是小号，并且 NapCat / SnowLuma 等 OneBot 服务正在运行、正向 WebSocket 地址和设置里一致。', status: 'problem', summary: `QQ 连不上：${result.error}` };
   },
   id: 'network.qq-bridge',
   risk: 'manual-only',

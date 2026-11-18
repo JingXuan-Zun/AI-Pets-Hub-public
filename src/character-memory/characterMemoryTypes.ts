@@ -1,3 +1,4 @@
+import { formatMemoryLineForPrompt } from './memoryTime';
 export type CharacterMemoryKind = 'event' | 'other' | 'preference' | 'profile' | 'promise';
 
 export const CHARACTER_MEMORY_KINDS: CharacterMemoryKind[] = ['profile', 'preference', 'promise', 'event', 'other'];
@@ -132,5 +133,5 @@ export function formatCharacterMemoryItemsForPrompt(state: CharacterMemoryState 
     ...items.filter((item) => !item.pinned).sort((left, right) => left.updatedAt - right.updatedAt),
     ...items.filter((item) => item.pinned),
   ];
-  return ordered.map((item) => `- ${item.text}`).join('\n');
+  return ordered.map(formatMemoryLineForPrompt).join('\n');
 }

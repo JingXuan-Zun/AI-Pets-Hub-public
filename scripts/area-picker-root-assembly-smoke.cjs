@@ -26,7 +26,7 @@ async function main() {
     if (old) assert.deepEqual(actual, await runSelection(action, loading, shortcut, empty, old));
     hash.update(withoutCwd(JSON.stringify(actual) + '\n')); cases++;
   }
-  assert.equal(hash.digest('hex'), '1b14ea051639c82e90fbf71d88eb15f0fd7e1bf1419dcf13279ab130455244ba', 'Assembly preserves actual root window/selection/shortcut/timer behavior');
+  assert.equal(hash.digest('hex'), '4417f094a32ebc8fed83bec6606252917e93119cc482035e4795d0a83721487e', 'Assembly preserves actual root window/selection/shortcut/timer behavior');
   console.log('Area root assembly passed: ' + cases + ' real-root selection/loading/shortcut/close/dispose/reuse cases; controlled Electron.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

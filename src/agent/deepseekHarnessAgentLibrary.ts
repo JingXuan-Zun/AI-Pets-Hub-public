@@ -118,11 +118,6 @@ export function setSelectedDeepSeekHarnessAgentId(agentId: string) {
   }
 }
 
-export function getSelectedDeepSeekHarnessAgent() {
-  const selectedId = getSelectedDeepSeekHarnessAgentId();
-  return loadDeepSeekHarnessAgents().find((agent) => agent.id === selectedId) ?? null;
-}
-
 export function buildDeepSeekHarnessAgentGoal(
   userGoal: string,
   agent: DeepSeekHarnessAgentDefinition | null,

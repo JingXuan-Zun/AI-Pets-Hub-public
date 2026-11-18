@@ -3,7 +3,6 @@ import { spawnSync } from 'node:child_process';
 const flows = [
   ['app-launch-layered-resolution-and-verification', 'app-launch-verification-smoke.ts'],
   ['open-packaged-windows-app', 'app-launch-packaged-windows-app-smoke.ts'],
-  ['runtime-dispatch-evidence-commit-boundary', 'agent-dispatch-evidence-smoke.ts'],
   ['agent-performance-fast-observation-default', 'agent-observe-windows-fast-default-smoke.ts'],
 ];
 

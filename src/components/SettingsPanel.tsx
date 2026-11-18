@@ -403,10 +403,6 @@ export default function SettingsPanel({
   };
 
   const handleSetPetSlotEnabled = (slotId: string, enabled: boolean) => {
-    if (slotId === PRIMARY_DESKTOP_PET_SLOT_ID) {
-      return;
-    }
-
     commitModelConfig((baseConfig) => applyDesktopPetSlotChanges(baseConfig, slotId, { enabled }));
   };
 
@@ -417,10 +413,6 @@ export default function SettingsPanel({
   };
 
   const handleUpdatePetModelVisible = (slotId: string, visible: boolean) => {
-    if (slotId === PRIMARY_DESKTOP_PET_SLOT_ID) {
-      return;
-    }
-
     commitModelConfig((baseConfig) => applyDesktopPetSlotChanges(baseConfig, slotId, {
       modelVisible: visible,
     }));

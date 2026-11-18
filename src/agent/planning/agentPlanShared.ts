@@ -70,8 +70,6 @@ export function getToolCallTargetDescription(command: AgentChatCommand) {
   const label = typeof input.label === 'string' ? input.label.trim() : '';
   const targetName = typeof input.targetName === 'string' ? input.targetName.trim() : '';
   const anchorName = typeof input.anchorName === 'string' ? input.anchorName.trim() : '';
-  const nameQuery = typeof input.nameQuery === 'string' ? input.nameQuery.trim() : '';
-  const pattern = typeof input.pattern === 'string' ? input.pattern.trim() : '';
   const memoryKey = typeof input.key === 'string' ? input.key.trim() : '';
   const memoryValue = typeof input.value === 'string' ? input.value.trim() : '';
   const memoryCategory = typeof input.category === 'string' ? input.category.trim() : '';
@@ -80,17 +78,9 @@ export function getToolCallTargetDescription(command: AgentChatCommand) {
   const mcpToolName = typeof input.name === 'string' ? input.name.trim() : (
     typeof input.toolName === 'string' ? input.toolName.trim() : ''
   );
-  const searchQuery = nameQuery || pattern || query;
   const actionDescription = Number.isFinite(actionIndex) && actionIndex > 0
     ? `第 ${Math.round(actionIndex)} 个候选动作`
     : actionCommand || label;
-
-  if (command.toolCall?.name === 'search_files') {
-    return [
-      searchQuery,
-      localPath || folderPath || projectPath || filePath,
-    ].filter(Boolean).join(' @ ') || command.instruction;
-  }
 
   return query
     || appName
@@ -116,26 +106,4 @@ export function getToolCallTargetDescription(command: AgentChatCommand) {
     || skillId
     || [serverId, mcpToolName].filter(Boolean).join('/')
     || command.instruction;
-}
-
-export function getToolCallStringInput(command: AgentChatCommand, keys: string[]) {
-  const input = command.toolCall?.input ?? {};
-  for (const key of keys) {
-    const value = input[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return '';
-}
-
-export interface ExecuteDesktopSequencePlanStepSummary {
-  reason?: string;
-  tool: string;
-}
-
-export interface ExecuteDesktopSequenceVisibleClickSummary {
-  app: string;
-  target: string;
 }

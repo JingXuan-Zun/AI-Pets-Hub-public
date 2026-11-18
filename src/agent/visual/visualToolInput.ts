@@ -12,27 +12,6 @@ export function getToolStringInput(toolCall: AgentToolCallCommand, keys: string[
   return '';
 }
 
-export function getToolRawInputValue(toolCall: AgentToolCallCommand, key: string) {
-  const input = toolCall.input ?? {};
-  return Object.prototype.hasOwnProperty.call(input, key) ? input[key] : undefined;
-}
-
-export function getToolBooleanInput(toolCall: AgentToolCallCommand, key: string) {
-  const value = toolCall.input?.[key];
-  return typeof value === 'boolean' ? value : undefined;
-}
-
-export function getToolBooleanInputAny(toolCall: AgentToolCallCommand, keys: string[]) {
-  for (const key of keys) {
-    const value = getToolBooleanInput(toolCall, key);
-    if (typeof value === 'boolean') {
-      return value;
-    }
-  }
-
-  return undefined;
-}
-
 export function getToolNumberInput(toolCall: AgentToolCallCommand, key: string) {
   const value = toolCall.input?.[key];
   const numberValue = typeof value === 'number'
@@ -42,15 +21,4 @@ export function getToolNumberInput(toolCall: AgentToolCallCommand, key: string) 
       : NaN;
 
   return Number.isFinite(numberValue) ? numberValue : undefined;
-}
-
-export function getToolNumberInputAny(toolCall: AgentToolCallCommand, keys: string[]) {
-  for (const key of keys) {
-    const value = getToolNumberInput(toolCall, key);
-    if (typeof value === 'number') {
-      return value;
-    }
-  }
-
-  return undefined;
 }

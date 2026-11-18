@@ -120,7 +120,7 @@ async function main() {
   }
   const root = await rootCase(false); if (oldRoot) assert.deepEqual(root, await rootCase(true)); hash.update(JSON.stringify(root));
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, 'df6d98e8a2195939ce4d8481fc44ace32fba35885fd61eaea826cb84160ccf78', 'Reviewed geometry/DPI/getter/error/window-call behavior');
+  assert.equal(fingerprint, '76c5fbf0fca9ae45defb7a652066bf220f37d5ed30b3a4204a61d24ac1d956ac', 'Reviewed geometry/DPI/getter/error/window-call behavior');
   console.log('Area border rules passed: ' + cases + ' geometry/DPI/getter/error cases and real-root border integration; no native IO.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

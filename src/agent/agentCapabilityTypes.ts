@@ -13,8 +13,6 @@ export type AgentCapabilityId =
   | 'mcp-tools'
   | 'platform-capabilities';
 
-export type AgentCapabilityStage = 'foundation' | 'mvp' | 'future';
-
 export type AgentActionRisk =
   | 'read'
   | 'visual'
@@ -96,17 +94,6 @@ export type AgentToolActionKind =
   | 'call-mcp-tool'
   | 'observe-game-window'
   | 'manage-game-companion-loop';
-
-export interface AgentCapability {
-  defaultEnabled: boolean;
-  goal: string;
-  id: AgentCapabilityId;
-  notes: string[];
-  requiredSignals: string[];
-  stage: AgentCapabilityStage;
-  supportedActions: AgentToolActionKind[];
-  title: string;
-}
 
 export interface AgentToolActionRequest {
   estimatedItemCount?: number;

@@ -151,7 +151,7 @@ function readSnowLumaWsToken(dir, port, ownerQq = '') {
 
 const SETUP_DOWNLOAD_URLS = {
   qq: 'https://im.qq.com/pcqq/index.shtml',
-  snowluma: 'https://github.com/SnowLuma/SnowLuma/releases/latest',
+  napcat: 'https://github.com/NapNeko/NapCatQQ/releases/latest',
 };
 
 /** The SnowLuma admin page address, from its config (loopback only). */

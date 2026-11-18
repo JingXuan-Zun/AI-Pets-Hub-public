@@ -142,7 +142,10 @@ async function testSingleRoundGroupChat() {
 
 async function testInfiniteGroupChat() {
   const harness = createHarness(true, 'infinite', (turn) => {
-    if (turn === 2) harness.activeChatRequestTokenRef.current = 2;
+    // The stop button and a new message both end the loop by cancelling the running group chat
+    // (usePetChatSessionControls, usePetChatMessageSender). A changed request token alone no longer
+    // stops it since 2026-09-20: a private-chat message must not end a group chat that is running.
+    if (turn === 2) harness.activeGroupRuntimeRef.cancel();
     return { cancelled: false };
   });
   await harness.run();

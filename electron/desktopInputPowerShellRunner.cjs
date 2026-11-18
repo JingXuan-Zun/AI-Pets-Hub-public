@@ -57,8 +57,16 @@ function runPowerShellScript(dependencies, script, timeout = dependencies.DESKTO
   });
 }
 
+// A warm PowerShell worker registered by the app (electron/powerShellHost.cjs) runs the script
+// without starting powershell.exe; when there is none, or it cannot run it, spawn as before.
 function createDesktopInputPowerShellRunner(dependencies) {
-  return runPowerShellScript.bind(null, dependencies);
+  const spawnScript = runPowerShellScript.bind(null, dependencies);
+  return (script, timeout = dependencies.DESKTOP_INPUT_TIMEOUT_MS) => {
+    const powerShellHost = globalThis[Symbol.for('desktop-pet.powershell-host')];
+    if (!powerShellHost) return spawnScript(script, timeout);
+    return powerShellHost.run(script, { timeoutMs: timeout })
+      .then((hosted) => (hosted ? hosted.stdout : spawnScript(script, timeout)));
+  };
 }
 
 module.exports = { createDesktopInputPowerShellRunner };

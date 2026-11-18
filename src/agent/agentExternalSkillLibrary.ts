@@ -1,7 +1,6 @@
 import { readAgentSkillMarkdownMetadata } from './agentSkillMarkdownMetadata';
 
 export const AGENT_EXTERNAL_SKILL_LIBRARY_KIND = 'agent-external-skill-library.v1';
-export const AGENT_EXTERNAL_SKILL_DEFINITION_KIND = 'agent-external-skill.v1';
 export const MAX_AGENT_EXTERNAL_SKILLS = 48;
 const MAX_TEXT_LENGTH = 64 * 1024;
 

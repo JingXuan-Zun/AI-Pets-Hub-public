@@ -1,3 +1,4 @@
+import './pixiNoEvalPatch';
 import { Application, Container, type IApplicationOptions, UPDATE_PRIORITY } from 'pixi.js';
 import { pushFrontendRuntimeError, pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { isLive2DDragReleaseProbeEnabled } from './live2dDragProbeFlag';

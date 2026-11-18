@@ -57,6 +57,11 @@ export function buildGeminiToolContents(extraMessages: unknown[]) {
       if (parts.length) contents.push({ parts, role: 'model' });
       continue;
     }
+    // A plain note between rounds (the loop's "you have not done anything yet" second look).
+    if (message.role === 'user' && typeof message.content === 'string' && message.content) {
+      contents.push({ parts: [{ text: message.content }], role: 'user' });
+      continue;
+    }
     if (message.role === 'tool') {
       const part = {
         functionResponse: {

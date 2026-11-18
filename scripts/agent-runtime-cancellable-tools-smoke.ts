@@ -33,10 +33,6 @@ assert.match(systemRuntimeSource, /requestId,\s*\n\s*shell,/u);
 assert.match(runtimeSource, /control_browser: \(\{ runtime, toolCall \}\) => executeControlBrowser\(runtime, toolCall\)/u);
 assert.match(browserRuntimeSource, /executeControlBrowser\(\s*context: AgentRuntimeExecutorContext/u);
 assert.match(browserRuntimeSource, /runCancellableAgentRuntimeTask\(context, toolCall, \(\) => desktopPetShellRuntime\.controlBrowser/u);
-assert.match(visualRuntimeSource, /executeListCaptureSources\(\s*runtime: AgentRuntimeExecutorContext/u);
-assert.match(visualRuntimeSource, /runCancellableAgentRuntimeTask\(runtime, toolCall, \(\) => desktopPetShellRuntime\.listCaptureSources/u);
-assert.match(visualRuntimeSource, /runCancellableAgentRuntimeTask\(runtime, toolCall, \(\) => summarizeAgentVisualSnapshot/u);
-assert.match(visualRuntimeSource, /runCancellableAgentRuntimeTask\(runtime, toolCall, \(\) => analyzeAgentGameSnapshot/u);
 assert.match(visualRuntimeSource, /stopCompanionLoopOnAbort/u);
 
 assert.match(controlledCommandSource, /const activeCommands = new Map\(\)/u);

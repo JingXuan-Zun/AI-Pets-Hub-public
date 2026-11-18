@@ -4,7 +4,7 @@
 // 10 min of the user's last message, not in quiet hours, not while the user is away (when they come
 // back only the most eager one says hello), at most 8 a day.
 
-import { effectiveCharge } from './characterCognitionRules';
+import { describeCognitionToday, describeConcernWithDay, effectiveCharge } from './characterCognitionRules';
 import type { CharacterCognition, CognitionConcern } from './characterCognitionTypes';
 
 const MINUTE_MS = 60_000;
@@ -137,12 +137,19 @@ export function trackPresence(state: { awaySince: number | null }, idleMs: numbe
 export function buildProactiveLineInstruction(options: {
   kind: ProactiveSpeechEntry['kind'];
   concernText: string;
+  /** When the concern was noted: shown when that was not today, with today's date. */
+  concernNotedAt?: number;
   moodLabel: string;
+  now?: number;
 }) {
+  const now = options.now ?? Date.now();
+  const concern = options.concernNotedAt === undefined
+    ? options.concernText
+    : describeConcernWithDay({ createdAt: options.concernNotedAt, text: options.concernText }, now);
   return [
     '这是你自己想主动对用户说的话，不是用户发来的消息。',
     options.kind === 'welcome-back' ? '用户离开电脑一阵子，刚刚回来。' : '',
-    `你心里一直惦记着：${options.concernText}`,
+    `今天是${describeCognitionToday(now)}。你心里一直惦记着：${concern}`,
     options.moodLabel ? `你此刻的心情：${options.moodLabel}` : '',
     '用你平时的语气自然地开口，一两句话就好，像是忽然想起来想跟用户说。',
     '不要解释你为什么开口，不要提系统、提醒、设定、心情值这些词。',

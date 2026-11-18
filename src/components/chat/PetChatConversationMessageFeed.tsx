@@ -145,16 +145,8 @@ interface PetChatConversationMessageFeedProps {
 }
 
 export function PetChatConversationMessageFeed({ conversation }: PetChatConversationMessageFeedProps) {
-  const visibleMessages = filterConversationMessages(
-    conversation.messages,
-    conversation.chatMode,
-    conversation.activePetId,
-  );
-  const emptyState = buildConversationEmptyState(
-    conversation.greeting,
-    conversation.chatMode,
-    conversation.petOptions.length,
-  );
+  const visibleMessages = filterConversationMessages(conversation.messages, conversation.chatMode, conversation.activePetId);
+  const emptyState = buildConversationEmptyState(conversation.greeting, conversation.chatMode, conversation.petOptions.length);
   const { manualPlaybackKey, trackManualPlayback } = useManualPlaybackTarget(
     conversation.isSpeaking,
     visibleMessages.length,

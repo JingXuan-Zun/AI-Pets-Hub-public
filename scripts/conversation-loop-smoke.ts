@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createConversationDesktopSession, type DesktopToolDependencies } from '../src/agent/conversation/conversationDesktopTools';
 import { listConversationToolDefinitions, runConversationToolCalls, type ConversationToolRuntime } from '../src/agent/conversation/conversationTools';
-import { streamConversationWithTools } from '../src/agent/conversation/conversationToolStream';
+import { looksLikeActionRequest, streamConversationWithTools } from '../src/agent/conversation/conversationToolStream';
 import { createConversationToolSink, type ConversationToolTurn } from '../src/agent/conversation/conversationToolTypes';
 import { DEFAULT_LIFE_COMPANION_SETTINGS } from '../src/life-companion/lifeCompanionSettings';
 import { readOpenAITextStream } from '../src/services/openAITextStream';
@@ -282,5 +282,45 @@ await collect(streamConversationWithTools({
 }));
 stopWorld();
 check([worldKinds[0], worldKinds.at(-1)], ['agent.task-started', 'agent.task-succeeded'], 'tool rounds start and finish a task in the runtime world');
+
+// Says done, did nothing: a request that reads like something to do, answered with no tool call,
+// gets one hidden second look (benchmark 2026-11-11).
+check([looksLikeActionRequest('把记事本关掉，不用保存'), looksLikeActionRequest('上网查一下：Electron 最新的稳定版是多少？'), looksLikeActionRequest('今天有点累，随便陪我聊两句吧'), looksLikeActionRequest(undefined)],
+  [true, true, false, false], 'which messages read like a request to act');
+approve = true;
+async function runSecondLook(request: string, rounds: Array<{ calls: ConversationToolTurn['sink']['toolCalls']; text: string }>) {
+  const seen: ConversationToolTurn[] = [];
+  const text = await collect(streamConversationWithTools({
+    requestRound: async (turn) => {
+      seen.push(turn);
+      const round = rounds[seen.length - 1];
+      turn.sink.toolCalls = round.calls;
+      return (async function* () { yield round.text; })();
+    },
+    runtime: { ...runtime, request },
+  }));
+  return { seen, text };
+}
+// She claimed it was done; asked again, she really does it.
+const acted = await runSecondLook('帮我把安静时段改成晚上十点到早上六点', [
+  { calls: [], text: '改好啦～' },
+  { calls: [{ arguments: '{"enabled":true,"start":"22:00","end":"06:00"}', id: 's1', name: 'cap_life_companion__quiet_hours' }], text: '刚才说早了，这就去改。' },
+  { calls: [], text: '这回真的改好了。' },
+]);
+check(acted.seen.length, 3, 'a third round after she acts');
+check((acted.seen[1].extraMessages as Array<{ role: string }>).map((message) => message.role), ['assistant', 'user'], 'her reply and the hidden note go back to her');
+check(config.settings.lifeCompanion.quietHoursEnd, '06:00', 'the change is really made');
+check(acted.text, '改好啦～\n\n刚才说早了，这就去改。\n\n这回真的改好了。', 'the correction follows what she already said');
+// Asked again, she says no tool is needed: her first reply stands and nothing is added.
+const chatOnly = await runSecondLook('打开心扉跟我聊聊吧', [{ calls: [], text: '好呀，我们慢慢聊。' }, { calls: [], text: '不用' }]);
+check([chatOnly.seen.length, chatOnly.text], [2, '好呀，我们慢慢聊。'], 'the second look stays out of sight when nothing needs doing');
+// Ordinary chat is never asked again; a reply that used tools is not either.
+const plainChat = await runSecondLook('今天有点累，随便陪我聊两句吧', [{ calls: [], text: '那就歇一会儿嘛。' }]);
+check([plainChat.seen.length, plainChat.text], [1, '那就歇一会儿嘛。'], 'chat costs no extra request');
+const usedTools = await runSecondLook('帮我把安静时段改成晚上十点到早上五点', [
+  { calls: [{ arguments: '{"enabled":true,"start":"22:00","end":"05:00"}', id: 'u1', name: 'cap_life_companion__quiet_hours' }], text: '' },
+  { calls: [], text: '改好了。' },
+]);
+check(usedTools.seen.length, 2, 'no second look after a reply that used tools');
 
 console.log(`conversation loop smoke ok: ${cases} checks`);

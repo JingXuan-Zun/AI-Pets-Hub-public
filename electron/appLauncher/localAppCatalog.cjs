@@ -7,6 +7,8 @@ const { getUserAppMemoryPath, normalizeRememberedAppEntry, readRememberedApps, w
 const { APP_INDEX_CACHE_TTL_MS } = require('./appLauncherConstants.cjs');
 const { getDetectedBrowserCandidates } = require('../browserSearchService.cjs');
 
+const APP_INDEX_STALE_MAX_MS = 30 * 60 * 1000;
+
 function createLocalAppCatalog({ app, shortcutTargetPathCache, createInstalledProgramRegistryEntries, createPackagedAppEntries, logMessage }) {
   let cachedApps = [];
   let cacheUpdatedAt = 0;
@@ -122,33 +124,52 @@ function createLocalAppCatalog({ app, shortcutTargetPathCache, createInstalledPr
       ];
     }
 
+    // The three sources are independent: read them at the same time (the Store app list alone
+    // takes ~1.4 s).
     const shortcuts = [];
-    await Promise.all(getShortcutRoots(app).map((root) => walkShortcutRoot(root, shortcuts)));
+    const [packagedEntries, installedEntries] = await Promise.all([
+      createPackagedAppEntries(),
+      createInstalledProgramRegistryEntries(),
+      Promise.all(getShortcutRoots(app).map((root) => walkShortcutRoot(root, shortcuts))),
+    ]);
 
     return [
       ...listRememberedApps(),
       ...createDetectedBrowserAppEntries(),
-      ...await createPackagedAppEntries(),
-      ...await createInstalledProgramRegistryEntries(),
+      ...packagedEntries,
+      ...installedEntries,
       ...shortcuts,
     ]
       .sort((first, second) => first.name.localeCompare(second.name, 'zh-Hans-CN'));
   }
 
+  let refreshing = null;
+  const refreshIndex = () => {
+    refreshing ??= buildAppIndex()
+      .then((apps) => {
+        cachedApps = apps;
+        cacheUpdatedAt = Date.now();
+        logMessage('local app index refreshed', { count: cachedApps.length });
+        return cachedApps;
+      })
+      .finally(() => { refreshing = null; });
+    return refreshing;
+  };
+
+  // Fresh for a minute; after that an older list is still answered at once while a new one is
+  // read in the background (installed programs rarely change between two requests). A search
+  // that finds nothing rebuilds the list once before giving up (see searchLocalApps).
   async function listApps(options = {}) {
     const forceRefresh = Boolean(options?.forceRefresh);
-    if (
-      !forceRefresh
-      && cacheUpdatedAt > 0
-      && Date.now() - cacheUpdatedAt <= APP_INDEX_CACHE_TTL_MS
-    ) {
+    const age = Date.now() - cacheUpdatedAt;
+    if (!forceRefresh && cacheUpdatedAt > 0 && age <= APP_INDEX_CACHE_TTL_MS) {
       return cachedApps;
     }
-
-    cachedApps = await buildAppIndex();
-    cacheUpdatedAt = Date.now();
-    logMessage('local app index refreshed', { count: cachedApps.length });
-    return cachedApps;
+    if (!forceRefresh && cacheUpdatedAt > 0 && age <= APP_INDEX_STALE_MAX_MS) {
+      void refreshIndex().catch(() => {});
+      return cachedApps;
+    }
+    return refreshIndex();
   }
 
   async function searchLocalApps(query, options = {}) {
@@ -160,7 +181,7 @@ function createLocalAppCatalog({ app, shortcutTargetPathCache, createInstalledPr
       return [];
     }
 
-    return (await listApps(options))
+    const rank = (apps) => apps
       .map((item) => ({
         ...item,
         score: scoreIndexedAppMatch(item, normalizedQuery, { browserCategoryQuery }),
@@ -173,6 +194,10 @@ function createLocalAppCatalog({ app, shortcutTargetPathCache, createInstalledPr
         || first.name.localeCompare(second.name, 'zh-Hans-CN')
       ))
       .slice(0, limit);
+    const matches = rank(await listApps(options));
+    if (matches.length || options?.forceRefresh) return matches;
+    // Nothing in a possibly older list (a program installed a moment ago): read it once more.
+    return rank(await listApps({ ...options, forceRefresh: true }));
   }
 
   return { listRememberedApps, searchRememberedApps, rememberLocalApp, listApps, searchLocalApps };

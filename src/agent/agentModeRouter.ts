@@ -7,12 +7,7 @@ import {
   type AgentToolCallName,
 } from './agentChatCommand';
 import { type AgentExecutionPlan } from './agentOrchestrator';
-import {
-  AGENT_TOOL_REGISTRY,
-  formatAgentToolLifecycleMetadata,
-  getAgentToolDefinition,
-  type AgentToolDefinition,
-} from './agentToolRegistry';
+import { getAgentToolDefinition, type AgentToolDefinition } from './agentToolRegistry';
 
 export type AgentModeRouteMode = 'chat' | 'agent' | 'developer';
 
@@ -58,49 +53,16 @@ const AGENT_MODE_POLICIES: Record<AgentModeRouteMode, AgentModePolicy> = {
     description: 'Desktop user task mode: inspect this PC, arrange icons, open apps, and manage voice settings through approved tools.',
     mode: 'agent',
     toolNames: [
-      'get_display_info',
       'get_system_info',
-      'launch_local_app',
-      'browser_search',
-      'observe_windows_and_apps',
-      'execute_desktop_action',
-      'execute_desktop_input',
-      'execute_desktop_sequence',
-      'get_default_app_for_uri',
-      'list_running_apps',
-      'get_active_window_info',
-      'execute_desktop_observation',
-      'list_capture_sources',
-      'summarize_visual_snapshot',
-      'locate_screen_elements',
-      'analyze_game_screen',
       'manage_game_companion_loop',
-      'get_cursor_position',
-      'focus_window',
-      'close_window',
-      'open_resource',
-      'search_web',
       'control_browser',
       'run_controlled_command',
       'remember_local_app',
       'execute_memory_action',
-      'get_path_info',
-      'list_directory',
-      'execute_local_file_action',
-      'execute_file_management_action',
-      'search_files',
-      'read_text_file',
       'organize_desktop_icons',
-      'place_desktop_icon',
       'get_pet_settings',
       'update_pet_settings',
       'use_platform_capability',
-      'get_voice_status',
-      'switch_tts_provider',
-      'warmup_local_voice',
-      'set_voice_input',
-      'start_voice_input_session',
-      'stop_voice_input_session',
       'list_agent_skills',
       'execute_agent_skill',
       'list_mcp_tools',
@@ -124,12 +86,6 @@ const AGENT_MODE_POLICIES: Record<AgentModeRouteMode, AgentModePolicy> = {
     toolNames: [
       'inspect_local_project',
       'run_local_project_action',
-      'get_path_info',
-      'list_directory',
-      'execute_local_file_action',
-      'search_files',
-      'read_text_file',
-      'get_display_info',
       'get_system_info',
       'run_controlled_command',
     ],
@@ -201,22 +157,6 @@ export function getAgentModePolicy(mode: AgentModeRouteMode) {
   return AGENT_MODE_POLICIES[mode];
 }
 
-export function listAgentModePolicies() {
-  return [
-    AGENT_MODE_POLICIES.chat,
-    AGENT_MODE_POLICIES.agent,
-    AGENT_MODE_POLICIES.developer,
-  ];
-}
-
-export function isAgentDeveloperToolName(toolName: AgentToolCallName) {
-  return DEVELOPER_TOOL_NAMES.has(toolName);
-}
-
-export function isAgentToolAvailableInMode(toolName: AgentToolCallName, mode: AgentModeRouteMode) {
-  return AGENT_MODE_POLICIES[mode].toolNames.includes(toolName);
-}
-
 export function buildAgentModeRoute(command: AgentChatCommand, plan: AgentExecutionPlan | null): AgentModeRoute {
   const mode = resolveModeFromCommand(command, plan);
   const policy = getAgentModePolicy(mode);
@@ -235,20 +175,4 @@ export function buildAgentModeRoute(command: AgentChatCommand, plan: AgentExecut
     ...routeWithoutSummary,
     summary: createModeRouteSummary(routeWithoutSummary),
   };
-}
-
-export function createAgentModeAvailableToolLines(mode: AgentModeRouteMode) {
-  return getPolicyToolDefinitions(getAgentModePolicy(mode)).map((definition) => (
-    `- ${definition.name}: ${definition.description}. args: ${definition.argsSchemaText}. ${formatAgentToolLifecycleMetadata(definition.name)} ${definition.plannerGuidance}`
-  ));
-}
-
-export function listRegisteredAgentToolNamesOutsideModePolicies() {
-  const policyToolNames = new Set(
-    listAgentModePolicies().flatMap((policy) => policy.toolNames),
-  );
-
-  return AGENT_TOOL_REGISTRY
-    .map((definition) => definition.name)
-    .filter((toolName) => !policyToolNames.has(toolName));
 }

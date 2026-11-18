@@ -221,35 +221,6 @@ export function buildDesktopOrganizationToolPlan(command: AgentChatCommand): Age
   switch (toolName) {
     case 'organize_desktop_icons':
       return buildDesktopOrganizationPlan(command);
-
-    case 'place_desktop_icon':
-      return {
-        commandKind: command.kind,
-        goal: explicitGoal || `移动桌面图标：${targetDescription}`,
-        instruction: command.instruction,
-        steps: [
-          createPlanStep(
-            'list-desktop-icons',
-            'list-desktop-icons',
-            `读取目标桌面图标位置：${targetDescription}`,
-            {
-              requiresDesktopMode: true,
-              targetDescription,
-            },
-          ),
-          createPlanStep(
-            'move-desktop-icon',
-            'move-desktop-icon',
-            `按请求移动桌面图标：${targetDescription}`,
-            {
-              estimatedItemCount: 1,
-              requiresDesktopMode: true,
-              reversible: true,
-              targetDescription,
-            },
-          ),
-        ],
-      };
     default: return null;
   }
 }

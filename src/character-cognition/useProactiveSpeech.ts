@@ -94,7 +94,7 @@ export async function deliverProactiveLine(
   const now = Date.now();
   const cognition = decision.candidate.cognition;
   const instruction = [
-    buildProactiveLineInstruction({ concernText: decision.concern.text, kind: decision.kind, moodLabel: cognition.mood.label }),
+    buildProactiveLineInstruction({ concernNotedAt: decision.concern.createdAt, concernText: decision.concern.text, kind: decision.kind, moodLabel: cognition.mood.label, now }),
     describeCognitionForReply(cognition, now),
   ].join('\n\n');
   const line = await composeLine(config, slot, instruction);

@@ -24,50 +24,17 @@ export type AgentToolInputPrepareResult =
     };
 
 export const AGENT_TOOL_INPUT_PARAM_SPECS: Record<AgentToolCallName, readonly AgentToolInputParamSpec[]> = {
-  browser_search: AGENT_OBSERVATION_INPUT_SPECS.browser_search,
-  observe_windows_and_apps: AGENT_OBSERVATION_INPUT_SPECS.observe_windows_and_apps,
-  execute_desktop_action: AGENT_DESKTOP_ACTION_INPUT_SPECS.execute_desktop_action,
-  execute_desktop_input: AGENT_DESKTOP_ACTION_INPUT_SPECS.execute_desktop_input,
-  execute_desktop_sequence: AGENT_DESKTOP_ACTION_INPUT_SPECS.execute_desktop_sequence,
-  execute_desktop_observation: AGENT_OBSERVATION_INPUT_SPECS.execute_desktop_observation,
   run_controlled_command: AGENT_DESKTOP_ACTION_INPUT_SPECS.run_controlled_command,
   control_browser: AGENT_DESKTOP_ACTION_INPUT_SPECS.control_browser,
-  locate_screen_elements: AGENT_OBSERVATION_INPUT_SPECS.locate_screen_elements,
-  execute_local_file_action: AGENT_LOCAL_SERVICE_INPUT_SPECS.execute_local_file_action,
-  execute_file_management_action: AGENT_LOCAL_SERVICE_INPUT_SPECS.execute_file_management_action,
   execute_memory_action: AGENT_LOCAL_SERVICE_INPUT_SPECS.execute_memory_action,
-  get_default_app_for_uri: AGENT_OBSERVATION_INPUT_SPECS.get_default_app_for_uri,
-  get_display_info: AGENT_OBSERVATION_INPUT_SPECS.get_display_info,
   get_system_info: AGENT_OBSERVATION_INPUT_SPECS.get_system_info,
   get_pet_settings: AGENT_LOCAL_SERVICE_INPUT_SPECS.get_pet_settings,
   update_pet_settings: AGENT_LOCAL_SERVICE_INPUT_SPECS.update_pet_settings,
   use_platform_capability: AGENT_LOCAL_SERVICE_INPUT_SPECS.use_platform_capability,
-  get_voice_status: AGENT_LOCAL_SERVICE_INPUT_SPECS.get_voice_status,
-  list_running_apps: AGENT_OBSERVATION_INPUT_SPECS.list_running_apps,
-  get_active_window_info: AGENT_OBSERVATION_INPUT_SPECS.get_active_window_info,
-  list_capture_sources: AGENT_OBSERVATION_INPUT_SPECS.list_capture_sources,
-  summarize_visual_snapshot: AGENT_OBSERVATION_INPUT_SPECS.summarize_visual_snapshot,
-  analyze_game_screen: AGENT_OBSERVATION_INPUT_SPECS.analyze_game_screen,
   manage_game_companion_loop: AGENT_LOCAL_SERVICE_INPUT_SPECS.manage_game_companion_loop,
-  get_cursor_position: AGENT_OBSERVATION_INPUT_SPECS.get_cursor_position,
-  focus_window: AGENT_DESKTOP_ACTION_INPUT_SPECS.focus_window,
-  close_window: AGENT_DESKTOP_ACTION_INPUT_SPECS.close_window,
-  open_resource: AGENT_DESKTOP_ACTION_INPUT_SPECS.open_resource,
   inspect_local_project: AGENT_LOCAL_SERVICE_INPUT_SPECS.inspect_local_project,
-  launch_local_app: AGENT_DESKTOP_ACTION_INPUT_SPECS.launch_local_app,
-  search_web: AGENT_OBSERVATION_INPUT_SPECS.search_web,
   organize_desktop_icons: AGENT_DESKTOP_ACTION_INPUT_SPECS.organize_desktop_icons,
-  place_desktop_icon: AGENT_DESKTOP_ACTION_INPUT_SPECS.place_desktop_icon,
   remember_local_app: AGENT_DESKTOP_ACTION_INPUT_SPECS.remember_local_app,
-  get_path_info: AGENT_LOCAL_SERVICE_INPUT_SPECS.get_path_info,
-  list_directory: AGENT_LOCAL_SERVICE_INPUT_SPECS.list_directory,
-  search_files: AGENT_LOCAL_SERVICE_INPUT_SPECS.search_files,
-  read_text_file: AGENT_LOCAL_SERVICE_INPUT_SPECS.read_text_file,
-  set_voice_input: AGENT_LOCAL_SERVICE_INPUT_SPECS.set_voice_input,
-  start_voice_input_session: AGENT_LOCAL_SERVICE_INPUT_SPECS.start_voice_input_session,
-  stop_voice_input_session: AGENT_LOCAL_SERVICE_INPUT_SPECS.stop_voice_input_session,
-  switch_tts_provider: AGENT_LOCAL_SERVICE_INPUT_SPECS.switch_tts_provider,
-  warmup_local_voice: AGENT_LOCAL_SERVICE_INPUT_SPECS.warmup_local_voice,
   run_local_project_action: AGENT_LOCAL_SERVICE_INPUT_SPECS.run_local_project_action,
   list_agent_skills: AGENT_LOCAL_SERVICE_INPUT_SPECS.list_agent_skills,
   execute_agent_skill: AGENT_LOCAL_SERVICE_INPUT_SPECS.execute_agent_skill,
@@ -105,22 +72,8 @@ export function formatAgentToolInputParamType(type: AgentToolInputParamType) {
   return 'boolean';
 }
 
-function isAgentToolInputRequired(
-  toolName: AgentToolCallName,
-  spec: AgentToolInputParamSpec,
-  input: Record<string, unknown>,
-) {
-  if (!spec.required) {
-    return false;
-  }
-
-  if (toolName !== 'execute_desktop_sequence' || spec.key !== 'stepsJson') {
-    return true;
-  }
-
-  const mode = typeof input.mode === 'string' ? input.mode.trim().toLowerCase() : '';
-  const visibleClickJson = typeof input.visibleClickJson === 'string' ? input.visibleClickJson.trim() : '';
-  return !(mode === 'visible_click' || mode === 'visibleclick' || Boolean(visibleClickJson));
+function isAgentToolInputRequired(spec: AgentToolInputParamSpec) {
+  return Boolean(spec.required);
 }
 
 export function prepareAgentToolInput(
@@ -144,7 +97,7 @@ export function prepareAgentToolInput(
     );
 
     if (isMissing) {
-      if (isAgentToolInputRequired(toolName, spec, input)) {
+      if (isAgentToolInputRequired(spec)) {
         return {
           error: `Agent tool "${toolName}" is missing required parameter "${spec.key}".`,
           ok: false,

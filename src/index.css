@@ -2,7 +2,7 @@
 @source "../src";
 @source "../components";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./styles/shadcn-tailwind.css";
 @import "@fontsource-variable/geist/index.css";
 
 @theme inline {

@@ -139,13 +139,11 @@ export function SettingsPanelStandaloneShell({
       label: '显示模型',
       value: selectedPetSlot.modelVisible,
       onChange: () => onSetPetSlotModelVisible(selectedPetSlot.id, !selectedPetSlot.modelVisible),
-      locked: selectedPetSlot.isPrimary,
     },
     {
       label: '启用状态',
       value: selectedPetSlot.enabled,
       onChange: () => onSetPetSlotEnabled(selectedPetSlot.id, !selectedPetSlot.enabled),
-      locked: selectedPetSlot.isPrimary,
     },
   ];
   const [workspaceView, setWorkspaceView] = useState<SettingsWorkspaceViewId>('workspace');
@@ -361,14 +359,13 @@ export function SettingsPanelStandaloneShell({
             <button
               key={control.label}
               type="button"
-              disabled={control.locked}
               onClick={control.onChange}
               className={[
                 'min-w-0 rounded-md border px-1.5 py-1.5 text-center text-[10px] font-semibold leading-tight shadow-sm transition-colors',
                 control.value
                   ? 'border-primary bg-primary/10 text-primary hover:bg-primary/15'
                   : 'border-border bg-card text-muted-foreground hover:bg-muted',
-                control.locked ? 'cursor-not-allowed opacity-55' : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
               ].join(' ')}
             >
               <span className="block truncate">{control.label}</span>

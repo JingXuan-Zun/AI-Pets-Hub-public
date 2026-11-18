@@ -17,7 +17,7 @@ const {
 
 assert.match(
   petContainerSource,
-  /usePetContainerCharacterRuntimeBridge\(\{[\s\S]*customModelPresets:\s*config\.customModelPresets[\s\S]*modelType:\s*config\.modelType/u,
+  /usePetContainerCharacterRuntimeBridge\(\{[\s\S]*customModelPresets:\s*config\.customModelPresets/u,
   'PetContainer should call the extracted character runtime bridge module.',
 );
 assert.match(

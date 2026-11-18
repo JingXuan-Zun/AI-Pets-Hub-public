@@ -31,18 +31,6 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  runtimeExecutorSource,
-  /getToolBooleanInput\(toolCall, 'forceRefresh'\)/u,
-  'launch_local_app executor should accept an explicit forceRefresh input',
-);
-
-assert.match(
-  toolInputSchemaSource,
-  /launch_local_app:[\s\S]*key: 'forceRefresh'/u,
-  'launch_local_app schema should expose forceRefresh for explicit fresh app-index scans',
-);
-
-assert.match(
   appLauncherSource,
   /const POST_LAUNCH_VERIFY_POLL_INTERVAL_MS = 120;/u,
   'post-launch verification should poll in short intervals instead of waiting the full window every time',

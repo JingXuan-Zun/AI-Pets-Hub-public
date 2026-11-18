@@ -53,8 +53,8 @@ export function getDesktopPetSlots(config: PetConfig): DesktopPetSlot[] {
       slotNumber: 1,
       label: '1号桌宠',
       isPrimary: true,
-      enabled: true,
-      modelVisible: true,
+      enabled: config.primaryPetEnabled !== false,
+      modelVisible: config.primaryPetModelVisible !== false,
       autoMovementEnabled: config.autoMovementEnabled,
       pointerLookEnabled: config.pointerLookEnabled,
       modelType: config.modelType,
@@ -94,13 +94,18 @@ export function getDesktopPetSlot(config: PetConfig, slotId: string) {
 }
 
 export function getRenderableDesktopPetSlots(config: PetConfig) {
-  return getDesktopPetSlots(config).filter((slot) => slot.isPrimary || slot.enabled);
+  const slots = getDesktopPetSlots(config);
+  const enabledSlots = slots.filter((slot) => slot.enabled);
+  // With every slot turned off, chat and voice still need someone to talk to: slot 1 answers.
+  return enabledSlots.length > 0 ? enabledSlots : slots.slice(0, 1);
 }
 
 export function getVisibleDesktopPetModelSlots(config: PetConfig) {
-  return getDesktopPetSlots(config).filter((slot) => (
-    slot.isPrimary || (slot.enabled && slot.modelVisible)
-  ));
+  return getDesktopPetSlots(config).filter((slot) => slot.enabled && slot.modelVisible);
+}
+
+export function isPrimaryDesktopPetShown(config: PetConfig) {
+  return config.primaryPetEnabled !== false && config.primaryPetModelVisible !== false;
 }
 
 function resolveNextDesktopPetSlotNumber(config: PetConfig) {
@@ -224,6 +229,8 @@ export function applyDesktopPetSlotChanges(
   if (slotId === PRIMARY_DESKTOP_PET_SLOT_ID) {
     return {
       ...config,
+      primaryPetEnabled: updates.enabled ?? config.primaryPetEnabled,
+      primaryPetModelVisible: updates.modelVisible ?? config.primaryPetModelVisible,
       autoMovementEnabled: updates.autoMovementEnabled ?? config.autoMovementEnabled,
       pointerLookEnabled: updates.pointerLookEnabled ?? config.pointerLookEnabled,
       modelType: updates.modelType ?? config.modelType,

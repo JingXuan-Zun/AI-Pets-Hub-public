@@ -166,4 +166,35 @@ try {
   fs.rmSync(userDataPath, { force: true, recursive: true });
 }
 
+// Memory check-up (2026-11-09): dated memories, dated dialogue, a new shared fact replacing an old one.
+{
+  const { buildSharedUserMemoryExtractionPrompt, formatSharedUserMemoryForPrompt, parseSharedUserMemoryExtraction } = await import('../src/character-memory/sharedUserMemory');
+  const noted = new Date(2026, 10, 6, 21, 0).getTime();
+  const today = new Date(2026, 10, 9, 10, 0).getTime();
+  const plan: CharacterMemoryItem = { createdAt: noted, id: 'm-plan', kind: 'promise', source: 'auto', text: '用户11月7日下午要开会', updatedAt: noted };
+  const likes: CharacterMemoryItem = { createdAt: noted, id: 'm-like', kind: 'preference', source: 'auto', text: '用户喜欢猫', updatedAt: noted };
+  const lines = formatCharacterMemoryItemsForPrompt({ ...EMPTY_CHARACTER_MEMORY_STATE, items: [likes, plan] }).split('\n');
+  assert.deepEqual(lines, ['- 用户喜欢猫', '- 用户11月7日下午要开会（11月6日记下的）'], 'plans carry the day they were noted, preferences do not');
+  assert.equal(formatSharedUserMemoryForPrompt([plan]), '- 用户11月7日下午要开会（11月6日记下的）');
+
+  const message = { ...chat(1), createdAt: today, role: 'user' as const, text: '明天放假' };
+  const auto = buildAutoMemoryExtractionPrompt({ items: [plan], messages: [message], now: today, roleName: '小桃' });
+  const autoPayload = JSON.parse(auto.payload);
+  assert.equal(autoPayload.today, '11月9日 周一');
+  assert.equal(autoPayload.dialogue[0].date, '11月9日');
+  assert.equal(autoPayload.memories[0].notedOn, '11月6日');
+  assert.match(auto.systemInstruction, /不要写今天、明天/u);
+  assert.match(auto.systemInstruction, /时间已经过去/u);
+
+  const shared = buildSharedUserMemoryExtractionPrompt({ known: [{ id: 'm-plan', notedOn: '11月6日', text: plan.text }, '待批准的一条'], messages: [message], now: today, roleName: '小桃' });
+  const sharedPayload = JSON.parse(shared.payload);
+  assert.deepEqual([sharedPayload.today, sharedPayload.known[0].id, sharedPayload.known[1].id], ['11月9日 周一', 'm-plan', undefined]);
+  assert.match(shared.systemInstruction, /replaces/u);
+  const parsed = parseSharedUserMemoryExtraction('{"memories":[{"text":"用户11月10日放假在家","kind":"event","replaces":"m-plan"},{"text":"用户爱吃辣","kind":"preference","replaces":"no-such-id"}]}', [{ id: 'm-plan', text: plan.text }]);
+  assert.deepEqual(parsed, [
+    { kind: 'event', replaces: 'm-plan', text: '用户11月10日放假在家' },
+    { kind: 'preference', text: '用户爱吃辣' },
+  ], 'replaces only points at a stored memory');
+}
+
 console.log('character memory smoke passed');

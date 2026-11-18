@@ -42,8 +42,13 @@ export function createNeuralPersonaNodeMutationActions(options: {
   const updateNode = async (nodeId: string, patch: NeuralPersonaNodePatch) => {
     if (options.state.status !== 'ready') return missingGraph();
     const service = createNeuralPersonaNodeCommandService({ repository: options.repository() });
+    // Saving the editor's text goes on top of the stored graph, not the copy the panel loaded:
+    // anything that changed the graph meanwhile (a new node, a memory proposal) made the panel's
+    // revision stale, and the save was refused as a conflict, losing what the user had typed.
+    const latest = await options.repository().load(options.roleId);
+    const expectedRevision = latest.status === 'ok' ? latest.record.revision : options.state.record.revision;
     return options.applyResult(await service.updateNode({
-      commandId: options.commandId('update-node'), expectedRevision: options.state.record.revision,
+      commandId: options.commandId('update-node'), expectedRevision,
       nodeId, patch, roleId: options.roleId,
     }));
   };

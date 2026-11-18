@@ -55,46 +55,6 @@ function formatDisplayInfo(displays: DesktopPetDisplayLike[]) {
   ].join('\n');
 }
 
-function createDisplayInfoReceipt(displays: DesktopPetDisplayLike[]): NonNullable<AgentChatCommandResult['receipt']> {
-  if (!Array.isArray(displays) || displays.length === 0) {
-    return {
-      evidenceLines: ['desktopPetShellRuntime.listDisplays() 没有返回可用屏幕。'],
-      status: 'unverified',
-      summaryLines: [
-        '调用：get_display_info',
-        '结果：未读取到屏幕列表',
-      ],
-      title: '执行回执',
-      toolName: 'get_display_info',
-      verification: '没有拿到屏幕数据，不能确认当前主屏/副屏。',
-    };
-  }
-
-  const evidenceLines = displays.map((display, index) => {
-    const label = display.label || `屏幕 ${index + 1}`;
-    const roleText = display.isPrimary ? '主屏' : '副屏';
-    const physicalPosition = getDisplayPhysicalPosition(display);
-    const logicalPosition = getDisplayLogicalPosition(display);
-
-    return `${index + 1}. ${label}（${roleText}）：${formatDisplayResolutionSummary(display)}；物理位置 (${physicalPosition.x}, ${physicalPosition.y})；逻辑位置 (${logicalPosition.x}, ${logicalPosition.y})`;
-  });
-  const primaryDisplay = displays.find((display) => display.isPrimary) ?? displays[0];
-  const primaryLabel = primaryDisplay?.label || '未知屏幕';
-
-  return {
-    evidenceLines,
-    status: 'success',
-    summaryLines: [
-      '调用：get_display_info',
-      `读取：${displays.length} 个屏幕`,
-      `主屏：${primaryLabel}`,
-    ],
-    title: '执行回执',
-    toolName: 'get_display_info',
-    verification: `已通过桌面运行时读取 ${displays.length} 个屏幕；回复和回执使用同一份 listDisplays 数据。`,
-  };
-}
-
 function formatGpuInfo(systemInfo: DesktopPetSystemInfoLike | null) {
   const devices = Array.isArray(systemInfo?.gpu?.devices)
     ? systemInfo?.gpu?.devices ?? []
@@ -227,14 +187,6 @@ function createSystemInfoReceipt(
     title: '执行回执',
     toolName: 'get_system_info',
     verification: '已通过桌面运行时读取系统信息；回复和回执使用同一份 getSystemInfo 数据。',
-  };
-}
-
-export async function executeGetDisplayInfo(): Promise<AgentChatCommandResult> {
-  const displays = await desktopPetShellRuntime.listDisplays();
-  return {
-    receipt: createDisplayInfoReceipt(displays),
-    responseText: formatDisplayInfo(displays),
   };
 }
 

@@ -22,7 +22,7 @@ const readers: GoalCheckReaders = {
   ],
   listWindows: async () => [notepad, calculator],
   readFile: async (path) => (path.endsWith('note.txt') ? { ok: true, text: '苹果、香蕉\n橙子' } : path.endsWith('pic.png') ? { exists: true, ok: false } : { exists: false, ok: false }),
-  readWindowText: async (window) => (window === notepad ? '2026年11月6日\n中断测试\nLn 2, Col 5' : ''),
+  readWindowText: async (window) => (window === notepad ? '2026年11月6日\n中断测试\nLn 2, Col 5' : window === calculator ? '显示为 1,624' : ''),
 };
 
 (async () => {
@@ -80,5 +80,9 @@ const readers: GoalCheckReaders = {
   assert.equal(describeGoalCheckOutcome(mixed, false), '做了，但核对没通过（0/5）');
   assert.equal(describeGoalCheckOutcome({ failed: 0, outcomes: [], passed: 2, total: 3, unknown: 1 }, false), '已完成，核对 2/3（1 项没法自动核对）');
 
-  console.log('goal check smoke ok: 24 checks');
+  // Calculator shows "1,624"; she checks for "1624" (2026-11-08).
+  const sum = await verifyGoalChecks(parseGoalChecks([{ kind: 'window_text', target: '计算器', text: '1624' }]), readers);
+  assert.equal(sum.passed, 1, JSON.stringify(sum.outcomes));
+
+  console.log('goal check smoke ok: 25 checks');
 })();

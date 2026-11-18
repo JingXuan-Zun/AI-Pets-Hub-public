@@ -150,7 +150,3 @@ export function evaluateAgentToolAction(
       : '该动作需要提示或确认。',
   };
 }
-
-export function shouldExecuteAgentToolAction(decision: AgentToolActionDecision) {
-  return decision.allowed && decision.mode !== 'blocked';
-}

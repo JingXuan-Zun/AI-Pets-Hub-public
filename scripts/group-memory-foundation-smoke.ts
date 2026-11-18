@@ -59,7 +59,7 @@ assert.ok(record.summary.length <= 240);
 assert.match(formatGroupMemoryRecord(record), /source=primary/u);
 assert.match(formatGroupMemoryRecord(record), /id=group-memory-message-1/u);
 assert.match(formatGroupMemoryRecord(record), /topic=none/u);
-assert.match(formatGroupMemoryRecord(record), /createdAt=100/u);
+assert.match(formatGroupMemoryRecord(record), /记于=/u);
 
 assert.equal(evaluateGroupMemoryWrite({
   explicitUserSave: false,

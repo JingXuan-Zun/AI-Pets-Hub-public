@@ -1,0 +1,16 @@
+{
+  "id": "task-report",
+  "name": "报告图",
+  "version": "1.0.0",
+  "description": "把长长的文字变成一张深色霓虹风的图：任务做完、结果很多时出任务报告图（完成、要你看、没做成一目了然）；你要方案、设计、梳理思路时出思维导图（主题在中间，分支向两边展开）。",
+  "author": "AI Pets Hub",
+  "kind": "native",
+  "permissions": [],
+  "capabilityIds": ["reports.show_task_report", "reports.show_mind_map"],
+  "roleScoped": true,
+  "useWhen": "一个任务做完、有 5 项以上结果要汇报时；或者你要一个分几部分的方案、设计、规划时。",
+  "examples": ["帮我把下载文件夹整理一下", "我想做一个 AI 记忆系统，你有什么方案？"],
+  "troubleshooting": [
+    "没出图、只有文字：报告图只在桌面版里生成；网页版或出错时她会改用简短文字。"
+  ]
+}

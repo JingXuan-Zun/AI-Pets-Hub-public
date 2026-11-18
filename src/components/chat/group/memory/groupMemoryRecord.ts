@@ -88,7 +88,7 @@ export function evaluateGroupMemoryWrite(options: {
 export function formatGroupMemoryRecord(record: GroupMemoryRecord) {
   const confidence = Math.max(0, Math.min(1, record.confidence)).toFixed(2);
   return [
-    `[群体记忆｜${record.kind}｜id=${record.id}｜source=${record.sourceRoleId}｜topic=${record.topicId ?? 'none'}｜confidence=${confidence}｜createdAt=${record.createdAt}]`,
+    `[群体记忆｜${record.kind}｜id=${record.id}｜source=${record.sourceRoleId}｜topic=${record.topicId ?? 'none'}｜confidence=${confidence}｜记于=${new Date(record.createdAt).toLocaleString('zh-CN', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'numeric' })}]`,
     record.summary,
   ].join('\n');
 }

@@ -133,4 +133,13 @@ const activeNode = activated.record.graph.nodes.find((node) => node.nodeId === s
 assert.equal(canReadNeuralPersonaNode(activeNode, contextInput), true, 'confirmed memories join chat activation');
 assert.ok(!isNeuralMemoryStagedNode(activeNode));
 
+// A shared proposal that supersedes an older memory keeps which one it replaces (2026-11-09).
+{
+  const { normalizeNeuralMemoryProposals } = await import('../src/neural-memory/neuralMemoryProposalTypes');
+  const [kept] = normalizeNeuralMemoryProposals([{ content: '用户11月10日放假', createdAt: 1, id: 'p1', replacesSharedId: 'm-plan', roleId: 'primary', scope: 'shared', sharedKind: 'event', type: 'experience' }]);
+  assert.equal(kept.replacesSharedId, 'm-plan');
+  const [own] = normalizeNeuralMemoryProposals([{ content: 'x', id: 'p2', replacesSharedId: 'm-plan', roleId: 'primary', type: 'experience' }]);
+  assert.equal(own.replacesSharedId, undefined, 'only shared proposals replace shared memories');
+}
+
 console.log('neural memory proposal smoke ok');

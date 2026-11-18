@@ -11,6 +11,7 @@ function createMainWindowOptionsBuilder({
       maxWidth: COMPACT_WINDOW_BOUNDS.maxWidth,
       maxHeight: COMPACT_WINDOW_BOUNDS.maxHeight,
       frame: false,
+      roundedCorners: false,
       transparent: true,
       // The desktop pet uses pointer hit regions only; chat/settings inputs live
       // in their own focusable windows. Prevent the first pet click from
@@ -28,7 +29,7 @@ function createMainWindowOptionsBuilder({
         preload: path.join(baseDirectory, 'preload.cjs'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false,
+        sandbox: true,
         ...(sessionPartition ? { partition: sessionPartition } : {}),
       },
     };

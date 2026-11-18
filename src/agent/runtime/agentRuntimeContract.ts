@@ -11,50 +11,13 @@ import {
   type AgentRuntimeTargetBinding,
   type AgentRuntimeVerificationResult,
 } from './agentRuntimeTaskContract';
-import {
-  type AgentRuntimeTaskTransactionEvent,
-  type AgentRuntimeTaskTransactionState,
-} from './agentRuntimeTaskTransaction';
-import type { AgentCanonicalEventJournal } from './agentCanonicalEventJournal.ts';
+import { type AgentRuntimeTaskTransactionState } from './agentRuntimeTaskTransaction';
 
 export type AgentRuntimeImplementation =
   | 'stable'
   | 'candidate'
   | 'fallback'
   | 'unavailable';
-
-export interface AgentRuntimeRunResult<Result> {
-  implementation: AgentRuntimeImplementation;
-  reason: string;
-  result: Result | null;
-}
-
-export interface AgentRuntimeAdapter<Result> {
-  readonly id: string;
-  run(context?: AgentRuntimeAdapterContext): Promise<AgentRuntimeRunResult<Result>>;
-}
-
-export interface RunAgentRuntimeOptions<Result> {
-  adapter: AgentRuntimeAdapter<Result>;
-  canonicalEventJournal?: AgentCanonicalEventJournal | null;
-  onProgress?: AgentRuntimeProgressHandler | null;
-  taskIdentity?: {
-    sourceText: string;
-    userGoal: string;
-  } | null;
-  taskTransaction?: AgentRuntimeTaskTransactionState | null;
-  taskTransactionEvent?: AgentRuntimeTaskTransactionEvent | null;
-  cancellationSignal?: AbortSignal | null;
-}
-
-export interface AgentRuntimeAdapterContext {
-  authorizeModelIteration: AgentTaskRuntimeModelIterationAuthorizer;
-  authorizeRecovery: AgentTaskRuntimeRecoveryAuthorizer;
-  onProgress: AgentRuntimeProgressHandler;
-  taskTransaction: AgentRuntimeTaskTransactionState | null;
-  cancellationSignal?: AbortSignal | null;
-  canonicalEventJournal?: AgentCanonicalEventJournal | null;
-}
 
 export type AgentRuntimeTimingEntryKind = 'model' | 'tool';
 
@@ -197,86 +160,9 @@ export interface AgentTaskRuntimeStateRecord {
   verification?: AgentRuntimeVerificationResult | null;
 }
 
-export type AgentTaskRuntimeTransitionEvent =
-  | {
-      phase: AgentTaskRuntimeActivePhase;
-      type: 'progress';
-    }
-  | {
-      kind: AgentTaskRuntimeLifecycleTransitionKind;
-      type: 'lifecycle';
-    }
-  | {
-      actionScope: AgentActionScope;
-      status: AgentTaskRuntimeSubgoalStatus;
-      type: 'subgoal-status';
-    }
-  | {
-      action: AgentTaskRuntimeModelIterationAction;
-      iteration: number;
-      limit: number;
-      type: 'model-iteration-authorization';
-    }
-  | {
-      allowed: boolean;
-      attempt: number;
-      kind: AgentTaskRuntimeRecoveryKind;
-      limit: number;
-      type: 'recovery-authorization';
-    }
-  | {
-      status: AgentRuntimeStatus;
-      type: 'runtime-result';
-    };
-
 export type AgentTaskRuntimeRecoveryKind =
   | 'automatic-observation'
   | 'failed-action';
-
-export type AgentTaskRuntimeModelIterationAction =
-  | 'run-iteration'
-  | 'stop-limit'
-  | 'stop-cancelled';
-
-export interface AgentTaskRuntimeModelIterationRequest {
-  cancellationRequested: boolean;
-  requestedLimit: number;
-  sourceText: string;
-  taskState?: AgentTaskRuntimeStateRecord | null;
-  userGoal: string;
-}
-
-export interface AgentTaskRuntimeModelIterationDecision {
-  action: AgentTaskRuntimeModelIterationAction;
-  iteration: number;
-  limit: number;
-  reason: string;
-  taskState: AgentTaskRuntimeStateRecord;
-}
-
-export type AgentTaskRuntimeModelIterationAuthorizer = (
-  request: AgentTaskRuntimeModelIterationRequest,
-) => AgentTaskRuntimeModelIterationDecision;
-
-export interface AgentTaskRuntimeRecoveryRequest {
-  kind: AgentTaskRuntimeRecoveryKind;
-  reason?: string | null;
-  requestedLimit?: number | null;
-  sourceText: string;
-  taskState?: AgentTaskRuntimeStateRecord | null;
-  userGoal: string;
-}
-
-export interface AgentTaskRuntimeRecoveryDecision {
-  allowed: boolean;
-  attempt: number;
-  limit: number;
-  reason: string;
-}
-
-export type AgentTaskRuntimeRecoveryAuthorizer = (
-  request: AgentTaskRuntimeRecoveryRequest,
-) => AgentTaskRuntimeRecoveryDecision;
 
 export type AgentRuntimeStatus =
   | 'budget-exceeded'
@@ -350,27 +236,6 @@ export interface AgentRuntimeTraceEvent {
   type: AgentRuntimeTraceEventType;
 }
 
-export interface AgentRuntimeTraceEventDraft {
-  action?: AgentRuntimeDecisionAction | null;
-  details?: Record<string, unknown> | null;
-  status?: string | null;
-  stepIndex: number;
-  summary: string;
-  tool?: string | null;
-  type: AgentRuntimeTraceEventType;
-}
-
-export interface AgentRuntimeCoveredParallelToolCommand {
-  command: AgentChatCommand;
-  coveredByCommand: AgentChatCommand;
-  reason: string;
-}
-
-export interface AgentRuntimeParallelToolExecutionPlan {
-  coveredCommands: AgentRuntimeCoveredParallelToolCommand[];
-  runCommands: AgentChatCommand[];
-}
-
 export interface AgentRuntimeContinuation {
   diagnostics?: AgentRuntimeDiagnosticEnvelope[] | null;
   historyLines: string[];
@@ -416,30 +281,6 @@ export interface AgentRuntimeDiagnosticEnvelope<Payload = AgentRuntimeDiagnostic
   timestamp: number;
 }
 
-export interface AgentRuntimeResult {
-  continuation: AgentRuntimeContinuation;
-  diagnostics?: AgentRuntimeDiagnosticEnvelope[] | null;
-  finalAnswer: string;
-  pendingApproval?: AgentRuntimePendingApproval | null;
-  sourceText: string;
-  status: AgentRuntimeStatus;
-  steps: AgentRuntimeStep[];
-  taskState?: AgentTaskRuntimeStateRecord | null;
-  timing?: AgentRuntimeTimingTrace | null;
-  traceEvents: AgentRuntimeTraceEvent[];
-  toolResults: AgentRuntimeToolResultEntry[];
-}
-
-export interface AgentRuntimeToolExecutorContext {
-  petId?: string | null;
-  signal?: AbortSignal | null;
-}
-
-export type AgentRuntimeToolExecutor = (
-  command: AgentChatCommand,
-  context?: AgentRuntimeToolExecutorContext,
-) => AgentChatCommandResult | Promise<AgentChatCommandResult>;
-
 export type AgentRuntimeProgressEventType =
   | 'model-thinking'
   | 'model-decision'
@@ -458,7 +299,3 @@ export interface AgentRuntimeProgressEvent {
   } | null;
   type: AgentRuntimeProgressEventType;
 }
-
-export type AgentRuntimeProgressHandler = (
-  event: AgentRuntimeProgressEvent,
-) => void;

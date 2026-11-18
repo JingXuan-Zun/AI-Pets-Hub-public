@@ -7,15 +7,11 @@ import {
   type AgentRuntimeDesktopIconPlacementResult,
 } from '../../agent/agentRuntimeDesktopOrganizationTools';
 import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
+import { registerVoiceInputSessionController, type VoiceInputSessionController } from '../../voice/voiceInputSessionControl';
 
 type DesktopIconPlacementStarter = (
   placement: NonNullable<AgentChatCommand['desktopIconPlacement']>,
 ) => Promise<AgentRuntimeDesktopIconPlacementResult> | AgentRuntimeDesktopIconPlacementResult;
-
-interface AgentRuntimeVoiceInputControllerLike {
-  start: (options?: { agentPrefix?: boolean }) => Promise<AgentChatCommandResult> | AgentChatCommandResult;
-  stop: () => Promise<AgentChatCommandResult> | AgentChatCommandResult;
-}
 
 interface UsePetContainerAgentCommandBridgeOptions {
   configRef: MutableRefObject<PetConfig>;
@@ -32,7 +28,6 @@ export function usePetContainerAgentCommandBridge({
   const lastDesktopOrganizationPlanRef = useRef<DesktopIconArrangementPlan | null>(null);
   const lastLocalProjectInspectionRef = useRef<DesktopPetLocalProjectInspectionLike | null>(null);
   const startDesktopIconPlacementRef = useRef<DesktopIconPlacementStarter | null>(null);
-  const voiceInputControllerRef = useRef<AgentRuntimeVoiceInputControllerLike | null>(null);
   const persistAgentConfigUpdate = useCallback<PetConfigUpdateHandler>((nextConfig, options) => {
     onUpdateConfig(nextConfig, {
       ...options,
@@ -54,7 +49,6 @@ export function usePetContainerAgentCommandBridge({
       petId: handlerContext?.petId ?? null,
       signal: handlerContext?.signal ?? null,
       startDesktopIconPlacementRef,
-      voiceInputControllerRef,
     });
   }, [configRef, gameCompanionLoopControllerRef, persistAgentConfigUpdate]);
 
@@ -62,7 +56,6 @@ export function usePetContainerAgentCommandBridge({
     desktopOrganizationRef,
     handleAgentChatCommand,
     startDesktopIconPlacementRef,
-    voiceInputControllerRef,
   };
 }
 
@@ -109,33 +102,17 @@ export function usePetContainerAgentDesktopOrganizationBridge({
 }
 
 interface UsePetContainerAgentVoiceInputBridgeOptions {
-  startVoiceInputSession: AgentRuntimeVoiceInputControllerLike['start'];
-  stopVoiceInput: AgentRuntimeVoiceInputControllerLike['stop'];
-  voiceInputControllerRef: MutableRefObject<AgentRuntimeVoiceInputControllerLike | null>;
+  startVoiceInputSession: VoiceInputSessionController['start'];
+  stopVoiceInput: VoiceInputSessionController['stop'];
 }
 
+/** Lets the character's voice capabilities start and stop the microphone (see voiceInputSessionControl). */
 export function usePetContainerAgentVoiceInputBridge({
   startVoiceInputSession,
   stopVoiceInput,
-  voiceInputControllerRef,
 }: UsePetContainerAgentVoiceInputBridgeOptions) {
-  useEffect(() => {
-    voiceInputControllerRef.current = {
-      start: startVoiceInputSession,
-      stop: stopVoiceInput,
-    };
-
-    return () => {
-      if (
-        voiceInputControllerRef.current?.start === startVoiceInputSession
-        && voiceInputControllerRef.current?.stop === stopVoiceInput
-      ) {
-        voiceInputControllerRef.current = null;
-      }
-    };
-  }, [
-    startVoiceInputSession,
-    stopVoiceInput,
-    voiceInputControllerRef,
-  ]);
+  useEffect(() => registerVoiceInputSessionController({
+    start: startVoiceInputSession,
+    stop: stopVoiceInput,
+  }), [startVoiceInputSession, stopVoiceInput]);
 }

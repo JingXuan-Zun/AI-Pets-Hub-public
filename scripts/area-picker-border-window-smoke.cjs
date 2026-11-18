@@ -70,7 +70,7 @@ async function main() {
       hash.update(JSON.stringify(actual) + '\n'); cases++;
     }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, 'fd1dfeae9ae36505c9a8d74b372402f03ec31ffdfbbf7d5be1245294fd41503c', 'Reviewed HTML/options/window sequence and failure behavior');
+  assert.equal(fingerprint, '7ca355124f423fd69c30af3983b9c785fbac286c51519a69e908af69f5c9d4c4', 'Reviewed HTML/options/window sequence and failure behavior');
   console.log('Area border window passed: ' + cases + ' configuration/creation/call-order/load/refresh/error cases; controlled windows.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

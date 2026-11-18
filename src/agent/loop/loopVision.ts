@@ -9,6 +9,9 @@ import { type LoopWindowObservation } from './observationTiers';
 // the list as a new id, so clicking still goes through element ids.
 
 const MAX_ANSWER_LENGTH = 700;
+// A look took 8–23 s with full-size window shots (2026-11-08); a 1280-px JPEG halves it with the
+// same answer (positions come back as ratios, so nothing else changes).
+const LOOK_IMAGE_MAX_SIDE = 1280;
 
 async function captureWindowImage(observation: LoopWindowObservation) {
   const box = observation.window.box;
@@ -46,10 +49,15 @@ export async function lookAtLoopWindow(options: {
 }): Promise<{ answer: string; elements: LoopElement[] }> {
   const image = await captureWindowImage(options.observation);
   if (!image) return { answer: '无法截取当前窗口（可能最小化），先 focus_window。', elements: options.observation.elements };
-  const { summarizeAgentVisualSnapshot } = await import('../../services/agentVisualSnapshotService');
+  const [{ summarizeAgentVisualSnapshot }, { shrinkImageDataUrl }] = await Promise.all([
+    import('../../services/agentVisualSnapshotService'),
+    import('../../services/chatImageCompression'),
+  ]);
   const listText = formatElementMarks(options.observation.elements.slice(0, 80));
   const request = {
-    imageDataUrl: image.imageDataUrl,
+    imageDataUrl: await shrinkImageDataUrl(image.imageDataUrl, LOOK_IMAGE_MAX_SIDE),
+    promptMode: 'loop' as const,
+    quick: true,
     question: [
       options.question,
       listText ? `可点击元素清单（目标在清单里时，在 targetMatched 里写它的编号，如 [3]）：\n${listText}` : '',
@@ -58,8 +66,8 @@ export async function lookAtLoopWindow(options: {
     settings: options.settings,
     sourceLabel: options.observation.window.title,
   };
-  // Vision models occasionally return an empty reply; one quiet retry.
-  const raw = await summarizeAgentVisualSnapshot(request).catch(() => summarizeAgentVisualSnapshot(request));
+  // Vision models occasionally return an empty reply; one quiet retry, as an ordinary look.
+  const raw = await summarizeAgentVisualSnapshot(request).catch(() => summarizeAgentVisualSnapshot({ ...request, quick: false }));
   const parsed = parseVisionJson(raw);
   const summary = String(parsed?.summary ?? /"summary"\s*:\s*"([^"]+)/u.exec(raw)?.[1] ?? raw).slice(0, MAX_ANSWER_LENGTH);
   const targetMatched = typeof parsed?.targetMatched === 'string' ? parsed.targetMatched.trim() : '';

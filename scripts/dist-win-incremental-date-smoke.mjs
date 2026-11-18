@@ -6,7 +6,16 @@ const projectRoot = process.cwd();
 const latestInfoPath = path.join(projectRoot, 'release', 'LATEST_BUILD.txt');
 const latestInfo = new Map();
 
-for (const line of (await readFile(latestInfoPath, 'utf8')).split(/\r?\n/u)) {
+// Checks the output of `npm run dist:win` (the incremental build). With no build on this machine,
+// or when the latest build was a full one (dist:win:fresh writes no incremental_generated_at),
+// there is nothing to check.
+const latestInfoText = await readFile(latestInfoPath, 'utf8').catch(() => null);
+if (latestInfoText === null || !/^incremental_generated_at=/mu.test(latestInfoText)) {
+  console.log('dist-win incremental date smoke skipped: the latest build is not an incremental one');
+  process.exit(0);
+}
+
+for (const line of latestInfoText.split(/\r?\n/u)) {
   const separatorIndex = line.indexOf('=');
   if (separatorIndex > 0) {
     latestInfo.set(line.slice(0, separatorIndex), line.slice(separatorIndex + 1));

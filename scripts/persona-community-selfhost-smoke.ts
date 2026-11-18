@@ -9,6 +9,17 @@ import { startPersonaServer } from '../services/persona-community-selfhost/serve
 import { createPersonaCommunityClient } from '../src/persona-community/personaCommunityClient.ts';
 import { readPersonaUpload } from '../services/persona-community/files.mjs';
 
+// Port 0 takes a port from the OS dynamic range, which on some Windows machines starts at 1024
+// and so can hand out ports fetch refuses ("bad port": 6000, 6665-6669, 10080…). Pick again then.
+const FETCH_BLOCKED_PORTS = new Set([1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080]);
+const startServer: typeof startPersonaServer = async (options) => {
+  for (let attempt = 0; ; attempt += 1) {
+    const started = await startPersonaServer(options);
+    if (!FETCH_BLOCKED_PORTS.has(Number(new URL(started.url).port)) || attempt >= 5) return started;
+    await started.close();
+  }
+};
+
 const directory = await mkdtemp(join(tmpdir(), 'pet-persona-selfhost-'));
 const databasePath = join(directory, 'personas.sqlite');
 let runtime;
@@ -19,7 +30,7 @@ const form = (text: string, name = 'test.txt') => {
 };
 try {
   await assert.rejects(() => startPersonaServer({ databasePath, host: '0.0.0.0' }), /loopback/);
-  runtime = await startPersonaServer({ databasePath, port: 0, uploadsEnabled: true, now: () => clock });
+  runtime = await startServer({ databasePath, port: 0, uploadsEnabled: true, now: () => clock });
   const origin = runtime.url;
   // Exercise the unchanged HTTPS-only client over a real local HTTP socket. TLS is tested separately.
   const transport: typeof fetch = (input, options) => fetch(origin + new URL(String(input)).pathname, options);
@@ -52,7 +63,7 @@ try {
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get('Access-Control-Allow-Headers'), 'Content-Type, X-Persona-Upload');
   await runtime.close(); runtime = undefined;
-  runtime = await startPersonaServer({ databasePath, port: 0, uploadsEnabled: false, now: () => clock });
+  runtime = await startServer({ databasePath, port: 0, uploadsEnabled: false, now: () => clock });
   assert.equal((await (await fetch(runtime.url + '/personas')).json()).items.length, 3);
   const paused = await fetch(runtime.url + '/personas', {
     method: 'POST', headers: { 'X-Persona-Upload': '1' }, body: form('paused'),
@@ -62,7 +73,7 @@ try {
 
   // Quotas use socket identity, ignore spoofed IPs, and survive restart.
   advance();
-  runtime = await startPersonaServer({ databasePath, port: 0, uploadsEnabled: true, now: () => clock });
+  runtime = await startServer({ databasePath, port: 0, uploadsEnabled: true, now: () => clock });
   for (let index = 0; index < 5; index++) {
     const result = await fetch(runtime.url + '/personas', { method: 'POST',
       headers: { 'X-Persona-Upload': '1', 'CF-Connecting-IP': `203.0.113.${index}`, 'X-Forwarded-For': `203.0.113.${index}` },
@@ -71,7 +82,7 @@ try {
     assert.equal(result.status, 201);
   }
   await runtime.close(); runtime = undefined;
-  runtime = await startPersonaServer({ databasePath, port: 0, uploadsEnabled: true, now: () => clock });
+  runtime = await startServer({ databasePath, port: 0, uploadsEnabled: true, now: () => clock });
   const capped = await fetch(runtime.url + '/personas', { method: 'POST',
     headers: { 'X-Persona-Upload': '1', 'CF-Connecting-IP': '198.51.100.99' }, body: form('quota sixth') });
   assert.equal(capped.status, 429); assert.equal(capped.headers.get('Retry-After'), '60');
@@ -84,7 +95,7 @@ try {
   const damaged = new DatabaseSync(databasePath);
   damaged.prepare('UPDATE personas SET content = ? WHERE id = ?').run(Buffer.from('tampered'), entry.id);
   damaged.close();
-  runtime = await startPersonaServer({ databasePath, port: 0, now: () => clock });
+  runtime = await startServer({ databasePath, port: 0, now: () => clock });
   const download = await fetch(runtime.url + `/personas/${entry.id}/download`);
   assert.equal(download.status, 502); assert.equal((await download.json()).error, 'download-invalid');
   await runtime.close(); runtime = undefined;

@@ -376,15 +376,15 @@ export function createLive2DPerformanceRuntimeController(
   const phaseOffsetMs = resolveHashOffsetMs(`${context.petId}:${context.modelUrl}`);
   let destroyed = false;
   let fallbackAnimationFrameId: number | null = null;
-  let lastAppliedAtMs = Number.NEGATIVE_INFINITY;
+  let lastModelUpdateAtMs = Number.NEGATIVE_INFINITY;
   let lastFallbackAt = 0;
   let state = { ...DEFAULT_PERFORMANCE_STATE };
   let hoverCueVariantSeed = 0;
 
   const destroyAfterPerformanceError = (phase: string, error: unknown) => {
     destroyed = true;
-    internalModel.off?.('beforeModelUpdate', apply);
-    internalModel.removeListener?.('beforeModelUpdate', apply);
+    internalModel.off?.('beforeModelUpdate', applyOnModelUpdate);
+    internalModel.removeListener?.('beforeModelUpdate', applyOnModelUpdate);
     if (fallbackAnimationFrameId !== null) {
       window.cancelAnimationFrame(fallbackAnimationFrameId);
       fallbackAnimationFrameId = null;
@@ -396,6 +396,11 @@ export function createLive2DPerformanceRuntimeController(
     });
   };
 
+  // Written on every model update, never throttled: the Cubism model restores its saved
+  // parameters at the end of each update, so a skipped update shows the body without breathing
+  // and sway for that frame. With a 165 Hz display (update every ~6 ms) the old "skip if less
+  // than half a 60 Hz frame since the last write" rule skipped every other frame and the model
+  // jittered between two poses (2026-11-07).
   const apply = (timestampMs?: number) => {
     if (destroyed) {
       return;
@@ -405,10 +410,6 @@ export function createLive2DPerformanceRuntimeController(
       const nowMs = Number.isFinite(timestampMs)
         ? timestampMs as number
         : resolveLive2DPerformanceNowMs();
-      if (nowMs - lastAppliedAtMs < LIVE2D_PERFORMANCE_FRAME_MS * 0.5) {
-        return;
-      }
-      lastAppliedAtMs = nowMs;
 
       writeLive2DPerformanceFrame({
         allowProgrammaticBodySway,
@@ -425,12 +426,20 @@ export function createLive2DPerformanceRuntimeController(
     }
   };
 
+  const applyOnModelUpdate = () => {
+    lastModelUpdateAtMs = resolveLive2DPerformanceNowMs();
+    apply(lastModelUpdateAtMs);
+  };
+
+  // Only for models whose update event stops firing; while updates arrive, writing between
+  // them would be undone by the model anyway.
   const runFallbackFrame = (timestamp: number) => {
     if (destroyed) {
       return;
     }
 
-    if (timestamp - lastFallbackAt >= LIVE2D_PERFORMANCE_FRAME_MS) {
+    const modelUpdatesStalled = resolveLive2DPerformanceNowMs() - lastModelUpdateAtMs > LIVE2D_PERFORMANCE_FRAME_MS * 3;
+    if (modelUpdatesStalled && timestamp - lastFallbackAt >= LIVE2D_PERFORMANCE_FRAME_MS) {
       lastFallbackAt = timestamp;
       apply(timestamp);
     }
@@ -438,7 +447,7 @@ export function createLive2DPerformanceRuntimeController(
   };
 
   try {
-    internalModel.on?.('beforeModelUpdate', apply);
+    internalModel.on?.('beforeModelUpdate', applyOnModelUpdate);
     fallbackAnimationFrameId = window.requestAnimationFrame(runFallbackFrame);
   } catch (error) {
     destroyAfterPerformanceError('initialize', error);
@@ -449,8 +458,8 @@ export function createLive2DPerformanceRuntimeController(
     applyImmediate: apply,
     destroy: () => {
       destroyed = true;
-      internalModel.off?.('beforeModelUpdate', apply);
-      internalModel.removeListener?.('beforeModelUpdate', apply);
+      internalModel.off?.('beforeModelUpdate', applyOnModelUpdate);
+      internalModel.removeListener?.('beforeModelUpdate', applyOnModelUpdate);
       if (fallbackAnimationFrameId !== null) {
         window.cancelAnimationFrame(fallbackAnimationFrameId);
       }

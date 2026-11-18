@@ -42,7 +42,7 @@ app.whenReady().then(async () => {
       headers: { 'content-type': 'text/html' },
     }));
     probeWindow = new BrowserWindow({ show: false, webPreferences: { session: probeSession,
-      preload: path.resolve(__dirname, '../electron/preload.cjs'), contextIsolation: true, sandbox: false } });
+      preload: path.resolve(__dirname, '../electron/preload.cjs'), contextIsolation: true, sandbox: true } });
     await probeWindow.loadFile(path.resolve(__dirname, '../dist/index.html'));
     const result = await probeWindow.webContents.executeJavaScript(`(async () => {
       const bridge = window.desktopPetShell;

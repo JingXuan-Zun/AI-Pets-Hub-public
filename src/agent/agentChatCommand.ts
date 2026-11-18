@@ -25,49 +25,16 @@ export type AgentChatCommandKind =
   | 'unsupported';
 
 export type AgentToolCallName =
-  | 'launch_local_app'
-  | 'browser_search'
-  | 'observe_windows_and_apps'
-  | 'execute_desktop_action'
-  | 'execute_desktop_observation'
-  | 'execute_desktop_input'
-  | 'execute_desktop_sequence'
-  | 'execute_local_file_action'
-  | 'execute_file_management_action'
   | 'execute_memory_action'
   | 'run_controlled_command'
   | 'control_browser'
-  | 'locate_screen_elements'
-  | 'get_default_app_for_uri'
-  | 'list_running_apps'
-  | 'get_active_window_info'
-  | 'list_capture_sources'
-  | 'summarize_visual_snapshot'
-  | 'analyze_game_screen'
   | 'manage_game_companion_loop'
-  | 'get_cursor_position'
-  | 'focus_window'
-  | 'close_window'
-  | 'open_resource'
-  | 'search_web'
   | 'remember_local_app'
-  | 'get_path_info'
-  | 'list_directory'
-  | 'search_files'
-  | 'read_text_file'
   | 'organize_desktop_icons'
-  | 'place_desktop_icon'
   | 'get_system_info'
-  | 'get_display_info'
   | 'get_pet_settings'
   | 'update_pet_settings'
   | 'use_platform_capability'
-  | 'get_voice_status'
-  | 'switch_tts_provider'
-  | 'warmup_local_voice'
-  | 'set_voice_input'
-  | 'start_voice_input_session'
-  | 'stop_voice_input_session'
   | 'inspect_local_project'
   | 'run_local_project_action'
   | 'list_agent_skills'
@@ -551,17 +518,4 @@ export interface AgentChatExecutionReceipt {
   title: string;
   toolName?: string | null;
   verification?: string | null;
-}
-
-export function createAgentContextQueryCommand(text: string): AgentChatCommand {
-  const sourceText = text.trim();
-  return {
-    capabilityId: 'desktop-observation',
-    contextQuery: {
-      topic: 'desktop-organization',
-    },
-    instruction: sourceText,
-    kind: 'context-query',
-    sourceText,
-  };
 }

@@ -9,7 +9,7 @@ import {
   splitOneBotText,
 } from '../src/qq-bridge/oneBotClient';
 import { collectQqRelayOutgoing, createQqRelayState, formatQqApprovalQuestion } from '../src/qq-bridge/qqBridgeRelay';
-import { asksForVoiceReply, normalizeQqBridgeSettings, resolveQqBridgeBlocker, wantsVoiceReply } from '../src/qq-bridge/qqBridgeSettings';
+import { asksForVoiceReply, normalizeQqBridgeSettings, resolveQqBridgeBlocker, usesSnowLumaHelpers, wantsVoiceReply } from '../src/qq-bridge/qqBridgeSettings';
 import { limitVoiceText } from '../src/qq-bridge/useQqBridge';
 import { readFileSync } from 'node:fs';
 import type { ChatMessage } from '../src/types';
@@ -17,7 +17,12 @@ import type { ChatMessage } from '../src/types';
 const require = createRequire(import.meta.url);
 
 // Settings: off by default, needs the owner's number, keeps a ws:// address.
-assert.deepEqual(normalizeQqBridgeSettings(undefined), { autoStartSnowLuma: true, enabled: false, ownerQq: '', snowLumaDir: '', voiceReplyMode: 'mirror', wsUrl: 'ws://127.0.0.1:3001' });
+assert.deepEqual(normalizeQqBridgeSettings(undefined), { autoStartSnowLuma: true, enabled: false, ownerQq: '', provider: 'napcat', snowLumaDir: '', voiceReplyMode: 'mirror', wsUrl: 'ws://127.0.0.1:3001' });
+// Older settings with a SnowLuma folder keep SnowLuma (auto-start + token); new ones default to NapCat.
+assert.equal(normalizeQqBridgeSettings({ snowLumaDir: 'E:/ai-qq' }).provider, 'snowluma');
+assert.equal(usesSnowLumaHelpers(normalizeQqBridgeSettings({ snowLumaDir: 'E:/ai-qq' })), true);
+assert.equal(usesSnowLumaHelpers(normalizeQqBridgeSettings({ provider: 'napcat', snowLumaDir: 'E:/ai-qq' })), false, 'NapCat chosen: SnowLuma is not started');
+assert.equal(normalizeQqBridgeSettings({ provider: 'bogus' }).provider, 'napcat');
 assert.equal(normalizeQqBridgeSettings({ ownerQq: ' 123-456 ' }).ownerQq, '123456');
 assert.equal(normalizeQqBridgeSettings({ wsUrl: 'http://x' }).wsUrl, 'ws://127.0.0.1:3001', 'only ws:// or wss:// addresses');
 assert.equal(resolveQqBridgeBlocker(normalizeQqBridgeSettings({ enabled: true })), '还没填你的 QQ 号');
@@ -164,6 +169,41 @@ assert.equal(sockets.length, 1, 'a deliberate stop does not reconnect');
   assert.equal(sent.length, 5, 'two retries, then it gives up');
   assert.deepEqual(failures, ['再试试:网络连接异常!'], 'and reports it');
   retrying.stop();
+}
+
+// While SnowLuma is disconnected, replies wait in order and go out on reconnect; too old ones are reported (2026-11-09).
+{
+  let clock = 0;
+  const sockets: Array<{ sent: string[]; socket: Record<string, unknown> }> = [];
+  const failures: string[] = [];
+  const offline = createOneBotClient({
+    createSocket: () => {
+      const entry = { sent: [] as string[], socket: {} as Record<string, unknown> };
+      entry.socket = {
+        close: () => undefined, onclose: null, onerror: null, onmessage: null, onopen: null, readyState: 0,
+        send: (data: string) => { entry.sent.push(JSON.parse(data).params.message); },
+      };
+      sockets.push(entry);
+      return entry.socket as never;
+    },
+    now: () => clock,
+    offlineKeepMs: 1000,
+    onMessage: () => undefined,
+    onSendFailed: (text, reason) => failures.push(`${text}:${reason}`),
+    url: 'ws://127.0.0.1:3001',
+  });
+  assert.equal(offline.sendPrivateText('10001', '第一句'), true, 'queued, not refused');
+  clock = 400;
+  offline.sendPrivateText('10001', '第二句');
+  assert.equal(offline.pendingOfflineCount(), 2);
+  clock = 1200; // the first waited 1200 ms > 1000, the second 800 ms
+  sockets[0]!.socket.readyState = 1;
+  (sockets[0]!.socket.onopen as (event: unknown) => void)({});
+  assert.deepEqual(sockets[0]!.sent, ['第二句'], 'the fresh one goes out on reconnect');
+  assert.deepEqual(failures, ['第一句:断线超过 0 分钟，没有发出'], 'the stale one is reported, not sent late');
+  assert.equal(offline.pendingOfflineCount(), 0);
+  offline.stop();
+  assert.equal(offline.sendPrivateText('10001', 'x'), false, 'nothing is queued after stop');
 }
 
 // Relay: finished replies and approval questions go to QQ; nothing before the phone message.

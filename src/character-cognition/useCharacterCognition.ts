@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 import { desktopPetChatStore } from '../chatStore';
 import { buildScopedChatHistory } from '../components/chat/chatScopedContextUtils';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
+import { isChatModelConfigured } from '../onboarding/onboardingApiSetup';
 import { getDesktopPetSlots, type DesktopPetSlot } from '../multiPetRoster';
 import type { NeuralMemoryReplyCompletedEvent } from '../neural-memory/useNeuralMemoryProposalCapture';
 import type { ChatMessage, PetConfig } from '../types';
@@ -42,6 +43,11 @@ function withUserRules(cognition: CharacterCognition, config: PetConfig): Charac
 
 function isEnabled(config: PetConfig) {
   return config.settings.lifeCompanion?.characterCognitionEnabled !== false;
+}
+
+/** Reading the persona needs the model; before one is set up (first run) every try would just fail. */
+function canAskModel(config: PetConfig) {
+  return isEnabled(config) && isChatModelConfigured(config.settings);
 }
 
 export function personaInput(slot: DesktopPetSlot, slots: DesktopPetSlot[]): CognitionPersonaInput {
@@ -86,7 +92,7 @@ export function useCharacterCognition({ configRef }: { configRef: MutableRefObje
 
   const initialize = useCallback(async (slot: DesktopPetSlot) => {
     const config = configRef.current;
-    if (!isEnabled(config) || readCharacterCognition(slot.id) || busy.current.has(slot.id)) return;
+    if (!canAskModel(config) || readCharacterCognition(slot.id) || busy.current.has(slot.id)) return;
     busy.current.add(slot.id);
     try {
       const output = await askModel(config, buildCognitionInitPrompt(personaInput(slot, getDesktopPetSlots(config))));
@@ -108,7 +114,7 @@ export function useCharacterCognition({ configRef }: { configRef: MutableRefObje
     const slots = getDesktopPetSlots(config);
     const slot = slots.find((item) => item.id === roleId);
     const current = readCharacterCognition(roleId);
-    if (!isEnabled(config) || !slot || busy.current.has(roleId)) return;
+    if (!canAskModel(config) || !slot || busy.current.has(roleId)) return;
     if (!current) {
       await initialize(slot);
       return;

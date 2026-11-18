@@ -36,6 +36,9 @@ export type OneBotClientOptions = {
   onStatus?: (status: OneBotClientStatus, detail?: string) => void;
   /** Waits between send retries; tests shorten them. */
   sendRetryDelaysMs?: number[];
+  /** How long a reply waits for the connection to come back before it is dropped; tests shorten it. */
+  offlineKeepMs?: number;
+  now?: () => number;
   url: string;
 };
 
@@ -52,6 +55,10 @@ const RECONNECT_MAX_MS = 30000;
 // Tencent sometimes refuses a send for a moment ("网络连接异常"); the same message usually
 // goes through a few seconds later.
 const SEND_RETRY_DELAYS_MS = [3000, 10000];
+// While SnowLuma is disconnected, replies wait in order and go out once it is back (after
+// DeepSeek's dsh-superagent outbox, 2026-11-09); before, they were dropped with a log line.
+const OFFLINE_KEEP_MS = 10 * 60 * 1000;
+const OFFLINE_MAX_ITEMS = 40;
 // QQ cuts very long messages; long replies go out in pieces.
 export const ONEBOT_MAX_MESSAGE_CHARS = 1500;
 
@@ -151,12 +158,21 @@ export function createOneBotClient(options: OneBotClientOptions) {
   // Sends still waiting for QQ's answer, by echo: the piece and how many retries it had.
   const pendingSends = new Map<string, { attempt: number; message: OneBotOutgoingMessage; userId: number }>();
   const sendTimers = new Set<ReturnType<typeof setTimeout>>();
+  const offlineKeepMs = options.offlineKeepMs ?? OFFLINE_KEEP_MS;
+  const now = options.now ?? Date.now;
+  // Replies waiting for the connection, oldest first.
+  const offlineQueue: Array<{ attempt: number; message: OneBotOutgoingMessage; queuedAt: number; userId: number }> = [];
   // Other API calls waiting for their answer (get_record …), by echo.
   const pendingCalls = new Map<string, { reject: (error: Error) => void; resolve: (data: Record<string, unknown>) => void }>();
 
   const sendPiece = (userId: number, message: OneBotOutgoingMessage, attempt: number) => {
     if (!socket || socket.readyState !== OPEN) {
-      options.onSendFailed?.(describeOutgoing(message), '没有连上 SnowLuma');
+      if (stopped) return;
+      offlineQueue.push({ attempt, message, queuedAt: now(), userId });
+      while (offlineQueue.length > OFFLINE_MAX_ITEMS) {
+        const dropped = offlineQueue.shift();
+        if (dropped) options.onSendFailed?.(describeOutgoing(dropped.message), '断线期间积压太多，最早的一条没有发出');
+      }
       return;
     }
     echo += 1;
@@ -212,6 +228,7 @@ export function createOneBotClient(options: OneBotClientOptions) {
     current.onopen = () => {
       retryMs = RECONNECT_MIN_MS;
       options.onStatus?.('connected');
+      flushOfflineQueue();
     };
     current.onmessage = (event) => {
       let data: unknown;
@@ -236,6 +253,18 @@ export function createOneBotClient(options: OneBotClientOptions) {
     };
   };
 
+  /** Sends what waited for the connection, in order; replies that waited too long are dropped and reported. */
+  const flushOfflineQueue = () => {
+    const waiting = offlineQueue.splice(0);
+    for (const item of waiting) {
+      if (now() - item.queuedAt > offlineKeepMs) {
+        options.onSendFailed?.(describeOutgoing(item.message), `断线超过 ${Math.round(offlineKeepMs / 60000)} 分钟，没有发出`);
+        continue;
+      }
+      sendPiece(item.userId, item.message, item.attempt);
+    }
+  };
+
   const scheduleReconnect = () => {
     if (stopped || retryTimer) return;
     retryTimer = setTimeout(() => {
@@ -245,15 +274,16 @@ export function createOneBotClient(options: OneBotClientOptions) {
     retryMs = Math.min(retryMs * 2, RECONNECT_MAX_MS);
   };
 
+  /** Sends now, or queues until the connection is back; false only after stop(). */
   const sendPrivateText = (userId: string, text: string) => {
-    if (!socket || socket.readyState !== OPEN) return false;
+    if (stopped) return false;
     for (const piece of splitOneBotText(text)) sendPiece(Number(userId), piece, 0);
     return true;
   };
 
   /** An image (a sticker): base64 without the data: prefix; SnowLuma uploads it. */
   const sendPrivateImage = (userId: string, base64: string) => {
-    if (!socket || socket.readyState !== OPEN) return false;
+    if (stopped) return false;
     sendPiece(Number(userId), [{ data: { file: `base64://${base64}` }, type: 'image' }], 0);
     return true;
   };
@@ -262,7 +292,7 @@ export function createOneBotClient(options: OneBotClientOptions) {
 
   /** A voice message: any audio as base64; SnowLuma converts it to QQ's voice format. */
   const sendPrivateRecord = (userId: string, base64: string) => {
-    if (!socket || socket.readyState !== OPEN) return false;
+    if (stopped) return false;
     sendPiece(Number(userId), [{ data: { file: `base64://${base64}` }, type: 'record' }], 0);
     return true;
   };
@@ -270,7 +300,7 @@ export function createOneBotClient(options: OneBotClientOptions) {
   /** One OneBot API call and its answer's data (rejects on failure or after a timeout). */
   const callAction = (action: string, params: Record<string, unknown>, timeoutMs = 30000) => new Promise<Record<string, unknown>>((resolve, reject) => {
     if (!socket || socket.readyState !== OPEN) {
-      reject(new Error('没有连上 SnowLuma'));
+      reject(new Error('没有连上 QQ 服务（OneBot）'));
       return;
     }
     echo += 1;
@@ -303,6 +333,8 @@ export function createOneBotClient(options: OneBotClientOptions) {
   const getLoginUin = async () => String((await callAction('get_login_info', {}, 10000)).user_id ?? '');
 
   return {
+    /** Replies waiting for SnowLuma to come back. */
+    pendingOfflineCount: () => offlineQueue.length,
     getImageUrl,
     getLoginUin,
     getRecordWavBase64,
@@ -316,6 +348,7 @@ export function createOneBotClient(options: OneBotClientOptions) {
       sendTimers.forEach((timer) => clearTimeout(timer));
       sendTimers.clear();
       pendingSends.clear();
+      offlineQueue.length = 0;
       pendingCalls.forEach((call) => call.reject(new Error('已断开')));
       pendingCalls.clear();
       socket?.close();
@@ -342,9 +375,9 @@ export function testOneBotConnection(url: string, accessToken: string) {
       socket.close();
       resolve(result);
     };
-    const timer = setTimeout(() => finish({ error: '连接超时：确认 SnowLuma 已经启动、正向 WebSocket 已开启、地址和端口一致。', ok: false }), ONEBOT_TEST_TIMEOUT_MS);
+    const timer = setTimeout(() => finish({ error: '连接超时：确认 NapCat / SnowLuma 等 OneBot 服务已经启动、正向 WebSocket 已开启、地址和端口一致。', ok: false }), ONEBOT_TEST_TIMEOUT_MS);
     socket.onopen = () => socket.send(JSON.stringify({ action: 'get_login_info', echo: 'desktop-pet-test', params: {} }));
-    socket.onerror = () => finish({ error: '连不上：确认 SnowLuma 已经启动、正向 WebSocket 已开启、地址和端口一致；设了 Token 的话要填一样的。', ok: false });
+    socket.onerror = () => finish({ error: '连不上：确认 NapCat / SnowLuma 等 OneBot 服务已经启动、正向 WebSocket 已开启、地址和端口一致；设了 Token 的话要填一样的。', ok: false });
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(String(event.data));

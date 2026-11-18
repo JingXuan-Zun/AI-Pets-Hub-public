@@ -520,11 +520,3 @@ export function createDesktopIconRelativePlacementPlan({
     targetIconName: targetIcon.name || targetName,
   };
 }
-
-export function summarizeDesktopIconArrangementPlan(plan: DesktopIconArrangementPlan) {
-  return {
-    columns: plan.columns,
-    itemCount: plan.items.length,
-    rows: plan.rows,
-  };
-}

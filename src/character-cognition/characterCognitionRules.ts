@@ -9,6 +9,28 @@ import {
 // time (like a neuron's potential), topics that touch a concern feed it, and saying it out
 // loud spends it. Everything here is pure so it can be tested and reasoned about.
 
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+/** "11月6日" in local time. */
+export function formatCognitionDay(ms: number) {
+  const date = new Date(ms);
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+/** "11月8日 周日" — given to her with her concerns so "明天" in an older note is read right. */
+export function describeCognitionToday(now: number) {
+  return `${formatCognitionDay(now)} 周${WEEKDAYS[new Date(now).getDay()]}`;
+}
+
+/**
+ * A concern as she reads it: with the day it was noted when that was not today. A note from
+ * 11-06 saying "明天下午要去开会" was read on 11-08 as "tomorrow" again (2026-11-08).
+ */
+export function describeConcernWithDay(concern: Pick<CognitionConcern, 'createdAt' | 'text'>, now: number) {
+  const noted = formatCognitionDay(concern.createdAt);
+  return noted === formatCognitionDay(now) ? concern.text : `${concern.text}（${noted}记下的）`;
+}
+
 export function effectiveCharge(concern: CognitionConcern, now: number) {
   const elapsed = Math.max(0, now - concern.chargedAt);
   return concern.charge * 0.5 ** (elapsed / CONCERN_HALF_LIFE_MS);
@@ -61,14 +83,15 @@ export function applyTurnToCognition(cognition: CharacterCognition, turn: { user
 export function describeCognitionForReply(cognition: CharacterCognition, now: number) {
   const concerns = cognition.concerns
     .filter((concern) => effectiveCharge(concern, now) >= 15)
-    .map((concern) => concern.text);
+    .map((concern) => describeConcernWithDay(concern, now));
   const parts = [
+    `今天是${describeCognitionToday(now)}`,
     `你此刻的心情：${cognition.mood.label}`,
     concerns.length ? `你心里惦记着：${concerns.join('；')}` : '',
     cognition.toward ? `你想对${cognition.toward.target === 'user' ? '用户' : cognition.toward.target}说说话（${cognition.toward.why}）` : '',
   ].filter(Boolean);
   const text = `（这是你自己此刻的心里，只有你知道，不要直接念出来；合适的时候自然地带进话里：${parts.join('。')}。）`;
-  return text.length > 220 ? `${text.slice(0, 218)}…）` : text;
+  return text.length > 300 ? `${text.slice(0, 298)}…）` : text;
 }
 
 /**

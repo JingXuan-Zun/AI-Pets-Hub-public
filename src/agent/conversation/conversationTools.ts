@@ -40,7 +40,8 @@ export interface ConversationToolRuntime {
 export interface ConversationTaskProgress {
   /** `note` replaces the status words, e.g. 被新的消息打断，还没做完. */
   finish: (status: 'done' | 'failed' | 'cancelled' | 'budget', note?: string) => void;
-  stepFinished: (id: string, ok: boolean) => void;
+  /** `trace`: the step's arguments and the start of its result, kept for diagnosis (not shown). */
+  stepFinished: (id: string, ok: boolean, trace?: string) => void;
   stepStarted: (id: string, name: string, args: Record<string, unknown>) => void;
 }
 
@@ -216,7 +217,9 @@ async function runOne(tools: Map<string, ConversationTool>, runtime: Conversatio
   const args = parseArgs(call.arguments);
   if (tools.has(call.name) && args) runtime.progress?.stepStarted(call.id, call.name, args);
   const result = await runOneStep(tools, runtime, call);
-  runtime.progress?.stepFinished(call.id, result.ok && !FAILED_OUTPUT.test(result.content));
+  const shown = 'compact' in result && typeof result.compact === 'string' ? result.compact : result.content;
+  const trace = `${call.arguments.slice(0, 200)} → ${shown.replace(/\s+/gu, ' ').slice(0, 300)}`;
+  runtime.progress?.stepFinished(call.id, result.ok && !FAILED_OUTPUT.test(result.content), trace);
   return result;
 }
 

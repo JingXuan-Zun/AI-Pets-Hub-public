@@ -34,6 +34,8 @@ export interface NeuralMemoryProposal {
   /** 'shared' proposals go to the “关于你” memory every character knows; absent = this role's own memory. */
   scope?: 'shared';
   sharedKind?: CharacterMemoryKind;
+  /** A shared memory this one supersedes: approving replaces it instead of adding a second one. */
+  replacesSharedId?: string;
   sourceExcerpt: string;
   sourceMessageIds: string[];
   type: NeuralMemoryProposalType;
@@ -67,6 +69,7 @@ function normalizeProposal(value: unknown): NeuralMemoryProposal | null {
     ...(item.scope === 'shared' ? {
       scope: 'shared' as const,
       sharedKind: isCharacterMemoryKind(item.sharedKind) ? item.sharedKind : 'other' as const,
+      ...(text(item.replacesSharedId, 128) ? { replacesSharedId: text(item.replacesSharedId, 128) } : {}),
     } : {}),
     sourceExcerpt: text(item.sourceExcerpt, 240),
     sourceMessageIds: Array.isArray(item.sourceMessageIds)

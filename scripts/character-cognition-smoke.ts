@@ -66,6 +66,19 @@ const wanted = groupAttentionBonus({ cognition: null, lastSpeakerCognition: { ..
 check(wanted, { bonus: 10, reasons: ['wanted-by-speaker'] }, 'the last speaker wanting to talk to her');
 check(groupAttentionBonus({ cognition: null, name: 'x', now: t0, topicText: '' }), { bonus: 0, reasons: [] }, 'no state, no bonus');
 
+// Concerns are kept for days: "明天" in a note from two days ago must not read as tomorrow (2026-11-08).
+{
+  const twoDaysLater = t0 + 2 * 24 * 3_600_000;
+  const old = { ...warm, concerns: warm.concerns.map((concern) => ({ ...concern, chargedAt: twoDaysLater, charge: 80 })) };
+  const later = describeCognitionForReply(old, twoDaysLater);
+  const noted = `${new Date(t0).getMonth() + 1}月${new Date(t0).getDate()}日记下的`;
+  check([later.includes(noted), later.includes('今天是')], [true, true], 'an older concern says when it was noted, with today\'s date');
+  check(describeCognitionForReply(warm, t0 + 1000).includes('记下的'), false, 'a concern from today has no date note');
+  const update = buildCognitionUpdatePrompt({ current: old, dialogue: [], name: '小桃', now: twoDaysLater, otherNames: [], persona: '' });
+  const payload = JSON.parse(update.payload);
+  check([typeof payload.today, typeof payload.currentConcerns[0].notedOn, /不要写今天、明天/u.test(update.systemInstruction)], ['string', 'string', true], 'the update knows today and when each concern was noted');
+}
+
 
 // 5. The user's "feelings only grow" switch (2026-11-06): affection sits at the top, hunger never costs it.
 import('../src/life-companion/lifeCompanionGrowthController').then(({ applyLifeCompanionPassiveGrowthTick }) => {

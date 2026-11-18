@@ -4,11 +4,9 @@ import { readModuleProjectSources as readProjectSources } from './projectModuleS
 const {
   appLauncher: appLauncherSource,
   desktopLaunchTools: desktopLaunchToolsSource,
-  windowTools: windowToolsSource,
 } = readProjectSources({
   appLauncher: 'electron/appLauncherService.cjs',
   desktopLaunchTools: 'src/agent/agentRuntimeDesktopLaunchTools.ts',
-  windowTools: 'src/agent/agentRuntimeWindowTools.ts',
 });
 
 assert.match(
@@ -63,12 +61,6 @@ assert.match(
   desktopLaunchToolsSource,
   /coordinateSpace: typeof windowInfo\.bounds\.coordinateSpace === 'string'[\s\S]*\? windowInfo\.bounds\.coordinateSpace/u,
   'structured window evidence should preserve the window bounds coordinate-space label',
-);
-
-assert.match(
-  windowToolsSource,
-  /const controlFinalBounds = result\?\.toBounds \?\? result\?\.targetBounds \?\? null;[\s\S]*coordinateSpace: controlFinalBounds\.coordinateSpace \?\? 'dip'/u,
-  'control_window structured evidence should label final bounds as DIP when the shell omits the label',
 );
 
 console.log('window native-screen bounds smoke ok');

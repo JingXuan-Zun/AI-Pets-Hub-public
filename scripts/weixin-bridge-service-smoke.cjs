@@ -31,6 +31,8 @@ const logins = [
 let qrStatuses = ['wait', 'scaned', 'need_verifycode', 'scaned', 'confirmed'];
 const updatesByToken = { 'token-1': [], 'token-2': [] };
 const sent = [];
+// What the next sendmessage calls do: 'network' throws, 'refuse' answers ret != 0, anything else succeeds.
+const sendPlan = [];
 const uploads = [];
 const seenRequests = [];
 const json = (value) => ({ arrayBuffer: async () => new ArrayBuffer(0), ok: true, status: 200, text: async () => JSON.stringify(value) });
@@ -48,7 +50,14 @@ const fetchImpl = async (url, init = {}) => {
     if (!batch) { await new Promise((resolve) => setTimeout(resolve, 30)); return json({ ret: 0, msgs: [], get_updates_buf: `cursor-${token}` }); }
     return json(batch);
   }
-  if (pathname.endsWith('/sendmessage')) { sent.push({ ...JSON.parse(init.body).msg, token }); return json({ ret: 0 }); }
+  if (pathname.endsWith('/sendmessage')) {
+    const msg = JSON.parse(init.body).msg;
+    const plan = sendPlan.shift();
+    if (plan === 'network') throw new Error('fetch failed');
+    if (plan === 'refuse') return json({ errmsg: 'context expired', ret: -2 });
+    sent.push({ ...msg, token });
+    return json({ ret: 0 });
+  }
   if (pathname.endsWith('/getuploadurl')) return json({ upload_param: 'up-param' });
   if (pathname.endsWith('/c2c/upload')) {
     uploads.push({ bytes: init.body.length, filekey: searchParams.get('filekey') });
@@ -176,6 +185,29 @@ const readState = () => JSON.parse(fs.readFileSync(path.join(base, 'weixin-bridg
   fs.writeFileSync(path.join(base, 'weixin-bridge.json'), JSON.stringify({ baseUrl: 'https://ilinkai.weixin.qq.com', botId: 'old@im.bot', syncBuf: 'c', tokenCipher: Buffer.from('enc:token-1').toString('base64'), userId: 'me@im.wechat' }));
   const migrated = createWeixinBridgeService({ emit: () => undefined, fetchImpl, makeVideo, safeStorage, userDataPath: base });
   assert.deepEqual(migrated.getStatus().accounts.map((account) => [account.id, account.label, account.owner]), [['old@im.bot', '我', true]]);
+
+  // Sends to one person go out in order; a network failure is retried with the same client_id, a refusal is not (2026-11-09).
+  {
+    fs.writeFileSync(path.join(base, 'weixin-bridge.json'), JSON.stringify({ baseUrl: 'https://ilinkai.weixin.qq.com', botId: 'retry@im.bot', syncBuf: 'c', tokenCipher: Buffer.from('enc:token-1').toString('base64'), userId: 'me@im.wechat' }));
+    const reliable = createWeixinBridgeService({ emit: () => undefined, fetchImpl, makeVideo, safeStorage, sendRetryDelaysMs: [5, 5], userDataPath: base });
+    reliable.start();
+    sent.length = 0;
+    sendPlan.push('network', 'ok');
+    const results = await Promise.all([reliable.send(undefined, '第一句'), reliable.send(undefined, '第二句')]);
+    assert.deepEqual(results.map((result) => result.ok), [true, true]);
+    assert.deepEqual(sent.map((msg) => msg.item_list[0].text_item.text), ['第一句', '第二句'], 'order kept although the first needed a retry');
+    sent.length = 0;
+    sendPlan.push('refuse');
+    const refused = await reliable.send(undefined, '会被拒');
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /微信拒收/u);
+    assert.equal(sent.length, 0, 'a refusal is not retried');
+    sendPlan.push('network', 'network', 'network');
+    const lost = await reliable.send(undefined, '网一直不通');
+    assert.equal(lost.ok, false, 'gives up after the retries');
+    sendPlan.length = 0;
+    reliable.stop();
+  }
 
   fs.rmSync(base, { force: true, recursive: true });
   console.log('weixin bridge service smoke passed');

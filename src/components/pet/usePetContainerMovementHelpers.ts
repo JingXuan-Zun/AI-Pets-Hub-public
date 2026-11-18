@@ -1,5 +1,5 @@
 import { useCallback, type MutableRefObject } from 'react';
-import { PRIMARY_DESKTOP_PET_SLOT_ID } from '../../multiPetRoster';
+import { PRIMARY_DESKTOP_PET_SLOT_ID, isPrimaryDesktopPetShown } from '../../multiPetRoster';
 import { type PetConfig } from '../../types';
 import { createRoamTargetInActivityArea } from './petBehaviorMath';
 import { type DirectionalExtents } from './petActivityRegionMath';
@@ -56,11 +56,12 @@ export function usePetContainerCollisionClampHelpers({
 }: UsePetContainerMovementHelpersOptions) {
   const getPetCollisionEntries = useCallback((): PetCollisionEntry[] => {
     const currentConfig = configRef.current;
-    return [{
+    const primaryEntries = isPrimaryDesktopPetShown(currentConfig) ? [{
       id: PRIMARY_DESKTOP_PET_SLOT_ID,
       position: petPosRef.current,
       bounds: petCollisionBounds,
-    }, ...currentConfig.companionPets.filter((pet) => pet.enabled && pet.modelVisible).map((pet) => ({
+    }] : [];
+    return [...primaryEntries, ...currentConfig.companionPets.filter((pet) => pet.enabled && pet.modelVisible).map((pet) => ({
       id: pet.id,
       position: pet.position,
       bounds: getScaledCompanionCollisionBounds(pet.id, pet.scale),

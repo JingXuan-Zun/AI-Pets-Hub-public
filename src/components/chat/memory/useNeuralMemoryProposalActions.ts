@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { pushFrontendRuntimeLog } from '../../../frontendRuntimeLogger';
-import { addSharedUserMemoryItem } from '../../../character-memory/sharedUserMemory';
+import { addSharedUserMemoryItem, listSharedUserMemory, updateSharedUserMemoryItem } from '../../../character-memory/sharedUserMemory';
 import { removeNeuralMemoryProposal } from '../../../neural-memory/neuralMemoryProposalConfig';
 import type { NeuralMemoryProposal } from '../../../neural-memory/neuralMemoryProposalTypes';
 import { stageNeuralMemoryProposal } from '../../../neural-memory/neuralMemoryStaging';
@@ -22,10 +22,12 @@ export function useNeuralMemoryProposalActions(options: {
   const approve = useCallback(async (proposal: NeuralMemoryProposal, content: string) => {
     if (!onUpdateConfig || busyProposalId) return;
     if (proposal.scope === 'shared') {
-      onUpdateConfig(addSharedUserMemoryItem(
-        removeNeuralMemoryProposal(config, proposal.id),
-        { kind: proposal.sharedKind, text: content },
-      ));
+      const withoutProposal = removeNeuralMemoryProposal(config, proposal.id);
+      const replaced = proposal.replacesSharedId
+        && listSharedUserMemory(withoutProposal).some((item) => item.id === proposal.replacesSharedId);
+      onUpdateConfig(replaced
+        ? updateSharedUserMemoryItem(withoutProposal, proposal.replacesSharedId as string, content)
+        : addSharedUserMemoryItem(withoutProposal, { kind: proposal.sharedKind, text: content }));
       setMessage('已记到「关于你」，所有角色都会知道。');
       pushFrontendRuntimeLog('角色记忆提议', '用户批准共享记忆', { proposalId: proposal.id, roleId: proposal.roleId });
       return;

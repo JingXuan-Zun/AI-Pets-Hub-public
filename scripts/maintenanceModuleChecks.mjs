@@ -184,9 +184,7 @@ const checks = [
   ["--import","tsx","scripts/window-manager-initialization-smoke.ts"],
   ["--import","tsx","scripts/chat-message-module-smoke.ts"],
   ["--import","tsx","scripts/agent-run-presentation-module-smoke.ts"],
-  ["--import","tsx","scripts/agent-visual-module-smoke.ts"],
   ["--import","tsx","scripts/app-launcher-module-smoke.ts"],
-  ["--import","tsx","scripts/agent-visual-evidence-assembly-smoke.ts"],
   ["--import","tsx","scripts/window-observation-module-smoke.ts"],
   ["--import","tsx","scripts/window-operation-module-smoke.ts"],
   ["--import","tsx","scripts/app-launcher-process-bridge-smoke.ts"],
@@ -325,7 +323,11 @@ const checks = [
   ["--import","tsx","scripts/main-window-renderer-recovery-smoke.ts"],
   ["--import","tsx","scripts/pet-click-shape-stability-smoke.ts"],
   ["--import","tsx","scripts/standalone-window-resize-handles-smoke.ts"],
-  ["scripts/windows-dwm-border-smoke.cjs"]
+  ["scripts/windows-dwm-border-smoke.cjs"],
+  ["--import","tsx","scripts/app-security-baseline-smoke.ts"],
+  ["--import","tsx","scripts/task-report-smoke.ts"],
+  ["--import","tsx","scripts/chat-history-timeline-smoke.ts"],
+  ["scripts/auto-launch-smoke.cjs"]
 ];
 
 console.log(`Running ${checks.length} maintenance checks.`);

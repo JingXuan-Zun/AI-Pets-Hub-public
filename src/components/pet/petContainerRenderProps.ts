@@ -1,5 +1,6 @@
 import { type ComponentProps } from 'react';
 import { type DesktopPetAnimationToolTrigger } from '../../chatState';
+import { isPrimaryDesktopPetShown } from '../../multiPetRoster';
 import { type PetModelMotionBinding } from '../../types';
 import { type AvatarRuntimeEventSummaryByPetId } from '../../pet-runtime/avatar-runtime/avatarRuntimeEventState';
 import { type AvatarRuntimeEventListener } from '../../pet-runtime/avatar-runtime/avatarRuntimeEvents';
@@ -95,13 +96,15 @@ export function createPrimaryPetAvatarLayerProps({
   primaryPetId,
   ...props
 }: CreatePrimaryPetAvatarLayerPropsOptions): PetAvatarLayerProps {
+  const dialogueSurface = resolvePetInteractiveDialogueLayerSurface(
+    isInteractiveDialogueActive,
+    interactiveDialoguePetId,
+    primaryPetId,
+  );
   return {
     ...props,
-    ...resolvePetInteractiveDialogueLayerSurface(
-      isInteractiveDialogueActive,
-      interactiveDialoguePetId,
-      primaryPetId,
-    ),
+    // Slot 1 turned off or hidden in settings leaves the desktop the same way the dialogue call does.
+    isInteractiveDialogueHidden: dialogueSurface.isInteractiveDialogueHidden || !isPrimaryDesktopPetShown(props.config),
   };
 }
 

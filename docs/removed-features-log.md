@@ -174,3 +174,56 @@
 - **当时是做什么的**：互动对话第一版把角色画在桌面上：开始通话时桌宠从屏幕下方升到一个“舞台”位置并放大（`isInteractiveDialogueMode`、`interactiveDialoguePosition`、`interactiveDialogueShellSize`、舞台框 `interactiveDialogueStageFrame`），这时不能拖动、不能滚轮缩放，层级放到最上面（z 28），3D 模型用特写镜头；配一个从下往上的入场动画 `pet-interactive-dialogue-enter`。
 - **为什么删**：10-19 起互动对话把角色画在聊天窗口里，桌面上这个模式被写死成“不进入”，这一整条从布局传到三个桌宠图层的值和分支再也没走到过。
 - **现在怎么样**：界面和行为都不变。保留的：通话时桌面上同一个角色隐藏、暂停自动走动（`isInteractiveDialogueActive` / `isInteractiveDialogueHidden`）；网页版聊天面板在互动模式下的位置；状态气泡的位置；3D 渲染器自己的“特写”呈现模式（`presentationMode: 'interactive-dialogue'`，Unity 桥协议里也有，以后在聊天窗口里做口型和表情时可能用到）。测试 `scripts/interactive-dialogue-isolation-smoke.ts` 改成检查现在的设计（它从 10-19 起就在检查旧设计、一直是失败的）。
+
+## 2026-11-09 任务报告图的竖版
+
+**最后还在的提交：`83249869`**（`src/reports/taskReportTemplate.ts` 的 `portrait()`、`summaryBody()`、两列清单；`taskReportTypes.ts` 的 `ReportOrientation` / `REPORT_SIZES.portrait`；图片附件的 `relayDataUrl` 及它在 `conversationChatRuntime.ts`、`qqBridgeRelay.ts` 里的传递）
+
+- **当时是做什么的**：任务报告图除了横版（1536×1024，发桌面聊天）还会多画一张竖版（1080 宽，按内容 1280～1920 高），放在图片的 `relayDataUrl` 里，QQ / 微信转发时发竖版。
+- **为什么删**：用户决定只要横版（2026-11-09）。
+- **现在怎么样**：只画横版一张；QQ / 微信像转发其他图片一样转发这张横版。
+
+## 2026-11-09 方案图（固定六格版）
+
+**最后还在的提交：`7add9000`**（`src/reports/proposalTemplate.ts`、`src/reports/proposalTypes.ts`、能力 `reports.show_proposal`）
+
+- **当时是做什么的**：她回答方案、设计时，把 2～6 个部分、运作流程、亮点、要注意的和下一步填进一张固定版式的图：左右各三格、中间头像、下面流程条和三个小框。
+- **为什么删**：用户实测觉得不行：不管讲什么都是同一个样子（讲“关系网”也画不出网），流程和圆圈里的字被截断（2026-11-09）。
+- **现在怎么样**：换成思维导图 `reports.show_mind_map`（`src/reports/mindMapTemplate.ts`）：形状跟着内容长，文字换行不截断。共用的样式和页面在 `src/reports/reportPageKit.ts`。
+
+## 2026-11-10 QQ 设置页的“下载 SnowLuma”按钮
+
+**最后还在的提交：`7e00a5c3`**（`src/components/settings/SettingsQqBridgeTab.tsx`、`electron/snowLumaService.cjs` 里的 SnowLuma 下载地址）
+
+- **当时是做什么的**：新用户第一次设置 QQ 连接时，一键打开 SnowLuma 的 GitHub 下载页，配四步说明。
+- **为什么删**：SnowLuma 2026-11-09 收到腾讯律师函后转为私有，下载页已经 404。
+- **现在怎么样**：设置页可以选 QQ 工具，NapCat 有自己的“下载 NapCat”按钮和说明；已经装好的 SnowLuma 照常能用（自动启动、自动读 Token 都还在）。
+
+## 2026-11-11 旧 Agent 运行时里没有任何地方引用的代码（第一批，约 7200 行）
+
+**最后还在的提交：`fdfea591`**
+
+- **删了什么**：
+  - `src/agent/` 里 18 个整文件：旧运行时的任务状态机和事务（`runtime/agentTaskRuntime.ts`、`runtime/taskRuntime/transitionPolicy.ts`、`runtime/agentRuntimeTaskEvidence.ts`、`runtime/taskEvidence/operationSurfaceIdentity.ts`）、“用户要的动作有没有覆盖到”的三套统计（`runtime/actionCoverage/*`、`runtime/agentActionCoverage.ts`）、派发证据和事件日志（`runtime/agentDispatchEvidence.ts`、`agentCanonicalEventJournal.ts`、`agentRuntimeDiagnostics.ts`、`agentToolOutcomeContract.ts`）、登录关卡和目标保护（`runtime/agentAuthenticationGate.ts`、`agentRuntimeTargetGuard.ts`）、旧的结果评估后续动作（`resultAssessment/resultRecoveryActions.ts`、`loginContinuationRecovery.ts`、`readOnlyObservationCompletion.ts`、`agentReadOnlyActionCompletionEvidence.ts`）。
+  - 另外 29 个文件里的 147 个没人用的函数、类型和常量（最多的是 `agentToolRegistry.ts`、`agentPermissionRouter.ts`、`resultAssessment/resultEvidenceAssessment.ts`、`runtime/agentRuntimeTaskTransaction.ts`、`runtime/agentRuntimeContract.ts`）。
+  - 只测这些代码的 18 个 smoke，以及 `package.json` 里的 `smoke:agent:canonical-journal`。
+- **当时是做什么的**：v2 / v3 / v4 运行时用它们决定“下一步做什么、做完没有、失败了怎么恢复”。2026-10-11 删旧运行时的时候，这些被当作“工具实现的一部分”留了下来。
+- **为什么删**：对话循环上线后，这些判断由模型在循环里自己做（加上 `verify_goal` 核对结果）。用 TypeScript 的引用关系查过：整个软件里没有任何地方再用到它们，只有测试还在引用。
+- **现在怎么样**：行为没有变化。删完后类型检查、854 个 smoke、维护检查、打包都通过。两个只给测试用的入口（`setAgentExternalMcpRuntimeOverride`、`clearExternalAgentMcpRegistryCache`）保留，MCP 的测试靠它们换上假的运行环境。
+- **还没删的**：执行器里登记了 49 个工具，对话循环只会用到其中 12 个；另外 37 个和它们后面的实现（约 1.66 万行，`visual/`、`desktopSequence/`、`desktopTools/`、`desktopObservation/` 等）代码上还连着，留到第二批。其中语音开关、记住应用位置、看游戏画面这几项要先核对有没有新的替代。
+
+## 2026-11-11 旧执行器里对话循环调不到的 27 个工具和它们后面的代码（第二批，约 2.1 万行）
+
+**最后还在的提交：`46166847`**
+
+- **删了什么**：
+  - 执行器（`agentRuntimeExecutor.ts`）、工具登记表、参数说明、权限和计划表里的 27 个工具：`launch_local_app`、`open_resource`、`focus_window`、`close_window`、`observe_windows_and_apps`、`execute_desktop_action`、`execute_desktop_input`、`execute_desktop_sequence`、`execute_desktop_observation`、`locate_screen_elements`、`summarize_visual_snapshot`、`analyze_game_screen`、`list_capture_sources`、`list_running_apps`、`get_active_window_info`、`get_cursor_position`、`get_default_app_for_uri`、`get_display_info`、`browser_search`、`search_web`、`get_path_info`、`list_directory`、`search_files`、`read_text_file`、`execute_local_file_action`、`execute_file_management_action`、`place_desktop_icon`。
+  - 只被它们用到的代码，共 87 个整文件：`src/agent/visual/`（视觉候选、打分、OCR 对齐、截图证据，45 个文件）、`desktopSequence/`、`desktopObservation/`、大部分 `desktopTools/`、`windowTools/`、`executor/`、`executionStrategy/`、`runtimeCore/`，以及顶层的 `agentExecutionStrategy.ts`、`agentRuntimeCore.ts`、`agentRuntimeDesktop{Tools,ItemTools,ObservationTools,SequenceTools}.ts`、`agentRuntimeWindow{Tools,WorkflowTools}.ts`、`agentRuntimeLocalFileTools.ts`、`agentActionLifecycle.ts` 和一半的 `planning/`。
+  - 只测这些代码的 23 个 smoke；另有 7 个同时检查 Electron 侧代码的 smoke 只去掉了针对已删文件的断言。
+- **当时是做什么的**：旧运行时让模型一次给出一整串桌面动作，由这些代码去找窗口、截图找目标、打分选候选、执行、再评估。
+- **为什么删**：对话循环（2026-10-10 起默认）让模型一步一步用细粒度工具（`read_window`、`click`、`type_text`、`look`、`launch_app`、`files`、`move_window`、`move_desktop_icon`、`web_search`、`open_url`……）。全项目把命令送进旧执行器的地方只有一处（`conversationAgentBridgeTools.ts`），它只会发 12 个工具，这 27 个模型已经拿不到。
+- **现在怎么样**：行为没有变化。删完后类型检查、831 个 smoke、325 项维护检查、打包都通过；20 题基准测试 20 / 20（`docs/benchmark-20261105.md` 末尾）。`src/agent` 现在约 14800 行、99 个文件（11-11 早上是 43209 行、204 个文件）。
+- **故意留下、等你决定的工具（原来 10 个，语音 6 个已处理，还剩 4 个）**（模型现在同样调不到，但没找到替代，或是你以前定过要留的）：
+  - ~~语音 6 个~~：`get_voice_status`、`switch_tts_provider`、`warmup_local_voice`、`set_voice_input`、`start_voice_input_session`、`stop_voice_input_session`。同日已处理：改成 5 个平台能力 `voice.status` / `set_input` / `listen` / `set_source` / `warmup`（`src/platform-capabilities/voiceControlCapabilities.ts`），旧的 6 个工具和 `src/agent/agentRuntimeVoiceTools.ts` 删掉。
+  - `remember_local_app`（记住某个应用的位置）。
+  - `get_pet_settings`、`update_pet_settings`（“通用改设置”，10-10 定的是留作兜底；现在由 `settings.find` / `settings.set` 代替了一部分）和 `use_platform_capability`（平台能力的测试还经过它）。

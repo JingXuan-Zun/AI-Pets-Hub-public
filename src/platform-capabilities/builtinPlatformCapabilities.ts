@@ -268,7 +268,7 @@ const setPetPresence: PlatformCapability = {
     { description: 'Enable (true) or disable (false) the character slot.', key: 'enabled', type: 'boolean' },
     { description: 'Show (true) or hide (false) the character on the desktop.', key: 'visible', type: 'boolean' },
   ],
-  description: 'Put a character on the desktop or take it away (“把高冷小桃叫出来”/“先让她休息”). The main character cannot be disabled or hidden.',
+  description: 'Put a character on the desktop or take it away (“把高冷小桃叫出来”/“先让她休息”). Any slot can be put away, slot 1 too.',
   describe: (args) => {
     const pet = stringArg(args, 'pet') || '角色';
     const enabled = booleanArg(args, 'enabled');
@@ -288,7 +288,6 @@ const setPetPresence: PlatformCapability = {
     const enabled = booleanArg(args, 'enabled');
     const visible = booleanArg(args, 'visible');
     if (enabled === null && visible === null) return { ok: false, text: '要启用、停用、显示还是隐藏？' };
-    if (slot.isPrimary && (enabled === false || visible === false)) return { ok: false, text: `${slot.personality.name}是主角色，不能停用或隐藏。` };
     const nextEnabled = enabled ?? (visible === true ? true : slot.enabled);
     const nextVisible = visible ?? (enabled === true ? true : slot.modelVisible);
     saveConfig(context, applyDesktopPetSlotChanges(config, slot.id, { enabled: nextEnabled, modelVisible: nextVisible }));

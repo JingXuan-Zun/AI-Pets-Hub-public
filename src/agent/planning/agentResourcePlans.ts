@@ -1,4 +1,4 @@
-import { buildLocalFileToolPlan } from './agentLocalFilePlans';
+
 import { buildLocalAppProjectToolPlan } from './agentLocalAppProjectPlans';
 export { buildAppLaunchPlan, buildAppAliasSavePlan } from './agentLocalAppProjectPlans';
 import { type AgentToolActionKind } from '../agentCapabilityTypes';
@@ -200,7 +200,6 @@ export function buildResourceToolPlan(command: AgentChatCommand): AgentExecution
   const explicitGoal = command.toolCall?.goal?.trim();
   switch (toolName) {
     case 'run_controlled_command':
-    case 'launch_local_app':
     case 'remember_local_app':
     case 'inspect_local_project':
     case 'run_local_project_action':
@@ -208,14 +207,6 @@ export function buildResourceToolPlan(command: AgentChatCommand): AgentExecution
 
     case 'control_browser':
       return buildControlBrowserPlan(command);
-
-    case 'execute_local_file_action':
-    case 'execute_file_management_action':
-    case 'get_path_info':
-    case 'list_directory':
-    case 'search_files':
-    case 'read_text_file':
-      return buildLocalFileToolPlan(command, toolName, targetDescription, explicitGoal);
 
     case 'execute_memory_action':
       return buildExecuteMemoryActionPlan(command);
@@ -231,67 +222,6 @@ export function buildResourceToolPlan(command: AgentChatCommand): AgentExecution
 
     case 'call_mcp_tool':
       return buildSkillMcpToolCallPlan(command, 'call-mcp-tool', 'Call MCP tool');
-
-    case 'open_resource':
-      return {
-        commandKind: command.kind,
-        goal: explicitGoal || `打开资源：${targetDescription}`,
-        instruction: command.instruction,
-        steps: [
-          createPlanStep(
-            'open-resource',
-            'open-resource',
-            `交给系统打开 URL、文件、文件夹或应用：${targetDescription}`,
-            {
-              requiresDesktopMode: true,
-              targetDescription,
-            },
-          ),
-        ],
-      };
-
-    case 'search_web':
-      return {
-        commandKind: command.kind,
-        goal: explicitGoal || `搜索网页：${targetDescription}`,
-        instruction: command.instruction,
-        steps: [
-          createPlanStep(
-            'search-web',
-            'search-web',
-            `打开或复用浏览器搜索：${targetDescription}`,
-            {
-              details: [
-                '这是搜索动作；如果目标是明确网址，应改用 open_resource。',
-              ],
-              requiresDesktopMode: true,
-              targetDescription,
-            },
-          ),
-        ],
-      };
-
-    case 'browser_search':
-      return {
-        commandKind: command.kind,
-        goal: explicitGoal || `打开浏览器搜索：${targetDescription}`,
-        instruction: command.instruction,
-        steps: [
-          createPlanStep(
-            'browser-search',
-            'browser-search',
-            `打开或聚焦浏览器并搜索：${targetDescription}`,
-            {
-              details: [
-                '会使用系统设置里的浏览器搜索配置。',
-                '如果已有受控浏览器窗口，会优先复用当前页面。',
-              ],
-              requiresDesktopMode: true,
-              targetDescription,
-            },
-          ),
-        ],
-      };
     default: return null;
   }
 }

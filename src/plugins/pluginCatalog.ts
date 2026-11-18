@@ -16,6 +16,7 @@ import comfyUiPlugin from './builtin/comfyui.plugin.json';
 import qqBridgePlugin from './builtin/qq-bridge.plugin.json';
 import devAgentPlugin from './builtin/dev-agent.plugin.json';
 import weixinBridgePlugin from './builtin/weixin-bridge.plugin.json';
+import taskReportPlugin from './builtin/task-report.plugin.json';
 
 // Every installed plugin as one list: imported skills, the user's MCP servers and the features
 // built into the pet that work like plugins. Each source keeps its own storage; this only
@@ -103,7 +104,8 @@ interface BuiltinPluginFile {
   permissions: PluginPermission[];
   requires?: Array<{ install: string; name: string }>;
   roleScoped: boolean;
-  settingsPageId: SettingsControlCenterPageId;
+  /** Absent: the plugin has nothing to set up (task report). */
+  settingsPageId?: SettingsControlCenterPageId;
   setup?: string[];
   troubleshooting?: string[];
   useWhen?: string;
@@ -139,13 +141,14 @@ function describeNativePlugins(settings: PetConfig['settings']): PluginManifest[
       : { ready: false, note: '还没导入工作流：在下面导入一个 ComfyUI 工作流。' }),
     describeBuiltin(qqBridgePlugin as BuiltinPluginFile, qq.enabled && qq.ownerQq
       ? { ready: true }
-      : { ready: false, note: '还没开启：在下面按四步设置好小号和 SnowLuma。' }),
+      : { ready: false, note: '还没开启：在下面按步骤设置好小号和 NapCat（或其他 OneBot 工具）。' }),
     describeBuiltin(weixinBridgePlugin as BuiltinPluginFile, settings.weixinBridge?.enabled
       ? { ready: true }
       : { ready: false, note: '还没开启：在下面扫码登录手机微信。' }),
     describeBuiltin(devAgentPlugin as BuiltinPluginFile, settings.devAgent.enabled && settings.devAgent.workspaces.length
       ? { ready: true }
       : { ready: false, note: settings.devAgent.enabled ? '还没添加项目文件夹。' : '还没开启：在下面打开开发助手并添加项目。' }),
+    describeBuiltin(taskReportPlugin as BuiltinPluginFile, { ready: true }),
   ];
 }
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import '../pet/pixiNoEvalPatch';
 import { Application } from 'pixi.js';
 import { resolve3DModelFormatFromUrl, resolve3DModelLoaderUrl } from '../../model3dFormatSupport';
 import { loadAvatar3DRuntimeInstanceByFormat } from '../../pet-runtime/avatar3d/avatar3dAssetLoader';

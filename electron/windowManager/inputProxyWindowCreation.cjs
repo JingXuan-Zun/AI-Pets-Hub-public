@@ -75,6 +75,7 @@ function createInputProxyWindowCreator({
     proxyState.setWindow(new BrowserWindow({
       ...getMainWindow().getBounds(),
       frame: false,
+      roundedCorners: false,
       transparent: true,
       focusable: false,
       hasShadow: false,
@@ -90,7 +91,7 @@ function createInputProxyWindowCreator({
         preload: path.join(baseDirectory, 'postDragInputProxyPreload.cjs'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false,
+        sandbox: true,
         ...(sessionPartition ? { partition: sessionPartition } : {}),
       },
     }));

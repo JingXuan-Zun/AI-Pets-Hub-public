@@ -2,9 +2,10 @@ import { type CSSProperties } from 'react';
 import { Input } from '../../../components/ui/input';
 import { type PetLifeCompanionSettings } from '../../life-companion/lifeCompanionSettings';
 import { type PetStats } from '../../types';
+import { SettingsAutoLaunchRow } from './SettingsAutoLaunchRow';
 import { SettingsToggleSwitch } from './SettingsToggleSwitch';
 
-// The smaller life-companion switches: quiet hours, the startup greeting, and the pet's
+// The smaller life-companion switches: quiet hours, start with Windows, the startup greeting, and the pet's
 // affection / hunger stats.
 
 interface SettingsLifeCompanionPanelProps {
@@ -60,6 +61,7 @@ export function SettingsLifeCompanionPanel({
           {timeInput('quietHoursEnd', '到')}
         </div>
       ) : null}
+      <SettingsAutoLaunchRow />
       <Row
         checked={settings.startupGreetingEnabled}
         label="开机打招呼"

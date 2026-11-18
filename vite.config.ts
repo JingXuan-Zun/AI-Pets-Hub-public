@@ -2,7 +2,21 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { buildAppContentSecurityPolicy, injectContentSecurityPolicyMeta } from './src/security/appContentSecurityPolicy';
+
+function contentSecurityPolicyPlugin(): Plugin {
+  let dev = false;
+  return {
+    name: 'desktop-pet-content-security-policy',
+    configResolved(config) {
+      dev = config.command === 'serve';
+    },
+    transformIndexHtml(html) {
+      return injectContentSecurityPolicyMeta(html, buildAppContentSecurityPolicy({ dev }));
+    },
+  };
+}
 
 function resolveAppVersion() {
   if (process.env.npm_package_version?.trim()) {
@@ -90,7 +104,7 @@ export default defineConfig(() => {
 
   return {
     base: './',
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), contentSecurityPolicyPlugin()],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
     },

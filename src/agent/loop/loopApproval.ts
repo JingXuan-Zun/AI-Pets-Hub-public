@@ -14,8 +14,6 @@ export interface LoopApprovalRequest {
   title: string;
 }
 
-export type LoopApprovalHandler = (request: LoopApprovalRequest) => Promise<boolean>;
-
 const RISKY_LABEL = /(?:发送|发布|提交订单|删除|移除|清空|卸载|支付|付款|购买|下单|充值|转账|关闭程序|退出程序|退出登录|注销|格式化|send|post|publish|delete|remove|uninstall|pay|purchase|buy|checkout|transfer|log\s*out|sign\s*out|format)/iu;
 const RISKY_KEYS = /(?:%\{F4\}|\{DEL(?:ETE)?\}|\+\{DEL(?:ETE)?\})/iu;
 const SUBMIT_KEYS = /^\s*(?:\{ENTER\}|~|\^\{ENTER\})\s*$/iu;

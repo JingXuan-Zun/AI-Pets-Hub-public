@@ -8,16 +8,6 @@ import {
 } from './agentChatCommand';
 import { type AgentRuntimeExecutorContext } from './agentRuntimeExecutor';
 
-interface BrowserSearchResultLike {
-  browserLabel?: string | null;
-  error?: string | null;
-  ok?: boolean;
-  opened?: boolean;
-  query?: string | null;
-  text?: string | null;
-  url?: string | null;
-}
-
 function getToolStringInput(toolCall: AgentToolCallCommand, keys: string[]) {
   const input = toolCall.input ?? {};
   for (const key of keys) {
@@ -28,83 +18,6 @@ function getToolStringInput(toolCall: AgentToolCallCommand, keys: string[]) {
   }
 
   return '';
-}
-
-function getBrowserSearchResultTextLength(result: BrowserSearchResultLike) {
-  return typeof result.text === 'string' ? result.text.trim().length : 0;
-}
-
-function compactBrowserSearchPageText(value: unknown, maxLength = 520) {
-  const text = typeof value === 'string'
-    ? value.replace(/\s+/gu, ' ').trim()
-    : '';
-  if (text.length <= maxLength) {
-    return text;
-  }
-
-  return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
-}
-
-export async function executeBrowserSearch(
-  context: AgentRuntimeExecutorContext,
-  query: string,
-  forceNewPage?: boolean,
-): Promise<AgentChatCommandResult> {
-  const settings = context.configRef.current.settings;
-  const result = await desktopPetShellRuntime.browserSearch({
-    query,
-    settings: {
-      browserSearchBrowserPath: settings.browserSearchBrowserPath,
-      browserSearchDebugPort: settings.browserSearchDebugPort,
-      browserSearchEngine: settings.browserSearchEngine,
-      browserSearchForceNewPage: Boolean(forceNewPage),
-      browserSearchForceOpenBrowser: true,
-      browserSearchUrlTemplate: settings.browserSearchUrlTemplate,
-    },
-  }) as BrowserSearchResultLike;
-
-  const browserLabel = result?.browserLabel || '浏览器';
-  const resultQuery = result?.query || query;
-  const textLength = getBrowserSearchResultTextLength(result ?? {});
-  const opened = Boolean(result?.ok || result?.opened || result?.url);
-  const observations = [
-    `Browser search query: ${resultQuery}`,
-    `Browser: ${browserLabel}`,
-    result?.url ? `URL: ${result.url}` : '',
-    `Extracted text length: ${textLength}`,
-    result?.text ? `Page text preview: ${compactBrowserSearchPageText(result.text)}` : '',
-  ].filter(Boolean);
-
-  if (result?.ok) {
-    return {
-      observations,
-      ok: true,
-      responseText: `已用${browserLabel}搜索：${resultQuery}`,
-      verification: result.url
-        ? `浏览器已打开并返回页面内容：${result.url}`
-        : '浏览器搜索已返回成功状态。',
-    };
-  }
-
-  if (opened) {
-    return {
-      observations,
-      ok: true,
-      responseText: `已打开${browserLabel}并跳到搜索页，但没有读取到可用页面文字。`,
-      verification: result?.url
-        ? `浏览器页面已打开：${result.url}；页面文字读取未完成。`
-        : '浏览器页面已打开；页面文字读取未完成。',
-    };
-  }
-
-  return {
-    errorText: result?.error || '浏览器搜索失败',
-    followUp: '可以先在系统设置里检测浏览器，或指定 Chrome/Edge 的可执行文件路径后再试。',
-    observations,
-    ok: false,
-    responseText: `没能完成浏览器搜索：${result?.error || '未知错误'}。`,
-    verification: result?.error || null,
-  };
 }
 
 export async function executeControlBrowser(

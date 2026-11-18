@@ -27,6 +27,9 @@ const CHARACTER_REPLY_FORMAT_INSTRUCTION = [
 const CHARACTER_DIAGRAM_INSTRUCTION = [
   '示意图（可选）：遇到用文字很难讲清、看一眼就懂的东西（构图、剪影、明暗、流程、结构、位置关系），可以在回复里放一段 ```svg 代码块，里面只写一个完整的 <svg viewBox="…">…</svg>，不要脚本和外部链接。',
   '聊天窗口会把它画出来，语音不会念它。只在确实有帮助时画，一次最多一张；画完用一两句话告诉用户看哪里。',
+  // 2026-11-09: asked for a memory-system plan she wrote ~3 000 characters plus her own svg; a plan
+  // with several parts belongs in the mind map picture (reports.show_mind_map).
+  '方案、设计、规划、架构、梳理思路这类分成三个以上部分的回答：如果你有「思维导图」工具，就用它出一张思维导图，不要画 svg，也不要把整套内容写成长文；出图后只说一两句核心思路，问用户想先展开哪个分支。svg 示意图只用来讲清一个小概念。',
 ].join('\n');
 
 const CHARACTER_TOOL_PROTOCOL_INSTRUCTION = [

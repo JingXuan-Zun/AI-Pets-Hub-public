@@ -77,7 +77,8 @@ function imageMime(bytes) {
   return 'image/jpeg';
 }
 
-function createWeixinBridgeService({ userDataPath, safeStorage, log, emit, fetchImpl = globalThis.fetch, makeVideo = makeVoiceVideo }) {
+function createWeixinBridgeService({ userDataPath, safeStorage, log, emit, fetchImpl = globalThis.fetch, makeVideo = makeVoiceVideo, sendRetryDelaysMs = [3000, 10000, 30000] }) {
+  const SEND_RETRY_DELAYS_MS = sendRetryDelaysMs;
   const statePath = path.join(userDataPath, STATE_FILE);
   // id → { baseUrl, botId, contextToken, detail, id, label, monitor, owner, state, syncBuf, token, userId }
   const accounts = new Map();
@@ -413,14 +414,42 @@ function createWeixinBridgeService({ userDataPath, safeStorage, log, emit, fetch
     throw lastError ?? new Error('上传失败');
   }
 
-  async function sendItem(account, item) {
+  async function sendItemOnce(account, item, clientId) {
     const reply = await apiPost(account, 'ilink/bot/sendmessage', {
       msg: {
-        client_id: crypto.randomUUID(), context_token: account.contextToken || undefined, from_user_id: '',
+        client_id: clientId, context_token: account.contextToken || undefined, from_user_id: '',
         item_list: [item], message_state: 2, message_type: 2, to_user_id: account.userId,
       },
     }, API_TIMEOUT_MS);
-    if ((reply.ret ?? 0) !== 0) throw new Error(`微信拒收：${reply.errmsg ?? reply.ret}`);
+    if ((reply.ret ?? 0) !== 0) throw Object.assign(new Error(`微信拒收：${reply.errmsg ?? reply.ret}`), { refused: true });
+  }
+
+  // Messages to one person go out one after another in the order they were sent (several replies
+  // used to race), and a network or server hiccup is retried after a pause (after DeepSeek's
+  // dsh-superagent outbox, 2026-11-09). A refusal by WeChat itself is reported at once. The
+  // same client_id is reused on a retry, so a send that did arrive is not shown twice.
+  const sendChains = new Map();
+  function sendItem(account, item) {
+    const key = account.id ?? account.userId ?? 'default';
+    const clientId = crypto.randomUUID();
+    const run = async () => {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          await sendItemOnce(account, item, clientId);
+          return;
+        } catch (error) {
+          const delay = SEND_RETRY_DELAYS_MS[attempt];
+          if (error?.refused || delay === undefined) throw error;
+          log?.('weixin send failed; retrying', { attempt: attempt + 1, delayMs: delay, error: error.message });
+          await new Promise((resolve) => { setTimeout(resolve, delay); });
+        }
+      }
+    };
+    const previous = sendChains.get(key) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(run);
+    sendChains.set(key, next);
+    next.catch(() => undefined).finally(() => { if (sendChains.get(key) === next) sendChains.delete(key); });
+    return next;
   }
 
   /**

@@ -164,7 +164,7 @@ export function usePetRuntimeState() {
 
       // Every character on the desktop says hello, one after another.
       enqueueStartupGreeting(getDesktopPetSlots(configRef.current)
-        .filter((slot) => slot.isPrimary || slot.enabled)
+        .filter((slot) => slot.enabled)
         .map((slot) => slot.id));
     }, 1200);
 

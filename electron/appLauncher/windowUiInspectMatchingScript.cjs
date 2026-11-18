@@ -157,6 +157,19 @@ function New-DesktopPetUiControlRecord($element, $depth, $parentIndex, $targetTe
   }
   $matchScore = Get-DesktopPetUiMatchScore $name $automationId $controlType $targetText $targetDescription
 
+  # The typed text of edit boxes and documents (Notepad's page, a text field), so "is it written
+  # there" can be checked without OCR. Password fields are never read.
+  $valueText = ''
+  $isPassword = $false
+  try { $isPassword = [bool]$current.IsPassword } catch {}
+  if (-not $isPassword -and ($controlType -eq 'Edit' -or $controlType -eq 'Document')) {
+    try { $valueText = [string]$element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value } catch {}
+    if ([string]::IsNullOrEmpty($valueText)) {
+      try { $valueText = [string]$element.GetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern).DocumentRange.GetText(4000) } catch {}
+    }
+    if ($valueText.Length -gt 4000) { $valueText = $valueText.Substring(0, 4000) }
+  }
+
   return [PSCustomObject]@{
     actions = $supportedActions
     automationId = $automationId
@@ -175,6 +188,7 @@ function New-DesktopPetUiControlRecord($element, $depth, $parentIndex, $targetTe
     parentIndex = [int]$parentIndex
     selected = $selectionState.isSelected
     selectionItem = [bool]$selectionState.selectionItem
+    valueText = $valueText
   }
 }
 

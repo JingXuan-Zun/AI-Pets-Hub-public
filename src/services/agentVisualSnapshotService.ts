@@ -10,6 +10,9 @@ import {
   resolveVisionModelSettings,
 } from '../visionModelSettings';
 
+// Room for a thinking model's reasoning plus the short answer.
+const QUICK_LOOK_MAX_TOKENS = 4096;
+
 function extractOpenAICompatibleText(payload: any): string | null {
   const content = payload?.choices?.[0]?.message?.content;
 
@@ -45,7 +48,14 @@ export interface AgentVisualSnapshotSummaryOptions {
   gameHint?: string | null;
   gameIdentityMetadata?: string | null;
   imageDataUrl: string;
-  promptMode?: 'desktop' | 'game';
+  /**
+   * A quick look: the answer limit is capped (the user's 8192 let a thinking model run long).
+   * Thinking stays on: with it off, DeepSeek's vision model made up a button that was not in the
+   * screenshot (2026-11-08), and a wrong position means a wrong click.
+   */
+  quick?: boolean;
+  /** loop: the desktop agent's `look` — only summary, targetMatched and elementCenterRatio. */
+  promptMode?: 'desktop' | 'game' | 'loop';
   question?: string | null;
   settings: PetConfig['settings'];
   sourceLabel?: string | null;
@@ -64,6 +74,20 @@ function parseVisualSnapshotDataUrl(imageDataUrl: string) {
 }
 
 function buildAgentVisualSnapshotPrompt(options: AgentVisualSnapshotSummaryOptions) {
+  // The agent's look reads three fields; asking for the full 19-field desktop report made the
+  // model write (and think) for 17–22 s per look (2026-11-08).
+  if (options.promptMode === 'loop') {
+    return [
+      'You are looking at one window screenshot for a desktop agent that has to answer a question about it.',
+      'Return exactly one compact JSON object, no markdown: {"summary":"","targetMatched":"","elementCenterRatio":{"x":0,"y":0}}.',
+      'summary: one or two short Chinese sentences answering the question from what is visible.',
+      'targetMatched: the target the question asks for, as it appears (or its [id] from the list when it is in the list); empty when it is not visible.',
+      'elementCenterRatio: the target centre within the screenshot, x and y from 0 to 1; omit it when the target is in the list or not visible.',
+      'Never invent something that is not visible; say so in summary instead.',
+      options.sourceLabel ? `Window: ${options.sourceLabel}` : '',
+      options.question?.trim() ? `Question: ${options.question.trim()}` : '',
+    ].filter(Boolean).join('\n');
+  }
   if (options.promptMode === 'game') {
     return [
       'You are analyzing one game screen/window snapshot for a desktop pet Agent.',
@@ -130,7 +154,11 @@ async function requestOpenAICompatibleVisualSnapshotSummary(options: AgentVisual
   }
 
   const endpoint = normalizeOpenAICompatibleUrl(visionModelSettings.apiUrl);
-  const requestParams = resolveVisionModelRequestParams(options.settings);
+  const requestParams: Record<string, unknown> = { ...resolveVisionModelRequestParams(options.settings) };
+  if (options.quick) {
+    const configured = Number(requestParams.max_tokens);
+    requestParams.max_tokens = Number.isFinite(configured) && configured > 0 ? Math.min(configured, QUICK_LOOK_MAX_TOKENS) : QUICK_LOOK_MAX_TOKENS;
+  }
   const prompt = buildAgentVisualSnapshotPrompt(options);
   const response = await requestModelFetch(endpoint, {
     method: 'POST',

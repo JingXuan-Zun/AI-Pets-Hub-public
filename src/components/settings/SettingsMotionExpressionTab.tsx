@@ -271,7 +271,7 @@ export function SettingsMotionExpressionTab({
                     <div className="text-2xs font-bold uppercase tracking-widest text-foreground">{slot.label}</div>
                     <div className="mt-1 truncate text-xs text-muted-foreground">{slot.personality.name}</div>
                     <div className="mt-1 text-2xs text-muted-foreground">
-                      {slot.isPrimary ? '主角色' : (slot.enabled ? '副角色已启用' : '副角色未启用')}
+                      {slot.isPrimary ? (slot.enabled ? '主角色' : '主角色未启用') : (slot.enabled ? '副角色已启用' : '副角色未启用')}
                     </div>
                   </div>
                   <button

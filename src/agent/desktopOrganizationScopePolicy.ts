@@ -3,9 +3,6 @@ import {
   type AgentDesktopOrganizationScope,
 } from './agentChatCommand';
 
-const DISPLAY_TARGET_VALUES = ['primary', 'secondary', 'current', 'all'] as const;
-const DESKTOP_ORGANIZATION_SCOPE_VALUES = ['all-icons', 'display-icons'] as const;
-
 function compactDesktopOrganizationText(value: string) {
   return value.trim().replace(/\s+/gu, '');
 }
@@ -14,22 +11,6 @@ const DESKTOP_ORGANIZATION_DISPLAY_TEXT = '(?:副屏|副显示器|第二屏|第�
 const DESKTOP_ORGANIZATION_SOURCE_TEXT = '(?:全部|所有|整个桌面|全桌面|桌面(?:的)?(?:全部|所有)?(?:图标|文件|快捷方式)?|图标|文件|快捷方式)';
 const DESKTOP_ORGANIZATION_ACTION_TEXT = '(?:整理|排列|摆放|归整|分类|收拾)';
 const DESKTOP_ORGANIZATION_PLACEMENT_TEXT = '(?:放到|放在|移动到|移到|拖到|摆到|排到|整理到|归整到|搬到|放去)';
-
-export function normalizeDesktopOrganizationDisplayTargetValue(
-  value: unknown,
-): AgentDesktopOrganizationDisplayTarget | undefined {
-  return DISPLAY_TARGET_VALUES.includes(value as AgentDesktopOrganizationDisplayTarget)
-    ? value as AgentDesktopOrganizationDisplayTarget
-    : undefined;
-}
-
-export function normalizeDesktopOrganizationScopeValue(
-  value: unknown,
-): AgentDesktopOrganizationScope | undefined {
-  return DESKTOP_ORGANIZATION_SCOPE_VALUES.includes(value as AgentDesktopOrganizationScope)
-    ? value as AgentDesktopOrganizationScope
-    : undefined;
-}
 
 export function hasExplicitAllDesktopIconsToDisplayIntent(text: string) {
   const compactText = compactDesktopOrganizationText(text);

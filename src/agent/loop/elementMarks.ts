@@ -24,6 +24,8 @@ export interface LoopUiControl {
   enabled?: boolean | null;
   name?: string | null;
   offscreen?: boolean | null;
+  /** Typed text of an edit box / document (never a password field). */
+  valueText?: string | null;
 }
 
 export interface LoopOcrLine {

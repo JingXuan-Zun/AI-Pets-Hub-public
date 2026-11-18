@@ -79,7 +79,8 @@ const WINDOW_WORDS: Record<string, string[]> = {
 };
 
 function normalizeText(value: string) {
-  return value.replace(/\s+/gu, '').toLowerCase();
+  // Thousands separators too: Calculator shows "1,624" when she checks for "1624".
+  return value.replace(/\s+/gu, '').replace(/(\d)[,，](?=\d{3}(?!\d))/gu, '$1').toLowerCase();
 }
 
 export function findGoalWindow(query: string, windows: LoopWindow[]) {
@@ -222,8 +223,10 @@ export function formatGoalVerification(verification: GoalVerification) {
     : verification.unknown
       ? `核对：${verification.passed}/${verification.total} 项达到，${verification.unknown} 项没法自动核对。`
       : `核对通过：${verification.passed}/${verification.total} 项都达到了。`;
+  // She once re-opened WeGame after it hid itself in the tray on starting the game, only to make
+  // a "WeGame window open" check pass (2026-11-08).
   const next = verification.failed
-    ? '没达到的接着做完再核对一次；做不到就如实告诉用户哪一项没做到、为什么。'
+    ? '先想一想是不是这条核对本身不对：用户要的结果其实已经达到了吗（例如启动器开完游戏会自己缩到托盘、窗口标题和你写的不一样）？是的话改正这条重新核对，不要为了让核对通过去重复操作。确实没做到的，接着做完再核对；做不到就如实告诉用户哪一项没做到、为什么。'
     : verification.unknown
       ? '可以告诉用户做完了，没法核对的那几项如实说明。'
       : '可以告诉用户做完了。';

@@ -448,36 +448,3 @@ export async function executeDesktopIconPlacement(
     verification: result.verification,
   };
 }
-
-export function executeDesktopIconPlacementToolCall(
-  context: AgentRuntimeDesktopOrganizationContext,
-  toolCall: AgentToolCallCommand,
-) {
-  const direction = toolCall.input.direction;
-  const placement = {
-    anchorName: getToolStringInput(toolCall, ['anchorName', 'anchor']),
-    direction,
-    targetName: getToolStringInput(toolCall, ['targetName', 'target']),
-  };
-
-  if (
-    !placement.anchorName
-    || !placement.targetName
-    || (
-      placement.direction !== 'above'
-      && placement.direction !== 'below'
-      && placement.direction !== 'left-of'
-      && placement.direction !== 'right-of'
-    )
-  ) {
-    return {
-      responseText: '移动单个桌面图标时，需要目标图标、参照图标和上下左右方向。',
-    };
-  }
-
-  return executeDesktopIconPlacement(context, {
-    anchorName: placement.anchorName,
-    direction: placement.direction,
-    targetName: placement.targetName,
-  });
-}

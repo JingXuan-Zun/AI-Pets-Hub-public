@@ -11,6 +11,7 @@ import {
   buildScopedChatHistory,
   resolveChatTargetSlots,
 } from './multiPetChat';
+import { annotateHistoryTimeline, readAppStartedAt } from './chatHistoryTimeline';
 import { buildCharacterAnimationToolInstruction } from './characterAnimationToolProtocol';
 import { type GroupChatInteractionPlan } from './chatGroupInteractionPlanner';
 import { stripGroupRoleSignalMarkers } from './group/role/groupRoleSignalProtocol';
@@ -114,7 +115,12 @@ export async function requestPetResponseStream(options: {
   const statusNote = config.settings.lifeCompanion?.crossChatAwarenessEnabled
     ? describeStatusBoardFor(targetSlot.id, readStatusFacts(), Date.now())
     : '';
-  const innerNote = [cognition ? describeCognitionForReply(cognition, Date.now()) : '', statusNote].filter(Boolean).join('\n\n');
+  // Time marks in the history and how long it has been (yesterday's computer state is not today's).
+  const timeline = annotateHistoryTimeline(buildScopedChatHistory(historyMessages, chatMode, targetSlot.id), {
+    appStartedAt: readAppStartedAt(),
+    now: Date.now(),
+  });
+  const innerNote = [timeline.note, cognition ? describeCognitionForReply(cognition, Date.now()) : '', statusNote].filter(Boolean).join('\n\n');
   const scopedPersonality = innerNote
     ? { ...scopedWithMotions, cognitionNote: innerNote }
     : scopedWithMotions;
@@ -144,11 +150,7 @@ export async function requestPetResponseStream(options: {
     }, 100);
     try {
     yield* getPetResponseStream(
-    buildScopedChatHistory(
-      historyMessages,
-      chatMode,
-      targetSlot.id,
-    ),
+    timeline.messages,
     promptText,
     scopedPersonality,
     config.settings,

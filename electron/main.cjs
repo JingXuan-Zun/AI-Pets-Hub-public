@@ -8,6 +8,9 @@
   screen,
   shell,
 } = require('electron');
+// When this run of the app began: chat history from before it happened before the computer /
+// app was closed and opened again (src/components/chat/chatHistoryTimeline.ts).
+const APP_STARTED_AT = Date.now();
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -30,6 +33,7 @@ const { registerExpressionLibraryIpcHandlers } = require('./expressionLibraryIpc
 const { createDataBackupService, registerDataBackupIpcHandlers } = require('./dataBackupIpcHandlers.cjs');
 const { createKnownFoldersService, registerKnownFoldersIpcHandlers } = require('./knownFoldersIpcHandlers.cjs');
 const { createComfyUiService, registerComfyUiIpcHandlers } = require('./comfyUiService.cjs');
+const { createAutoLaunchService, registerAutoLaunchIpcHandlers } = require('./autoLaunchService.cjs');
 const { registerChatImageSaveIpcHandlers } = require('./chatImageSave.cjs');
 const { createDevAgentService, registerDevAgentIpcHandlers } = require('./devAgentService.cjs');
 const { createSnowLumaService, registerSnowLumaIpcHandlers } = require('./snowLumaService.cjs');
@@ -122,9 +126,7 @@ const captureMainWindowPath = isLocalTest
   : captureMainWindowPathOverride;
 const packagedProfileRoot = !isLocalTest && app.isPackaged
   ? (
-    process.env.DESKTOP_PET_SKILL_PACKAGED_ADMISSION_USER_DATA_DIR
-    || process.env.DESKTOP_PET_MARKETPLACE_PRODUCTION_PROBE_USER_DATA_DIR
-    || process.env.DESKTOP_PET_NEURAL_PERSONA_PROBE_USER_DATA_DIR
+    process.env.DESKTOP_PET_NEURAL_PERSONA_PROBE_USER_DATA_DIR
     || process.env.DESKTOP_PET_PACKAGED_USER_DATA_DIR
     || ''
   ).trim()
@@ -516,6 +518,20 @@ const mcpStdioClientService = createMcpStdioClientService({
   projectRoot: path.join(__dirname, '..'),
   reuseSessions: true,
 });
+// Desktop tools run their PowerShell scripts on warm workers instead of starting powershell.exe
+// for each one (~0.45 s each, several per step; see powerShellHost.cjs). Warmed a little after
+// start so the first task is fast too.
+const powerShellHost = require('./powerShellHost.cjs').installSharedPowerShellHost({
+  log: (message, details) => runtimeLogger.log('backend', 'powershell-host', message, details),
+});
+if (powerShellHost) {
+  setTimeout(() => {
+    powerShellHost.warm();
+    // Read the installed-app list once too, so the first "打开…" does not wait ~2 s for it.
+    setTimeout(() => { void appLauncherService.listApps().catch(() => {}); }, 3000).unref?.();
+  }, 8000).unref?.();
+}
+app.on('will-quit', () => powerShellHost?.shutdown());
 // chrome-devtools brings her browser to the front when it switches tabs; give the focus back
 // to whatever the user was using (see herBrowserFocusGuard.cjs).
 {
@@ -639,10 +655,31 @@ registerChatImageSaveIpcHandlers({
   BrowserWindow: require('electron').BrowserWindow,
   app,
   clipboard: require('electron').clipboard,
+  ClipboardItem: require('electron').ClipboardItem,
   dialog,
   ipcMain: trustedIpcMain,
   nativeImage: require('electron').nativeImage,
 });
+{
+  // Report pictures (src/reports/taskReportTemplate.ts → a hidden sandboxed window → JPEG).
+  const { createReportImageRenderer, registerReportImageIpc } = require('./reportImageRenderer.cjs');
+  registerReportImageIpc({
+    ipcMain: trustedIpcMain,
+    renderer: createReportImageRenderer({
+      BrowserWindow: require('electron').BrowserWindow,
+      log: (message, details) => runtimeLogger.log('backend', 'report', message, details),
+      tempDir: app.getPath('temp'),
+    }),
+  });
+}
+trustedIpcMain.on('desktop-pet:app-started-at', (event) => { event.returnValue = APP_STARTED_AT; });
+// Start with Windows: the Run entry is the only record (see autoLaunchService.cjs).
+const autoLaunchService = createAutoLaunchService({
+  app,
+  isPackaged: app.isPackaged && !isLocalTest,
+  log: (message, details) => runtimeLogger.log('backend', 'auto-launch', message, details),
+});
+registerAutoLaunchIpcHandlers({ ipcMain: trustedIpcMain, service: autoLaunchService });
 registerComfyUiIpcHandlers({
   ipcMain: trustedIpcMain,
   service: createComfyUiService({ log: (message, details) => runtimeLogger.log('backend', 'comfyui', message, details) }),
@@ -742,6 +779,7 @@ if (!gotSingleInstanceLock) {
 
   app.whenReady().then(async () => {
     runtimeLogger.log('backend', 'main-process', 'whenReady: begin');
+    autoLaunchService.refreshMovedEntry();
     try {
       if (shouldRunNeuralPersonaPackagedProbe) {
         const report = runNeuralPersonaPackagedPersistenceProbe({

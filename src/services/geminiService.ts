@@ -1,4 +1,5 @@
-﻿import {
+﻿import { isTransientModelError, nextModelRetryDelay, waitBeforeRetry } from './modelRetryPolicy';
+import {
   type ChatMessage,
   type ChatMessageImageAttachment,
   type PetAutoSpeechTrigger,
@@ -552,16 +553,22 @@ export async function getAgentPlannerResponse(
   const attempt = () => getConfiguredCognitionResponse(userInput, systemInstruction, settings, {
     signal, task: 'agent-decision', timeoutMs: AGENT_PLANNER_TIMEOUT_MS,
   });
-  try {
-    return await attempt();
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    pushFrontendRuntimeLog('agent-run', 'agent decision call failed; retrying once', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    await new Promise((resolve) => { setTimeout(resolve, AGENT_PLANNER_RETRY_DELAY_MS); });
-    if (signal?.aborted) throw error;
-    return attempt();
+  for (let failed = 1; ; failed += 1) {
+    try {
+      return await attempt();
+    } catch (error) {
+      // A passing failure gets up to three more tries with a growing pause; anything else one quick retry.
+      const delay = signal?.aborted ? null : (isTransientModelError(error) ? nextModelRetryDelay(error, failed) : failed === 1 ? AGENT_PLANNER_RETRY_DELAY_MS : null);
+      if (delay === null) throw error;
+      pushFrontendRuntimeLog('agent-run', 'agent decision call failed; retrying', {
+        attempt: failed, delayMs: delay, error: error instanceof Error ? error.message : String(error),
+      });
+      try {
+        await waitBeforeRetry(delay, signal);
+      } catch {
+        throw error;
+      }
+    }
   }
 }
 
@@ -760,9 +767,10 @@ export async function* getPetResponseStream(
       if (!signal?.aborted && response) yield response;
       return;
     }
-    // A connection dropped before anything arrived (seen mid-task with DeepSeek: "模型响应读取失败")
-    // is retried once; tool calls collected by the failed attempt are cleared first. Once text
-    // has been shown a retry would repeat it, so the error stands.
+    // A failure before anything arrived is tried again: a passing one (network, 408, request-rate
+    // 429, 5xx, a dropped stream such as DeepSeek's "模型响应读取失败") up to three times with a
+    // growing pause, anything else once (modelRetryPolicy.ts). Tool calls collected by the failed
+    // attempt are cleared first. Once text has been shown a retry would repeat it, so the error stands.
     let yielded = false;
     for (let attempt = 1; ; attempt += 1) {
       try {
@@ -772,10 +780,17 @@ export async function* getPetResponseStream(
         }
         return;
       } catch (error) {
-        if (signal?.aborted || yielded || attempt >= 2) throw error;
-        console.warn('Chat stream failed before any content, retrying once:', error);
+        const delay = signal?.aborted || yielded ? null : nextModelRetryDelay(error, attempt);
+        if (delay === null) throw error;
+        pushFrontendRuntimeLog('model', 'chat reply failed before any content; retrying', {
+          attempt, delayMs: delay, error: error instanceof Error ? error.message : String(error),
+        });
         if (toolTurn) toolTurn.sink.toolCalls.length = 0;
-        await new Promise((resolve) => { setTimeout(resolve, 1000); });
+        try {
+          await waitBeforeRetry(delay, signal);
+        } catch {
+          throw error;
+        }
       }
     }
   } catch (error) {

@@ -26,6 +26,30 @@ async function blobToDataUrl(blob: Blob) {
   return `data:${blob.type};base64,${btoa(binary)}`;
 }
 
+/**
+ * A JPEG copy no larger than maxSide on its long edge; the original when it is already smaller
+ * or anything fails. Used for screenshots sent to the vision model (2026-11-08: full-size window
+ * shots made each look slow).
+ */
+export async function shrinkImageDataUrl(dataUrl: string, maxSide: number, quality = QUALITY) {
+  if (!dataUrl.startsWith('data:image/')) return dataUrl;
+  try {
+    const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+    const size = fitWithin(bitmap.width, bitmap.height, maxSide);
+    const canvas = new OffscreenCanvas(size.width, size.height);
+    const context = canvas.getContext('2d');
+    if (!context) return dataUrl;
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, size.width, size.height);
+    context.drawImage(bitmap, 0, 0, size.width, size.height);
+    bitmap.close();
+    const shrunk = await blobToDataUrl(await canvas.convertToBlob({ quality, type: 'image/jpeg' }));
+    return shrunk.length < dataUrl.length ? shrunk : dataUrl;
+  } catch {
+    return dataUrl;
+  }
+}
+
 /** A smaller copy of a large inline image; small ones (or anything that fails) come back unchanged. */
 export async function compressImageAttachment(attachment: ChatMessageImageAttachment): Promise<ChatMessageImageAttachment> {
   if (!attachment.dataUrl?.startsWith('data:image/') || dataUrlBytes(attachment.dataUrl) <= CHAT_IMAGE_COMPRESS_OVER_BYTES) return attachment;

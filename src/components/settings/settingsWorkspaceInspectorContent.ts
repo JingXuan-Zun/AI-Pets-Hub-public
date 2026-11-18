@@ -125,7 +125,7 @@ export const SETTINGS_WORKSPACE_INSPECTOR_MODULE_GUIDES: Record<
     affects: ['每个任务先确认；只能改列出的文件夹；用你自己的 Claude 账号额度'],
   },
   'platform-qq': {
-    purpose: '通过本机的 OneBot 服务（SnowLuma 等），在手机 QQ 上跟角色聊天。',
+    purpose: '通过本机的 OneBot 服务（NapCat 等），在手机 QQ 上跟角色聊天。',
     useCases: ['不在电脑前时用手机找角色聊天', '在手机上让角色帮你在电脑上做事、回复确认'],
     affects: ['只回复你填写的 QQ 号发来的私信', '桌宠和电脑需要开着'],
   },

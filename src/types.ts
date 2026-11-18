@@ -352,6 +352,10 @@ export interface PetConfig {
   currentAction: PetAction;
   autoMovementEnabled: boolean;
   pointerLookEnabled: boolean;
+  /** Slot 1 on or off like the other slots; missing means on. */
+  primaryPetEnabled?: boolean;
+  /** Slot 1 model shown on the desktop; missing means shown. */
+  primaryPetModelVisible?: boolean;
   settings: {
     physicsEnabled: boolean;
     avatar3dRuntimeBackend: Avatar3DRuntimeBackend;
@@ -694,7 +698,8 @@ export interface ChatAgentLoopRun {
   pendingApproval?: { detail: string; id: string; irreversible?: boolean; title: string } | null;
   startedAt?: number | null;
   status: 'running' | 'done' | 'needs-user' | 'failed' | 'cancelled' | 'budget';
-  steps: Array<{ changed: boolean | null; index: number; key?: string; result?: string | null; status?: 'running' | 'done' | 'failed' | 'waiting'; text: string }>;
+  /** startedAt / finishedAt / approvalMs (time waiting for the user's yes): to see where a task's time went. */
+  steps: Array<{ approvalMs?: number; changed: boolean | null; finishedAt?: number; index: number; key?: string; result?: string | null; startedAt?: number; status?: 'running' | 'done' | 'failed' | 'waiting'; text: string; trace?: string }>;
   summary?: string | null;
 }
 

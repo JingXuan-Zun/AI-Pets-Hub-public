@@ -23,6 +23,8 @@ export interface LoopWindow {
 export interface LoopWindowObservation {
   captureStatus: 'ok' | 'not-capturable' | 'failed';
   capturedAt: number;
+  /** Typed text of the window's edit boxes / documents (UI Automation value), for goal checks. */
+  documentText?: string;
   durationMs: number;
   elements: LoopElement[];
   observationId: string;
@@ -31,6 +33,8 @@ export interface LoopWindowObservation {
   window: LoopWindow;
 }
 
+/** The app's own windows (pet, chat, settings) are never a target. */
+const OWN_WINDOW = /^AI Desktop Pet\b/iu;
 const UIA_TIMEOUT_MS = 4000;
 const OCR_TIMEOUT_MS = 5000;
 let observationCounter = 0;
@@ -86,10 +90,13 @@ export async function observeLoopWindows(): Promise<{ active: LoopWindow | null;
     .filter((window): window is LoopWindow => Boolean(window))
     .map(withNativeBox);
   const activeWindow = active?.ok ? toLoopWindow(active) : null;
-  return {
-    active: activeWindow ? windows.find((window) => window.hwnd === activeWindow.hwnd) ?? withNativeBox(activeWindow) : null,
-    windows,
-  };
+  const activeInList = activeWindow ? windows.find((window) => window.hwnd === activeWindow.hwnd) ?? null : null;
+  const foreground = activeWindow ? activeInList ?? withNativeBox(activeWindow) : null;
+  // The foreground window is not always in the running-app list (League of Legends' client while
+  // it starts): she was told "no window League of Legends — the foreground is League of
+  // Legends" and could neither read, focus nor wait for it (2026-11-09). It is listed too.
+  if (foreground && !activeInList && foreground.hwnd > 0 && !OWN_WINDOW.test(foreground.title)) windows.unshift(foreground);
+  return { active: foreground, windows };
 }
 
 type WindowText = {
@@ -176,6 +183,7 @@ export async function observeLoopWindowElements(window: LoopWindow): Promise<Loo
   return {
     captureStatus: text.captureStatus,
     capturedAt: Date.now(),
+    documentText: controls.map((control) => control.valueText?.trim() ?? '').filter(Boolean).join('\n'),
     durationMs: Date.now() - started,
     elements: buildElementMarks({ controls, ocrLines: text.lines, windowBox: text.windowBox }),
     observationId: `obs-${started}-${observationCounter}`,

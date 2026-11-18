@@ -79,4 +79,5 @@ async function main() {
   await assert.rejects(failing.open(1, { ...request, credential: 'raw-secret' }), (error) => !error.message.includes('raw-secret'));
   console.log('model request service smoke ok');
 }
-main().catch((error) => { console.error(error); process.exitCode = 1; });
+// Requests left open keep the service's 5-minute timeout timer alive, so leave explicitly.
+main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => process.exit());

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readProjectSources } from './smokeTestHarness.ts';
 
-const { desktopInputRootSource, mousePreflightSource, mousePositionSource, mouseClickSource, mouseTouchSource, mouseResultSource, mousePreparationSource, nativeInteropSource, desktopSequenceSource, desktopToolSource } = readProjectSources({
+const { desktopInputRootSource, mousePreflightSource, mousePositionSource, mouseClickSource, mouseTouchSource, mouseResultSource, mousePreparationSource, nativeInteropSource, } = readProjectSources({
   desktopInputRootSource: 'electron/desktopInputService.cjs',
   mousePreflightSource: 'electron/desktopInputMousePreflight.cjs',
   mousePositionSource: 'electron/desktopInputMousePosition.cjs',
@@ -10,8 +10,6 @@ const { desktopInputRootSource, mousePreflightSource, mousePositionSource, mouse
   mouseResultSource: 'electron/desktopInputMouseResult.cjs',
   mousePreparationSource: 'electron/desktopInputMousePreparation.cjs',
   nativeInteropSource: 'electron/desktopInputNativeInterop.cjs',
-  desktopSequenceSource: 'src/agent/agentRuntimeDesktopSequenceTools.ts',
-  desktopToolSource: 'src/agent/agentRuntimeDesktopTools.ts',
 });
 const desktopInputSource = [desktopInputRootSource, mousePreflightSource, mousePositionSource, mouseClickSource, mouseTouchSource, mouseResultSource].join('\n');
 
@@ -110,56 +108,6 @@ assert.match(
   desktopInputSource,
   /cursorAfterUp/u,
   'desktop input bridge should record cursor after mouse up.',
-);
-assert.match(
-  desktopToolSource,
-  /Input attempt \$\{attempt\.index/u,
-  'Agent desktop input receipt should include per-attempt SendInput diagnostics.',
-);
-assert.match(
-  desktopSequenceSource,
-  /inputBackendEvidence/u,
-  'desktop sequence evidence should preserve nested input backend diagnostics.',
-);
-assert.match(
-  desktopSequenceSource,
-  /Input backend\|Input attempt\|Input foreground\|Input diagnostic\|Input stage/u,
-  'desktop sequence evidence should retain the diagnostic lines needed for backend classification.',
-);
-assert.match(
-  desktopToolSource,
-  /SendInput all attempts ok/u,
-  'Agent desktop input receipt should include aggregate SendInput status.',
-);
-assert.match(
-  desktopToolSource,
-  /Input diagnostic timing/u,
-  'Agent desktop input receipt should include timing diagnostics.',
-);
-assert.match(
-  desktopToolSource,
-  /Input backend plan/u,
-  'Agent desktop input receipt should include input backend plan diagnostics.',
-);
-assert.match(
-  desktopToolSource,
-  /Input backend classification/u,
-  'Agent desktop input receipt should include input backend failure classification.',
-);
-assert.match(
-  desktopToolSource,
-  /Input backend stage/u,
-  'Agent desktop input receipt should include input backend stage diagnostics.',
-);
-assert.match(
-  desktopToolSource,
-  /fgBeforeDown=/u,
-  'Agent desktop input receipt should include per-attempt foreground diagnostics.',
-);
-assert.match(
-  desktopToolSource,
-  /cursorBeforeDown=/u,
-  'Agent desktop input receipt should include per-attempt cursor diagnostics.',
 );
 
 console.log('desktop input diagnostics smoke ok');

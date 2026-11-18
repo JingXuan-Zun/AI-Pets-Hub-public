@@ -10,6 +10,7 @@ import {
   type CharacterMemoryState,
 } from './characterMemoryTypes';
 import { isMemoryRelevantChatMessage } from './conversationSummary';
+import { MEMORY_DATE_RULE, describeMemoryToday, formatMemoryDay, messageDay } from './memoryTime';
 
 /** Completed private-chat replies between background memory checks for one role. */
 export const AUTO_MEMORY_EXTRACTION_INTERVAL = 3;
@@ -60,13 +61,16 @@ export function buildAutoMemoryExtractionPrompt(input: {
   roleName: string;
   /** “关于你” facts every character already knows; never duplicated here. */
   sharedMemories?: string[];
+  now?: number;
 }) {
+  const now = input.now ?? Date.now();
   const tidy = input.items.length > AUTO_MEMORY_TIDY_THRESHOLD;
   const limits = tidy ? TIDY_LIMITS : NORMAL_LIMITS;
   const dialogue = input.messages
     .filter(isMemoryRelevantChatMessage)
     .slice(-MAX_DIALOGUE_MESSAGES)
     .map((message) => ({
+      ...(messageDay(message.createdAt) ? { date: messageDay(message.createdAt) } : {}),
       speaker: message.role === 'user' ? '用户' : input.roleName,
       text: compact(message.text, MAX_MESSAGE_CHARACTERS),
     }));
@@ -75,8 +79,9 @@ export function buildAutoMemoryExtractionPrompt(input: {
     payload: JSON.stringify({
       character: input.roleName,
       dialogue,
-      memories: input.items.map((item) => ({ id: item.id, kind: item.kind, text: item.text })),
+      memories: input.items.map((item) => ({ id: item.id, kind: item.kind, notedOn: formatMemoryDay(item.updatedAt), text: item.text })),
       sharedMemories: input.sharedMemories ?? [],
+      today: describeMemoryToday(now),
     }),
     systemInstruction: [
       `你负责维护角色“${input.roleName}”对用户的长期记忆。memories 是已有记忆，dialogue 是最新的私聊。`,
@@ -85,6 +90,8 @@ export function buildAutoMemoryExtractionPrompt(input: {
       '不记寒暄、一时的情绪、角色扮演里的动作，也不记 memories 里已经有的内容。',
       'sharedMemories 是所有角色共享的“关于用户”的记忆，已经有了，不要在这里重复记。用户明确说“记住”的事由共享记忆单独处理，这里不要再记；用户说“忘掉”或“别记”时，删除这里对应的记忆。',
       '新信息与已有记忆矛盾时（例如用户换了工作），用 update 改写那条旧记忆，不要新增一条。',
+      MEMORY_DATE_RULE,
+      'memories 的 notedOn 是那条记下的日期，旧记忆里的“明天”指那天的第二天。约定或计划的时间已经过去的，用 update 改写成已经发生的事（kind 改不改都行），或者确实没用了就 remove。',
       tidy
         ? `已有记忆偏多，请同时整理：合并重复或相近的条目（update 保留一条、remove 其余），删除明显过时的条目，整理后不超过 ${AUTO_MEMORY_TIDY_TARGET} 条。`
         : '',

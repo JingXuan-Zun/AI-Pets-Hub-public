@@ -132,8 +132,20 @@ function normalizeExternalCallResult(rawResult: unknown): AgentMcpToolCallResult
   };
 }
 
+// Test seam: the MCP smokes put a fake runtime in place of the Electron bridge. The app never calls it.
 export function setAgentExternalMcpRuntimeOverride(runtime: ExternalMcpRuntime | null) {
   runtimeOverride = runtime;
+}
+
+// Tool lists hardly ever change, but every listing asked each configured server again and started
+// the slow ones: one "查看扩展工具" took 5.4 s with sessions warm (2026-11-08). A list is kept for
+// 30 minutes while the MCP config stays the same; empty answers are not kept.
+const REGISTRY_CACHE_TTL_MS = 30 * 60 * 1000;
+const registryCache = new Map<string, { at: number; configKey: string; snapshot: AgentExternalMcpRegistrySnapshot }>();
+
+// Test seam, like setAgentExternalMcpRuntimeOverride.
+export function clearExternalAgentMcpRegistryCache() {
+  registryCache.clear();
 }
 
 export async function listExternalAgentMcpRegistry(
@@ -142,6 +154,13 @@ export async function listExternalAgentMcpRegistry(
   const runtime = getExternalMcpRuntime();
   if (!runtime) {
     return { servers: [], tools: [] };
+  }
+
+  const cacheKey = serverId?.trim() || '*';
+  const configKey = runtime.loadMcpConfig ? JSON.stringify(await loadExternalAgentMcpConfig()) : '';
+  const cached = registryCache.get(cacheKey);
+  if (cached && runtime.loadMcpConfig && cached.configKey === configKey && Date.now() - cached.at < REGISTRY_CACHE_TTL_MS) {
+    return cached.snapshot;
   }
 
   const result = await runtime.listMcpTools({ serverId });
@@ -153,10 +172,13 @@ export async function listExternalAgentMcpRegistry(
     .map(normalizeExternalTool)
     .filter((tool): tool is AgentMcpToolDefinition => Boolean(tool));
 
-  return {
+  const snapshot = {
     servers: normalizeExternalServers(Array.isArray(result?.servers) ? result.servers : [], tools),
     tools,
   };
+  if (tools.length && runtime.loadMcpConfig) registryCache.set(cacheKey, { at: Date.now(), configKey, snapshot });
+  else registryCache.delete(cacheKey);
+  return snapshot;
 }
 
 export async function callExternalAgentMcpTool(

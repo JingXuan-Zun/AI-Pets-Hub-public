@@ -27,7 +27,7 @@ function createSettingsWindowOptionsBuilder({
         preload: path.join(baseDirectory, 'preload.cjs'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false,
+        sandbox: true,
         ...(sessionPartition ? { partition: sessionPartition } : {}),
       },
     };

@@ -1,7 +1,7 @@
 import { delegatedScopeFields } from './chatDelegation';
 import { grantDailyApproval, revokeDailyApproval } from '../../../agent/approval/dailyApproval';
 import { describeConversationStep } from '../../../agent/conversation/conversationStepLabels';
-import { type ConversationTaskProgress } from '../../../agent/conversation/conversationTools';
+import { capabilityToolName, type ConversationTaskProgress } from '../../../agent/conversation/conversationTools';
 import { desktopPetChatStore } from '../../../chatStore';
 import { createChatMessageId } from '../multiPetChat';
 import { type ChatAgentLoopRun, type ChatMessage } from '../../../types';
@@ -57,6 +57,10 @@ export function settleOrphanedTaskCards() {
     .filter((message) => message.id && message.agentLoopRun && ACTIVE_STATUSES.includes(message.agentLoopRun.status) && !runningTasks.has(message.id))
     .forEach((message) => desktopPetChatStore.updateMessage(message.id!, markInterrupted));
 }
+
+// Steps that are not a task: keeping her todo list, and showing a report picture (a mind map in
+// answer to a question opened a “【任务记录】…已完成” card, 2026-11-09).
+const QUIET_STEPS = new Set(['update_todos', capabilityToolName('reports.show_task_report'), capabilityToolName('reports.show_mind_map')]);
 
 const STATUS_TEXT: Record<TaskStatus, string> = {
   budget: '步骤太多，先停下了', cancelled: '已终止', done: '已完成', failed: '没有完成', 'needs-user': '等你确认', running: '进行中',
@@ -129,12 +133,12 @@ export function createConversationTaskCard(options: {
         steps: run.steps.map((step) => (step.status === 'running' || step.status === 'waiting' ? { ...step, status: 'failed' } : step)),
       });
     },
-    stepFinished: (key, ok) => {
-      if (run.steps.some((step) => step.key === key)) updateStep(key, { status: ok ? 'done' : 'failed' });
+    stepFinished: (key, ok, trace) => {
+      if (run.steps.some((step) => step.key === key)) updateStep(key, { finishedAt: Date.now(), status: ok ? 'done' : 'failed', ...(trace ? { trace } : {}) });
     },
     stepStarted: (key, name, args) => {
-      if (name === 'update_todos') return;
-      write({ ...run, steps: [...run.steps, { changed: null, index: run.steps.length + 1, key, status: 'running', text: describeConversationStep(name, args) }] });
+      if (QUIET_STEPS.has(name)) return;
+      write({ ...run, steps: [...run.steps, { changed: null, index: run.steps.length + 1, key, startedAt: Date.now(), status: 'running', text: describeConversationStep(name, args) }] });
     },
   };
 
@@ -160,12 +164,14 @@ export function createConversationTaskCard(options: {
       status: 'needs-user',
       steps: running ? run.steps.map((step) => (step === running ? { ...step, status: 'waiting' } : step)) : run.steps,
     });
+    const askedAt = Date.now();
     const approved = await answer;
+    const approvalMs = Date.now() - askedAt;
     write({
       ...run,
       pendingApproval: null,
       status: controller.signal.aborted ? 'cancelled' : 'running',
-      steps: run.steps.map((step) => (step.status === 'waiting' ? { ...step, result: approved ? null : '你没有同意', status: approved ? 'running' : 'failed' } : step)),
+      steps: run.steps.map((step) => (step.status === 'waiting' ? { ...step, approvalMs: (step.approvalMs ?? 0) + approvalMs, result: approved ? null : '你没有同意', status: approved ? 'running' : 'failed' } : step)),
     });
     return approved;
   };

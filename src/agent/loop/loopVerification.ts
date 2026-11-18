@@ -54,9 +54,3 @@ export function compareLoopState(options: {
   }
   return notes.length ? { changed: true, summary: notes.join('；') } : { changed: false, summary: '画面没有明显变化' };
 }
-
-/** Same action against the same target twice in a row without any change: the loop must switch approach. */
-export function isRepeatedNoChange(history: Array<{ changed: boolean | null; signature: string }>, signature: string) {
-  const last = history[history.length - 1];
-  return Boolean(last && last.signature === signature && last.changed === false);
-}

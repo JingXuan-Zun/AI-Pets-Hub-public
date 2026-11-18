@@ -954,6 +954,17 @@ interface Window {
   SpeechRecognition?: SpeechRecognitionConstructorLike;
   webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
   desktopPetShell?: {
+    /** When this run of the app began (ms), for time marks in the chat history. */
+    appStartedAt?: () => number;
+    /** Start with Windows (the Run entry; not available in the dev app). */
+    autoLaunch?: {
+      get: () => Promise<{ enabled?: boolean; error?: string; launchedAtLogin?: boolean; ok: boolean; path?: string; supported?: boolean }>;
+      set: (enabled: boolean) => Promise<{ enabled?: boolean; error?: string; ok: boolean; supported?: boolean }>;
+    };
+    /** A report page (src/reports) rendered in a hidden window and returned as a JPEG data: URL. */
+    reportImage?: {
+      render: (request: { height: number; html: string; width: number }) => Promise<{ dataUrl?: string; error?: string; height?: number; ok: boolean; sizeBytes?: number; width?: number }>;
+    };
     /** ComfyUI workflows, called from the main process (no CORS; the token stays out of page requests). */
     /** Right-click on a picture in the chat: save it with a dialog, or copy it. */
     chatImage?: {
@@ -1015,8 +1026,8 @@ interface Window {
       /** The access token SnowLuma set for its WebSocket server on that port (found:false when none is configured). */
       wsToken: (request: { dir: string; ownerQq?: string; wsUrl: string }) => Promise<{ found: boolean; source?: string; token?: string }>;
       openWebui: (dir: string) => Promise<{ error?: string; ok: boolean; url?: string }>;
-      /** Opens the official download page of SnowLuma or desktop QQ. */
-      openDownload: (target: 'qq' | 'snowluma') => Promise<{ error?: string; ok: boolean; url?: string }>;
+      /** Opens the official download page of NapCat or desktop QQ. */
+      openDownload: (target: 'qq' | 'napcat') => Promise<{ error?: string; ok: boolean; url?: string }>;
       inspect: (dir: string) => Promise<{ error?: string; ok: boolean }>;
       openLog: () => Promise<{ error?: string; ok: boolean }>;
       status: () => Promise<{ logPath: string; ownedRunning: boolean }>;

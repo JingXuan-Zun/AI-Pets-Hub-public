@@ -1,12 +1,13 @@
 import { isPluginEnabledForPet } from './pluginRoleAccess';
 import comfyUiPlugin from './builtin/comfyui.plugin.json';
 import devAgentPlugin from './builtin/dev-agent.plugin.json';
+import taskReportPlugin from './builtin/task-report.plugin.json';
 
 // Platform capabilities that belong to a built-in plugin. A character the plugin is turned off
 // for neither sees nor can run them. Kept apart from the catalog so the capability registry
 // can import it without pulling in the MCP and skill modules.
 const CAPABILITY_PLUGINS: Record<string, string> = Object.fromEntries(
-  [comfyUiPlugin, devAgentPlugin].flatMap((plugin) => (plugin.capabilityIds ?? []).map((capabilityId) => [capabilityId, `native:${plugin.id}`])),
+  [comfyUiPlugin, devAgentPlugin, taskReportPlugin].flatMap((plugin) => (plugin.capabilityIds ?? []).map((capabilityId) => [capabilityId, `native:${plugin.id}`])),
 );
 
 export function isCapabilityEnabledForPet(capabilityId: string, petId: string | null | undefined) {

@@ -4,6 +4,8 @@ const path = require('path');
 const { FOCUS_WINDOW_TIMEOUT_MS } = require('./appLauncherConstants.cjs');
 const { stripPowerShellCliXml, decodePowerShellOutput, compactPowerShellErrorText } = require('./powerShellOutput.cjs');
 
+// A warm PowerShell worker registered by the app (electron/powerShellHost.cjs) runs the script
+// without starting powershell.exe; when there is none, or it cannot run it, spawn as before.
 function createPowerShellExecutor({ execFileAsync }) {
   async function runPowerShellScript(script, timeout = FOCUS_WINDOW_TIMEOUT_MS) {
     const prologue = [
@@ -15,6 +17,19 @@ function createPowerShellExecutor({ execFileAsync }) {
       "$VerbosePreference = 'SilentlyContinue'",
     ].join('\n');
     const fullScript = `${prologue}\n${script}`;
+    const powerShellHost = globalThis[Symbol.for('desktop-pet.powershell-host')];
+    if (powerShellHost) {
+      let hosted = null;
+      try {
+        hosted = await powerShellHost.run(fullScript, { timeoutMs: timeout });
+      } catch (error) {
+        const stderr = compactPowerShellErrorText(error?.stderr);
+        const stdout = compactPowerShellErrorText(error?.stdout);
+        const message = compactPowerShellErrorText(error instanceof Error ? error.message : String(error));
+        throw new Error(stderr || stdout || message || 'PowerShell command failed.');
+      }
+      if (hosted) return stripPowerShellCliXml(hosted.stdout);
+    }
     const encodedCommand = Buffer.from(fullScript, 'utf16le').toString('base64');
     const encodedArgs = ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-OutputFormat', 'Text', '-EncodedCommand', encodedCommand];
     const shouldUseScriptFile = encodedArgs.join(' ').length > 7000;

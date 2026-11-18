@@ -1,0 +1,5 @@
+{
+  "note": "Smokes that already failed when this list was written. Fix or delete them; do not add new ones to hide a regression.",
+  "updatedAt": "2026-11-11",
+  "knownFailures": []
+}

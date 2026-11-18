@@ -1,31 +1,9 @@
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
 import {
   type AgentChatCommandResult,
-  type AgentChatExecutionReceipt,
   type AgentStructuredToolEvidence,
   type AgentStructuredToolWindowEvidence,
 } from './agentChatCommand';
-
-interface OpenResourceResultLike {
-  action?: string | null;
-  app?: { name?: string | null; path?: string | null; sourceRoot?: string | null; type?: string | null } | null;
-  error?: string | null;
-  forceNew?: boolean | null;
-  matchCount?: number | null;
-  matches?: Array<{ name?: string | null; path?: string | null; type?: string | null }> | null;
-  ok?: boolean;
-  query?: string | null;
-  resourceType?: string | null;
-  status?: string | null;
-  target?: string | null;
-  url?: string | null;
-  verification?: {
-    ok?: boolean | null;
-    reason?: string | null;
-    window?: AgentRuntimeWindowEvidenceLike | null;
-  } | null;
-  focusedWindow?: AgentRuntimeWindowEvidenceLike | null;
-}
 
 export interface AgentRuntimeWindowEvidenceLike {
   bounds?: { coordinateSpace?: string | null; height?: number | null; width?: number | null; x?: number | null; y?: number | null } | null;
@@ -99,30 +77,6 @@ export function createAgentStructuredWindowEvidence(
   };
 }
 
-export function createAgentStructuredWindowEvidenceFromParts(options: {
-  bounds?: { coordinateSpace?: string | null; height?: number | null; width?: number | null; x?: number | null; y?: number | null } | null;
-  displayId?: string | null;
-  displayLabel?: string | null;
-  hwnd?: number | null;
-  pid?: number | null;
-  processName?: string | null;
-  title?: string | null;
-}): AgentStructuredToolWindowEvidence | null {
-  if (
-    !options.bounds
-    && !options.displayId
-    && !options.displayLabel
-    && typeof options.hwnd !== 'number'
-    && typeof options.pid !== 'number'
-    && !options.processName
-    && !options.title
-  ) {
-    return null;
-  }
-
-  return createAgentStructuredWindowEvidence(options);
-}
-
 function createAgentRuntimeLaunchEvidenceLines(result: {
   action?: string | null;
   app?: { name?: string | null; path?: string | null; sourceRoot?: string | null; type?: string | null } | null;
@@ -146,95 +100,6 @@ function createAgentRuntimeLaunchEvidenceLines(result: {
     result?.verification?.reason ? `Launch verification reason: ${result.verification.reason}` : '',
     ...createAgentRuntimeWindowEvidenceLines(getAgentRuntimeLaunchVerificationWindow(result), 'Focused window'),
   ].filter(Boolean);
-}
-
-export async function executeOpenResource(
-  target: string,
-  resourceType?: string,
-  forceNew?: boolean,
-): Promise<AgentChatCommandResult> {
-  const result = await desktopPetShellRuntime.openResource({
-    forceNew,
-    resourceType: resourceType === 'url'
-      || resourceType === 'file'
-      || resourceType === 'folder'
-      || resourceType === 'app'
-      || resourceType === 'auto'
-      ? resourceType
-      : 'auto',
-    target,
-  }) as OpenResourceResultLike;
-  const openedTarget = result?.url || result?.target || target;
-  const displayType = result?.resourceType || resourceType || 'auto';
-  const observations = [
-    `Open resource target: ${target}`,
-    `Resource type: ${displayType}`,
-    result?.url ? `URL: ${result.url}` : '',
-    result?.status ? `Status: ${result.status}` : '',
-    result?.action ? `Action: ${result.action}` : '',
-    result?.app?.name ? `App: ${result.app.name}` : '',
-    result?.app?.path ? `App path: ${result.app.path}` : '',
-    typeof result?.verification?.ok === 'boolean' ? `Launch verification ok: ${result.verification.ok}` : '',
-    result?.verification?.reason ? `Launch verification reason: ${result.verification.reason}` : '',
-    ...createAgentRuntimeWindowEvidenceLines(getAgentRuntimeLaunchVerificationWindow(result), 'Focused window'),
-  ].filter(Boolean);
-  const requestAccepted = Boolean(result?.ok) || result?.status === 'launched-unverified';
-  const openResourceStatus: AgentChatExecutionReceipt['status'] = result?.status === 'launched-unverified'
-    || result?.verification?.ok === false
-    || displayType === 'url'
-    ? 'unverified'
-    : 'success';
-  const structuredEvidence: AgentStructuredToolEvidence = {
-    confidence: openResourceStatus === 'success' ? 'high' : 'medium',
-    finalUrl: result?.url ?? null,
-    finalWindow: createAgentStructuredWindowEvidence(getAgentRuntimeLaunchVerificationWindow(result)),
-    status: openResourceStatus,
-    targetMatched: openedTarget,
-  };
-
-  if (requestAccepted) {
-    return {
-      followUp: openResourceStatus === 'unverified'
-        ? 'The open request was accepted, but the final app/window/page state still needs observation before claiming completion.'
-        : null,
-      receipt: {
-        evidenceLines: observations,
-        status: openResourceStatus,
-        summaryLines: [
-          'Call: open_resource',
-          `Target: ${openedTarget}`,
-          `Resource type: ${displayType}`,
-          result?.status ? `Status: ${result.status}` : '',
-          openResourceStatus === 'unverified'
-            ? 'Result: open request accepted, final visible state unverified'
-            : 'Result: open request accepted',
-        ].filter(Boolean),
-        title: 'Execution receipt',
-        toolName: 'open_resource',
-        verification: openResourceStatus === 'unverified'
-          ? `Open request accepted, but final visible state was not verified: ${openedTarget}`
-          : `Open request accepted: ${openedTarget}`,
-        stateSummary: {
-          structuredEvidence,
-        },
-      },
-      observations,
-      ok: true,
-      stateSummary: {
-        structuredEvidence,
-      },
-      responseText: `已打开：${openedTarget}。`,
-      verification: `系统打开请求已接受：${openedTarget}`,
-    };
-  }
-
-  return {
-    errorText: result?.error || '打开资源失败。',
-    observations,
-    ok: false,
-    responseText: `没有成功打开 ${target}：${result?.error || '未知原因'}。`,
-    verification: result?.error || null,
-  };
 }
 
 export async function executeAppLaunch(

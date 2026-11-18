@@ -51,7 +51,10 @@ function getPersistentAreaBorderWindowOptions() {
     title: 'AI Desktop Pet Area Border',
     webPreferences: {
       backgroundThrottling: false,
+      contextIsolation: true,
       devTools: false,
+      nodeIntegration: false,
+      sandbox: true,
     },
   };
 }

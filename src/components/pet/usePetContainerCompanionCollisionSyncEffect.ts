@@ -3,6 +3,7 @@ import { useEffect, type MutableRefObject } from 'react';
 import {
   PRIMARY_DESKTOP_PET_SLOT_ID,
   applyDesktopPetSlotChanges,
+  isPrimaryDesktopPetShown,
 } from '../../multiPetRoster';
 import { type PetConfig, type PetConfigUpdateHandler } from '../../types';
 import { type DirectionalExtents } from './petActivityRegionMath';
@@ -55,13 +56,13 @@ export function usePetContainerCompanionCollisionSyncEffect({
   useEffect(() => {
     const currentConfig = configRef.current;
     let nextConfig = currentConfig;
-    const placedEntries: PetCollisionEntry[] = [
+    const placedEntries: PetCollisionEntry[] = isPrimaryDesktopPetShown(currentConfig) ? [
       {
         id: PRIMARY_DESKTOP_PET_SLOT_ID,
         position: petPosRef.current,
         bounds: petCollisionBounds,
       },
-    ];
+    ] : [];
 
     currentConfig.companionPets.forEach((pet) => {
       if (!pet.enabled || !pet.modelVisible) {

@@ -12,6 +12,7 @@ import {
   listSharedUserMemory,
   parseSharedUserMemoryExtraction,
 } from './sharedUserMemory';
+import { formatMemoryDay } from './memoryTime';
 
 const EXTRACTION_TIMEOUT_MS = 30_000;
 const EXTRACTION_MAX_OUTPUT_TOKENS = 400;
@@ -43,10 +44,10 @@ export function useSharedUserMemoryCapture(options: {
     void (async () => {
       try {
         const known = [
-          ...listSharedUserMemory(configRef.current).map((item) => item.text),
+          ...listSharedUserMemory(configRef.current).map((item) => ({ id: item.id, notedOn: formatMemoryDay(item.updatedAt), text: item.text })),
           ...listNeuralMemoryProposals(configRef.current)
             .filter((proposal) => proposal.scope === 'shared')
-            .map((proposal) => proposal.content),
+            .map((proposal) => ({ text: proposal.content })),
         ];
         const messages = buildScopedChatHistory(
           desktopPetChatStore.getState().messages, event.chatMode, event.roleId,
@@ -72,7 +73,8 @@ export function useSharedUserMemoryCapture(options: {
           content: memory.text,
           createdAt: now,
           id: createProposalId(),
-          reason: '你让我记住的',
+          reason: memory.replaces ? '你让我记住的（会替换以前记的一条）' : '你让我记住的',
+          ...(memory.replaces ? { replacesSharedId: memory.replaces } : {}),
           roleId: event.roleId,
           scope: 'shared',
           sharedKind: memory.kind,

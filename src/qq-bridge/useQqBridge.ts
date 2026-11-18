@@ -9,7 +9,7 @@ import { createOneBotClient, type OneBotImage, type OneBotPrivateMessage } from 
 import type { DesktopPetChatSendOptions } from '../chatState';
 import { createChatImageAttachmentsFromFiles, MAX_CHAT_IMAGE_ATTACHMENTS } from '../components/chat/chatImageAttachmentUtils';
 import { collectQqRelayOutgoing, createQqRelayState, type QqRelayState } from './qqBridgeRelay';
-import { normalizeQqBridgeSettings, resolveQqBridgeBlocker, wantsVoiceReply } from './qqBridgeSettings';
+import { normalizeQqBridgeSettings, resolveQqBridgeBlocker, wantsVoiceReply, usesSnowLumaHelpers } from './qqBridgeSettings';
 import { prepareSpeechText } from '../voice/speechText';
 import { resolvePetVoiceSettings } from '../voice/petVoiceSettings';
 import { resolveConversationSttSettings } from '../voice/conversationSttModel';
@@ -62,14 +62,14 @@ export function useQqBridge({ config, configRef, sendMessage }: {
   useEffect(() => {
     const snowLuma = window.desktopPetShell?.snowLuma;
     if (!snowLuma) return;
-    if (settings.enabled && settings.autoStartSnowLuma && settings.snowLumaDir) {
+    if (settings.enabled && settings.autoStartSnowLuma && usesSnowLumaHelpers(settings)) {
       void snowLuma.ensureRunning({ dir: settings.snowLumaDir, wsUrl: settings.wsUrl }).then((result) => {
         pushFrontendRuntimeLog('qq-bridge', result.ok ? (result.started ? 'SnowLuma started in the background' : 'SnowLuma already running') : 'SnowLuma not started', result.error ? { error: result.error } : undefined);
       });
     } else if (!settings.enabled) {
       void snowLuma.stop();
     }
-  }, [settings.enabled, settings.autoStartSnowLuma, settings.snowLumaDir, settings.wsUrl]);
+  }, [settings.enabled, settings.autoStartSnowLuma, settings.provider, settings.snowLumaDir, settings.wsUrl]);
 
   useEffect(() => {
     const blocker = resolveQqBridgeBlocker(settings);
@@ -83,7 +83,7 @@ export function useQqBridge({ config, configRef, sendMessage }: {
     const client = createOneBotClient({
       accessToken,
       // A token typed in the settings wins; otherwise use the one SnowLuma made for its server.
-      resolveAccessToken: accessToken.trim() || !settings.snowLumaDir ? undefined : async () => {
+      resolveAccessToken: accessToken.trim() || !usesSnowLumaHelpers(settings) ? undefined : async () => {
         const found = await window.desktopPetShell?.snowLuma?.wsToken?.({ dir: settings.snowLumaDir, ownerQq: owner, wsUrl: settings.wsUrl });
         return found?.found ? found.token ?? '' : '';
       },
@@ -95,12 +95,12 @@ export function useQqBridge({ config, configRef, sendMessage }: {
       onMessage: (message) => { void handleMessage(message); },
       onSendFailed: (text, reason) => pushFrontendRuntimeLog('qq-bridge', 'reply not delivered after retries', { reason, textLength: text.length }),
     });
-    // The bot must be the small account. If SnowLuma is logged in as the owner's own QQ (e.g. it
+    // The bot must be the small account. If the OneBot service is logged in as the owner's own QQ (e.g. it
     // hooked the main account's QQ), the bridge refuses to act through it.
     const checkAccount = async () => {
       const uin = await client.getLoginUin().catch(() => '');
       if (uin && uin === owner) {
-        pushFrontendRuntimeError('qq-bridge', 'SnowLuma is logged in as your own QQ (the main account); the bridge stopped', new Error(uin));
+        pushFrontendRuntimeError('qq-bridge', 'the OneBot service is logged in as your own QQ (the main account); the bridge stopped', new Error(uin));
         client.stop();
       }
     };
@@ -229,5 +229,5 @@ export function useQqBridge({ config, configRef, sendMessage }: {
     };
     // Reconnect only when the connection settings change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.enabled, settings.ownerQq, settings.wsUrl, settings.snowLumaDir, accessToken]);
+  }, [settings.enabled, settings.ownerQq, settings.wsUrl, settings.provider, settings.snowLumaDir, accessToken]);
 }
