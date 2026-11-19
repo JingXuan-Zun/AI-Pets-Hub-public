@@ -22,6 +22,8 @@ function inspect(name) {
       assert.ok(argument && ts.isStringLiteral(argument), `${name}: dynamic require needs explicit review`);
       if (argument.text.startsWith('.')) {
         const target = path.basename(path.resolve(root, argument.text));
+        // The app's big-files folder rule (11-19): a leaf module with no local dependencies.
+        if (target === 'appHome.cjs') { ts.forEachChild(node, walk); return; }
         assert.ok(target.startsWith('localVoiceRuntime') && target.endsWith('.cjs'), `${name}: unexpected local dependency ${argument.text}`);
         dependencies.add(target);
       }

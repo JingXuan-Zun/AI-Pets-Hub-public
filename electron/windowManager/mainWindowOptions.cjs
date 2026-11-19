@@ -24,7 +24,7 @@ function createMainWindowOptionsBuilder({
       alwaysOnTop: true,
       autoHideMenuBar: true,
       backgroundColor: '#00000000',
-      title: 'AI Desktop Pet',
+      title: 'AI Pets Hub',
       webPreferences: {
         preload: path.join(baseDirectory, 'preload.cjs'),
         contextIsolation: true,

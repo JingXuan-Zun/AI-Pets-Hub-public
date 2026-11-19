@@ -86,7 +86,7 @@ function createInputProxyWindowCreator({
       alwaysOnTop: true,
       autoHideMenuBar: true,
       backgroundColor: '#00000000',
-      title: 'AI Desktop Pet Input Proxy',
+      title: 'AI Pets Hub Input Proxy',
       webPreferences: {
         preload: path.join(baseDirectory, 'postDragInputProxyPreload.cjs'),
         contextIsolation: true,

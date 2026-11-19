@@ -21,7 +21,7 @@ function createSettingsWindowOptionsBuilder({
       focusable: true,
       autoHideMenuBar: true,
       backgroundColor: '#00000000',
-      title: 'AI Desktop Pet Settings',
+      title: 'AI Pets Hub Settings',
       webPreferences: {
         backgroundThrottling: false,
         preload: path.join(baseDirectory, 'preload.cjs'),

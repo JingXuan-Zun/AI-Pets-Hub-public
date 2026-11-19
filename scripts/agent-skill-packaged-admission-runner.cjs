@@ -12,7 +12,10 @@ function readLatestExecutable(projectRoot) {
   const latestInfo = fs.readFileSync(path.join(projectRoot, 'release', 'LATEST_BUILD.txt'), 'utf8');
   const latestBuildLine = latestInfo.split(/\r?\n/u).find((line) => line.startsWith('latest_build='));
   if (!latestBuildLine) throw new Error('release/LATEST_BUILD.txt does not contain latest_build.');
-  return path.join(latestBuildLine.slice('latest_build='.length), 'win-unpacked', 'AI Desktop Pet.exe');
+  const build = latestBuildLine.slice('latest_build='.length);
+  // Builds before the rename (2026-11-18) hold "AI Desktop Pet.exe".
+  const renamed = path.join(build, 'win-unpacked', 'AI Pets Hub.exe');
+  return fs.existsSync(renamed) ? renamed : path.join(build, 'win-unpacked', 'AI Desktop Pet.exe');
 }
 
 function runProcess(executablePath, args, timeoutMs) {

@@ -31,7 +31,7 @@ function fakeApp(initial = []) {
   };
 }
 const env = { PORTABLE_EXECUTABLE_FILE: 'D:/Pet/AI-Desktop-Pet.exe' };
-const runExeOf = (app) => () => app.items.get(LOGIN_ITEM_NAME)?.path ?? '';
+const runExeOf = (app) => (name = LOGIN_ITEM_NAME) => app.items.get(name)?.path ?? '';
 
 const app = fakeApp();
 const service = createAutoLaunchService({ app, env, isPackaged: true, platform: 'win32', readRunExe: runExeOf(app) });
@@ -53,6 +53,16 @@ const moved = createAutoLaunchService({ app: movedApp, env, isPackaged: true, pl
 check(moved.read().enabled === false, 'old path: not on for this exe');
 moved.refreshMovedEntry();
 check(moved.read().enabled && same(movedApp.items.get(LOGIN_ITEM_NAME).path, env.PORTABLE_EXECUTABLE_FILE), 'refreshed to the current exe');
+
+// Renamed app (2026-11-18): an entry still under the old name is moved to the new one.
+const renamedApp = fakeApp([{ enabled: true, name: 'AI Desktop Pet', path: 'D:/Pet/AI-Desktop-Pet-0.4.4.exe' }]);
+const renamed = createAutoLaunchService({ app: renamedApp, env, isPackaged: true, platform: 'win32', readRunExe: runExeOf(renamedApp) });
+renamed.refreshMovedEntry();
+check(!renamedApp.items.has('AI Desktop Pet'), 'the old-name entry is removed');
+check(LOGIN_ITEM_NAME === 'AI Pets Hub' && renamed.read().enabled && same(renamedApp.items.get(LOGIN_ITEM_NAME).path, env.PORTABLE_EXECUTABLE_FILE), 'and it stays on under the new name, for this exe');
+const neverOn = fakeApp();
+createAutoLaunchService({ app: neverOn, env, isPackaged: true, platform: 'win32', readRunExe: runExeOf(neverOn) }).refreshMovedEntry();
+check(neverOn.items.size === 0, 'not on before → nothing turned on');
 
 // Dev app: switch unavailable, nothing written or read.
 const devApp = fakeApp();

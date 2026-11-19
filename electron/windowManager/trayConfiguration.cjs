@@ -4,7 +4,7 @@ function createTrayConfigurator({
   showMainWindow, openSettingsWindow, hideMainWindow,
 }) {
   return function configureTray() {
-    getTray().setToolTip('AI Desktop Pet');
+    getTray().setToolTip('AI Pets Hub');
     const trayMenuTemplate = [
       {
         label: '\u663e\u793a\u5ba0\u7269',

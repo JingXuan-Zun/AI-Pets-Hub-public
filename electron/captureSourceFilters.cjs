@@ -8,6 +8,7 @@ const EXCLUDED_CAPTURE_WINDOW_TITLES = new Set([
   'msctfime ui',
 ]);
 const EXCLUDED_CAPTURE_WINDOW_TITLE_PARTS = [
+  'ai pets hub',
   'ai desktop pet',
   '??',
   'nvidia geforce overlay',

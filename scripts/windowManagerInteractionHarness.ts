@@ -113,7 +113,7 @@ export async function runInteractionScenario(source: string, config: Interaction
   class FakeBrowserWindow {
     constructor(options: Record<string, unknown>) {
       const id = `win${++windowSeq}`;
-      const isProxy = options?.title === 'AI Desktop Pet Input Proxy';
+      const isProxy = options?.title === 'AI Pets Hub Input Proxy';
       const proxyOrdinal = isProxy ? ++proxyWindowCount : 0;
       record(`new BrowserWindow ${id} ${JSON.stringify(describe(options))}`);
       const bounds = {
@@ -229,7 +229,7 @@ export async function runInteractionScenario(source: string, config: Interaction
     sessionPartition: 'persist:harness',
   });
   const mainWindow = () => manager.getMainWindow();
-  const proxyWindow = () => [...windows].reverse().find((win) => win.__title === 'AI Desktop Pet Input Proxy') ?? null;
+  const proxyWindow = () => [...windows].reverse().find((win) => win.__title === 'AI Pets Hub Input Proxy') ?? null;
   const region = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
 
   step('create main window', () => manager.createMainWindow());

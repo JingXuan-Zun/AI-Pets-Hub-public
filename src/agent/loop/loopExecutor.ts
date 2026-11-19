@@ -10,7 +10,7 @@ export interface LoopActionOutcome {
   ok: boolean;
 }
 
-const OWN_WINDOW = /^AI Desktop Pet\b/iu;
+const OWN_WINDOW = /^(?:AI Pets Hub|AI Desktop Pet)\b/iu;
 const FOCUS_SETTLE_MS = 250;
 const LAUNCH_POLL_MS = 700;
 const LAUNCH_WAIT_MS = 12_000;

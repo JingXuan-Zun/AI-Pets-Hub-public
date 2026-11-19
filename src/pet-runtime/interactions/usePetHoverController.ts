@@ -46,6 +46,12 @@ export function usePetHoverController({
   ));
   const committedRegionRef = useRef<string | null>(null);
   const pendingRegionRef = useRef<{ region: string | null; since: number } | null>(null);
+  // The callers rebuild this list whenever the config changes (same names, new array). Keying
+  // on the names stops the effects below from re-running and setting state on every such
+  // render ("Maximum update depth exceeded" at startup, found 2026-11-18).
+  const supportedRegionsRef = useRef(supportedRegions);
+  supportedRegionsRef.current = supportedRegions;
+  const regionsKey = supportedRegions ? supportedRegions.join('|') : '';
 
   const commitHoverState = useCallback((nextState: PetHoverState) => {
     committedRegionRef.current = nextState.activeRegion;
@@ -59,8 +65,8 @@ export function usePetHoverController({
   /** Immediate clear: pointer left the window, window blurred, or hover got disabled. */
   const clearHoverState = useCallback(() => {
     pendingRegionRef.current = null;
-    commitHoverState(createEmptyPetHoverState(supportedRegions));
-  }, [commitHoverState, supportedRegions]);
+    commitHoverState(createEmptyPetHoverState(supportedRegionsRef.current));
+  }, [commitHoverState, regionsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Region changes from pointer position go through the hysteresis above. */
   const proposeHoverState = useCallback((nextState: PetHoverState) => {
@@ -109,7 +115,7 @@ export function usePetHoverController({
       clientPoint.y,
     );
     if (topmostPointerElement && !hoverTarget.contains(topmostPointerElement)) {
-      proposeHoverState(createEmptyPetHoverState(supportedRegions));
+      proposeHoverState(createEmptyPetHoverState(supportedRegionsRef.current));
       return;
     }
 
@@ -125,7 +131,7 @@ export function usePetHoverController({
       && clientPoint.y <= rect.bottom;
 
     if (!isInsideRect) {
-      proposeHoverState(createEmptyPetHoverState(supportedRegions));
+      proposeHoverState(createEmptyPetHoverState(supportedRegionsRef.current));
       return;
     }
 
@@ -134,8 +140,8 @@ export function usePetHoverController({
       y: Math.min(1, Math.max(0, (clientPoint.y - rect.top) / rect.height)),
     };
 
-    proposeHoverState(resolvePetHoverState(normalizedPoint, supportedRegions));
-  }, [clearHoverState, enabled, proposeHoverState, supportedRegions]);
+    proposeHoverState(resolvePetHoverState(normalizedPoint, supportedRegionsRef.current));
+  }, [clearHoverState, enabled, proposeHoverState, regionsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!enabled) {
@@ -146,7 +152,7 @@ export function usePetHoverController({
     setHoverState((currentState) => {
       const nextState = {
         ...currentState,
-        supportedRegions: createEmptyPetHoverState(supportedRegions).supportedRegions,
+        supportedRegions: createEmptyPetHoverState(supportedRegionsRef.current).supportedRegions,
       };
 
       return areHoverStatesEqual(currentState, nextState)
@@ -154,7 +160,7 @@ export function usePetHoverController({
         : nextState;
     });
     updateHoverFromClientPoint(lastPointerPointRef.current);
-  }, [clearHoverState, enabled, supportedRegions, updateHoverFromClientPoint]);
+  }, [clearHoverState, enabled, regionsKey, updateHoverFromClientPoint]);
 
   useEffect(() => {
     if (!enabled) {
@@ -204,8 +210,8 @@ export function usePetHoverController({
   // The hit box edge moves a little as the model animates, so leave/enter can blink at the
   // edge; treat a leave like any other region change and let the grace period settle it.
   const handlePointerLeave = useCallback(() => {
-    proposeHoverState(createEmptyPetHoverState(supportedRegions));
-  }, [proposeHoverState, supportedRegions]);
+    proposeHoverState(createEmptyPetHoverState(supportedRegionsRef.current));
+  }, [proposeHoverState]);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     hoverTargetRef.current = event.currentTarget;

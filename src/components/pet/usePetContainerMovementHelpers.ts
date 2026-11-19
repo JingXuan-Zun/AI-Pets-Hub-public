@@ -24,6 +24,8 @@ interface UsePetContainerMovementHelpersOptions {
     visualBounds: DirectionalExtents,
   ) => Position;
   configRef: MutableRefObject<PetConfig>;
+  /** Where each other pet is on screen right now; their saved position only changes when a walk ends. */
+  companionRenderedPositionByIdRef?: MutableRefObject<Record<string, Position>>;
   getScaledCompanionCollisionBounds: (
     petId: string,
     currentScale: number,
@@ -47,6 +49,7 @@ type UsePetContainerRoamTargetHelpersOptions = Pick<
 export function usePetContainerCollisionClampHelpers({
   clampPrimaryPetToAllowedAreaWithMetrics,
   clampPetToRenderedActivityAreaWithMetrics,
+  companionRenderedPositionByIdRef,
   configRef,
   getScaledCompanionCollisionBounds,
   getScaledCompanionVisualBounds,
@@ -63,10 +66,11 @@ export function usePetContainerCollisionClampHelpers({
     }] : [];
     return [...primaryEntries, ...currentConfig.companionPets.filter((pet) => pet.enabled && pet.modelVisible).map((pet) => ({
       id: pet.id,
-      position: pet.position,
+      // Where she is now, not where she started her walk (an empty spot is not an obstacle).
+      position: companionRenderedPositionByIdRef?.current[pet.id] ?? pet.position,
       bounds: getScaledCompanionCollisionBounds(pet.id, pet.scale),
     }))];
-  }, [configRef, getScaledCompanionCollisionBounds, petCollisionBounds, petPosRef]);
+  }, [companionRenderedPositionByIdRef, configRef, getScaledCompanionCollisionBounds, petCollisionBounds, petPosRef]);
 
   const resolvePetPositionAgainstEntries = useCallback((
     candidatePosition: Position,

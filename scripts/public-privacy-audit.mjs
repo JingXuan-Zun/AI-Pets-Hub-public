@@ -90,7 +90,7 @@ const excludedPath = [
   [/^\.env(?!\.example$)/i, 'environment or credential file'],
   [/^\.desktop-pet-mcp\.json$/i, 'local MCP configuration'],
   [/^local-models\//i, 'local model'],
-  [/^(?:2d模型|d1|config-assets|neural-persona|react-example|AI Desktop Pet(?: Local Test)?)\//i, 'runtime character or configuration data'],
+  [/^(?:2d模型|d1|config-assets|neural-persona|react-example|ai-pets-hub|AI Pets Hub|AI Desktop Pet(?: Local Test)?)\//i, 'runtime character or configuration data'],
   [/^public\/models-3d\/(?!README\.md$|pet-[12]\/\.gitkeep$)/i, 'character or animation asset'],
   [/^src\/assets\/pet-[12]\//i, 'private character sprite'],
   [/^src\/assets\/pet-character-26\.png$/i, 'private character illustration'],
@@ -165,7 +165,7 @@ if (existsSync(localEnvPath)) {
   }
 }
 if (appData) {
-  for (const directory of ['react-example', 'AI Desktop Pet']) {
+  for (const directory of ['ai-pets-hub', 'react-example', 'AI Desktop Pet']) {
     const profileRoot = path.join(appData, directory);
     const persisted = readLocalJson(path.join(profileRoot, 'desktop-pet-config.v1.json'));
     const config = persisted?.config ?? persisted;

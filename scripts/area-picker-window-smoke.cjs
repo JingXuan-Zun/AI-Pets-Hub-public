@@ -78,7 +78,7 @@ function main() {
       hash.update(withoutCwd(JSON.stringify(actual) + '\n')); cases++;
     }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, '046e96d117eedda05ed0f6f6aa9cdb5af3b8cce66afe41dd215ce84eb8050972', 'Reviewed picker window options/events/stale/quit/error behavior');
+  assert.equal(fingerprint, '765ba169c771d026ae993bce3e4959ff243e66147002bb0e0bae26229ebc17f8', 'Reviewed picker window options/events/stale/quit/error behavior');
   console.log('Area picker window passed: ' + cases + ' reuse/context/loading/stale/closed/quitting/error cases; controlled windows.');
 }
 try { main(); } catch (error) { console.error(error); process.exitCode = 1; }

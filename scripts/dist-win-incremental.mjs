@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { copyFile, cp, lstat, mkdir, readFile, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -294,7 +295,8 @@ const { latestBuild, info, sharedDirectoryLines } = await readLatestBuildInfo();
 const appAsarPath = path.join(latestBuild, 'win-unpacked', 'resources', 'app.asar');
 const appUnpackedPath = path.join(latestBuild, 'win-unpacked', 'resources', 'app.asar.unpacked');
 const resourcesDir = path.join(latestBuild, 'win-unpacked', 'resources');
-const launcherPath = path.join(latestBuild, 'win-unpacked', 'AI Desktop Pet.exe');
+// Builds before the rename (2026-11-18) hold "AI Desktop Pet.exe".
+const launcherPath = (fs.existsSync(path.join(latestBuild, 'win-unpacked', 'AI Pets Hub.exe')) ? path.join(latestBuild, 'win-unpacked', 'AI Pets Hub.exe') : path.join(latestBuild, 'win-unpacked', 'AI Desktop Pet.exe'));
 const currentBaseline = await collectPackagingBaseline(projectRoot);
 const baselineIssues = comparePackagingBaseline(info, currentBaseline);
 const sharedDirectoryIssues = await findSharedDirectoryIssues(projectRoot, sharedDirectoryLines);
@@ -387,7 +389,7 @@ await writeFile(
   latestInfoPath,
   [
     `latest_build=${latestBuild}`,
-    `portable_exe=${info.get('portable_exe') ?? path.join(latestBuild, 'AI-Desktop-Pet-0.0.1.exe')}`,
+    `portable_exe=${info.get('portable_exe') ?? path.join(latestBuild, 'AI-Pets-Hub-0.0.1.exe')}`,
     ...sharedDirectoryLines,
     ...getStoredBaselineLines(info, currentBaseline),
     `incremental_asar=${appAsarPath}`,

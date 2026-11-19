@@ -56,6 +56,19 @@ interface AdvanceCompanionPlanStepOptions {
   updateRenderMotionTarget: (nextTarget: PetRuntimePosition | null) => void;
 }
 
+
+/** At most `maxDistance` from `from` toward `to`. */
+function stepToward(from: PetRuntimePosition, to: PetRuntimePosition, maxDistance: number): PetRuntimePosition {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  if (length <= maxDistance || length === 0) return to;
+  return { x: from.x + (dx / length) * maxDistance, y: from.y + (dy / length) * maxDistance };
+}
+
+const TARGET_RECHECK_MS = 500;
+const clampedTargetCache = new WeakMap<object, { at: number; rawX: number; rawY: number; target: PetRuntimePosition }>();
+
 export function syncCompanionEatingState({
   actionUntil,
   actionUntilRef,
@@ -151,13 +164,22 @@ export function advanceCompanionPlanStep({
   }
 
   const positionedPet = { ...pet, position: currentPosition };
-  const clampedTarget = clampCompanionPosition(movementTarget, positionedPet);
+  // The target keeps clear of the other pets' live positions, which change every frame; checking
+  // it every frame re-rendered every walking pet every frame ("Maximum update depth exceeded",
+  // 2026-11-18). Twice a second is enough for the target; each step still checks every frame.
+  const cached = clampedTargetCache.get(plan);
+  const clampedTarget = cached && now - cached.at < TARGET_RECHECK_MS && cached.rawX === movementTarget.x && cached.rawY === movementTarget.y
+    ? cached.target
+    : clampCompanionPosition(movementTarget, positionedPet);
+  if (clampedTarget !== cached?.target) clampedTargetCache.set(plan, { at: now, rawX: movementTarget.x, rawY: movementTarget.y, target: clampedTarget });
   updateRenderMotionTarget(clampedTarget);
 
   const dx = clampedTarget.x - currentPosition.x;
   const dy = clampedTarget.y - currentPosition.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
-  const maxStep = Math.max(1, plan.speed * deltaSeconds);
+  // No 1 px minimum: on a 165 Hz screen a frame is worth ~0.5 px, and rounding it up to 1 px
+  // made every pet walk about twice her speed (found 2026-11-18).
+  const maxStep = plan.speed * deltaSeconds;
 
   if (distance <= Math.max(10, maxStep)) {
     const completion = completeCompanionPlan({
@@ -183,13 +205,20 @@ export function advanceCompanionPlanStep({
     return;
   }
 
-  const nextPosition = clampCompanionPosition({
+  const intendedStep = {
     x: currentPosition.x + (dx / distance) * maxStep,
     y: currentPosition.y + (dy / distance) * maxStep,
-  }, positionedPet);
+  };
+  const resolvedStep = clampCompanionPosition(intendedStep, positionedPet);
+  // Walking into another pet: keeping clear of her may throw this one far to the side in one
+  // frame (user report, 2026-11-18: "突然向某个方向移动一段距离"). When the free spot is much
+  // further than a step, she glides toward it at walking pace instead of jumping there.
+  const pushedFar = measureDistance(intendedStep, resolvedStep) > maxStep * 2 + 6;
+  const nextPosition = pushedFar ? stepToward(currentPosition, resolvedStep, maxStep * 1.5) : resolvedStep;
   const movedDistance = measureDistance(currentPosition, nextPosition);
 
-  consecutiveBlockedStepsRef.current = movedDistance < 0.5
+  // Relative to the step: on a 165 Hz screen a slow walk moves under 0.5 px a frame.
+  consecutiveBlockedStepsRef.current = movedDistance < Math.min(0.5, maxStep * 0.25)
     ? consecutiveBlockedStepsRef.current + 1
     : 0;
 

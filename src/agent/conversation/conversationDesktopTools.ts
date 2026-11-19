@@ -81,7 +81,7 @@ export interface ConversationDesktopSession {
 const SETTLE_MS = 600;
 const MAX_ACTIONS = 40;
 const MAX_DURATION_MS = 5 * 60_000;
-const OWN_WINDOW = /^AI Desktop Pet\b/iu;
+const OWN_WINDOW = /^(?:AI Pets Hub|AI Desktop Pet)\b/iu;
 const SCREEN_QUERY = /^(?:屏幕|整个屏幕|全屏|桌面|screen)$/iu;
 const TRASH_LABEL = /(?:回收站|废纸篓|recycle|trash)/iu;
 // A browser window holds many pages: "关闭当前窗口 / 这个网页" there usually means one tab, and

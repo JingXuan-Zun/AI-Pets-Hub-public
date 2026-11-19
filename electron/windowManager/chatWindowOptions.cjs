@@ -22,7 +22,7 @@ function createChatWindowOptionsBuilder({
       alwaysOnTop: false,
       autoHideMenuBar: true,
       backgroundColor: '#00000000',
-      title: 'AI Desktop Pet Chat',
+      title: 'AI Pets Hub Chat',
       webPreferences: {
         preload: path.join(baseDirectory, 'preload.cjs'),
         // Like the settings window: keep painting even when Windows thinks it is covered.

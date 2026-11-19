@@ -1,6 +1,11 @@
 const { createTopLevelWindowEnumeratorPowerShell } = require('./topLevelWindowEnumeratorPowerShell.cjs');
 
-function createFocusExistingAppWindowScript({ focusCandidates, hasPid, requestedPid, hasHwnd, requestedHwnd }) {
+// A browser tab titled "WeGame 官网" is not the WeGame app: when an installed app was found to
+// launch, browser windows that match only by title are skipped (README known issue, fixed
+// 2026-11-18). With no installed app, a matching page may be just what the user meant.
+const BROWSER_PROCESS_NAMES = ['chrome', 'msedge', 'firefox', 'brave', 'opera', 'vivaldi', 'iexplore', '360se', '360chrome', 'qqbrowser', 'sogouexplorer', '2345explorer', 'liebao', 'maxthon', 'ucbrowser', 'quark'];
+
+function createFocusExistingAppWindowScript({ focusCandidates, hasPid, requestedPid, hasHwnd, requestedHwnd, skipBrowserTitleOnly = false }) {
   return [
     String.raw`
 $ErrorActionPreference = 'Stop'
@@ -20,6 +25,10 @@ $requestedPid = `,
 $requestedHwnd = `,
     String.raw`${hasHwnd ? Math.round(requestedHwnd) : 0}`,
     String.raw`
+$skipBrowserTitleOnly = `,
+    String.raw`${skipBrowserTitleOnly ? '$true' : '$false'}`,
+    String.raw`
+$browserProcessNames = @('${BROWSER_PROCESS_NAMES.join("','")}')
 
 Add-Type -TypeDefinition @"
 using System;
@@ -69,6 +78,9 @@ foreach ($window in $windows) {
 
   $handleMatch = ($requestedHwnd -gt 0 -and [int64]$window.hwnd -eq $requestedHwnd)
   $pidMatch = ($requestedPid -gt 0 -and [int64]$window.pid -eq $requestedPid)
+  if ($skipBrowserTitleOnly -and $titleMatch -and -not ($handleMatch -or $pidMatch -or $processMatch) -and ($browserProcessNames -contains $processName)) {
+    continue
+  }
   if ($handleMatch -or $pidMatch -or $processMatch -or $titleMatch) {
     $matches += [PSCustomObject]@{
       Process = $window

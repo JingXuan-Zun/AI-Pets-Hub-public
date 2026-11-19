@@ -46,7 +46,7 @@ function snapshot(paths) {
 let cases = 0;
 try {
   const production = load('./persistedConfigStore.cjs');
-  assert.equal(cache.size, 9, 'Actual root loads its complete production graph');
+  assert.equal(cache.size, 10, 'Actual root loads its complete production graph');
   for (const source of ['primary', 'backup']) for (const fail of [false, true]) for (const includeModelSecrets of [false, true]) {
     const scenario = path.join(root, String(cases));
     const logA = [], logB = [];

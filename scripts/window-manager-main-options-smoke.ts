@@ -37,7 +37,7 @@ export function exerciseMainWindowOptions(factory = actual) {
         assert.equal(result.width, icon === 'conflict' ? 999 : expectedWidth); assert.equal(result.height, icon === 'conflict' ? 888 : expectedHeight);
         assert.equal(result.minWidth, minWidth); assert.equal(result.minHeight, minHeight); assert.equal(result.maxWidth, 8192); assert.equal(result.maxHeight, 1248);
         for (const [key, value] of Object.entries({ frame: false, transparent: true, focusable: false, hasShadow: false, resizable: true, show: false,
-          skipTaskbar: true, alwaysOnTop: true, autoHideMenuBar: true, backgroundColor: '#00000000', title: 'AI Desktop Pet' })) assert.equal(result[key], value);
+          skipTaskbar: true, alwaysOnTop: true, autoHideMenuBar: true, backgroundColor: '#00000000', title: 'AI Pets Hub' })) assert.equal(result[key], value);
         assert.deepEqual(result.webPreferences, { preload: path.join(deps.baseDirectory, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, ...(partition ? { partition } : {}) });
         if (icon === 'conflict') assert.equal(result.extra, marker); if (icon === 'symbol') assert.equal(result[symbol], marker);
         if (icon !== 'empty') assert.equal(result.icon, iconName);

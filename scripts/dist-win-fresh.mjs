@@ -46,8 +46,11 @@ function createBuildStamp(date = new Date()) {
 
 const buildStamp = createBuildStamp();
 const outputDir = path.join(releaseRoot, `build-${buildStamp}`);
-const artifactFileName = `AI-Desktop-Pet-${buildStamp}.exe`;
+const artifactFileName = `AI-Pets-Hub-${buildStamp}.exe`;
 const exePath = path.join(outputDir, artifactFileName);
+// The installer (11-19): installs once and starts fast; the portable exe unpacks 680 MB every start.
+const setupFileName = `AI-Pets-Hub-Setup-${buildStamp}.exe`;
+const setupPath = path.join(outputDir, setupFileName);
 const latestInfoPath = path.join(releaseRoot, 'LATEST_BUILD.txt');
 
 async function pathExists(targetPath) {
@@ -255,7 +258,7 @@ async function verifyPackagedWindowsIcons() {
 
   const expected = await readIconAverageSignature(windowsIconSignaturePath, 'png');
   const targets = [
-    path.join(outputDir, 'win-unpacked', 'AI Desktop Pet.exe'),
+    path.join(outputDir, 'win-unpacked', 'AI Pets Hub.exe'),
     exePath,
   ];
   const maximumAllowedDistance = 45;
@@ -306,15 +309,21 @@ await buildElectronApp({
       },
     ],
     forceCodeSigning: false,
+    nsis: { artifactName: setupFileName },
+    portable: { artifactName: artifactFileName },
     win: {
       artifactName: artifactFileName,
       icon: windowsIconPath,
-      // Keep resource editing enabled so win-unpacked/AI Desktop Pet.exe receives build/icon.ico.
+      // Keep resource editing enabled so win-unpacked/AI Pets Hub.exe receives build/icon.ico.
       signAndEditExecutable: true,
       target: [
         {
           arch: ['x64'],
           target: 'portable',
+        },
+        {
+          arch: ['x64'],
+          target: 'nsis',
         },
       ],
       verifyUpdateCodeSignature: false,
@@ -341,6 +350,7 @@ await writeFile(
   [
     `latest_build=${outputDir}`,
     `portable_exe=${exePath}`,
+    `setup_exe=${setupPath}`,
     ...sharedDirectoryLinks.map((entry) => `shared_dir=${entry}`),
     ...formatBaselineLines(packagingBaseline),
     `generated_at=${new Date().toISOString()}`,
@@ -356,3 +366,4 @@ if (copiedUnityRuntimeDir) {
 console.log('');
 console.log(`Latest build folder: ${outputDir}`);
 console.log(`Portable exe: ${exePath}`);
+console.log(`Installer: ${setupPath}`);

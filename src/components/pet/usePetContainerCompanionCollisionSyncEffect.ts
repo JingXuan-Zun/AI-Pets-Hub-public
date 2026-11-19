@@ -17,6 +17,8 @@ type PetCollisionEntry = {
 };
 
 interface UsePetContainerCompanionCollisionSyncEffectOptions {
+  /** Where each pet is on screen right now; differs from the saved position while she walks. */
+  companionRenderedPositionByIdRef?: MutableRefObject<Record<string, Position>>;
   config: PetConfig;
   configRef: MutableRefObject<PetConfig>;
   getScaledCompanionCollisionBounds: (
@@ -43,6 +45,7 @@ interface UsePetContainerCompanionCollisionSyncEffectOptions {
 }
 
 export function usePetContainerCompanionCollisionSyncEffect({
+  companionRenderedPositionByIdRef,
   config,
   configRef,
   getScaledCompanionCollisionBounds,
@@ -66,6 +69,14 @@ export function usePetContainerCompanionCollisionSyncEffect({
 
     currentConfig.companionPets.forEach((pet) => {
       if (!pet.enabled || !pet.modelVisible) {
+        return;
+      }
+
+      // A pet in the middle of a walk keeps clear of others step by step; moving her saved
+      // (starting) position here made her jump sideways (user report, 2026-11-18).
+      const live = companionRenderedPositionByIdRef?.current[pet.id];
+      if (live && (Math.abs(live.x - pet.position.x) > 2 || Math.abs(live.y - pet.position.y) > 2)) {
+        placedEntries.push({ id: pet.id, position: live, bounds: getScaledCompanionCollisionBounds(pet.id, pet.scale) });
         return;
       }
 
@@ -103,6 +114,7 @@ export function usePetContainerCompanionCollisionSyncEffect({
     configRef.current = nextConfig;
     onUpdateConfig(nextConfig, { normalize: false });
   }, [
+    companionRenderedPositionByIdRef,
     config.companionPets,
     configRef,
     getScaledCompanionCollisionBounds,

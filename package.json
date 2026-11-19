@@ -1,7 +1,7 @@
 {
   "name": "ai-pets-hub",
   "private": true,
-  "version": "0.4.4",
+  "version": "0.5.0",
   "type": "module",
   "main": "electron/bootstrap.cjs",
   "scripts": {
@@ -100,8 +100,8 @@
     "vite": "^6.2.0"
   },
   "build": {
-    "appId": "com.codex.desktoppet",
-    "productName": "AI Desktop Pet",
+    "appId": "com.aipetshub.app",
+    "productName": "AI Pets Hub",
     "directories": {
       "output": "release"
     },
@@ -132,9 +132,32 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "artifactName": "AI-Desktop-Pet-${version}.exe"
+      "artifactName": "AI-Pets-Hub-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "AI-Pets-Hub-${version}.exe"
+    },
+    "nsis": {
+      "artifactName": "AI-Pets-Hub-Setup-${version}.exe",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AI Pets Hub",
+      "uninstallDisplayName": "AI Pets Hub",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "runAfterFinish": true
     }
   },
   "overrides": {

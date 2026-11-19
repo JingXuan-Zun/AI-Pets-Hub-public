@@ -38,6 +38,8 @@ interface UsePetContainerMovementScaleRuntimeStateOptions {
   petPosRef: MutableRefObject<Position>;
   petVisualBounds: DirectionalExtents;
   setPetPos: (position: Position) => void;
+  /** Where each other pet is on screen right now (walking pets only save their position at the end). */
+  companionRenderedPositionByIdRef?: MutableRefObject<Record<string, Position>>;
 }
 
 export function usePetContainerMovementScaleRuntimeState({
@@ -53,9 +55,11 @@ export function usePetContainerMovementScaleRuntimeState({
   petPosRef,
   petVisualBounds,
   setPetPos,
+  companionRenderedPositionByIdRef,
 }: UsePetContainerMovementScaleRuntimeStateOptions) {
   const collisionClampState = usePetContainerCollisionClampHelpers({
     activityArea,
+    companionRenderedPositionByIdRef,
     clampPrimaryPetToAllowedAreaWithMetrics,
     clampPetToRenderedActivityAreaWithMetrics,
     configRef,

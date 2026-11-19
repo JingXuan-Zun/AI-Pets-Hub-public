@@ -20,7 +20,7 @@ function getAreaPickerWindowOptions(virtualBounds) {
     backgroundColor: '#00000000',
     enableLargerThanScreen: true,
     show: false,
-    title: 'AI Desktop Pet Area Picker',
+    title: 'AI Pets Hub Area Picker',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

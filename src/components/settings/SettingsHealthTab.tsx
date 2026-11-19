@@ -3,6 +3,7 @@ import type { PetConfig } from '../../types';
 import { createSelfCheckDeps } from '../../self-check/selfCheckDeps';
 import { readSelfCheckLog, runSelfCheck } from '../../self-check/selfCheckRunner';
 import type { SelfCheckEntry } from '../../self-check/selfCheckTypes';
+import { SettingsIncidentsSection } from './SettingsIncidentsSection';
 
 // 一键体检: runs every check that applies to the current settings, fixes what is safe to fix,
 // and lists the results with advice. The same check the character runs when asked.
@@ -28,6 +29,7 @@ export function SettingsHealthTab({ localConfig }: { localConfig: PetConfig }) {
   };
 
   return (
+    <div className="space-y-4">
     <section className="space-y-4 rounded-sm border border-border bg-secondary/20 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -68,5 +70,7 @@ export function SettingsHealthTab({ localConfig }: { localConfig: PetConfig }) {
         ) : <p className="text-xs text-muted-foreground">按现在的设置，没有需要检查的项目。</p>
       ) : null}
     </section>
+    <SettingsIncidentsSection />
+    </div>
   );
 }

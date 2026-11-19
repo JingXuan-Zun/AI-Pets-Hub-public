@@ -17,7 +17,7 @@ function inspect(file) {
     }
     if (ts.isCallExpression(n) && n.expression.getText(tree) === 'require' && ts.isStringLiteral(n.arguments[0]) && n.arguments[0].text.startsWith('./')) {
       const dependency = path.resolve(path.dirname(file), n.arguments[0].text);
-      assert.ok(/^(browserTts|localVoiceRuntime)/.test(path.basename(dependency)), 'Review new production dependency ' + dependency);
+      assert.ok(/^(browserTts|localVoiceRuntime|appHome)/.test(path.basename(dependency)), 'Review new production dependency ' + dependency);
       dependencies.push(dependency); inspect(dependency);
     }
     ts.forEachChild(n, visit);
@@ -39,5 +39,5 @@ const first = production.createBrowserTtsService({ app: { isPackaged: false, get
 const second = production.createBrowserTtsService({ app: { isPackaged: false, getPath: () => 'peer-user' }, projectRoot: 'peer' });
 assert.deepEqual(Object.keys(first), ['dispose', 'ensureStarted', 'getHealth', 'getSpeakers', 'installDependencies']);
 for (const name of Object.keys(first)) assert.notEqual(first[name], second[name]);
-assert.equal(graph.size, 16);
+assert.equal(graph.size, 17); // + appHome.cjs (big-files folder, 11-19)
 console.log('Browser TTS structure passed: ' + graph.size + ' reachable, acyclic production modules; ' + functions + ' functions; all files <=300 and functions <=50; exact public API and instance closures, no API invocation or process/install.');

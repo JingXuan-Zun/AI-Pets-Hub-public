@@ -11,7 +11,9 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const LAUNCHED_AT_LOGIN_ARG = '--launched-at-login';
-const LOGIN_ITEM_NAME = 'AI Desktop Pet';
+const LOGIN_ITEM_NAME = 'AI Pets Hub';
+// Names the entry had before (renamed 2026-11-18); an entry left under one is moved to the new name.
+const LEGACY_LOGIN_ITEM_NAMES = ['AI Desktop Pet'];
 const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
 
 /** Where Windows should start the pet from, or null in the dev app (it also needs Vite). */
@@ -32,17 +34,17 @@ function findOwnLaunchItems(settings) {
 }
 
 /** The exe in a `reg query` line for our Run value, or ''. */
-function parseRunValueExe(output) {
-  const line = String(output || '').split(/\r?\n/u).find((row) => row.includes(LOGIN_ITEM_NAME) && /REG_(?:EXPAND_)?SZ/u.test(row));
+function parseRunValueExe(output, name = LOGIN_ITEM_NAME) {
+  const line = String(output || '').split(/\r?\n/u).find((row) => row.includes(name) &&/REG_(?:EXPAND_)?SZ/u.test(row));
   const value = line ? (line.split(/REG_(?:EXPAND_)?SZ/u)[1] ?? '').trim() : '';
   const quoted = value.match(/^"([^"]+)"/u);
   return quoted ? quoted[1] : value.split(/\s+--/u)[0].trim();
 }
 
 /** The exe our Run value points at, whatever path it is (read-only), or ''. */
-function readRunValueExe() {
-  const result = spawnSync('reg.exe', ['query', RUN_KEY, '/v', LOGIN_ITEM_NAME], { encoding: 'utf8', timeout: 5000, windowsHide: true });
-  return result.status === 0 ? parseRunValueExe(result.stdout) : '';
+function readRunValueExe(name = LOGIN_ITEM_NAME) {
+  const result = spawnSync('reg.exe', ['query', RUN_KEY, '/v', name], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+  return result.status === 0 ? parseRunValueExe(result.stdout, name) : '';
 }
 
 function createAutoLaunchService({ app, env = process.env, isPackaged, log = () => {}, platform = process.platform, readRunExe = readRunValueExe }) {
@@ -69,6 +71,15 @@ function createAutoLaunchService({ app, env = process.env, isPackaged, log = () 
   const refreshMovedEntry = () => {
     if (!supported) return;
     try {
+      for (const legacyName of LEGACY_LOGIN_ITEM_NAMES) {
+        const legacyPath = readRunExe(legacyName);
+        if (!legacyPath) continue;
+        // Turned on under the old name: remove that entry and keep it on under the new one.
+        app.setLoginItemSettings({ args: target.args, enabled: false, name: legacyName, openAtLogin: false, path: legacyPath });
+        write(true);
+        log('auto-launch entry renamed', { from: legacyName, to: LOGIN_ITEM_NAME });
+        return;
+      }
       const registered = readRunExe();
       if (registered && !samePath(registered, target.path)) {
         write(true);
@@ -93,6 +104,7 @@ function registerAutoLaunchIpcHandlers({ ipcMain, service }) {
 
 module.exports = {
   LAUNCHED_AT_LOGIN_ARG,
+  LEGACY_LOGIN_ITEM_NAMES,
   LOGIN_ITEM_NAME,
   createAutoLaunchService,
   findOwnLaunchItems,

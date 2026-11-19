@@ -44,8 +44,12 @@ try {
   fs.writeFileSync(builtExe, newExeBytes);
   const keyPath = path.join(work, 'key.pem');
   fs.writeFileSync(keyPath, privateKey.export({ format: 'pem', type: 'pkcs8' }));
-  execFileSync(process.execPath, [path.join(project, 'scripts', 'build-app-update.mjs'), '--full', '--asar', asarPath, '--exe', builtExe, '--notes', '新安装包', '--key', keyPath], { cwd: checkout, encoding: 'utf8' });
+  const setupBytes = Buffer.from('MZ installer 0.4.4 '.repeat(4000));
+  const builtSetup = path.join(work, 'AI-Pets-Hub-Setup-0.4.4.exe');
+  fs.writeFileSync(builtSetup, setupBytes);
+  execFileSync(process.execPath, [path.join(project, 'scripts', 'build-app-update.mjs'), '--full', '--asar', asarPath, '--exe', builtExe, '--setup', builtSetup, '--notes', '新安装包', '--key', keyPath], { cwd: checkout, encoding: 'utf8' });
   const built = JSON.parse(JSON.parse(fs.readFileSync(path.join(checkout, 'release', 'app-update', 'latest.json'), 'utf8')).payload).versions[0];
+  same(built.setup.sha256, sha256(setupBytes), 'the list carries the installer too');
   same(built.exe.sha256, sha256(newExeBytes), 'the list carries the exe checksum');
   same(built.exe.size, newExeBytes.byteLength, 'and its size');
   check(built.exe.urls[0].endsWith('/updates/AI-Desktop-Pet-0.4.4.exe') && built.exe.urls[1].endsWith('/releases/download/v0.4.4/AI-Desktop-Pet-0.4.4.exe'), 'R2 first, GitHub second');
@@ -123,6 +127,41 @@ try {
   await clash.check();
   same((await clash.download('0.4.4')).ok, true, 'a name clash still installs');
   check(fs.existsSync(path.join(petFolder, 'AI-Desktop-Pet-0.4.3 (v0.4.4).exe')) && fs.readFileSync(oldExe, 'utf8') === 'MZ old exe 0.4.3', 'without overwriting the running exe');
+
+  // The installed app (11-19): the installer goes to the update folder, runs silently on restart,
+  // and is deleted once its version runs.
+  const installDir = path.join(work, 'Programs', 'AI Pets Hub');
+  fs.mkdirSync(installDir, { recursive: true });
+  const installedExe = path.join(installDir, 'AI Pets Hub.exe');
+  const setupEntry = { ...built.setup, urls: ['mem://setup'] };
+  const installedUserData = path.join(work, 'installed-user-data');
+  const installedRoot = path.join(installedUserData, 'app-updates');
+  const setupList = (entry) => {
+    const payload = JSON.stringify({ versions: [{ exe: exeEntry, ...(entry ? { setup: entry } : {}), kind: 'full', version: '0.4.4' }, { kind: 'full', version: '0.4.3' }] });
+    return { payload, signature: sign(null, Buffer.from(payload), privateKey).toString('base64') };
+  };
+  let installedList = setupList(setupEntry);
+  const installedFetch = async (url) => (url === 'mem://latest' ? { json: async () => installedList, ok: true, status: 200 } : url === 'mem://setup' ? new Response(setupBytes) : { ok: false, status: 404 });
+  const installed = createAppUpdateService({ app: { getAppPath: () => appDir, getPath: () => installedUserData, getVersion: () => '0.4.3' }, electronVersion, fetchImpl: installedFetch, publicKey: publicPem, sources: ['mem://latest'], target: { exe: installedExe, kind: 'installed' } });
+  let installedStatus = await installed.check();
+  same(installedStatus.installKind, 'installed', 'the installed app knows it is installed');
+  same(installedStatus.versions[0].action, 'install', 'it installs the new version itself');
+  same(installedStatus.versions[0].size, setupBytes.byteLength, 'the size shown is the installer\'s');
+  same((await installed.download('0.4.4')).ok, true, 'installer downloaded and checked');
+  const setupFile = path.join(installedRoot, 'installers', 'AI-Pets-Hub-Setup-0.4.4.exe');
+  check(fs.existsSync(setupFile) && !fs.readdirSync(installDir).length, 'into the update folder, not the install folder');
+  const plan = installed.restartPlan();
+  check(plan.execPath === setupFile && ['/S', '--force-run', '--updated'].every((arg) => plan.args.includes(arg)), 'restart runs it silently, then the new version');
+  check(plan.args.includes('/currentuser'), 'for this user (not installed under Program Files)');
+  finishFullInstall({ readState, root: installedRoot, runningVersion: '0.4.3', writeState, retries: 0 });
+  check(fs.existsSync(setupFile) && readState(installedRoot).fullInstall, 'still the old version running: the installer stays');
+  finishFullInstall({ readState, root: installedRoot, runningVersion: '0.4.4', writeState, retries: 0 });
+  check(!fs.existsSync(setupFile) && !readState(installedRoot).fullInstall, 'the new version removes the installer');
+  installedList = setupList(null);
+  installedStatus = await installed.check();
+  same(installedStatus.versions[0].action, 'full', 'a version without an installer: the release page');
+  const { setupArgs } = require(path.join(project, 'electron', 'appUpdateFullInstall.cjs'));
+  check(setupArgs({ exe: 'C:\\Program Files\\AI Pets Hub\\AI Pets Hub.exe' }, { ProgramFiles: 'C:\\Program Files' }).includes('/allusers'), 'installed for all users: the installer is told so');
 
   console.log(`app update full install smoke ok: ${checks} checks`);
 } finally {

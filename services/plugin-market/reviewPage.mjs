@@ -20,6 +20,10 @@ input{padding:6px 10px;border:1px solid #ddd;border-radius:8px;width:280px}
 <form id="login"><input id="token" type="password" placeholder="审核密码" autocomplete="off"> <button class="ok">进入</button></form>
 <p id="status" class="meta"></p>
 <div id="list"></div>
+<h1>问题报告（病例）</h1>
+<p class="meta">用户同意后发来的报错，同一个问题合成一条。修好后标上修好的版本，用户那边会提示更新。</p>
+<p id="incStatus" class="meta"></p>
+<div id="incidents"></div>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -52,6 +56,33 @@ async function load() {
     actions.append(zip, ok, no); card.append(actions); return card;
   }));
 }
-$('login').onsubmit = (event) => { event.preventDefault(); token = $('token').value.trim(); sessionStorage.setItem('plugin-review-token', token); load(); };
+async function loadIncidents() {
+  if (!token) return;
+  const res = await api('/review/incidents');
+  if (!res.ok) { $('incStatus').textContent = res.status === 401 ? '' : '问题报告读取失败（' + res.status + '）。'; return; }
+  const data = await res.json();
+  const open = data.items.filter((item) => !item.fixed_in).length;
+  $('incStatus').textContent = data.items.length ? '共 ' + data.items.length + ' 个问题，未修 ' + open + ' 个。' : '还没有问题报告。';
+  $('incidents').replaceChildren(...data.items.map((item) => {
+    const card = el('div', undefined, 'card');
+    card.append(el('h3', '[' + item.fingerprint.slice(0, 8) + '] ' + item.title));
+    card.append(el('div', item.source + ' · ' + item.kind + '　' + item.total + ' 次 · ' + item.reporters + ' 台电脑　最近 ' + item.last_seen + '　首次 ' + item.first_seen, 'meta'));
+    card.append(el('div', '版本：' + item.versions.join('、') + '　系统：' + item.oses.join('、'), 'meta'));
+    if (item.fixed_in) card.append(el('div', '已在 v' + item.fixed_in + ' 修复' + (item.note ? '：' + item.note : ''), 'warn'));
+    if (item.frames.length) card.append(el('pre', item.frames.map((f) => f.fn + ' · ' + f.file + (f.line ? ':' + f.line : '')).join('\\n')));
+    const actions = el('div'); actions.style.marginTop = '10px';
+    const fix = el('button', item.fixed_in ? '改修复版本' : '标记已修复', 'ok');
+    fix.onclick = async () => {
+      const version = prompt('在哪个版本修好的？（如 0.4.5，清空则取消标记）', item.fixed_in || '');
+      if (version === null) return;
+      const note = version ? (prompt('备注（可不填）', item.note || '') || '') : '';
+      await fetch('/review/incidents/' + item.fingerprint + '/fixed', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ version: version.trim() || null, note }) });
+      loadIncidents();
+    };
+    actions.append(fix); card.append(actions); return card;
+  }));
+}
+$('login').onsubmit = (event) => { event.preventDefault(); token = $('token').value.trim(); sessionStorage.setItem('plugin-review-token', token); load(); loadIncidents(); };
 load();
+loadIncidents();
 </script></body></html>`;

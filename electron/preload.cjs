@@ -33,6 +33,19 @@ contextBridge.exposeInMainWorld('desktopPetShell', {
     setAutoDownload: (enabled) => ipcRenderer.invoke('desktop-pet:app-update-set-auto', { enabled }),
   },
   exportDiagnostics: () => ipcRenderer.invoke('desktop-pet:export-diagnostics'),
+  incidents: {
+    list: () => ipcRenderer.invoke('desktop-pet:incidents-list'),
+    get: (fingerprint) => ipcRenderer.invoke('desktop-pet:incidents-get', String(fingerprint ?? '')),
+    preview: () => ipcRenderer.invoke('desktop-pet:incidents-preview'),
+    setConsent: (value) => ipcRenderer.invoke('desktop-pet:incidents-set-consent', value === 'yes' ? 'yes' : 'no'),
+    remove: (fingerprint) => ipcRenderer.invoke('desktop-pet:incidents-remove', String(fingerprint ?? '')),
+    uploadNow: () => ipcRenderer.invoke('desktop-pet:incidents-upload-now'),
+    onNew: (callback) => {
+      const listener = (_event, incident) => callback(incident);
+      ipcRenderer.on('desktop-pet:incident-new', listener);
+      return () => ipcRenderer.removeListener('desktop-pet:incident-new', listener);
+    },
+  },
   prepareDeepSeekHarnessProfile: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-prepare-profile', request ?? {}),
   validateDeepSeekHarnessSetup: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-validate-setup', request ?? {}),
   runDeepSeekHarness: (request) => ipcRenderer.invoke('desktop-pet:deepseek-harness-run', request ?? {}),

@@ -369,7 +369,7 @@ function createObservationStatusSummary(analysis: ParsedGameAnalysis) {
 
 function isDesktopPetWindowInfo(windowInfo: { processName?: string; title?: string } | null) {
   const text = `${windowInfo?.title ?? ''} ${windowInfo?.processName ?? ''}`.toLowerCase();
-  return text.includes('ai desktop pet') || text.includes('desktop pet') || text.includes('electron');
+  return text.includes('ai pets hub') || text.includes('ai desktop pet') || text.includes('desktop pet') || text.includes('electron');
 }
 
 function createGameIdentityMetadata(options: {

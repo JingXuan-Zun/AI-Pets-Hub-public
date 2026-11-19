@@ -90,6 +90,8 @@ interface UsePetContainerRecoveryEffectsOptions {
   petCollisionBounds: DirectionalExtents;
   petPos: Position;
   petPosRef: MutableRefObject<Position>;
+  /** Where each other pet is on screen right now (walking pets are left to their own collision steps). */
+  companionRenderedPositionByIdRef?: MutableRefObject<Record<string, Position>>;
   petVisualBounds: DirectionalExtents;
   previousCompanionVisualBoundsByIdRef: MutableRefObject<Record<string, DirectionalExtents>>;
   previousPetVisualBoundsRef: MutableRefObject<DirectionalExtents>;
@@ -179,6 +181,7 @@ export function usePetContainerRecoveryEffects({
   clampPetToRenderedActivityAreaWithMetrics,
   clearRecovered3DVisibilitySignature,
   companionDragState,
+  companionRenderedPositionByIdRef,
   companionVisualBoundsById,
   config,
   configRef,
@@ -208,7 +211,7 @@ export function usePetContainerRecoveryEffects({
     setPetPos, showPetActions,
   });
   usePetContainerCompanionCollisionSyncEffect({
-    config, configRef, getScaledCompanionCollisionBounds, getScaledCompanionVisualBounds, onUpdateConfig,
+    companionRenderedPositionByIdRef, config, configRef, getScaledCompanionCollisionBounds, getScaledCompanionVisualBounds, onUpdateConfig,
     petCollisionBounds, petPos, petPosRef, resolvePetPositionAgainstEntries,
   });
 }

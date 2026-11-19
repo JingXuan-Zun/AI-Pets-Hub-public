@@ -2,9 +2,10 @@
 //
 // Full release (after electron-builder made the exe): record what is inside it, so later hot
 // updates know which files changed, and list the full version:
-//   node scripts/build-app-update.mjs --full --asar release/<dir>/win-unpacked/resources/app.asar --exe release/v<version>/AI-Desktop-Pet-<version>.exe --notes "…"
+//   node scripts/build-app-update.mjs --full --asar release/<dir>/win-unpacked/resources/app.asar --exe release/v<version>/AI-Pets-Hub-<version>.exe --setup release/v<version>/AI-Pets-Hub-Setup-<version>.exe --notes "…"
 // With --exe the list also carries that exe (name, size, sha256, R2 + GitHub addresses), so
-// installed copies download and switch to it from inside the app; upload the exe to both.
+// portable copies download and switch to it from inside the app; --setup does the same with the
+// installer for installed copies (11-19). Upload each listed file to both.
 // Hot update (after `npm run build` for the new version): zip only the files that differ from the
 // installed exe's, and list it:
 //   node scripts/build-app-update.mjs --hot --base 0.4.0 --notes "…"
@@ -111,13 +112,18 @@ if (args.includes('--full')) {
   console.log(`files-${version}.json: ${Object.keys(hashes).length} files in the exe.`);
   const exePath = option('exe');
   if (exePath && !fs.existsSync(exePath)) throw new Error(`--exe not found: ${exePath}`);
-  const exe = exePath ? (() => {
-    const bytes = fs.readFileSync(exePath);
-    const name = path.basename(exePath);
+  const setupPath = option('setup');
+  if (setupPath && !fs.existsSync(setupPath)) throw new Error(`--setup not found: ${setupPath}`);
+  const listed = (file) => {
+    const bytes = fs.readFileSync(file);
+    const name = path.basename(file);
     console.log(`${name}: ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB, listed for in-app install.`);
     return { name, sha256: sha256(bytes), size: bytes.byteLength, urls: [`${R2}/${name}`, `${REPO}/releases/download/v${version}/${name}`] };
-  })() : undefined;
-  publish({ ...(exe ? { exe } : {}), kind: 'full', notes, page: `${REPO}/releases/tag/v${version}`, publishedAt, shell: shellFingerprint(pkg, electronVersion), version });
+  };
+  const exe = exePath ? listed(exePath) : undefined;
+  const setup = setupPath ? listed(setupPath) : undefined;
+  if (exe && setup && exe.name === setup.name) throw new Error('--exe and --setup need different file names.');
+  publish({ ...(exe ? { exe } : {}), ...(setup ? { setup } : {}), kind: 'full', notes, page: `${REPO}/releases/tag/v${version}`, publishedAt, shell: shellFingerprint(pkg, electronVersion), version });
 } else if (args.includes('--hot')) {
   const baseVersion = option('base');
   const base = JSON.parse(fs.readFileSync(path.join(out, `files-${baseVersion}.json`), 'utf8'));

@@ -30,7 +30,7 @@ export function exerciseChatWindowOptions(factory=actualFactory) {
         const result=build(input,settings);assert.equal(result.maxWidth,8192);assert.equal(result.maxHeight,1248);assert.notEqual(result,input);assert.equal(result.minWidth,minimumWidth);assert.equal(result.minHeight,minimumHeight);
         assert.equal(result.resizable,false);assert.equal(result.transparent,true);assert.equal(result.frame,false);assert.equal(result.hasShadow,false);assert.equal(result.thickFrame,false);
         assert.equal(result.show,false);assert.equal(result.alwaysOnTop,false);assert.equal(result.skipTaskbar,false);assert.equal(result.autoHideMenuBar,true);
-        assert.equal(result.backgroundColor,'#00000000');assert.equal(result.title,'AI Desktop Pet Chat');
+        assert.equal(result.backgroundColor,'#00000000');assert.equal(result.title,'AI Pets Hub Chat');
         assert.deepEqual(result.webPreferences,{preload:path.join(options.baseDirectory,'preload.cjs'),backgroundThrottling:false,contextIsolation:true,nodeIntegration:false,sandbox:true,...(partition?{partition}:{})});
         if(mode!=='null')assert.equal(result.extra,marker);
         if(icon==='symbol')assert.equal(result[symbol],marker);

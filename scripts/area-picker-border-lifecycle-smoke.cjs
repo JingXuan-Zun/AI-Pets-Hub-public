@@ -82,7 +82,7 @@ async function main() {
     hash.update(JSON.stringify(actual) + '\n'); cases++;
   }
   const fingerprint = hash.digest('hex');
-  assert.equal(fingerprint, 'ecf50a8b56ff4d2f53f7f219529e61d745e50b91e2389824a700e4416112c642', 'Reviewed border state transitions and call/error order');
+  assert.equal(fingerprint, '6fb4df6bffddb462f7dd69dad0e6bc49089d6f571949986836ad0224eb4e1302', 'Reviewed border state transitions and call/error order');
   console.log('Area border lifecycle passed: ' + cases + ' sequence/loading/reuse/destroy/refresh/error/instance cases; real rules and window helper, controlled Electron.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

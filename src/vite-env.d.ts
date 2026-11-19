@@ -1077,6 +1077,7 @@ interface Window {
     };
     /** Saves a diagnostics text file (no chat text, no keys) where the user picks. */
     exportDiagnostics?: () => Promise<{ cancelled?: boolean; error?: string; ok: boolean; path?: string }>;
+    incidents?: import('./incidents/incidentTypes').IncidentBridge;
     knownFolders?: {
       list: () => Promise<{ drives?: string[]; error?: string; folders?: Array<{ label: string; path: string }>; ok: boolean }>;
       reveal: (path: string) => Promise<{ error?: string; kind?: 'directory' | 'file'; ok: boolean; path?: string }>;

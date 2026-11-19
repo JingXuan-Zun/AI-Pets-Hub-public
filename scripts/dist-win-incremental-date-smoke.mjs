@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -27,7 +28,7 @@ const generatedAtText = latestInfo.get('incremental_generated_at');
 assert.ok(latestBuild, 'LATEST_BUILD.txt must contain latest_build.');
 assert.ok(generatedAtText, 'LATEST_BUILD.txt must contain incremental_generated_at.');
 
-const launcherPath = path.join(latestBuild, 'win-unpacked', 'AI Desktop Pet.exe');
+const launcherPath = (fs.existsSync(path.join(latestBuild, 'win-unpacked', 'AI Pets Hub.exe')) ? path.join(latestBuild, 'win-unpacked', 'AI Pets Hub.exe') : path.join(latestBuild, 'win-unpacked', 'AI Desktop Pet.exe'));
 const launcherStat = await stat(launcherPath);
 const generatedAt = new Date(generatedAtText);
 const timestampToleranceMs = 2_000;

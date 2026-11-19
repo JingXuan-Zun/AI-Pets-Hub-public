@@ -1,3 +1,4 @@
+import { useIncidentConcern } from '../../incidents/useIncidentConcern';
 import { useCallback, useEffect, useRef } from 'react';
 import { type AgentChatCommandHandler } from '../../agent/agentChatCommand';
 import { desktopPetChatStore, useDesktopPetChatStore } from '../../chatStore';
@@ -116,6 +117,7 @@ export function usePetChatSession({
   const captureSharedUserMemory = useSharedUserMemoryCapture({ configRef, onUpdateConfig });
   const updateCharacterCognition = useCharacterCognition({ configRef });
   useProactiveSpeech({ configRef });
+  useIncidentConcern({ configRef });
   useRelationshipSelfReview({ configRef, onUpdateConfig });
   const onReplyCompleted = useCallback((event: NeuralMemoryReplyCompletedEvent) => {
     captureSharedUserMemory(event);

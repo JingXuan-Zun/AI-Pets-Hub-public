@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
-  <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
+  <img src="https://img.shields.io/badge/Electron-45-47848F?logo=electron&logoColor=white" alt="Electron 45" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
   <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><img src="https://img.shields.io/github/v/release/JingXuan-Zun/AI-Pets-Hub-public?label=release&color=D4518E" alt="Latest release" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
@@ -60,7 +60,7 @@
   <img src="./docs/image/screenshot-preview-main.webp" alt="Three characters on the desktop (2D video, Live2D, MMD) next to the chat window" width="880">
 </p>
 
-<p align="center"><sub>Screenshots use demo characters; you bring your own character models and voices. The app UI is in Chinese.</sub></p>
+<p align="center"><sub>Screenshots use demo characters. The built-in character Xiaoling works right after download; for other characters you bring your own models and voices. The app UI is in Chinese.</sub></p>
 
 ---
 
@@ -100,12 +100,20 @@ See [How it works](./docs/project-overview.en.md#the-conversation-loop-chatting-
 
 ## 🚀 Quick Start
 
-### Option 1: Download the portable build (recommended)
+### Option 1: Download the installer (recommended) or the portable build
 
-1. Open the [Releases page](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest) and download `AI-Desktop-Pet-<version>.exe`.
-2. Double-click to run — no installer needed.
-3. Fill in your model service as described in [First-run setup](#first-setup).
-4. Later versions update inside the app: Settings → Overview → Current version (from v0.4.0).
+Open the [Releases page](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest) and pick one:
+
+| Download | For | Notes |
+|---|---|---|
+| `AI-Pets-Hub-Setup-<version>.exe` (installer, recommended) | Most people | Install once, then it opens in two or three seconds; choose the folder, no admin rights needed; Start menu and desktop shortcuts, uninstall from Settings → Apps (your chats and characters are kept) |
+| `AI-Pets-Hub-<version>.exe` (portable) | USB sticks, no install | Double-click and go; it unpacks itself on every start, so it opens more slowly (roughly 10–25 seconds) |
+
+1. Run the download (the installer walks you through setup).
+2. Fill in a model service as described in [First-run setup](#first-setup).
+3. Later versions update inside the app under Settings → Overview → Current version, for both downloads.
+
+Big files (voice environment, voice packs, imported models): the portable build keeps them next to its exe; the installed app keeps them in `AI Pets Hub Data` next to its install folder (updates and uninstalling leave it alone). Switching from portable to installed finds the voices you already set up.
 
 > [!NOTE]
 > The app is not yet code-signed, so Windows SmartScreen may show a warning. Make sure the file came from this repository's Releases page before running it; you can also check it against the published SHA-256 file.
@@ -170,7 +178,8 @@ To adjust things later, open the **Settings center**:
 - **Many character formats** — 2D images / video, Live2D (PixiJS + Cubism), 3D models such as VRM / GLTF / GLB / FBX, **MMD (PMX / PMD) models with VMD motions**, plus a Unity runtime bridge.
 - **Real physics** — MMD hair and skirts swing with the model's own rigid bodies and joints; drag a character and they sway along, then settle on their own.
 - **Motion and expressions** — Idle, drag, click reactions, and emotional expressions are scheduled by one runtime; 2D video pets rotate through library folders and play clips matching the current emotion.
-- **Several pets at once** — Place multiple characters on screen, each configured independently; drag them in settings to reorder.
+- **Several pets at once** — Place multiple characters on screen, each configured independently; drag them in settings to reorder, and hide or turn off any of them, the first one included.
+- **Start with Windows** — One switch in settings and she is there when your computer starts.
 - **Separate windows** — Pets, chat, and settings are independent windows that share one state.
 
 ### 🎨 Pink Glass Theme
@@ -185,7 +194,7 @@ A pink glass look across the chat window and settings center; the settings cente
 
 - **Three modes** — Solo chat for one-on-one company; group chat where characters talk and reply to each other; story mode for playing out a scene.
 - **Hand a task over by name** — While chatting with one character, say "have XX help me…" and another character takes over, answering under her own name and in her own voice.
-- **Every character speaks up** — Startup greetings, getting hungry, growing closer: each character speaks in her own manner.
+- **They speak up when something is on their mind** — Each character has her own mood and things she keeps thinking about (say, the interview you mentioned); once it builds up she brings that up, never in quiet hours, right after you spoke, or while you are away.
 - **Personality and knowledge** — Every character has its own name, personality, system prompt, knowledge base, and conversation context; SillyTavern presets can be imported and switched entry by entry.
 - **Long chats without forgetting** — History stays on your machine, and very long conversations get automatic summaries.
 - **Long chats that stay cheap** — Requests are laid out so the model service can reuse its cache (DeepSeek, measured: about 95% of each message billed at the cache price), so long conversations cost far less.
@@ -279,7 +288,7 @@ See [The Agent Loop](#agent-loop) above for how it works.
 - **Build plugins together** — Nothing in the market fits? Describe what you want and she writes a skill or a small tool and installs it.
 - **MCP** — Paste the config from a README into "Add MCP tool"; once added it gets a plain one-line description, she knows which tools are installed and what each does, and screenshots a tool returns appear in the chat.
 - **Her own browser** — The app comes with a separate browser (its own data, not shared with your browser or accounts); with the chrome-devtools plugin she opens pages, clicks, fills in forms and takes screenshots there, without pulling the focus away from the window you are using. Click "Open her browser" on the plugin page and sign in her accounts.
-- **QQ** — Connect QQ through SnowLuma to chat on your phone, send pictures and voice messages; she replies with voice messages in her own voice.
+- **QQ** — Connect QQ through NapCat (or another OneBot v11 tool) to chat on your phone, send pictures and voice messages; she replies with voice messages in her own voice.
 - **WeChat** — Scan a QR code with phone WeChat (official ClawBot channel, no desktop WeChat needed); family members can each connect; her voice is sent as a short video.
 - **ComfyUI image generation** — Connect your own ComfyUI (another computer on your network works too), say "draw…" and she writes the prompt and draws in the background; the image appears in the chat and on QQ / WeChat; with the sync extension, settings you change in ComfyUI are picked up automatically.
 - **Model setups** — Save several model setups (OpenAI-compatible / Gemini) and switch with one click when one has trouble, or just tell her "switch to the backup model".
@@ -292,7 +301,7 @@ See [The Agent Loop](#agent-loop) above for how it works.
 ### 🔄 Updates
 
 - **Update inside the app** — Settings → Overview → click "Current version" to see every version and its notes, and pick one; by default new versions download in the background and you are asked before restarting.
-- **Only what changed** — Usually a few MB instead of the whole program; versions that change the foundation (Electron or dependencies) point you to the full download.
+- **Only what changed** — Usually a few MB instead of the whole program; versions that change the foundation (Electron or dependencies) download the new program inside the app too: the portable build switches to the new exe on restart and removes the old one (from v0.4.4); the installed app installs it quietly on restart and opens again (from v0.5.0).
 - **Switch back** — Don't like a new version? Go back to an earlier one or to the version your download came with.
 - **Safe if something breaks** — The version list is signed and every file is checked; a version that fails to start rolls back to the last one that worked, and you are told.
 - Available from **v0.4.0**: if you are on v0.3.x, download the full v0.4.0 once.
@@ -387,7 +396,7 @@ What she can and can't do, when she asks you, and what data leaves your computer
 | Interactive dialogue (video call) | 🧪 Preview | The character talks with you in the chat window; lip sync and expressions are in progress |
 | 2D / Live2D / VRM / MMD characters | ⚙️ Needs assets | Runtimes are ready; bring your own models and motions |
 | Plugin market / install from a link | ✅ Ready | Skills, MCP tools, plugin packages; GitHub plugins install only after you agree |
-| QQ / WeChat | ✅ Ready | QQ needs SnowLuma; WeChat uses the official ClawBot channel, voice is sent as a short video |
+| QQ / WeChat | ✅ Ready | QQ through NapCat or another OneBot tool; WeChat uses the official ClawBot channel, voice is sent as a short video |
 | Her own browser (chrome-devtools) | ✅ Ready | Needs Node.js and Chrome; you sign in her accounts |
 | ComfyUI image generation | ✅ Ready | Tested with a real ComfyUI on another computer; workflows differ, some need the prompt box picked by hand |
 | In-app updates | ✅ Ready | From v0.4.0 |
@@ -399,11 +408,7 @@ What she can and can't do, when she asks you, and what data leaves your computer
 
 **Known issues**
 
-- When opening an app, a browser tab whose title contains the app's name may be switched to instead of launching the app.
 - English app names spoken aloud are often misrecognized; Chinese names work better.
-- 2D video characters can't yet play a specific clip by name on request.
-- After switching characters in the chat sidebar, the chat window only follows once reopened.
-- App windows do not yet enable the sandbox or a CSP.
 
 **Focus areas**
 

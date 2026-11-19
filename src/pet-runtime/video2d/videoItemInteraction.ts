@@ -9,6 +9,21 @@ export function subscribeVideoItemInteractions(listener: Listener) {
   return () => { listeners.delete(listener); };
 }
 
+// Clips asked for by name ("跳个舞" → the 跳舞/ folder, 2026-11-18): always listened to, unlike
+// item interactions, which follow the per-model switch.
+const clipListeners = new Set<Listener>();
+
+export function subscribeVideoClipRequests(listener: Listener) {
+  clipListeners.add(listener);
+  return () => { clipListeners.delete(listener); };
+}
+
+/** Plays one clip from that folder on every video pet showing this model; false when none listens. */
+export function publishVideoClipRequest(request: VideoItemInteraction) {
+  clipListeners.forEach((listener) => listener(request));
+  return clipListeners.size > 0;
+}
+
 export function publishVideoItemInteraction(config: PetConfig, folder: FolderItem) {
   if (config.modelType !== '2d' || !folder.appearanceId) return false;
   const preset = config.customModelPresets.find((item) => (

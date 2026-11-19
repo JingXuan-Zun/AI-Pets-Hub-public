@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { unzipSync } = require('fflate');
 const { APP_UPDATE_PUBLIC_KEY, APP_UPDATE_SOURCES } = require('./appUpdateKey.cjs');
-const { canInstallFull, downloadFullExe, finishFullInstall, portableExePath } = require('./appUpdateFullInstall.cjs');
+const { canInstallFull, currentInstallTarget, downloadFullExe, finishFullInstall, fullDownloadFor, setupArgs } = require('./appUpdateFullInstall.cjs');
 const {
   checkVersionFolder,
   compareVersions,
@@ -48,7 +48,9 @@ function describeVersions(versions, { bad = [], builtInVersion, canInstall = () 
   return all
     .sort((a, b) => compareVersions(b.version, a.version))
     .map((entry) => {
-      const base = { kind: entry.kind === 'full' ? 'full' : 'hot', notes: String(entry.notes ?? ''), page: entry.page ?? '', publishedAt: entry.publishedAt ?? '', size: entry.zip?.size ?? entry.exe?.size ?? 0, version: entry.version };
+      // A full version's size: what this install would download (new exe or installer).
+      const fullSize = (canInstall(entry) && canInstall.download?.(entry)?.size) || entry.exe?.size;
+      const base = { kind: entry.kind === 'full' ? 'full' : 'hot', notes: String(entry.notes ?? ''), page: entry.page ?? '', publishedAt: entry.publishedAt ?? '', size: entry.zip?.size ?? fullSize ?? 0, version: entry.version };
       if (entry.version === current) return { ...base, action: 'current' };
       if (entry.version === next) return { ...base, action: 'pending' };
       if (entry.version === builtInVersion) return { ...base, action: 'builtin' };
@@ -61,7 +63,12 @@ function describeVersions(versions, { bad = [], builtInVersion, canInstall = () 
     });
 }
 
-function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, sources = APP_UPDATE_SOURCES, publicKey = APP_UPDATE_PUBLIC_KEY, electronVersion = process.versions.electron, portableExe = portableExePath() }) {
+// `target`: how this copy runs (portable exe or installed, see currentInstallTarget); tests may
+// pass `portableExe` (a path, or null for the dev app) instead.
+function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, sources = APP_UPDATE_SOURCES, publicKey = APP_UPDATE_PUBLIC_KEY, electronVersion = process.versions.electron, portableExe, target: givenTarget }) {
+  let target = givenTarget;
+  if (target === undefined) target = portableExe !== undefined ? (portableExe ? { exe: portableExe, kind: 'portable' } : null) : currentInstallTarget({ isPackaged: app.isPackaged !== false });
+  portableExe = target?.kind === 'portable' ? target.exe : null;
   const boot = global.__appUpdateBoot ?? { builtIn: true, version: app.getVersion() };
   const appPath = app.getAppPath();
   const builtInPackage = JSON.parse(fs.readFileSync(path.join(appPath, 'package.json'), 'utf8'));
@@ -77,7 +84,8 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
   const nextLaunch = (state) => state.fullInstall?.version ?? state.pending ?? state.active ?? builtInPackage.version;
   const context = () => {
     const state = readState(root);
-    return { bad: state.bad ?? [], builtInVersion: builtInPackage.version, canInstall: (entry) => canInstallFull(entry, portableExe), current: boot.version, next: nextLaunch(state), shell };
+    const canInstall = Object.assign((entry) => canInstallFull(entry, target), { download: (entry) => fullDownloadFor(entry, target) });
+    return { bad: state.bad ?? [], builtInVersion: builtInPackage.version, canInstall, current: boot.version, next: nextLaunch(state), shell };
   };
 
   function status() {
@@ -93,6 +101,8 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
       progress,
       notice: boot.notice ?? null,
       ok: true,
+      /** portable | installed | null: what a full version's download is (new exe or installer). */
+      installKind: target?.kind ?? null,
       /** Set when a restart switches to another version. */
       pending: nextLaunch(state) !== boot.version ? nextLaunch(state) : null,
       versions: catalog ? describeVersions(catalog.versions, context()) : [],
@@ -197,17 +207,19 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
     }
   }
 
-  /** A new exe next to the current one; the restart starts it (restartTarget). */
+  /** A new exe next to the current one, or the new installer; the restart starts it (restartPlan). */
   async function installFull(entry) {
+    const size = fullDownloadFor(entry, target).size;
     downloading = entry.version;
-    progress = { received: 0, total: entry.exe.size };
+    progress = { received: 0, total: size };
     try {
       const fallbackFolder = path.join(root, 'installers');
-      const onProgress = (received) => { progress = { received, total: entry.exe.size }; };
-      const newExe = await downloadFullExe(entry, { fallbackFolder, fetchImpl, onProgress, portableExe });
+      const onProgress = (received) => { progress = { received, total: size }; };
+      const newExe = await downloadFullExe(entry, { fallbackFolder, fetchImpl, onProgress, target });
       const previous = readState(root).fullInstall;
       if (previous?.newExe && previous.newExe !== newExe) fs.rmSync(previous.newExe, { force: true });
-      writeState(root, { ...readState(root), fullInstall: { newExe, oldExe: portableExe, version: entry.version } });
+      const fullInstall = target.kind === 'installed' ? { kind: 'setup', newExe, version: entry.version } : { newExe, oldExe: portableExe, version: entry.version };
+      writeState(root, { ...readState(root), fullInstall });
       log?.('app update: new exe ready', { version: entry.version });
       return { ok: true, version: entry.version };
     } catch (error) {
@@ -222,11 +234,17 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
 
   /** The exe a restart should start instead of this one, or null. Hot updates are left behind. */
   function restartTarget() {
+    return restartPlan()?.execPath ?? null;
+  }
+
+  /** What a restart starts instead of this app ({ execPath, args }), or null for a plain restart. */
+  function restartPlan() {
     const state = readState(root);
     const newExe = state.fullInstall?.newExe;
     if (!newExe || !fs.existsSync(newExe)) return null;
     writeState(root, { ...state, active: null, pending: null });
-    return newExe;
+    // The installer runs silently over this install, then starts the new version.
+    return state.fullInstall.kind === 'setup' && target ? { args: setupArgs(target), execPath: newExe } : { args: [], execPath: newExe };
   }
 
   /** Keeps the running version and the one waiting for the next launch. */
@@ -275,9 +293,9 @@ function createAppUpdateService({ app, log, fetchImpl = globalThis.fetch, source
   }
 
   /** First start of a new exe: remove the one it replaced. */
-  const finishInstall = () => finishFullInstall({ log, portableExe, readState, root, writeState });
+  const finishInstall = () => finishFullInstall({ log, portableExe, readState, root, runningVersion: builtInPackage.version, writeState });
 
-  return { autoUpdate, check, download, finishInstall, restartTarget, revert, setAutoDownload, status, stay };
+  return { autoUpdate, check, download, finishInstall, restartPlan, restartTarget, revert, setAutoDownload, status, stay };
 }
 
 module.exports = { createAppUpdateService, describeVersions, verifyCatalog };

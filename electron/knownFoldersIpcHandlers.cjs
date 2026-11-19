@@ -3,6 +3,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { createSensitivePathPolicy } = require('./sensitivePathPolicy.cjs');
 const { resolveVoiceRootPath } = require('./localVoiceLibrary.cjs');
+const { resolveAppHome } = require('./appHome.cjs');
 
 // Where to start looking when the user asks about something on the computer: the usual user
 // folders, the drives, and this app's own folders (voice packs, speech recognition). Without
@@ -31,11 +32,8 @@ function createKnownFoldersService({ app, projectRoot, protectedRoots = [] }) {
       return null;
     }
   };
-  const appFolder = () => {
-    const portable = process.env.PORTABLE_EXECUTABLE_DIR;
-    if (portable) return portable;
-    return app.isPackaged ? path.dirname(process.execPath) : projectRoot;
-  };
+  // The folder with the pet's big files (beside the portable exe, or "AI Pets Hub Data" for the installed app).
+  const appFolder = () => resolveAppHome({ isPackaged: app.isPackaged, projectRoot }).dir;
 
   return {
     list() {

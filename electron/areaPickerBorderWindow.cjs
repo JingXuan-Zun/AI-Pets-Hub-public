@@ -48,7 +48,7 @@ function getPersistentAreaBorderWindowOptions() {
     alwaysOnTop: true,
     autoHideMenuBar: true,
     backgroundColor: '#00000000',
-    title: 'AI Desktop Pet Area Border',
+    title: 'AI Pets Hub Area Border',
     webPreferences: {
       backgroundThrottling: false,
       contextIsolation: true,

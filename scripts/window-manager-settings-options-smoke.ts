@@ -29,7 +29,7 @@ export function exerciseSettingsWindowOptions(factory=actualFactory) {
         const result=build(input);assert.notEqual(result,input);assert.equal(result.minWidth,minimumWidth);assert.equal(result.minHeight,minimumHeight);
         assert.equal(result.resizable,false);assert.equal(result.transparent,true);assert.equal(result.frame,false);assert.equal(result.hasShadow,false);assert.equal(result.thickFrame,false);
         assert.equal(result.show,false);assert.equal(result.alwaysOnTop,false);assert.equal(result.skipTaskbar,false);assert.equal(result.focusable,true);assert.equal(result.autoHideMenuBar,true);
-        assert.equal(result.backgroundColor,'#00000000');assert.equal(result.title,'AI Desktop Pet Settings');
+        assert.equal(result.backgroundColor,'#00000000');assert.equal(result.title,'AI Pets Hub Settings');
         assert.deepEqual(result.webPreferences,{backgroundThrottling:false,preload:path.join(options.baseDirectory,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,...(partition?{partition}:{})});
         if(mode!=='null')assert.equal(result.extra,marker);
         if(icon==='symbol')assert.equal(result[symbol],marker);

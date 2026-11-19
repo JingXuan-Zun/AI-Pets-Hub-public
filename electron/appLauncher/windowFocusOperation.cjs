@@ -22,7 +22,9 @@ function createWindowFocusOperation({ buildFocusCandidates, runPowerShellScript 
       };
     }
 
-    const script = createFocusExistingAppWindowScript({ focusCandidates, hasPid, requestedPid, hasHwnd, requestedHwnd });
+    // An installed app to launch: a browser tab that only shares its name must not stand in for it.
+    const skipBrowserTitleOnly = Boolean(selectedApp) && !hasHwnd && !hasPid;
+    const script = createFocusExistingAppWindowScript({ focusCandidates, hasPid, requestedPid, hasHwnd, requestedHwnd, skipBrowserTitleOnly });
 
     try {
       const stdout = await runPowerShellScript(script);

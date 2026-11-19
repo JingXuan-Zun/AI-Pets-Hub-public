@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const { resolveAppHome } = require('./appHome.cjs');
+const { readRememberedVoiceRoot, rememberVoiceRoot } = require('./localVoiceRuntimeLocation.cjs');
 
 const AUDIO_FILE_EXTENSIONS = new Set([
   '.wav',
@@ -87,13 +89,13 @@ function resolveVoiceRootPath({ app, projectRoot }) {
   const appRootPath = typeof app?.getAppPath === 'function'
     ? app.getAppPath()
     : projectRoot;
+  // The big-files folder first (beside the portable exe, or "AI Pets Hub Data" when installed).
+  const home = app ? resolveAppHome({ isPackaged: Boolean(app.isPackaged), projectRoot }).dir : null;
   const packagedExeDir = process.execPath ? path.dirname(process.execPath) : null;
-  const portableExecutableDir = process.env.PORTABLE_EXECUTABLE_DIR
-    || (process.env.PORTABLE_EXECUTABLE_FILE ? path.dirname(process.env.PORTABLE_EXECUTABLE_FILE) : null);
   const candidateRootPaths = [
-    portableExecutableDir ? path.join(portableExecutableDir, 'local-models', 'voice') : null,
-    portableExecutableDir ? path.join(portableExecutableDir, '..', 'local-models', 'voice') : null,
-    portableExecutableDir ? path.join(portableExecutableDir, '..', '..', 'local-models', 'voice') : null,
+    home ? path.join(home, 'local-models', 'voice') : null,
+    home ? path.join(home, '..', 'local-models', 'voice') : null,
+    home ? path.join(home, '..', '..', 'local-models', 'voice') : null,
     packagedExeDir ? path.join(packagedExeDir, 'local-models', 'voice') : null,
     packagedExeDir ? path.join(packagedExeDir, '..', 'local-models', 'voice') : null,
     packagedExeDir ? path.join(packagedExeDir, '..', '..', 'local-models', 'voice') : null,
@@ -103,7 +105,11 @@ function resolveVoiceRootPath({ app, projectRoot }) {
     projectRoot ? path.join(projectRoot, 'local-models', 'voice') : null,
   ].filter(Boolean);
 
-  return candidateRootPaths.find((candidatePath) => pathExists(candidatePath)) ?? null;
+  const found = candidateRootPaths.find((candidatePath) => pathExists(candidatePath));
+  // Remembered across builds (the portable exe moved, or the installed app took over from it).
+  if (found) return app?.getPath ? rememberVoiceRoot(app, found) : found;
+  const remembered = app?.getPath ? readRememberedVoiceRoot(app) : '';
+  return remembered && pathExists(remembered) ? remembered : null;
 }
 
 function createLocalVoiceLibrary({ app, projectRoot }) {

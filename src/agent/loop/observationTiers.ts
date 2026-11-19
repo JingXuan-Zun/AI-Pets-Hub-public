@@ -34,7 +34,7 @@ export interface LoopWindowObservation {
 }
 
 /** The app's own windows (pet, chat, settings) are never a target. */
-const OWN_WINDOW = /^AI Desktop Pet\b/iu;
+const OWN_WINDOW = /^(?:AI Pets Hub|AI Desktop Pet)\b/iu;
 const UIA_TIMEOUT_MS = 4000;
 const OCR_TIMEOUT_MS = 5000;
 let observationCounter = 0;

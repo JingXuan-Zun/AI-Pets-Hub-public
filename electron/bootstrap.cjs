@@ -26,7 +26,19 @@ function runBuiltIn(notice = null) {
   require('./main.cjs');
 }
 
+function moveOldDataFolderOnce() {
+  // Test profiles choose their own folder; only the normal data folder is moved.
+  if (global.__userDataMigration || PROBE_ENV.some((name) => process.env[name]) || process.env.DESKTOP_PET_DEV_USER_DATA_DIR || process.argv.includes('--local-test')) return;
+  try {
+    global.__userDataMigration = require('./userDataMigration.cjs').migrateLegacyUserData({ app });
+  } catch (error) {
+    global.__userDataMigration = { error: String(error?.message || error), status: 'failed' };
+  }
+}
+
 function boot() {
+  // AI Pets Hub's data folder ("ai-pets-hub"): data from the old name is moved over first.
+  moveOldDataFolderOnce();
   // Development and the packaged test probes always run the code they were started with;
   // DESKTOP_PET_APP_UPDATE_TEST lets a development run try the loader itself.
   const testing = process.env.DESKTOP_PET_APP_UPDATE_TEST === '1';
@@ -102,7 +114,7 @@ function boot() {
     const current = readState(root);
     const fallback = fallbackFor(current, version);
     writeState(root, { ...current, active: fallback, attempts: 0, bad: [...new Set([...(current.bad ?? []), version])], notice: `v${version} 启动出错（${error?.message ?? error}），已经回到${backTo(fallback)}。` });
-    app.relaunch();
+    require('./relaunchApp.cjs').relaunchApp(app);
     app.exit(1);
   }
 }

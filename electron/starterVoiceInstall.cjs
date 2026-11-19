@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { resolveVoiceRootPath } = require('./localVoiceLibrary.cjs');
+const { resolveAppHome } = require('./appHome.cjs');
 
 const STARTER_VOICE_ID = 'xiaoling-lite';
 
@@ -13,13 +14,11 @@ function bundledStarterVoiceDir() {
   return path.join(__dirname, '..', 'resources', 'starter-voice', STARTER_VOICE_ID);
 }
 
-/** An existing local-models/voice, or a new one next to the app (portable folder / project). */
+/** An existing local-models/voice, or a new one in the big-files folder (appHome.cjs). */
 function resolveOrCreateVoiceRoot({ app, projectRoot }) {
   const existing = resolveVoiceRootPath({ app, projectRoot });
   if (existing) return existing;
-  const portableDir = process.env.PORTABLE_EXECUTABLE_DIR
-    || (process.env.PORTABLE_EXECUTABLE_FILE ? path.dirname(process.env.PORTABLE_EXECUTABLE_FILE) : null);
-  const base = portableDir || (app?.isPackaged && process.execPath ? path.dirname(process.execPath) : projectRoot);
+  const base = resolveAppHome({ isPackaged: Boolean(app?.isPackaged), projectRoot }).dir;
   const root = path.join(base, 'local-models', 'voice');
   fs.mkdirSync(root, { recursive: true });
   return root;

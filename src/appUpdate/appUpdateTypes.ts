@@ -32,5 +32,7 @@ export interface AppUpdateStatus {
   ok: boolean;
   /** The version a restart switches to, when it is not the running one. */
   pending: string | null;
+  /** How this copy runs: a full version comes as a new exe (portable) or a new installer (installed). */
+  installKind?: 'installed' | 'portable' | null;
   versions: AppUpdateVersion[];
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type PetAction, type PetVideoEmotionAction, type PetVideoEmotionFolderAliases } from '../../types';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
-import { subscribeVideoItemInteractions } from './videoItemInteraction';
+import { subscribeVideoClipRequests, subscribeVideoItemInteractions } from './videoItemInteraction';
 import { isVideoEmotionAction, resolveVideoEmotionFolderNames } from './videoLibraryEmotionFolders';
 import {
   VIDEO_2D_MAX_CONSECUTIVE_FAILURES,
@@ -132,6 +132,14 @@ export function useVideo2DPlaybackQueue({
       });
     });
   }, [enableItemInteractions, modelUrl, requestClip]);
+
+  useEffect(() => subscribeVideoClipRequests((request) => {
+    if (request.modelUrl !== modelUrl) return;
+    pendingEmotionRef.current = null;
+    requestClip('item', () => window.desktopPetShell?.pick2DVideoFromFolder?.({ folderPath: request.folderPath }), (error) => {
+      pushFrontendRuntimeLog('model', 'video clip by name failed', { error });
+    });
+  }), [modelUrl, requestClip]);
 
   const handleEnded = useCallback(() => {
     failureCountRef.current = 0;

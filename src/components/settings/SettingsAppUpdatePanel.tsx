@@ -48,7 +48,9 @@ export function SettingsAppUpdatePanel() {
     const timer = wholeExe ? window.setInterval(() => void bridge.status().then(setStatus), 1000) : null;
     const result = await bridge.download(version);
     if (timer !== null) window.clearInterval(timer);
-    const ready = wholeExe ? `v${version} 的安装包下载好了。点“重启换到 v${version}”就换成新的，旧的会自动删掉。` : `v${version} 准备好了，重启后换过去。`;
+    // The installed app runs the new installer on restart; the portable exe swaps itself.
+    const afterRestart = status?.installKind === 'installed' ? '会自动装好再打开' : '就换成新的，旧的会自动删掉';
+    const ready = wholeExe ? `v${version} 的安装包下载好了。点“重启换到 v${version}”${afterRestart}。` : `v${version} 准备好了，重启后换过去。`;
     setMessage(result.ok ? ready : `没换成：${'error' in result ? result.error : ''}`);
     setStatus(await bridge.status());
     setBusy(null);

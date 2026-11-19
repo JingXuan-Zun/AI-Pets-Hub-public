@@ -361,6 +361,9 @@ const cleanupSprite = async (url: string) => {
   return cleanedEntry;
 };
 
+/** A 2D pet does not turn around again within this time (see the face-direction effect). */
+const FACE_TURN_MIN_INTERVAL_MS = 400;
+
 function mergeSpriteMetrics(metricsList: SpriteMetrics[]) {
   const validMetrics = metricsList.filter((metrics) => metrics.displayWidth > 0 && metrics.displayHeight > 0);
   if (validMetrics.length === 0) {
@@ -567,6 +570,7 @@ function PetModel2D({
   const lastSequenceTickAtRef = useRef<number | null>(null);
   const sequenceFrameCarryMsRef = useRef(0);
   const faceDirectionRef = useRef(1);
+  const lastFaceTurnAtRef = useRef(0);
   const basePresentationState = renderAdapterState?.presentationState ?? presentationState
     ?? resolvePet2DPresentationState({
       action,
@@ -618,6 +622,17 @@ function PetModel2D({
     const nextFaceDirection = resolve2dFaceDirectionScale(visualFocusTarget.x);
     if (nextFaceDirection === null) {
       return;
+    }
+
+    // Turning around mirrors her outline, and the look target is measured inside that outline,
+    // so it flips too and she turned straight back — many times in one moment ("Maximum update
+    // depth exceeded", found 2026-11-18). After a turn she keeps facing that way a moment.
+    if (nextFaceDirection !== faceDirectionRef.current) {
+      const now = performance.now();
+      if (now - lastFaceTurnAtRef.current < FACE_TURN_MIN_INTERVAL_MS) {
+        return;
+      }
+      lastFaceTurnAtRef.current = now;
     }
 
     faceDirectionRef.current = nextFaceDirection;

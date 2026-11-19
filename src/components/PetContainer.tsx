@@ -374,6 +374,7 @@ export default function PetContainer({
     triggerPetEatScaleBoost,
   } = usePetContainerMovementScaleRuntimeState({
     activityArea,
+    companionRenderedPositionByIdRef,
     clampPrimaryPetToAllowedAreaWithMetrics,
     clampPetToRenderedActivityAreaWithMetrics,
     config,
@@ -687,6 +688,7 @@ export default function PetContainer({
 
   usePetContainerRecoveryEffects({
     activityArea,
+    companionRenderedPositionByIdRef,
     clampPrimaryPetToAllowedAreaWithMetrics,
     clampPetToRenderedActivityAreaWithMetrics,
     clearRecovered3DVisibilitySignature,

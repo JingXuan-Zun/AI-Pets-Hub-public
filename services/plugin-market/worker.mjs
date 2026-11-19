@@ -1,5 +1,6 @@
 import { readPluginZip } from '../../electron/pluginZipRules.cjs';
 import { REVIEW_PAGE_HTML } from './reviewPage.mjs';
+import { routeIncidents } from './incidents.mjs';
 
 // The plugin market (docs/plugin-system-design-20261028.md §6). Files live in R2 (binding PLUGINS):
 //   catalog/index.json            published plugins, newest version of each
@@ -54,7 +55,9 @@ async function enforceQuota(request, env, kind, now) {
     ? [[`plugin-up:${hash}`, day, 10], ['plugin-up:global', day, 200]]
     : kind === 'download'
       ? [[`plugin-dl:${hash}`, minute, 30], ['plugin-dl:global', minute, 600]]
-      : [[`plugin-read:${hash}`, minute, 60]];
+      : kind === 'incident'
+        ? [[`incident:${hash}`, day, 60], ['incident:global', day, 20000]]
+        : [[`plugin-read:${hash}`, minute, 60]];
   const results = await env.RATE_DB.batch(rules.map(([key, window, limit]) => env.RATE_DB.prepare(QUOTA_SQL).bind(key, window, limit)));
   if (results.some((result) => result.success !== true)) throw new MarketError(503, 'service-unavailable');
   if (results.some((result) => result.results?.length !== 1)) throw new MarketError(429, 'rate-limited');
@@ -182,6 +185,8 @@ async function route(request, env, now) {
     const isList = update[1] === 'latest.json';
     return new Response(object.body, { headers: { ...PUBLIC_HEADERS, 'Cache-Control': isList ? 'public, max-age=300' : 'public, max-age=86400, immutable', 'Content-Type': isList ? 'application/json; charset=utf-8' : 'application/zip' } });
   }
+  const incidentResponse = await routeIncidents(request, env, now, { MarketError, enforceQuota, json, requireAdmin, requireConfig, sha256Hex });
+  if (incidentResponse) return incidentResponse;
   if (request.method === 'GET' && path === '/review') {
     return new Response(REVIEW_PAGE_HTML, { headers: { 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'", 'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY' } });
   }

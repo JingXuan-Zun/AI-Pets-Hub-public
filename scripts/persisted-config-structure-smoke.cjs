@@ -17,7 +17,7 @@ function inspect(file) {
     }
     if (ts.isCallExpression(n) && n.expression.getText(tree) === 'require' && ts.isStringLiteral(n.arguments[0]) && n.arguments[0].text.startsWith('./')) {
       const dependency = path.resolve(path.dirname(file), n.arguments[0].text);
-      assert.ok(/^(persistedConfig|configCredentials|modelAssetRoot)/.test(path.basename(dependency)), 'Review new production dependency ' + dependency);
+      assert.ok(/^(persistedConfig|configCredentials|modelAssetRoot|appHome)/.test(path.basename(dependency)), 'Review new production dependency ' + dependency);
       dependencies.push(dependency); inspect(dependency);
     }
     ts.forEachChild(n, visit);
@@ -39,5 +39,5 @@ const first = production.createPersistedConfigStore({ userDataPath: 'fixture', a
 const second = production.createPersistedConfigStore({ userDataPath: 'peer', assetRootPath: 'peer-managed' });
 assert.deepEqual(Object.keys(first), ['getPaths', 'load', 'save']);
 for (const name of Object.keys(first)) assert.notEqual(first[name], second[name]);
-assert.equal(graph.size, 9);
+assert.equal(graph.size, 10); // + appHome.cjs (big-files folder, 11-19)
 console.log('Persisted config structure passed: ' + graph.size + ' reachable, acyclic production modules; ' + functions + ' functions; all files <=300 and functions <=50; exact public API and instance closures, no IO.');

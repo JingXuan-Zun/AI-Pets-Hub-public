@@ -13,6 +13,8 @@ import { VOICE_CONTROL_CAPABILITIES } from './voiceControlCapabilities';
 import { WEATHER_CAPABILITIES } from './weatherCapabilities';
 import { WORK_TASK_CAPABILITIES } from '../work-tasks/workTaskCapabilities';
 import { SELF_CHECK_CAPABILITIES } from '../self-check/selfCheckCapability';
+import { INCIDENT_CAPABILITIES } from '../incidents/incidentCapabilities';
+import { VIDEO_CLIP_CAPABILITIES } from './videoClipCapabilities';
 import { DEV_AGENT_CAPABILITIES } from '../dev-agent/devAgentCapability';
 import { isCapabilityEnabledForPet } from '../plugins/pluginCapabilityAccess';
 import { PLUGIN_CAPABILITIES } from '../plugins/pluginCapabilities';
@@ -25,7 +27,7 @@ import type {
 } from './platformCapabilityTypes';
 
 const capabilities = new Map<string, PlatformCapability>(
-  [...BUILTIN_PLATFORM_CAPABILITIES, ...CARE_CAPABILITIES, ...DATA_CAPABILITIES, ...DISPLAY_SETTINGS_CAPABILITIES, ...IMAGE_CAPABILITIES, ...BACKGROUND_TASK_CAPABILITIES, ...SETTINGS_MANIFEST_CAPABILITIES, ...WEIXIN_CAPABILITIES, ...KNOWLEDGE_CAPABILITIES, ...PET_ROSTER_CAPABILITIES, ...PRODUCTIVITY_CAPABILITIES, ...WEATHER_CAPABILITIES, ...VOICE_CONTROL_CAPABILITIES, ...WORK_TASK_CAPABILITIES, ...SELF_CHECK_CAPABILITIES, ...DEV_AGENT_CAPABILITIES, ...REPORT_CAPABILITIES, ...PLUGIN_CAPABILITIES].map((capability) => [capability.id, capability]),
+  [...BUILTIN_PLATFORM_CAPABILITIES, ...CARE_CAPABILITIES, ...DATA_CAPABILITIES, ...DISPLAY_SETTINGS_CAPABILITIES, ...IMAGE_CAPABILITIES, ...BACKGROUND_TASK_CAPABILITIES, ...SETTINGS_MANIFEST_CAPABILITIES, ...WEIXIN_CAPABILITIES, ...KNOWLEDGE_CAPABILITIES, ...PET_ROSTER_CAPABILITIES, ...VIDEO_CLIP_CAPABILITIES, ...PRODUCTIVITY_CAPABILITIES, ...WEATHER_CAPABILITIES, ...VOICE_CONTROL_CAPABILITIES, ...WORK_TASK_CAPABILITIES, ...SELF_CHECK_CAPABILITIES, ...INCIDENT_CAPABILITIES, ...DEV_AGENT_CAPABILITIES, ...REPORT_CAPABILITIES, ...PLUGIN_CAPABILITIES].map((capability) => [capability.id, capability]),
 );
 
 /** Plugins add their capabilities here; ids must be unique. */

@@ -47,5 +47,5 @@ export const LIFE_COMPANION_ACTIVITY_FALLBACK_LINES: Record<LifeCompanionActivit
 /** The pet's own windows come to the front when clicked; they are not user activity. */
 export function isDesktopPetForeground(processName: string, title: string) {
   const text = `${title} ${processName}`.toLowerCase();
-  return text.includes('ai desktop pet') || text.includes('desktop pet') || text.includes('electron');
+  return text.includes('ai pets hub') || text.includes('ai desktop pet') || text.includes('desktop pet') || text.includes('electron');
 }

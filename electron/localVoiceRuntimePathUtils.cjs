@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { readRememberedRuntimeRoot, rememberRuntimeRoot } = require('./localVoiceRuntimeLocation.cjs');
+const { installedHomeDir, resolveAppHome } = require('./appHome.cjs');
 
 function pathExists(targetPath) {
   if (!targetPath || typeof targetPath !== 'string') {
@@ -174,7 +175,7 @@ function uniqueCandidates(candidates) {
 }
 
 function collectKnownPythonCandidates(projectRoot) {
-  const portableExecutableDir = resolvePortableExecutableDir();
+  const portableExecutableDir = resolvePortableExecutableDir() || installedHomeDir();
   const processExecutableDir = process.execPath ? path.dirname(process.execPath) : null;
   const candidatePaths = [
     projectRoot ? path.join(projectRoot, 'python', 'python.exe') : null,
@@ -225,13 +226,10 @@ function resolveExistingRuntimeRoot(baseDir, app) {
 }
 
 function resolveRuntimeRoot({ app, projectRoot }) {
-  const portableExecutableDir = resolvePortableExecutableDir();
-  if (portableExecutableDir) {
-    return resolveExistingRuntimeRoot(portableExecutableDir, app);
-  }
-
-  if (app?.isPackaged && process.execPath) {
-    return resolveExistingRuntimeRoot(path.dirname(process.execPath), app);
+  // Packaged: the big-files folder (beside the portable exe, or "AI Pets Hub Data" when
+  // installed, never the install folder an upgrade wipes) and up to three folders above it.
+  if (app?.isPackaged) {
+    return resolveExistingRuntimeRoot(resolveAppHome({ isPackaged: true, projectRoot }).dir, app);
   }
 
   if (projectRoot) {

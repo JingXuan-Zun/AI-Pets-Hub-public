@@ -2380,11 +2380,11 @@ var require_pluginManifestRules = __commonJS({
     var ID_PATTERN = /^[a-z0-9][a-z0-9._-]{1,62}$/u;
     var KINDS = /* @__PURE__ */ new Set(["skill", "mcp"]);
     var PERMISSIONS = /* @__PURE__ */ new Set(["read-instructions", "run-program", "network", "send-messages", "credentials", "change-computer"]);
-    function text(value, max = 500) {
+    function text2(value, max = 500) {
       return typeof value === "string" ? value.trim().slice(0, max) : "";
     }
     function textList(value, maxItems = 12, max = 300) {
-      return Array.isArray(value) ? value.map((item) => text(item, max)).filter(Boolean).slice(0, maxItems) : [];
+      return Array.isArray(value) ? value.map((item) => text2(item, max)).filter(Boolean).slice(0, maxItems) : [];
     }
     function toId(value) {
       return String(value ?? "").normalize("NFKC").trim().toLowerCase().replace(/[^a-z0-9._-]+/gu, "-").replace(/^-+|-+$/gu, "").slice(0, 63);
@@ -2403,8 +2403,8 @@ var require_pluginManifestRules = __commonJS({
     }
     function mcpEntry(value) {
       if (!value || typeof value !== "object") return null;
-      const url = text(value.url, 500);
-      const command = text(value.command, 200);
+      const url = text2(value.url, 500);
+      const command = text2(value.command, 200);
       if (!url && !command) return null;
       const env = value.env && typeof value.env === "object" && !Array.isArray(value.env) ? Object.fromEntries(Object.entries(value.env).filter(([, item]) => typeof item === "string").slice(0, 30)) : {};
       return { args: textList(value.args, 40, 500), command, env, url };
@@ -2416,22 +2416,22 @@ var require_pluginManifestRules = __commonJS({
     function pluginSettings(value) {
       if (!Array.isArray(value)) return [];
       return value.slice(0, 20).map((item) => {
-        const key = text(item?.key, 41);
-        const kind = text(item?.kind, 10);
-        const label = text(item?.label, 40);
+        const key = text2(item?.key, 41);
+        const kind = text2(item?.kind, 10);
+        const label = text2(item?.label, 40);
         if (!SETTING_KEY.test(key) || !SETTING_KINDS.has(kind) || !label || SECRET_WORDS.test(key) || SECRET_WORDS.test(label)) return null;
-        const choices = kind === "choice" && Array.isArray(item.choices) ? item.choices.slice(0, 20).map((choice) => ({ label: text(choice?.label, 40) || text(choice?.value, 40), value: text(choice?.value, 60) })).filter((choice) => choice.value) : [];
+        const choices = kind === "choice" && Array.isArray(item.choices) ? item.choices.slice(0, 20).map((choice) => ({ label: text2(choice?.label, 40) || text2(choice?.value, 40), value: text2(choice?.value, 60) })).filter((choice) => choice.value) : [];
         if (kind === "choice" && !choices.length) return null;
         const min = Number(item.range?.min);
         const max = Number(item.range?.max);
         const range = kind === "number" && Number.isFinite(min) && Number.isFinite(max) && min <= max ? { max, min } : null;
-        const fallback = kind === "boolean" ? item.default === true : kind === "number" ? Number.isFinite(Number(item.default)) ? Number(item.default) : range?.min ?? 0 : kind === "choice" ? choices.some((choice) => choice.value === item.default) ? item.default : choices[0].value : text(item.default, 200);
-        const env = text(item.env, 61);
+        const fallback = kind === "boolean" ? item.default === true : kind === "number" ? Number.isFinite(Number(item.default)) ? Number(item.default) : range?.min ?? 0 : kind === "choice" ? choices.some((choice) => choice.value === item.default) ? item.default : choices[0].value : text2(item.default, 200);
+        const env = text2(item.env, 61);
         return {
           choices,
           default: fallback,
           env: ENV_NAME.test(env) ? env : "",
-          forModel: text(item.forModel, 200),
+          forModel: text2(item.forModel, 200),
           key,
           kind,
           label,
@@ -2442,23 +2442,23 @@ var require_pluginManifestRules = __commonJS({
     }
     function normalizePluginManifest(raw) {
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { error: "plugin.json \u4E0D\u662F\u4E00\u4E2A JSON \u5BF9\u8C61\u3002" };
-      const id = text(raw.id, 63);
+      const id = text2(raw.id, 63);
       if (!ID_PATTERN.test(id)) return { error: `\u63D2\u4EF6 id\u201C${id}\u201D\u4E0D\u5408\u683C\uFF1A\u53EA\u80FD\u7528\u5C0F\u5199\u5B57\u6BCD\u3001\u6570\u5B57\u3001\u70B9\u3001\u6A2A\u7EBF\u548C\u4E0B\u5212\u7EBF\uFF0C2\uFF5E63 \u4E2A\u5B57\u7B26\u3002` };
-      const kind = text(raw.kind, 20);
+      const kind = text2(raw.kind, 20);
       if (!KINDS.has(kind)) return { error: `\u4E0D\u652F\u6301\u7684\u63D2\u4EF6\u7C7B\u578B\u201C${kind}\u201D\uFF1A\u76EE\u524D\u652F\u6301 skill\uFF08\u6280\u80FD\uFF09\u548C mcp\uFF08\u5DE5\u5177\u670D\u52A1\u5668\uFF09\u3002` };
-      const name = text(raw.name, 60);
-      const description = text(raw.description, 300);
+      const name = text2(raw.name, 60);
+      const description = text2(raw.description, 300);
       if (!name || !description) return { error: "plugin.json \u9700\u8981 name\uFF08\u540D\u5B57\uFF09\u548C description\uFF08\u4E00\u53E5\u8BDD\u8BF4\u660E\uFF09\u3002" };
-      const skill = kind === "skill" ? { file: text(raw.skill?.file, 200) || SKILL_FILE } : null;
+      const skill = kind === "skill" ? { file: text2(raw.skill?.file, 200) || SKILL_FILE } : null;
       const mcp = kind === "mcp" ? mcpEntry(raw.mcp) : null;
       if (kind === "mcp" && !mcp) return { error: "mcp \u63D2\u4EF6\u9700\u8981\u5199 mcp.command\uFF08\u542F\u52A8\u547D\u4EE4\uFF09\u6216 mcp.url\uFF08\u670D\u52A1\u5730\u5740\uFF09\u3002" };
       const permissions = textList(raw.permissions, 10, 40).filter((item) => PERMISSIONS.has(item));
       return {
         manifest: {
-          author: text(raw.author, 80),
+          author: text2(raw.author, 80),
           description,
           examples: textList(raw.examples, 8, 120),
-          homepage: text(raw.homepage, 300),
+          homepage: text2(raw.homepage, 300),
           id,
           kind,
           manifestVersion: 1,
@@ -2466,15 +2466,15 @@ var require_pluginManifestRules = __commonJS({
           name,
           permissions: permissions.length ? permissions : kind === "skill" ? ["read-instructions"] : ["run-program"],
           requires: Array.isArray(raw.requires) ? raw.requires.slice(0, 10).map((item) => ({
-            install: text(item?.install, 300),
-            name: text(item?.name, 60)
+            install: text2(item?.install, 300),
+            name: text2(item?.name, 60)
           })).filter((item) => item.name) : [],
           settings: pluginSettings(raw.settings),
           setup: textList(raw.setup, 12),
           skill,
           troubleshooting: textList(raw.troubleshooting, 12),
-          useWhen: text(raw.useWhen, 300),
-          version: text(raw.version, 30) || "0.1.0"
+          useWhen: text2(raw.useWhen, 300),
+          version: text2(raw.version, 30) || "0.1.0"
         }
       };
     }
@@ -2562,6 +2562,10 @@ input{padding:6px 10px;border:1px solid #ddd;border-radius:8px;width:280px}
 <form id="login"><input id="token" type="password" placeholder="\u5BA1\u6838\u5BC6\u7801" autocomplete="off"> <button class="ok">\u8FDB\u5165</button></form>
 <p id="status" class="meta"></p>
 <div id="list"></div>
+<h1>\u95EE\u9898\u62A5\u544A\uFF08\u75C5\u4F8B\uFF09</h1>
+<p class="meta">\u7528\u6237\u540C\u610F\u540E\u53D1\u6765\u7684\u62A5\u9519\uFF0C\u540C\u4E00\u4E2A\u95EE\u9898\u5408\u6210\u4E00\u6761\u3002\u4FEE\u597D\u540E\u6807\u4E0A\u4FEE\u597D\u7684\u7248\u672C\uFF0C\u7528\u6237\u90A3\u8FB9\u4F1A\u63D0\u793A\u66F4\u65B0\u3002</p>
+<p id="incStatus" class="meta"></p>
+<div id="incidents"></div>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -2594,18 +2598,154 @@ async function load() {
     actions.append(zip, ok, no); card.append(actions); return card;
   }));
 }
-$('login').onsubmit = (event) => { event.preventDefault(); token = $('token').value.trim(); sessionStorage.setItem('plugin-review-token', token); load(); };
+async function loadIncidents() {
+  if (!token) return;
+  const res = await api('/review/incidents');
+  if (!res.ok) { $('incStatus').textContent = res.status === 401 ? '' : '\u95EE\u9898\u62A5\u544A\u8BFB\u53D6\u5931\u8D25\uFF08' + res.status + '\uFF09\u3002'; return; }
+  const data = await res.json();
+  const open = data.items.filter((item) => !item.fixed_in).length;
+  $('incStatus').textContent = data.items.length ? '\u5171 ' + data.items.length + ' \u4E2A\u95EE\u9898\uFF0C\u672A\u4FEE ' + open + ' \u4E2A\u3002' : '\u8FD8\u6CA1\u6709\u95EE\u9898\u62A5\u544A\u3002';
+  $('incidents').replaceChildren(...data.items.map((item) => {
+    const card = el('div', undefined, 'card');
+    card.append(el('h3', '[' + item.fingerprint.slice(0, 8) + '] ' + item.title));
+    card.append(el('div', item.source + ' \xB7 ' + item.kind + '\u3000' + item.total + ' \u6B21 \xB7 ' + item.reporters + ' \u53F0\u7535\u8111\u3000\u6700\u8FD1 ' + item.last_seen + '\u3000\u9996\u6B21 ' + item.first_seen, 'meta'));
+    card.append(el('div', '\u7248\u672C\uFF1A' + item.versions.join('\u3001') + '\u3000\u7CFB\u7EDF\uFF1A' + item.oses.join('\u3001'), 'meta'));
+    if (item.fixed_in) card.append(el('div', '\u5DF2\u5728 v' + item.fixed_in + ' \u4FEE\u590D' + (item.note ? '\uFF1A' + item.note : ''), 'warn'));
+    if (item.frames.length) card.append(el('pre', item.frames.map((f) => f.fn + ' \xB7 ' + f.file + (f.line ? ':' + f.line : '')).join('\\n')));
+    const actions = el('div'); actions.style.marginTop = '10px';
+    const fix = el('button', item.fixed_in ? '\u6539\u4FEE\u590D\u7248\u672C' : '\u6807\u8BB0\u5DF2\u4FEE\u590D', 'ok');
+    fix.onclick = async () => {
+      const version = prompt('\u5728\u54EA\u4E2A\u7248\u672C\u4FEE\u597D\u7684\uFF1F\uFF08\u5982 0.4.5\uFF0C\u6E05\u7A7A\u5219\u53D6\u6D88\u6807\u8BB0\uFF09', item.fixed_in || '');
+      if (version === null) return;
+      const note = version ? (prompt('\u5907\u6CE8\uFF08\u53EF\u4E0D\u586B\uFF09', item.note || '') || '') : '';
+      await fetch('/review/incidents/' + item.fingerprint + '/fixed', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ version: version.trim() || null, note }) });
+      loadIncidents();
+    };
+    actions.append(fix); card.append(actions); return card;
+  }));
+}
+$('login').onsubmit = (event) => { event.preventDefault(); token = $('token').value.trim(); sessionStorage.setItem('plugin-review-token', token); load(); loadIncidents(); };
 load();
+loadIncidents();
 <\/script></body></html>`;
+
+// services/plugin-market/incidents.mjs
+var FINGERPRINT = /^[0-9a-f]{16}$/u;
+var VERSION = /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,4}$/u;
+var SOURCES = /* @__PURE__ */ new Set(["crash", "main", "window"]);
+var MAX_BODY_BYTES = 64 * 1024;
+var MAX_ITEMS = 20;
+var MAX_VERSIONS = 20;
+var text = (value, max) => typeof value === "string" ? value.slice(0, max) : "";
+function cleanItem(raw) {
+  if (!raw || !FINGERPRINT.test(raw.fingerprint) || !SOURCES.has(raw.source)) return null;
+  const count = Number(raw.count);
+  if (!Number.isInteger(count) || count < 1 || count > 1e5) return null;
+  const frames = (Array.isArray(raw.frames) ? raw.frames : []).slice(0, 8).map((frame) => ({ file: text(frame?.file, 200), fn: text(frame?.fn, 80), line: text(frame?.line, 16) }));
+  const versions = (Array.isArray(raw.versions) ? raw.versions : []).filter((version) => VERSION.test(version)).slice(-5);
+  return { count, fingerprint: raw.fingerprint, frames, kind: text(raw.kind, 80) || "Error", source: raw.source, title: text(raw.title, 200) || "(\u65E0\u8BF4\u660E)", versions };
+}
+async function readJsonBody(request, MarketError2) {
+  const length = Number(request.headers.get("Content-Length") || 0);
+  if (length > MAX_BODY_BYTES) throw new MarketError2(413, "too-large");
+  const raw = await request.text();
+  if (raw.length > MAX_BODY_BYTES) throw new MarketError2(413, "too-large");
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new MarketError2(400, "bad-json");
+  }
+}
+async function receive(request, env, now, { MarketError: MarketError2, json: json2, sha256Hex: sha256Hex2 }) {
+  const body = await readJsonBody(request, MarketError2);
+  const items = (Array.isArray(body?.items) ? body.items : []).slice(0, MAX_ITEMS).map(cleanItem).filter(Boolean);
+  const installId = text(body?.installId, 64);
+  if (!items.length || installId.length < 8) throw new MarketError2(400, "bad-incident");
+  const appVersion = VERSION.test(body?.appVersion) ? body.appVersion : "";
+  const os = text(body?.os, 40);
+  const reporter = (await sha256Hex2(new TextEncoder().encode(`${env.RATE_SALT}:incident:${installId}`))).slice(0, 32);
+  const db = env.RATE_DB;
+  const fresh = await db.batch(items.map((item) => db.prepare("INSERT OR IGNORE INTO incident_reporters (fingerprint, reporter) VALUES (?, ?)").bind(item.fingerprint, reporter)));
+  const placeholders = items.map(() => "?").join(",");
+  const existing = await db.prepare(`SELECT fingerprint, versions, oses FROM incident_groups WHERE fingerprint IN (${placeholders})`).bind(...items.map((item) => item.fingerprint)).all();
+  const known = new Map((existing.results ?? []).map((row) => [row.fingerprint, row]));
+  await db.batch(items.map((item, index) => {
+    const row = known.get(item.fingerprint);
+    const versions = [.../* @__PURE__ */ new Set([...row ? JSON.parse(row.versions) : [], ...item.versions, ...appVersion ? [appVersion] : []])].slice(-MAX_VERSIONS);
+    const oses = [.../* @__PURE__ */ new Set([...row ? JSON.parse(row.oses) : [], ...os ? [os] : []])].slice(-10);
+    const newReporter = fresh[index]?.meta?.changes ? 1 : 0;
+    return db.prepare(`INSERT INTO incident_groups (fingerprint, source, kind, title, frames, versions, oses, total, reporters, first_seen, last_seen)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (fingerprint) DO UPDATE SET title = excluded.title, frames = excluded.frames, versions = excluded.versions,
+        oses = excluded.oses, total = incident_groups.total + excluded.total, reporters = incident_groups.reporters + excluded.reporters,
+        last_seen = excluded.last_seen`).bind(item.fingerprint, item.source, item.kind, item.title, JSON.stringify(item.frames), JSON.stringify(versions), JSON.stringify(oses), item.count, newReporter, now, now);
+  }));
+  return json2({ ok: true, received: items.length });
+}
+async function status(request, env, { MarketError: MarketError2, json: json2 }) {
+  const body = await readJsonBody(request, MarketError2);
+  const fingerprints = (Array.isArray(body?.fingerprints) ? body.fingerprints : []).filter((value) => FINGERPRINT.test(value)).slice(0, 100);
+  if (!fingerprints.length) return json2({ fixed: {} });
+  const rows = await env.RATE_DB.prepare(`SELECT fingerprint, fixed_in FROM incident_groups WHERE fixed_in IS NOT NULL AND fingerprint IN (${fingerprints.map(() => "?").join(",")})`).bind(...fingerprints).all();
+  return json2({ fixed: Object.fromEntries((rows.results ?? []).map((row) => [row.fingerprint, row.fixed_in])) });
+}
+async function list(env, url, { json: json2 }) {
+  const open = url.searchParams.get("open") === "1";
+  const rows = await env.RATE_DB.prepare(`SELECT * FROM incident_groups ${open ? "WHERE fixed_in IS NULL" : ""} ORDER BY last_seen DESC LIMIT 300`).all();
+  return json2({
+    items: (rows.results ?? []).map((row) => ({
+      ...row,
+      first_seen: new Date(row.first_seen).toISOString(),
+      frames: JSON.parse(row.frames),
+      last_seen: new Date(row.last_seen).toISOString(),
+      oses: JSON.parse(row.oses),
+      versions: JSON.parse(row.versions)
+    }))
+  });
+}
+async function markFixed(request, env, fingerprint, { MarketError: MarketError2, json: json2 }) {
+  const body = await readJsonBody(request, MarketError2);
+  const version = body?.version === null ? null : VERSION.test(body?.version) ? body.version : void 0;
+  if (version === void 0) throw new MarketError2(400, "bad-version");
+  const result = await env.RATE_DB.prepare("UPDATE incident_groups SET fixed_in = ?, note = ? WHERE fingerprint = ?").bind(version, text(body?.note, 500) || null, fingerprint).run();
+  if (!result.meta?.changes) throw new MarketError2(404, "not-found");
+  return json2({ fingerprint, fixed_in: version, ok: true });
+}
+async function routeIncidents(request, env, now, helpers) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  if (path === "/incidents" && request.method === "POST") {
+    helpers.requireConfig(env, false);
+    await helpers.enforceQuota(request, env, "incident", now);
+    return receive(request, env, now, helpers);
+  }
+  if (path === "/incidents/status" && request.method === "POST") {
+    helpers.requireConfig(env, false);
+    await helpers.enforceQuota(request, env, "read", now);
+    return status(request, env, helpers);
+  }
+  if (path === "/review/incidents" && request.method === "GET") {
+    helpers.requireConfig(env, false);
+    helpers.requireAdmin(request, env);
+    return list(env, url, helpers);
+  }
+  const fixed = /^\/review\/incidents\/([0-9a-f]{16})\/fixed$/u.exec(path);
+  if (fixed && request.method === "POST") {
+    helpers.requireConfig(env, false);
+    helpers.requireAdmin(request, env);
+    return markFixed(request, env, fixed[1], helpers);
+  }
+  return null;
+}
 
 // services/plugin-market/worker.mjs
 var CATALOG_KEY = "catalog/index.json";
 var MAX_UPLOAD_BYTES = 10 * 1024 * 1024 + 4096;
 var MAX_CATALOG_ENTRIES = 5e3;
 var MarketError = class extends Error {
-  constructor(status, code) {
+  constructor(status2, code) {
     super(code);
-    this.status = status;
+    this.status = status2;
     this.code = code;
   }
 };
@@ -2617,8 +2757,8 @@ var PUBLIC_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Content-Security-Policy": "default-src 'none'; sandbox"
 };
-function json(value, status = 200, cache = "no-store") {
-  return new Response(JSON.stringify(value), { status, headers: { ...PUBLIC_HEADERS, "Cache-Control": cache, "Content-Type": "application/json; charset=utf-8" } });
+function json(value, status2 = 200, cache = "no-store") {
+  return new Response(JSON.stringify(value), { status: status2, headers: { ...PUBLIC_HEADERS, "Cache-Control": cache, "Content-Type": "application/json; charset=utf-8" } });
 }
 async function sha256Hex(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -2637,7 +2777,7 @@ async function enforceQuota(request, env, kind, now) {
   const minute = Math.floor(now / 6e4) * 60;
   const day = Math.floor(now / 864e5) * 86400;
   const hash = await sha256Hex(new TextEncoder().encode(`${env.RATE_SALT}:${day}:${ip}`));
-  const rules = kind === "upload" ? [[`plugin-up:${hash}`, day, 10], ["plugin-up:global", day, 200]] : kind === "download" ? [[`plugin-dl:${hash}`, minute, 30], ["plugin-dl:global", minute, 600]] : [[`plugin-read:${hash}`, minute, 60]];
+  const rules = kind === "upload" ? [[`plugin-up:${hash}`, day, 10], ["plugin-up:global", day, 200]] : kind === "download" ? [[`plugin-dl:${hash}`, minute, 30], ["plugin-dl:global", minute, 600]] : kind === "incident" ? [[`incident:${hash}`, day, 60], ["incident:global", day, 2e4]] : [[`plugin-read:${hash}`, minute, 60]];
   const results = await env.RATE_DB.batch(rules.map(([key, window, limit]) => env.RATE_DB.prepare(QUOTA_SQL).bind(key, window, limit)));
   if (results.some((result) => result.success !== true)) throw new MarketError(503, "service-unavailable");
   if (results.some((result) => result.results?.length !== 1)) throw new MarketError(429, "rate-limited");
@@ -2764,6 +2904,8 @@ async function route(request, env, now) {
     const isList = update[1] === "latest.json";
     return new Response(object.body, { headers: { ...PUBLIC_HEADERS, "Cache-Control": isList ? "public, max-age=300" : "public, max-age=86400, immutable", "Content-Type": isList ? "application/json; charset=utf-8" : "application/zip" } });
   }
+  const incidentResponse = await routeIncidents(request, env, now, { MarketError, enforceQuota, json, requireAdmin, requireConfig, sha256Hex });
+  if (incidentResponse) return incidentResponse;
   if (request.method === "GET" && path === "/review") {
     return new Response(REVIEW_PAGE_HTML, { headers: { "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'", "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" } });
   }

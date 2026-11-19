@@ -72,7 +72,7 @@ for (const failure of [false, true]) {
     MAIN_TOPMOST_RELATIVE_LEVEL: 7, scheduleWindowStackOnTop: () => events.push(['stack']),
   };
   const controllers = actual(deps); assert.deepEqual(events, []);
-  controllers.configureTray(); assert.deepEqual(events, [['tooltip', 'AI Desktop Pet'], ['menu'], ['context', trayMenu], ['on', 'double-click']]);
+  controllers.configureTray(); assert.deepEqual(events, [['tooltip', 'AI Pets Hub'], ['menu'], ['context', trayMenu], ['on', 'double-click']]);
   events.length = 0;
   if (failure) assert.throws(() => menu[0].click(), caught => caught === error);
   else assert.equal(menu[0].click(), undefined);

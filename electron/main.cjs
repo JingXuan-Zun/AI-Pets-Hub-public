@@ -276,7 +276,7 @@ function clearDesktopPetUserDataAndRelaunch() {
   moveToResetPath(sequenceAssetPath);
   moveToResetPath(path.join(importedModelAssetRoot, LEGACY_MODEL_ASSET_DIRECTORY_NAME));
 
-  app.relaunch({ args: process.argv.slice(1) });
+  require('./relaunchApp.cjs').relaunchApp(app);
   app.exit(0);
   return { ok: true };
 }
@@ -310,8 +310,19 @@ function appendRuntimeLog(message) {
   }
 }
 
+let incidentHub = null;
 const runtimeLogger = createRuntimeLogger({
   persist: appendRuntimeLog,
+  onLog: (entry) => incidentHub?.onLogEntry(entry),
+});
+if (global.__userDataMigration && global.__userDataMigration.status !== 'current') {
+  runtimeLogger.log('backend', 'main-process', 'data folder check after the rename to AI Pets Hub', global.__userDataMigration);
+}
+// Errors become incidents ("病例") for Settings → 健康, sent to the developer only with consent.
+incidentHub = require('./incidents/incidentHub.cjs').createIncidentHub({
+  app,
+  getRecentLogs: () => runtimeLogger.getEntries(),
+  log: (message, details) => runtimeLogger.log('backend', 'incidents', message, details),
 });
 installPackagedQuitTrace({
   app,
@@ -473,13 +484,8 @@ const sequenceAssetStore = createSequenceAssetStore({
   assetRootPath: importedModelAssetRoot,
   log: (message, details) => runtimeLogger.log('backend', 'sequence-assets', message, details),
 });
-const expressionLibraryApplicationDirectory = process.env.PORTABLE_EXECUTABLE_DIR
-  ? path.resolve(process.env.PORTABLE_EXECUTABLE_DIR)
-  : process.env.PORTABLE_EXECUTABLE_FILE
-    ? path.dirname(path.resolve(process.env.PORTABLE_EXECUTABLE_FILE))
-    : app.isPackaged && process.execPath
-      ? path.dirname(process.execPath)
-      : path.join(__dirname, '..');
+// The big-files folder (appHome.cjs), the same one imported models use.
+const expressionLibraryApplicationDirectory = importedModelAssetRoot;
 const expressionLibraryService = createExpressionLibraryService({
   managedRootPath: path.join(expressionLibraryApplicationDirectory, '表情包'),
   userDataPath: app.getPath('userData'),
@@ -859,6 +865,8 @@ if (!gotSingleInstanceLock) {
         ipcMain: trustedIpcMain,
         log: (message, details) => runtimeLogger.log('backend', 'app-update', message, details),
       });
+      incidentHub.registerIpc(trustedIpcMain, { getMainWindow: () => windowManager.getMainWindow() });
+      if ((app.isPackaged || process.env.DESKTOP_PET_INCIDENT_UPLOAD_TEST === '1') && !isLocalTest) incidentHub.startUploads();
       require('./diagnosticsExport.cjs').registerDiagnosticsExport({
         app,
         dialog,

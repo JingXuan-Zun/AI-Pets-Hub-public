@@ -1,4 +1,5 @@
 const { createAppUpdateService } = require('./appUpdateService.cjs');
+const { relaunchApp } = require('./relaunchApp.cjs');
 
 // Hot updates in the running app: the settings page's version list (check, download one,
 // restart, go back to the exe's own code), a look for a new version a minute after start and
@@ -15,11 +16,12 @@ function startAppUpdates({ app, dialog, getMainWindow, ipcMain, log, enabled }) 
   const service = createAppUpdateService({ app, log, ...(testSources.length ? { sources: testSources } : {}) });
   service.finishInstall();
   const restart = () => {
-    // A downloaded new exe starts once this one has quit (Electron waits for the exit, so the
-    // single-instance lock is free by then); otherwise the same exe with its next hot update.
-    const newExe = service.restartTarget();
-    if (newExe) app.relaunch({ args: [], execPath: newExe });
-    else app.relaunch();
+    // Started once this app has quit (the single-instance lock is free by then): a downloaded
+    // new exe, or the new installer (run silently, it starts the new version), else this app
+    // again with its next hot update — never the temp copy a portable exe runs from.
+    const plan = service.restartPlan();
+    if (plan) relaunchApp(app, plan);
+    else relaunchApp(app);
     app.exit(0);
   };
   const handle = (channel, handler) => ipcMain.handle(channel, async (_event, request) => {
@@ -54,7 +56,8 @@ function startAppUpdates({ app, dialog, getMainWindow, ipcMain, log, enabled }) 
   const autoUpdate = async () => {
     const ready = await service.autoUpdate().catch((error) => { log?.('app update check failed', { error: error?.message }); return null; });
     if (!ready) return;
-    const what = ready.action === 'install' ? '新的安装包已经下载好了，重启后换成新的，旧的会自动删掉' : '已经下载好了，重启后生效';
+    const installer = service.status().installKind === 'installed';
+    const what = ready.action !== 'install' ? '已经下载好了，重启后生效' : installer ? '新的安装包已经下载好了，重启时会自动装好再打开' : '新的安装包已经下载好了，重启后换成新的，旧的会自动删掉';
     const choice = await ask('有新版本', `v${ready.version} ${what}。`, ready.notes || '', ['现在重启', '稍后']);
     if (choice === 0) restart();
   };

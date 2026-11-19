@@ -10,14 +10,14 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D4?logo=windows&logoColor=white" alt="Platform: Windows" />
-  <img src="https://img.shields.io/badge/Electron-37-47848F?logo=electron&logoColor=white" alt="Electron 37" />
+  <img src="https://img.shields.io/badge/Electron-45-47848F?logo=electron&logoColor=white" alt="Electron 45" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
   <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><img src="https://img.shields.io/github/v/release/JingXuan-Zun/AI-Pets-Hub-public?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=D4518E" alt="最新版本" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><strong>⬇️ 下载 Windows 便携版</strong></a> ・
+  <a href="https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest"><strong>⬇️ 下载 Windows 版</strong></a> ・
   <a href="#quick-start">🚀 快速开始</a> ・
   <a href="#features">✨ 功能</a> ・
   <a href="#faq">❓ 常见问题</a> ・
@@ -60,7 +60,7 @@
   <img src="./docs/image/screenshot-preview-main.webp" alt="桌面上的三个角色（2D 视频、Live2D、MMD）和聊天窗口" width="880">
 </p>
 
-<p align="center"><sub>截图使用的是演示角色；角色模型和语音素材需要你自己准备。</sub></p>
+<p align="center"><sub>截图使用的是演示角色。内置角色小玲下载就能用；想换成别的角色，模型和语音素材需要你自己准备。</sub></p>
 
 ---
 
@@ -100,12 +100,20 @@
 
 ## 🚀 快速开始
 
-### 方式一：下载便携版（推荐）
+### 方式一：下载安装版（推荐）或便携版
 
-1. 打开 [Releases 页面](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest)，下载 `AI-Desktop-Pet-<版本号>.exe`。
-2. 双击运行即可，无需安装。
-3. 按下面的 [首次配置](#first-setup) 填好模型服务。
-4. 以后有新版本，在 设置 → 总览 → 当前版本 里直接更新（从 v0.4.0 起）。
+打开 [Releases 页面](https://github.com/JingXuan-Zun/AI-Pets-Hub-public/releases/latest)，两个任选一个：
+
+| 下载 | 适合 | 说明 |
+|---|---|---|
+| `AI-Pets-Hub-Setup-<版本号>.exe`（安装版，推荐） | 大部分人 | 装一次，以后打开只要两三秒；能选安装位置，不用管理员权限；开始菜单和桌面有图标，能在“应用”里卸载（卸载不会删聊天和角色数据） |
+| `AI-Pets-Hub-<版本号>.exe`（便携版） | 放 U 盘、不想安装 | 双击就能用；每次打开要先解压，会慢一些（十几到二十几秒） |
+
+1. 下载后双击运行（安装版按提示装好）。
+2. 按下面的 [首次配置](#first-setup) 填好模型服务。
+3. 以后有新版本，在 设置 → 总览 → 当前版本 里直接更新，两种都一样。
+
+语音环境、语音包、导入的模型这些大文件：便携版放在 exe 旁边；安装版放在安装文件夹旁边的 `AI Pets Hub Data`（升级、卸载都不会动它）。从便携版换成安装版，已经装好的语音会自动找到。
 
 > [!NOTE]
 > 应用暂未进行 Windows 代码签名，SmartScreen 可能弹出提示。请确认文件来自本仓库的 Releases 页面后再运行，也可以用发布页提供的 SHA-256 校验文件。
@@ -170,7 +178,8 @@ npm run dist:win        # 构建 Windows 分发版本
 - **多种角色形态** — 支持 2D 图片 / 视频、Live2D（PixiJS + Cubism）、VRM / GLTF / GLB / FBX 等 3D 模型、**MMD（PMX / PMD）模型和 VMD 动作**，以及 Unity 运行时桥接。
 - **真实的物理** — MMD 模型的头发、裙摆按模型自带的刚体和关节摆动；拖着角色走时会跟着甩起来，松手后自己荡回来。
 - **动作与表情** — 待机、拖拽、点击互动和情绪表情由运行时统一调度；2D 视频桌宠可按文件夹轮播，并根据情绪播放对应片段。
-- **多桌宠同屏** — 可以同时摆放多个角色，各自独立配置；在设置里拖动就能调整顺序。
+- **多桌宠同屏** — 可以同时摆放多个角色，各自独立配置；在设置里拖动就能调整顺序，每个角色（包括 1 号）都能隐藏或停用。
+- **开机自动启动** — 设置里打开开关，开机就有她，不用每天手动打开。
 - **独立窗口** — 桌宠、聊天、设置中心互相独立，又共享同一份状态。
 
 ### 🎨 粉色玻璃主题
@@ -185,7 +194,7 @@ npm run dist:win        # 构建 Windows 分发版本
 
 - **三种模式** — 单聊专注一对一陪伴；群聊让多个角色一起说话、互相接话；剧情模式适合演绎一段故事。
 - **点名派活** — 和一个角色聊着，说“让 XX 去帮我……”，另一个角色接手，用她自己的名字和声音回答。
-- **每个角色都会主动开口** — 开机问候、饿了、亲密度提升时，每个角色都会用自己的口吻说话。
+- **心里有事才来找你** — 每个角色有自己的心情和惦记的事（比如你说过明天要开会），惦记够了才主动开口，说的就是那件事；安静时段、你刚说完话、不在电脑前都不打扰。
 - **人格与知识** — 每个角色有独立的名字、人格、系统提示词、知识库和对话上下文；SillyTavern 预设可以导入，并逐条开关。
 - **长对话不失忆** — 聊天记录保存在本机，超长对话会自动生成过往摘要。
 - **长对话也省钱** — 请求的写法会尽量用上模型服务的缓存（DeepSeek 实测：每条消息约 95% 按缓存价计费），聊得越久越划算。
@@ -279,7 +288,7 @@ npm run dist:win        # 构建 Windows 分发版本
 - **和她一起做插件** — 市场里没有合适的，说清楚想要什么，她来写技能或小工具，装好就能用。
 - **MCP** — 把 README 里的配置贴进“添加 MCP 工具”就能用；装好后自动写一句大白话说明它能做什么，她也知道装了哪些、各能干嘛；工具返回的截图直接发到聊天里。
 - **她自己的浏览器** — 应用自带一个独立的浏览器（单独的数据，和你平时的浏览器、账号都不互通）；配合 chrome-devtools 插件，她能在里面打开网页、点按钮、填表、截图；她切换页面时不会抢走你正在用的窗口。在插件页点“打开她的浏览器”，把她的账号登录好就行。
-- **QQ 连接** — 用 SnowLuma 连上 QQ，在手机 QQ 上和她聊天、发图片和语音，她用自己的声音回语音。
+- **QQ 连接** — 用 NapCat（或其他 OneBot v11 工具）连上 QQ，在手机 QQ 上和她聊天、发图片和语音，她用自己的声音回语音。
 - **微信连接** — 用手机微信扫码连上（官方 ClawBot 通道，不用装电脑版微信），可以给家人各连一个；她的语音以短视频发过去。
 - **ComfyUI 画图** — 连上你自己的 ComfyUI（也可以是局域网里的另一台电脑），说“画一张……”她把对话写成提示词，在后台画，画好的图出现在聊天里、也发到 QQ / 微信；装上同步扩展后，ComfyUI 里改的设置自动同步过来。
 - **接口配置** — 存好几套模型接口（OpenAI 兼容 / Gemini），一个出问题时一键切换，也可以跟她说“换到备用模型”。
@@ -292,7 +301,7 @@ npm run dist:win        # 构建 Windows 分发版本
 ### 🔄 软件更新
 
 - **在软件里更新** — 设置 → 总览 → 点“当前版本”，看到所有版本和说明，选一个就能换；默认有新版本时在后台下好，重启前问你。
-- **只下载改了的部分** — 通常几 MB，不用每次重新下载整个程序；换了底层（Electron 或依赖）的版本会提示你下载完整安装包。
+- **只下载改了的部分** — 通常几 MB，不用每次重新下载整个程序；换了底层（Electron 或依赖）的版本，也在软件里直接下载新的安装包：便携版重启就换成新的 exe、旧的自动删掉（从 v0.4.4 起），安装版重启时在后台装好再自己打开（从 v0.5.0 起）。
 - **能换回旧版本** — 觉得新版本不好用，在列表里换回之前的版本或安装包自带的版本。
 - **坏了自己退回** — 版本列表有签名、每个文件都核对；新版本启动不起来会自动回到上一个能用的版本，并告诉你。
 - 从 **v0.4.0** 开始支持：用 v0.3.x 的朋友需要先下载一次完整的 v0.4.0。
@@ -387,7 +396,7 @@ npm run dist:win        # 构建 Windows 分发版本
 | 互动对话（视频通话） | 🧪 预览 | 角色在聊天窗口里面对面聊；口型和表情还在做 |
 | 2D / Live2D / VRM / MMD 角色 | ⚙️ 需素材 | 运行时已就绪，模型和动作需要自行准备 |
 | 插件市场 / 发链接装插件 | ✅ 可用 | 技能、MCP 工具、插件包；GitHub 上的插件要你同意才装 |
-| QQ / 微信连接 | ✅ 可用 | QQ 需要 SnowLuma；微信走官方 ClawBot 通道，语音以短视频发送 |
+| QQ / 微信连接 | ✅ 可用 | QQ 用 NapCat 等 OneBot 工具；微信走官方 ClawBot 通道，语音以短视频发送 |
 | 她自己的浏览器（chrome-devtools） | ✅ 可用 | 需要 Node.js 和 Chrome；她的账号由你登录 |
 | ComfyUI 画图 | ✅ 可用 | 已用真实 ComfyUI（局域网另一台电脑）实测；工作流写法差别大，个别需要手动指定提示词框 |
 | 软件内更新 | ✅ 可用 | 从 v0.4.0 起 |
@@ -399,11 +408,7 @@ npm run dist:win        # 构建 Windows 分发版本
 
 **已知问题**
 
-- 打开软件时，如果浏览器里有标题包含该软件名的页面，可能会切到那个页面而不是启动软件。
 - 语音说英文软件名时容易识别错，建议说中文名。
-- 2D 视频角色暂时不能按名字播放指定动作片段。
-- 聊天侧边栏切换角色后，聊天窗口要重新打开才会跟着切换。
-- 应用窗口尚未启用沙箱和 CSP。
 
 **开发重点**
 

@@ -40,7 +40,7 @@ assert.match(
 );
 assert.match(
   mainWindowOptionsSource,
-  /transparent: true,[\s\S]*?focusable: false,[\s\S]*?title: 'AI Desktop Pet'/u,
+  /transparent: true,[\s\S]*?focusable: false,[\s\S]*?title: 'AI Pets Hub'/u,
   'the transparent pet overlay should not take Windows focus on the first click',
 );
 

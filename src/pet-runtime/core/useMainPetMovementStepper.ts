@@ -140,7 +140,7 @@ export function useMainPetMovementStepper({
               kind: 'roam',
               target: avoidanceTarget,
               action: 'WALKING',
-              speed: Math.max(96, plan.speed * 0.84),
+              speed: Math.max(64, plan.speed * 0.84),
             };
             updateMotionTarget(avoidanceTarget);
             updatePetAction('WALKING');
@@ -167,7 +167,8 @@ export function useMainPetMovementStepper({
         y: currentPosition.y + (dy / distance) * maxStep,
       });
       const movedDistance = measurePetRuntimeDistance(currentPosition, nextPosition);
-      consecutiveBlockedStepsRef.current = movedDistance < 0.5
+      // Relative to the step: on a 165 Hz screen a slow walk moves under 0.5 px a frame.
+      consecutiveBlockedStepsRef.current = movedDistance < Math.min(0.5, maxStep * 0.25)
         ? consecutiveBlockedStepsRef.current + 1
         : 0;
 
@@ -188,7 +189,7 @@ export function useMainPetMovementStepper({
             kind: 'roam',
             target: avoidanceTarget,
             action: 'WALKING',
-            speed: Math.max(96, plan.speed * 0.84),
+            speed: Math.max(64, plan.speed * 0.84),
           };
           updateMotionTarget(avoidanceTarget);
           updatePetAction('WALKING');
@@ -211,7 +212,10 @@ export function useMainPetMovementStepper({
         autoMoveTickUnsubscribeRef.current();
         autoMoveTickUnsubscribeRef.current = null;
       }
-      lastFrameTimeRef.current = null;
+      // Not resetting the frame clock here: this effect re-subscribes on most renders, and each
+      // reset made the next frame count as the 32 ms fallback. On a 165 Hz screen (~6 ms frames)
+      // she walked up to five times too fast (user, 2026-11-18: "小玲移动的速度太快了").
+      // Starting, ending and pausing a walk still reset it (startAutoMove / clearAutoMove).
     };
   }, [
     autoMovePlanRef,

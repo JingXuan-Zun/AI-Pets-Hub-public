@@ -54,6 +54,8 @@ function createRuntimeLogger(options = {}) {
   const {
     limit = MAX_RUNTIME_LOG_ENTRIES,
     persist,
+    // Sees every entry after it is logged (incidents are made from the error entries).
+    onLog,
   } = options;
 
   let windowsProvider = () => [];
@@ -95,7 +97,15 @@ function createRuntimeLogger(options = {}) {
     },
     log(side, scope, message, details) {
       const detailText = details === undefined ? '' : ` ${summarizeRuntimeValue(details)}`;
-      return append(`[${formatTimestamp()}][${side}][${scope}] ${message}${detailText}`);
+      const line = append(`[${formatTimestamp()}][${side}][${scope}] ${message}${detailText}`);
+      if (typeof onLog === 'function') {
+        try {
+          onLog({ details, message, scope, side });
+        } catch {
+          // A watcher's failure must not break logging.
+        }
+      }
+      return line;
     },
     setWindowsProvider(provider) {
       windowsProvider = typeof provider === 'function' ? provider : () => [];

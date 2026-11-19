@@ -46,6 +46,8 @@ export function measurePetRuntimeDistance(from: PetRuntimePosition, to: PetRunti
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+// Same speeds as the other pets (companionPetRuntimeUtils): she used to run at 175 when full
+// and looked twice as fast as everyone else (user, 2026-11-18: "小玲移动的速度太快了").
 export function resolveMainPetRoamProfile(
   hunger: number,
   satiatedThreshold: number,
@@ -53,9 +55,9 @@ export function resolveMainPetRoamProfile(
 ): MainPetRoamProfile {
   if (hunger < satiatedThreshold) {
     const relaxedProfiles: MainPetRoamProfile[] = [
-      { action: 'WALKING', speed: 95, label: '吃饱后开始悠闲散步', delayMinMs: 1800, delayMaxMs: 3400 },
-      { action: 'RUNNING', speed: 175, label: '吃饱后开始兴奋奔跑', delayMinMs: 2200, delayMaxMs: 3600 },
-      { action: 'SWIMMING', speed: 120, label: '吃饱后开始轻快游动', delayMinMs: 2000, delayMaxMs: 3500 },
+      { action: 'WALKING', speed: 72, label: '吃饱后开始悠闲散步', delayMinMs: 1800, delayMaxMs: 3400 },
+      { action: 'RUNNING', speed: 96, label: '吃饱后开始兴奋奔跑', delayMinMs: 2200, delayMaxMs: 3600 },
+      { action: 'SWIMMING', speed: 82, label: '吃饱后开始轻快游动', delayMinMs: 2000, delayMaxMs: 3500 },
     ];
 
     return relaxedProfiles[Math.floor(Math.random() * relaxedProfiles.length)] ?? relaxedProfiles[0];
@@ -64,7 +66,7 @@ export function resolveMainPetRoamProfile(
   if (hunger < hungerTriggerThreshold) {
     const idleProfiles: MainPetRoamProfile[] = [
       { action: 'WALKING', speed: 88, label: '正在四处活动', delayMinMs: 2200, delayMaxMs: 4200 },
-      { action: 'SWIMMING', speed: 108, label: '正在轻轻漂动', delayMinMs: 2400, delayMaxMs: 4400 },
+      { action: 'SWIMMING', speed: 96, label: '正在轻轻漂动', delayMinMs: 2400, delayMaxMs: 4400 },
     ];
 
     return idleProfiles[Math.floor(Math.random() * idleProfiles.length)] ?? idleProfiles[0];
@@ -72,7 +74,7 @@ export function resolveMainPetRoamProfile(
 
   return {
     action: 'WALKING',
-    speed: 112,
+    speed: 96,
     label: '正在一边活动一边找吃的',
     delayMinMs: 1200,
     delayMaxMs: 2600,
@@ -201,7 +203,7 @@ export function pickMainPetDesktopMouseTarget(
     return {
       action: 'RUNNING' as const,
       label: 'Primary pet dodging the mouse',
-      speed: 172,
+      speed: 112,
       target: avoidanceTarget,
     };
   }
@@ -224,7 +226,7 @@ export function pickMainPetDesktopMouseTarget(
   return {
     action: 'WALKING' as const,
     label: 'Primary pet curiously following the mouse',
-    speed: 118,
+    speed: 88,
     target,
   };
 }
