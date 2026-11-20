@@ -1,4 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
+import { requestCharacterHandoff } from '../character-handoff/handoffStore';
 import { type DesktopPetChatController } from '../chatState';
 import { desktopPetChatStore } from '../chatStore';
 import { desktopPetShellRuntime } from '../desktopShellRuntime';
@@ -107,6 +108,8 @@ export function useDesktopShellActionBridge({
           chatControllerRef.current?.setGroupChatContinuationMode(action.mode);
           break;
         case 'set-active-chat-pet':
+          // The user picked another character in the chat window: she picks up and speaks first.
+          requestCharacterHandoff(action.petId, 'switched');
           chatControllerRef.current?.setActivePetId(action.petId);
           break;
         case 'remove-pet-runtime-state':

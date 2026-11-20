@@ -531,8 +531,10 @@ def load_sensevoice_recognizer(stt_model_path: str):
     )
 
 
-def transcribe_sensevoice(recognizer, audio_path: str) -> tuple[str, str]:
-    """Returns (text, emotion) where emotion is SenseVoice's tag such as "happy" or "neutral"."""
+def transcribe_sensevoice(recognizer, audio_path: str) -> tuple[str, str, list, list, str]:
+    """Returns (text, emotion, tokens, times): emotion is SenseVoice's tag such as "happy" or "neutral";
+    tokens (punctuation included) with their start times in seconds let a caller cut at pauses;
+    lang is the detected language tag ("zh", "en"…), which jumps around on song lyrics."""
     import soundfile as sf
 
     samples, sample_rate = sf.read(audio_path, dtype="float32", always_2d=True)
@@ -546,7 +548,10 @@ def transcribe_sensevoice(recognizer, audio_path: str) -> tuple[str, str]:
     stream.accept_waveform(16000, samples)
     recognizer.decode_stream(stream)
     emotion = str(getattr(stream.result, "emotion", "") or "").strip("<|>").lower()
-    return (stream.result.text or "").strip(), emotion
+    tokens = [str(token) for token in (getattr(stream.result, "tokens", None) or [])]
+    times = [round(float(value), 2) for value in (getattr(stream.result, "timestamps", None) or [])]
+    lang = str(getattr(stream.result, "lang", "") or "").strip("<|>").lower()
+    return (stream.result.text or "").strip(), emotion, tokens, times, lang
 
 
 def load_stt_model(stt_model_path: str):
@@ -875,10 +880,10 @@ def perform_stt(args):
     validate_existing_path(args.stt_model_path, "Selected local STT model path does not exist.")
 
     if resolve_sensevoice_model_file(args.stt_model_path):
-        text, emotion = transcribe_sensevoice(load_stt_model(args.stt_model_path), args.audio_path)
+        text, emotion, tokens, times, lang = transcribe_sensevoice(load_stt_model(args.stt_model_path), args.audio_path)
         if not text:
             raise RuntimeError("Local transcription did not return valid text.")
-        return {"text": text, "emotion": emotion}
+        return {"text": text, "emotion": emotion, "tokens": tokens, "times": times, "lang": lang}
 
     text = transcribe_audio(args.audio_path, args.stt_model_path, args.language_code)
     if not text:

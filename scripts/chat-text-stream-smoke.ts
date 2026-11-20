@@ -44,7 +44,8 @@ try {
   globalThis.fetch = async (_url, init) => {
     const body = JSON.parse(String(init?.body));
     assert.equal(body.stream, true);
-    assert.equal(body.max_tokens, 2048);
+    // Background calls get at least BACKGROUND_MIN_MAX_TOKENS (thinking models count thinking in it, 11-19).
+    assert.equal(body.max_tokens, 4000);
     assert.ok(init?.signal);
     return new Response(event('甲') + event('乙') + 'data: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
   };

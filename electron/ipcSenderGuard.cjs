@@ -2,7 +2,8 @@ const path = require('node:path');
 const { fileURLToPath } = require('node:url');
 
 const APP_INDEX_PATH = path.resolve(__dirname, '..', 'dist', 'index.html');
-const DEV_ORIGIN = 'http://127.0.0.1:3000';
+// A second development copy can run on another port (DESKTOP_PET_DEV_PORT) beside the usual one.
+const DEV_ORIGIN = `http://127.0.0.1:${Number(process.env.DESKTOP_PET_DEV_PORT) || 3000}`;
 
 // Channels whose handlers verify the exact sender themselves (the post-drag input
 // proxy is a preload-only data: page owned by windowManager).

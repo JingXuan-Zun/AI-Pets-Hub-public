@@ -17,6 +17,8 @@ import { NeuralMemoryGraphView } from './NeuralMemoryGraphView';
 import { NeuralMemoryNoteEditor, type MemoryCommandResult } from './NeuralMemoryNoteEditor';
 import { NeuralMemoryNoteList } from './NeuralMemoryNoteList';
 import { groupMemoryNotes, memoryNotes } from './neuralMemoryNotes';
+import { PersonaNodeAvatar, PersonaNodeEditor } from './PersonaNodeEditor';
+import { growthDiary, personaNodeId, withPersonaNode } from './personaNode';
 import { memoryHasTag, type MemoryTagFilter } from './neuralMemoryTags';
 
 const ICON_BUTTON = 'rounded p-1.5 text-muted-foreground hover:bg-black/5 hover:text-foreground';
@@ -40,7 +42,14 @@ export interface NeuralMemoryWorkspaceProps {
   onOpen: () => void;
   onRefresh: () => Promise<unknown> | void;
   onUpdateNode: (nodeId: string, patch: NeuralPersonaNodePatch) => Promise<MemoryCommandResult>;
+  /** Saves her persona prompt (the 人格节点's content). */
+  onUpdatePersonaPrompt?: (personaPrompt: string) => void;
+  /** “回顾一下”: she looks back now; returns what happened, in plain words. */
+  onReflectGrowth?: () => Promise<string>;
   open: boolean;
+  /** The chat-window avatar, shown on the 人格节点. */
+  personaAvatarUrl?: string;
+  personaPrompt?: string;
   record: NeuralPersonaPersistedRecord;
   roleName: string;
   /** Model settings for automatic tags. */
@@ -71,43 +80,54 @@ function WorkspaceSummary(props: { onOpen: () => void; record: NeuralPersonaPers
 export function NeuralMemoryWorkspace(props: NeuralMemoryWorkspaceProps) {
   const { graph } = props.record;
   const notes = memoryNotes(graph);
+  // Her 人格节点 is always there, even in a graph with no memories yet (personaNode.ts).
+  const viewGraph = withPersonaNode(graph, props.record.roleId, props.roleName);
+  const personaId = personaNodeId(props.record.roleId);
   const [selectedId, setSelectedId] = useState<string>();
   const [showTools, setShowTools] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [tagFilter, setTagFilter] = useState<MemoryTagFilter | null>(null);
   // The workspace covers the settings title bar, so its own header moves the window instead.
   const inOwnWindow = new URLSearchParams(window.location.search).get('panel') === 'settings';
   const windowFrame = useStandaloneWindowFrame({ enabled: inOwnWindow });
   const windowDrag = useStandaloneWindowDrag({ enabled: inOwnWindow, isMaximized: windowFrame.isMaximized });
   const selected = notes.find((note) => note.nodeId === selectedId);
+  const personaSelected = selectedId === personaId;
 
   useEffect(() => {
-    if (!selected && notes.length) setSelectedId(groupMemoryNotes(notes, '')[0]?.notes[0]?.nodeId);
-  }, [selected, notes.length]);
+    if (!selected && !personaSelected) setSelectedId(groupMemoryNotes(notes, '')[0]?.notes[0]?.nodeId ?? personaId);
+  }, [selected, personaSelected, notes.length]);
+  const graphProps = { personaAvatarUrl: props.personaAvatarUrl, personaName: props.roleName, roleId: props.record.roleId };
 
   if (!props.open) {
     return (
       <div ref={props.wrapperRef}>
-        {notes.length ? (
-          // Graph preview on the settings page; clicking a memory opens it in the workspace.
-          <section data-memory-graph-preview className="relative h-[460px] overflow-hidden rounded-sm border border-border bg-background/60 text-foreground/70">
-            <div className="absolute left-3 top-3 z-10">
-              <WorkspaceSummary onOpen={props.onOpen} record={props.record} roleName={props.roleName} />
-            </div>
-            <NeuralMemoryGraphView
-              graph={graph}
-              onSelect={(nodeId) => { setSelectedId(nodeId); props.onOpen(); }}
-              roleId={props.record.roleId}
-              selectedNodeId={selected?.nodeId}
-            />
-          </section>
-        ) : (
-          // No memories yet: still offer the way into the workspace to write the first one.
-          <WorkspaceSummary onOpen={props.onOpen} record={props.record} roleName={props.roleName} />
-        )}
+        {/* Graph preview on the settings page (her 人格节点 is always in it); clicking a node opens it in the workspace. */}
+        <section data-memory-graph-preview className="relative h-[460px] overflow-hidden rounded-sm border border-border bg-background/60 text-foreground/70">
+          <div className="absolute left-3 top-3 z-10">
+            <WorkspaceSummary onOpen={props.onOpen} record={props.record} roleName={props.roleName} />
+          </div>
+          <NeuralMemoryGraphView
+            {...graphProps}
+            graph={viewGraph}
+            onSelect={(nodeId) => { setSelectedId(nodeId); props.onOpen(); }}
+            selectedNodeId={personaSelected ? personaId : selected?.nodeId}
+          />
+        </section>
       </div>
     );
   }
 
+  // Memories approved before 11-20 were staged: one click makes them all part of her chats.
+  const staged = notes.filter(isNeuralMemoryStagedNode);
+  const activateStaged = async () => {
+    setActivating(true);
+    try {
+      for (const note of staged) await props.onUpdateNode(note.nodeId, { status: 'active' });
+    } finally {
+      setActivating(false);
+    }
+  };
   const createMemory = async () => {
     const draft = newMemoryDraft();
     if ((await props.onCreateNode(draft)).status === 'ok') setSelectedId(draft.nodeId);
@@ -143,12 +163,28 @@ export function NeuralMemoryWorkspace(props: NeuralMemoryWorkspaceProps) {
         <span className="font-medium">记忆</span>
         <span className="text-muted-foreground">· {props.roleName || '当前角色'} · {notes.length} 条</span>
         <div className="ml-auto flex items-center gap-1">
+          {staged.length ? (
+            <button type="button" disabled={activating} onClick={() => void activateStaged()} title="以前认可的记忆是暂存的，点一下全部参与聊天" className="mr-1 rounded bg-primary px-2 py-1 text-2xs font-semibold text-primary-foreground disabled:opacity-50">
+              {activating ? '生效中…' : `全部生效（${staged.length} 条）`}
+            </button>
+          ) : null}
           <button type="button" title="工具" aria-label="工具" onClick={() => setShowTools(!showTools)} className={`${ICON_BUTTON} ${showTools ? 'text-primary' : ''}`}><Settings2 className="h-4 w-4" /></button>
           <button type="button" title="退出（Esc）" aria-label="退出" onClick={props.onClose} className={ICON_BUTTON}><X className="h-4 w-4" /></button>
         </div>
       </header>
       <div className="relative grid min-h-0 flex-1 grid-cols-[260px_minmax(420px,1fr)_minmax(360px,0.9fr)] grid-rows-[minmax(0,1fr)]">
-        <div className="h-full min-h-0 border-r border-border/70 bg-secondary/40">
+        <div className="flex h-full min-h-0 flex-col border-r border-border/70 bg-secondary/40">
+          <button
+            type="button"
+            data-persona-node-row
+            onClick={() => setSelectedId(personaId)}
+            className={`flex shrink-0 items-center gap-2 border-b border-border/70 px-3 py-2 text-left text-xs ${personaSelected ? 'bg-primary/10 text-primary' : 'hover:bg-black/5'}`}
+          >
+            <PersonaNodeAvatar avatarUrl={props.personaAvatarUrl} name={props.roleName} size={24} />
+            <span className="min-w-0 flex-1 truncate font-semibold">人格</span>
+            <span className="text-2xs text-muted-foreground">{props.personaPrompt?.trim() ? `${props.personaPrompt.length} 字` : '未填写'}</span>
+          </button>
+          <div className="min-h-0 flex-1">
           <NeuralMemoryNoteList
             notes={notes}
             onClearTagFilter={() => setTagFilter(null)}
@@ -162,9 +198,20 @@ export function NeuralMemoryWorkspace(props: NeuralMemoryWorkspaceProps) {
             selectedNodeId={selected?.nodeId}
             tagFilter={tagFilter}
           />
+          </div>
         </div>
         <main className="custom-scrollbar min-h-0 overflow-y-auto">
-          {selected ? (
+          {personaSelected ? (
+            <PersonaNodeEditor
+              avatarUrl={props.personaAvatarUrl}
+              growth={growthDiary(graph)}
+              name={props.roleName}
+              onOpenNode={setSelectedId}
+              onReflect={props.onReflectGrowth}
+              onSave={(text) => props.onUpdatePersonaPrompt?.(text)}
+              personaPrompt={props.personaPrompt ?? ''}
+            />
+          ) : selected ? (
             <NeuralMemoryNoteEditor
               activeTagFilterId={tagFilter?.id}
               graph={graph}
@@ -188,11 +235,11 @@ export function NeuralMemoryWorkspace(props: NeuralMemoryWorkspaceProps) {
         </main>
         <section className="relative min-h-0 border-l border-border/70 bg-secondary/40 text-foreground/70">
           <NeuralMemoryGraphView
-            graph={graph}
+            {...graphProps}
+            graph={viewGraph}
             highlightNodeIds={tagFilter ? new Set(notes.filter((note) => memoryHasTag(note, tagFilter.id)).map((note) => note.nodeId)) : undefined}
             onSelect={setSelectedId}
-            roleId={props.record.roleId}
-            selectedNodeId={selected?.nodeId}
+            selectedNodeId={personaSelected ? personaId : selected?.nodeId}
           />
         </section>
         {showTools ? (

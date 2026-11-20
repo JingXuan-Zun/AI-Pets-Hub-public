@@ -1,4 +1,8 @@
 import { useIncidentConcern } from '../../incidents/useIncidentConcern';
+import { requestCharacterHandoff } from '../../character-handoff/handoffStore';
+import { useCharacterHandoff } from '../../character-handoff/useCharacterHandoff';
+import { useCharacterGrowth } from '../../character-growth/useCharacterGrowth';
+import { useVoiceMemoryAsk } from '../../neural-memory/useVoiceMemoryAsk';
 import { useCallback, useEffect, useRef } from 'react';
 import { type AgentChatCommandHandler } from '../../agent/agentChatCommand';
 import { desktopPetChatStore, useDesktopPetChatStore } from '../../chatStore';
@@ -116,15 +120,22 @@ export function usePetChatSession({
   const maintainCharacterMemory = useCharacterMemoryMaintenance({ configRef, onUpdateConfig });
   const captureSharedUserMemory = useSharedUserMemoryCapture({ configRef, onUpdateConfig });
   const updateCharacterCognition = useCharacterCognition({ configRef });
+  // 知识记忆人格: she sometimes looks back and proposes what she has grown into.
+  const reflectCharacterGrowth = useCharacterGrowth({ configRef, onUpdateConfig });
   useProactiveSpeech({ configRef });
   useIncidentConcern({ configRef });
+  // After a switch the new character picks up where things were and speaks first.
+  useCharacterHandoff({ configRef });
+  // Voice conversation: she asks out loud before remembering; a spoken yes/no answers it.
+  useVoiceMemoryAsk({ config, configRef, onUpdateConfig, publishStatusMessage });
   useRelationshipSelfReview({ configRef, onUpdateConfig });
   const onReplyCompleted = useCallback((event: NeuralMemoryReplyCompletedEvent) => {
     captureSharedUserMemory(event);
     captureNeuralMemoryProposals(event);
     maintainCharacterMemory(event);
     updateCharacterCognition(event);
-  }, [captureNeuralMemoryProposals, captureSharedUserMemory, maintainCharacterMemory, updateCharacterCognition]);
+    reflectCharacterGrowth(event);
+  }, [captureNeuralMemoryProposals, captureSharedUserMemory, maintainCharacterMemory, reflectCharacterGrowth, updateCharacterCognition]);
   const runPetResponseTurn = usePetChatResponseTurn({
     activeChatRequestTokenRef,
     configRef,
@@ -178,6 +189,7 @@ export function usePetChatSession({
   });
   // Waking a character by its own phrase opens a private chat with it (desktop and chat window follow).
   const onWakeCharacter = useCallback((petId: string) => {
+    requestCharacterHandoff(petId, 'woken');
     setChatMode('single');
     setActivePetId(petId);
   }, [setActivePetId, setChatMode]);

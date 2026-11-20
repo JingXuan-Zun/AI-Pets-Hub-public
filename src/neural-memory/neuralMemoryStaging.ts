@@ -11,11 +11,14 @@ import {
 import type { NeuralMemoryProposal } from './neuralMemoryProposalTypes';
 
 /**
- * Approved memories are written as 'pending-review' nodes: the access policy
- * keeps them out of chat activation until the user organizes them in the
- * settings graph and marks them active.
+ * Until 2026-11-20 approved memories were written as 'pending-review' (staged): the access
+ * policy kept them out of chat until the user organized them in the graph, so a 知识记忆人格
+ * character could not remember what the user had just approved. The user decided: approving
+ * is enough, so new memories are active at once (organizing the graph is optional). Staged
+ * nodes from before can be made active with one click in the memory workspace.
  */
 export const NEURAL_MEMORY_STAGED_STATUS = 'pending-review' as const;
+export const NEURAL_MEMORY_APPROVED_STATUS = 'active' as const;
 export const NEURAL_MEMORY_SOURCE_PREFIX = 'chat-memory:';
 
 export function createNeuralMemoryRepository(): NeuralPersonaGraphRepository {
@@ -83,7 +86,7 @@ export async function stageNeuralMemoryProposal(
       scope: 'private',
       sourceRef: `${NEURAL_MEMORY_SOURCE_PREFIX}${proposal.sourceMessageIds[0] ?? proposal.id}`,
       stability: 0.6,
-      status: NEURAL_MEMORY_STAGED_STATUS,
+      status: NEURAL_MEMORY_APPROVED_STATUS,
       tags: [],
       type: proposal.type,
     },

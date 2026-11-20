@@ -16,7 +16,7 @@ import {
 } from './characterCognitionModel';
 import { applyTurnToCognition } from './characterCognitionRules';
 import { readCharacterCognition, saveCharacterCognition, updateCharacterCognition } from './characterCognitionStore';
-import { addStatusFacts } from '../character-status/characterStatusBoard';
+import { addStatusFacts, familyNewsFor } from '../character-status/characterStatusBoard';
 import { STATUS_EXTRACTION_INSTRUCTION, parseStatusFacts } from '../character-status/characterStatusExtraction';
 
 // Keeps every character's "what is on her mind" up to date (docs/cognition-layer-design-20261106.md):
@@ -30,7 +30,10 @@ const INIT_RETRY_DELAY_MS = 60_000;
 const QUIET_BEFORE_UPDATE_MS = 60_000;
 const MESSAGES_BEFORE_UPDATE = 6;
 const MODEL_TIMEOUT_MS = 60_000;
-const MODEL_MAX_TOKENS = 1600;
+// Thinking models count their thinking in this budget: at 1600 a DeepSeek update used all 1600
+// on thinking (finishReason: length) and returned no answer, so mood / concerns silently stayed
+// as they were (found 11-19). The JSON answer itself is small.
+const MODEL_MAX_TOKENS = 4000;
 const TASK_RECORD = /^【任务记录】/u;
 
 /** The user's switch wins over what a persona reading found (2026-11-06). */
@@ -125,7 +128,7 @@ export function useCharacterCognition({ configRef }: { configRef: MutableRefObje
     try {
       const withStatus = config.settings.lifeCompanion?.crossChatAwarenessEnabled === true;
       const output = await askModel(config, buildCognitionUpdatePrompt({
-        ...personaInput(slot, slots), current, dialogue, statusInstruction: withStatus ? STATUS_EXTRACTION_INSTRUCTION : undefined,
+        ...personaInput(slot, slots), current, dialogue, familyNews: withStatus ? familyNewsFor(roleId) : undefined, statusInstruction: withStatus ? STATUS_EXTRACTION_INSTRUCTION : undefined,
       }));
       if (withStatus) {
         const facts = parseStatusFacts(output, slots.map((item) => ({ id: item.id, name: item.personality.name })), Date.now());

@@ -1,3 +1,4 @@
+import { useLiveWatch } from '../live-watch/useLiveWatch';
 import { getDesktopPetSlots } from '../multiPetRoster';
 import { useCompanionNeedSpeech } from './useCompanionNeedSpeech';
 import { startTransition, useCallback, useEffect, useRef, useState, type SetStateAction } from 'react';
@@ -121,6 +122,7 @@ export function usePetRuntimeState() {
     configRef,
     consented: config.settings.lifeCompanion.screenWatchConsented,
   });
+  useLiveWatch(configRef);
 
   // First run (no chat model yet): 小玲's guide speaks instead of the startup greeting.
   const onboardingStartedRef = useRef(false);

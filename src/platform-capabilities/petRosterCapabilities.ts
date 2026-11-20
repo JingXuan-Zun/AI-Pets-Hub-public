@@ -5,6 +5,7 @@ import {
   canAddDesktopPetSlot,
   getDesktopPetSlots,
 } from '../multiPetRoster';
+import { PERSONA_MODE_LABELS, readPersonaMode, withPersonaMode } from '../personaMode';
 import type { PetConfig, PetModelPreset } from '../types';
 import { petListText, resolvePetSlot, stringArg } from './platformCapabilityArgs';
 import type { PlatformCapability, PlatformCapabilityContext } from './platformCapabilityTypes';
@@ -140,4 +141,36 @@ const createPet: PlatformCapability = {
   title: '新建桌宠',
 };
 
-export const PET_ROSTER_CAPABILITIES: PlatformCapability[] = [listModels, setPetModel, createPet];
+// 人格提示词 or 知识记忆人格 (one or the other). She may switch herself or another character, but
+// it is a 'change': the user approves it on a card that says exactly what she is about to do,
+// and the result tells them what happened (user, 11-19: "不限制，但要告诉用户她干了什么").
+const setPersonaMode: PlatformCapability = {
+  args: [
+    { description: 'Which character (name). Empty = the one speaking.', key: 'pet', type: 'string' },
+    { description: 'prompt = 人格提示词 (persona prompt and classic memory); memory = 知识记忆人格 (same persona prompt plus the knowledge-memory graph, where she grows from experience).', enumValues: ['prompt', 'memory'], key: 'mode', required: true, type: 'string' },
+  ],
+  description: 'Switch a character between 人格提示词 and 知识记忆人格 (“切到知识记忆人格”“我想用知识记忆那一套”). The persona prompt stays the same; only which memory system she runs on changes.',
+  describe: (args) => {
+    const mode = stringArg(args, 'mode') === 'memory' ? 'memory' : 'prompt';
+    const pet = stringArg(args, 'pet') || '她自己';
+    return `把${pet}切换到「${PERSONA_MODE_LABELS[mode]}」${mode === 'memory' ? '：之后的记忆和成长走知识记忆这一套，人格提示词不变' : '：回到人格提示词和平常的记忆'}，随时能在设置里的角色槽位上切回来`;
+  },
+  group: GROUP,
+  id: 'pets.set_persona_mode',
+  risk: 'change',
+  run: (context, args) => {
+    const modeArg = stringArg(args, 'mode');
+    if (modeArg !== 'memory' && modeArg !== 'prompt') return { ok: false, text: '模式只能是 prompt（人格提示词）或 memory（知识记忆人格）。' };
+    const config = context.configRef.current;
+    const petArg = stringArg(args, 'pet');
+    const slot = resolvePetSlot(config, petArg, context.petId ?? null);
+    if (!slot) return { ok: false, text: `没找到叫“${petArg}”的角色。现有角色：${petListText(config)}。` };
+    const label = PERSONA_MODE_LABELS[modeArg];
+    if (readPersonaMode(slot.personality) === modeArg) return { ok: true, text: `${slot.personality.name}本来就在用「${label}」。` };
+    commit(context, withPersonaMode(config, slot.id, modeArg));
+    return { ok: true, text: `已把${slot.personality.name}切换到「${label}」。用户随时能在设置 → 角色槽位的快捷开关上切回来。` };
+  },
+  title: '切换人格模式',
+};
+
+export const PET_ROSTER_CAPABILITIES: PlatformCapability[] = [listModels, setPetModel, createPet, setPersonaMode];

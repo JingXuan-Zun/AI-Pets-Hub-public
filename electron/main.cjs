@@ -417,7 +417,7 @@ function loadRenderer(win, query = { desktop: '1' }) {
 
   if (isDev) {
     const searchParams = new URLSearchParams(nextQuery);
-    win.loadURL(`http://127.0.0.1:3000/?${searchParams.toString()}`);
+    win.loadURL(`http://127.0.0.1:${Number(process.env.DESKTOP_PET_DEV_PORT) || 3000}/?${searchParams.toString()}`);
     return;
   }
 
@@ -831,7 +831,7 @@ if (!gotSingleInstanceLock) {
         callback(false);
       });
 
-      activeSession.setDisplayMediaRequestHandler((_request, callback) => {
+      activeSession.setDisplayMediaRequestHandler((request, callback) => {
         desktopCapturer.getSources({
           types: ['screen'],
           thumbnailSize: CAPTURE_SOURCE_EMPTY_THUMBNAIL_SIZE,
@@ -843,8 +843,10 @@ if (!gotSingleInstanceLock) {
               return;
             }
 
+            // Watch-along asks for sound too: on Windows that is the system audio (what the user hears).
             callback({
               video: sources[0],
+              ...(request?.audioRequested && process.platform === 'win32' ? { audio: 'loopback' } : {}),
             });
           })
           .catch(() => {

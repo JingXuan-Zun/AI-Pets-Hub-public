@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { PetConfig, PetPersonality } from '../../types';
 import { NeuralPersonaActivationPreviewPanel } from './NeuralPersonaActivationPreviewPanel';
 import { NeuralPersonaFeedbackPanel } from './NeuralPersonaFeedbackPanel';
@@ -17,6 +18,8 @@ type Controller = ReturnType<typeof useNeuralPersonaGraphSectionState> & {
   applicationEnabled: boolean;
   feedbackEnabled: boolean;
   onProviderSettingsUpdate: (updates: Partial<PetConfig['settings']>) => void;
+  onSavePersonaPrompt?: (personaPrompt: string) => void;
+  onReflectGrowth?: () => Promise<string>;
   personality: PetPersonality;
   providerSettings: PetConfig['settings'];
 };
@@ -64,7 +67,11 @@ function ReadyNeuralPersonaContent(props: ReadyContentProps) {
       onDeleteNode={controller.deleteNode}
       onOpen={display.toggleFullscreen}
       onUpdateNode={controller.updateNode}
+      onUpdatePersonaPrompt={controller.onSavePersonaPrompt}
+      onReflectGrowth={controller.onReflectGrowth}
       open={display.fullscreen}
+      personaAvatarUrl={controller.personality.chatAvatarUrl || undefined}
+      personaPrompt={controller.personality.systemInstruction}
       record={state.record}
       onRefresh={controller.refresh}
       roleName={controller.personality.name}
@@ -81,6 +88,10 @@ export function SettingsNeuralPersonaGraphSection(props: {
   enabled: boolean;
   feedbackEnabled: boolean;
   onProviderSettingsUpdate: (updates: Partial<PetConfig['settings']>) => void;
+  /** Saves her persona prompt from the 人格节点 (at once, not as a window draft). */
+  onSavePersonaPrompt?: (personaPrompt: string) => void;
+  /** “回顾一下” in her 成长日记. */
+  onReflectGrowth?: () => Promise<string>;
   personality: PetPersonality;
   roleId: string;
   settings: PetConfig['settings'];
@@ -90,10 +101,18 @@ export function SettingsNeuralPersonaGraphSection(props: {
     applicationEnabled: props.applicationEnabled,
     feedbackEnabled: props.feedbackEnabled,
     onProviderSettingsUpdate: props.onProviderSettingsUpdate,
+    onSavePersonaPrompt: props.onSavePersonaPrompt,
+    onReflectGrowth: props.onReflectGrowth,
     personality: props.personality,
     providerSettings: props.settings,
   };
   const { state } = controller;
+  // Every character's knowledge-memory graph starts with her 人格节点: a missing graph is
+  // created (empty) right away instead of waiting for a button (2026-11-19).
+  const { initializeGraph } = controller;
+  useEffect(() => {
+    if (state.status === 'missing') void initializeGraph();
+  }, [state.status, props.roleId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (state.status === 'disabled') return null;
   if (state.status === 'ready') return <ReadyNeuralPersonaGraphSection controller={controller} state={state} />;
   if (state.status === 'missing') return (

@@ -45,7 +45,7 @@ function createRendererNavigation({ isDev, path, baseDirectory, logWindowEvent, 
     const navigation = (() => {
       if (isDev) {
         const searchParams = new URLSearchParams(nextQuery);
-        return win.loadURL(`http://127.0.0.1:3000/?${searchParams.toString()}`);
+        return win.loadURL(`http://127.0.0.1:${Number(process.env.DESKTOP_PET_DEV_PORT) || 3000}/?${searchParams.toString()}`);
       }
 
       return win.loadFile(path.join(baseDirectory, '..', 'dist', 'index.html'), {

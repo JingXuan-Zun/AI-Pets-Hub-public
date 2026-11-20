@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { NeuralPersonaGraphSnapshot } from '../../../character-graph/neural-persona';
 import { isNeuralMemoryStagedNode } from '../../../neural-memory/neuralMemoryStaging';
 import { createMemoryForceSimulation, type MemoryForceSimulation } from './memoryForceSimulation';
 import { NeuralMemoryForceSettings, useMemoryForceSettings } from './NeuralMemoryForceSettings';
-import { memoryNoteTitle, memoryNotes } from './neuralMemoryNotes';
+import { memoryNoteTitle } from './neuralMemoryNotes';
+import { graphViewNodes, isPersonaNode } from './personaNode';
 
 const CLICK_TOLERANCE_PX = 3;
 const MIN_SCALE = 0.1;
@@ -44,7 +45,8 @@ function neighborsOf(links: Links, nodeId?: string) {
 }
 
 function useMemoryGraphModel(graph: NeuralPersonaGraphSnapshot) {
-  const notes = memoryNotes(graph);
+  // Memories and her persona node (see personaNode.ts).
+  const notes = graphViewNodes(graph);
   const ids = notes.map((note) => note.nodeId);
   const noteIds = new Set(ids);
   const links: Links = graph.edges.filter((edge) => edge.relationType !== 'contains'
@@ -61,12 +63,36 @@ function useMemoryGraphModel(graph: NeuralPersonaGraphSnapshot) {
   return { degree, notes: new Map(notes.map((note) => [note.nodeId, note])), structure };
 }
 
+/** Her persona node: the chat-window avatar in a circle, or her first character without one. */
+function PersonaNodeMark(props: { avatarUrl?: string; name?: string; radius: number; selected: boolean; x: number; y: number }) {
+  const clipId = useId();
+  const ring = props.selected ? 'var(--primary)' : 'var(--border)';
+  if (!props.avatarUrl) {
+    return (
+      <g pointerEvents="none">
+        <circle cx={props.x} cy={props.y} r={props.radius} fill="var(--primary)" fillOpacity={0.85} stroke={ring} strokeWidth={2} />
+        <text x={props.x} y={props.y + 4} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--primary-foreground)">{(props.name || '人').trim().slice(0, 1)}</text>
+      </g>
+    );
+  }
+  return (
+    <g pointerEvents="none">
+      <clipPath id={clipId}><circle cx={props.x} cy={props.y} r={props.radius} /></clipPath>
+      <image href={props.avatarUrl} x={props.x - props.radius} y={props.y - props.radius} width={props.radius * 2} height={props.radius * 2} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipId})`} />
+      <circle cx={props.x} cy={props.y} r={props.radius} fill="none" stroke={ring} strokeWidth={2} />
+    </g>
+  );
+}
+
 /** Light, Obsidian-like memory graph: a live force simulation you can drag, pan and zoom. */
 export function NeuralMemoryGraphView(props: {
   graph: NeuralPersonaGraphSnapshot;
   /** Memories to emphasize (e.g. a tag filter); the rest fade until hovered. */
   highlightNodeIds?: Set<string>;
   onSelect: (nodeId: string) => void;
+  /** The chat-window avatar, drawn on her persona node. */
+  personaAvatarUrl?: string;
+  personaName?: string;
   roleId: string;
   selectedNodeId?: string;
 }) {
@@ -207,10 +233,11 @@ export function NeuralMemoryGraphView(props: {
               if (!note) return null;
               const selected = node.id === props.selectedNodeId;
               const near = focus ? node.id === focus || focusNeighbors.has(node.id) : !props.highlightNodeIds || props.highlightNodeIds.has(node.id);
-              const radius = 4 + Math.min(5, model.degree.get(node.id) ?? 0) * 0.8 + (selected ? 1.5 : 0);
+              const persona = isPersonaNode(note);
+              const radius = persona ? 14 + (selected ? 2 : 0) : 4 + Math.min(5, model.degree.get(node.id) ?? 0) * 0.8 + (selected ? 1.5 : 0);
               const fill = selected ? 'var(--primary)' : isNeuralMemoryStagedNode(note) ? 'rgb(245 158 11)' : 'var(--muted-foreground)';
               const highlighted = !focus && props.highlightNodeIds?.has(node.id);
-              const showLabel = selected || highlighted || node.id === hovered || (focus && focusNeighbors.has(node.id)) || view.scale > 1.6;
+              const showLabel = persona || selected || highlighted || node.id === hovered || (focus && focusNeighbors.has(node.id)) || view.scale > 1.6;
               return (
                 <g
                   key={node.id}
@@ -221,10 +248,12 @@ export function NeuralMemoryGraphView(props: {
                   onPointerLeave={() => setHovered(undefined)}
                 >
                   <circle cx={node.x} cy={node.y} r={radius + 5} fill="transparent" />
-                  <circle cx={node.x} cy={node.y} r={radius} fill={fill} fillOpacity={selected ? 1 : 0.8} />
+                  {persona
+                    ? <PersonaNodeMark avatarUrl={props.personaAvatarUrl} name={props.personaName} radius={radius} selected={selected} x={node.x} y={node.y} />
+                    : <circle cx={node.x} cy={node.y} r={radius} fill={fill} fillOpacity={selected ? 1 : 0.8} />}
                   {showLabel ? (
                     <text x={node.x} y={node.y + radius + 11} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.75} pointerEvents="none">
-                      {memoryNoteTitle(note, 14)}
+                      {persona ? (props.personaName || '人格') : memoryNoteTitle(note, 14)}
                     </text>
                   ) : null}
                 </g>

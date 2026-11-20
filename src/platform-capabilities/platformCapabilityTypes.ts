@@ -75,6 +75,11 @@ export interface PlatformCapability {
   group: string;
   id: string;
   risk: PlatformCapabilityRisk;
+  /**
+   * For a 'change': whether this call is asked first (default: always). Turning something off
+   * that the user just asked to stop (e.g. 不看了) needs no "好不好？".
+   */
+  confirmWhen?: (args: PlatformCapabilityArgs) => boolean;
   run: (context: PlatformCapabilityContext, args: PlatformCapabilityArgs) => PlatformCapabilityResult | Promise<PlatformCapabilityResult>;
   title: string;
 }

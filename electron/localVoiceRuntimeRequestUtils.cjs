@@ -230,9 +230,15 @@ function buildTranscriptionRunnerArgs({ audioPath, languageCode, sttModelPath })
   ];
 }
 
+// tokens/times/lang (SenseVoice only): each token with its start second, so watch-along can cut at
+// pauses, and the detected language, which tells song lyrics from someone talking.
 function buildTranscriptionOutput(parsed) {
+  const tokens = Array.isArray(parsed?.tokens) ? parsed.tokens.map(String) : null;
+  const times = Array.isArray(parsed?.times) ? parsed.times.map(Number) : null;
   return {
     text: String(parsed?.text || '').trim(),
+    ...(tokens && times && tokens.length === times.length ? { times, tokens } : {}),
+    ...(typeof parsed?.lang === 'string' && parsed.lang ? { lang: parsed.lang } : {}),
   };
 }
 

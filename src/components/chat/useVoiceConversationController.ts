@@ -8,6 +8,7 @@ import { getVoiceErrorMessage } from '../../voice/errorMessages';
 import { voiceMicStatusStore } from '../../voice/voiceMicStatus';
 import { transcribeLocalVoice } from '../../voice/runtime';
 import { judgeApprovalAnswerWithModel, resolvePendingApprovalBySpeech } from './voiceApproval';
+import { answerMemoryAskBySpeech } from '../../neural-memory/voiceMemoryAsk';
 import { latestPendingAgentLoopApprovalId } from './runController/agentLoopApprovalRegistry';
 import { isAwaitingVoiceApproval, isPetAudible, isPetVoiceBusy, subscribePetVoiceBusy } from './voiceConversationBusy';
 import { createVoiceConversationSession, type VoiceConversationEndReason } from './voiceConversationSession';
@@ -76,6 +77,8 @@ export function useVoiceConversationController({
       // A spoken "同意"/"拒绝" while an approval card waits answers the card instead of chatting;
       // other speech then is not sent, so it cannot cut into the task that is waiting.
       send: async (text) => {
+        // Her spoken "可以记下来吗？" waits for an answer first (voiceMemoryAsk.ts).
+        if (await answerMemoryAskBySpeech(text)) return;
         const decision = await resolvePendingApprovalBySpeech(text, judgeApprovalAnswerWithModel(configRef.current.settings));
         if (isAwaitingVoiceApproval() || decision) pushFrontendRuntimeLog('voice', 'approval answer heard', { decision, heard: text.slice(0, 40), listener: 'conversation' });
         if (decision) return;

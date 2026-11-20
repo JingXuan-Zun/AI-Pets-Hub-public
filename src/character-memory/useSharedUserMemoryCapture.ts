@@ -82,7 +82,7 @@ export function useSharedUserMemoryCapture(options: {
           sourceMessageIds: [],
           type: memory.kind === 'preference' ? 'preference' : 'experience',
         }));
-        onUpdateConfig(appendNeuralMemoryProposals(configRef.current, proposals));
+        onUpdateConfig(appendNeuralMemoryProposals(configRef.current, proposals), { persist: true });
       } catch (error) {
         pushFrontendRuntimeLog('共享记忆', '整理失败，本轮跳过', {
           message: error instanceof Error ? error.message : String(error),

@@ -1,3 +1,4 @@
+import { PERSONA_MODE_LABELS, readPersonaMode, type PersonaMode } from '../../personaMode';
 import { lazy, Suspense, useState, type CSSProperties, type ReactNode } from 'react';
 import { Bot, GripVertical, Heart, LayoutGrid, Plus, Radio, Sparkles, Trash2 } from 'lucide-react';
 import { type DesktopPetSlot } from '../../multiPetRoster';
@@ -65,6 +66,8 @@ export interface SettingsPanelStandaloneShellProps {
   onSetPetSlotEnabled: (slotId: string, enabled: boolean) => void;
   onSetPetSlotModelVisible: (slotId: string, visible: boolean) => void;
   onSetPetSlotPointerLookEnabled: (slotId: string, enabled: boolean) => void;
+  /** 人格提示词 or 知识记忆人格 for this character (one or the other). */
+  onSetPetSlotPersonaMode?: (slotId: string, mode: PersonaMode) => void;
   onSetActivePage: (pageId: SettingsControlCenterPageId) => void;
   onUpdateStat: (key: 'affection' | 'hunger' | 'fatigue', value: number | number[]) => void;
   renderTabContent: () => ReactNode;
@@ -78,6 +81,22 @@ const STAT_META = [
 
 function StatusDot({ className }: { className?: string }) {
   return <span className={`inline-block h-2 w-2 rounded-full ${className ?? 'bg-success'}`} />;
+}
+
+/** The character's chat-window avatar (same picture as in the chat window), or her first character. */
+function SlotAvatar(props: { active: boolean; slot: DesktopPetSlot }) {
+  const avatarUrl = props.slot.personality.chatAvatarUrl?.trim();
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="" className={`h-8 w-8 shrink-0 rounded-full object-cover ${props.active ? 'ring-2 ring-primary' : 'ring-1 ring-border'}`} />;
+  }
+  return (
+    <span className={[
+      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+      props.active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+    ].join(' ')}>
+      {props.slot.personality.name.trim().slice(0, 1) || '宠'}
+    </span>
+  );
 }
 
 export function SettingsPanelStandaloneShell({
@@ -98,6 +117,7 @@ export function SettingsPanelStandaloneShell({
   onSetPetSlotEnabled,
   onSetPetSlotModelVisible,
   onSetPetSlotPointerLookEnabled,
+  onSetPetSlotPersonaMode,
   onSetActivePage,
   onUpdateStat,
   renderTabContent,
@@ -145,6 +165,12 @@ export function SettingsPanelStandaloneShell({
       value: selectedPetSlot.enabled,
       onChange: () => onSetPetSlotEnabled(selectedPetSlot.id, !selectedPetSlot.enabled),
     },
+    // ON = 知识记忆人格, OFF = 人格提示词 (one or the other, docs/character-growth-design-20261119.md).
+    ...(onSetPetSlotPersonaMode ? [{
+      label: PERSONA_MODE_LABELS.memory,
+      value: readPersonaMode(selectedPetSlot.personality) === 'memory',
+      onChange: () => onSetPetSlotPersonaMode(selectedPetSlot.id, readPersonaMode(selectedPetSlot.personality) === 'memory' ? 'prompt' : 'memory'),
+    }] : []),
   ];
   const [workspaceView, setWorkspaceView] = useState<SettingsWorkspaceViewId>('workspace');
   const { draggedSlotId, getRowProps, ghostStyle, listRef } = usePetSlotListDrag({
@@ -226,9 +252,7 @@ export function SettingsPanelStandaloneShell({
               className="pointer-events-none absolute inset-x-2 z-20 flex items-center gap-2.5 rounded-md border border-primary bg-card px-2.5 shadow-xl ring-2 ring-primary/30"
             >
               <GripVertical className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                {draggedSlot.personality.name.trim().slice(0, 1) || '宠'}
-              </span>
+              <SlotAvatar active slot={draggedSlot} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-semibold text-foreground">{draggedSlot.personality.name}</span>
                 <span className="mt-0.5 flex items-center gap-1 text-2xs text-muted-foreground">
@@ -268,12 +292,7 @@ export function SettingsPanelStandaloneShell({
                     onClick={() => onSelectPetSlot(slot.id)}
                     className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                   >
-                    <span className={[
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                      isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-                    ].join(' ')}>
-                      {slot.personality.name.trim().slice(0, 1) || '宠'}
-                    </span>
+                    <SlotAvatar active={isActive} slot={slot} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold text-foreground">
                         {slot.personality.name}
@@ -284,6 +303,24 @@ export function SettingsPanelStandaloneShell({
                       </span>
                     </span>
                   </button>
+                  {onSetPetSlotPersonaMode ? (
+                    // On the slot itself (user, 11-19): 提示词 ⇄ 知识记忆, one click switches.
+                    <button
+                      type="button"
+                      data-no-slot-drag
+                      data-slot-persona-mode={slot.id}
+                      onClick={() => onSetPetSlotPersonaMode(slot.id, readPersonaMode(slot.personality) === 'memory' ? 'prompt' : 'memory')}
+                      title={`现在用「${PERSONA_MODE_LABELS[readPersonaMode(slot.personality)]}」，点一下切换到「${PERSONA_MODE_LABELS[readPersonaMode(slot.personality) === 'memory' ? 'prompt' : 'memory']}」`}
+                      className={[
+                        'shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+                        readPersonaMode(slot.personality) === 'memory'
+                          ? 'border-primary bg-primary/10 text-primary hover:bg-primary/15'
+                          : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                      ].join(' ')}
+                    >
+                      {readPersonaMode(slot.personality) === 'memory' ? '知识记忆' : '提示词'}
+                    </button>
+                  ) : null}
                   {!slot.isPrimary ? (
                     <button
                       type="button"
@@ -354,7 +391,7 @@ export function SettingsPanelStandaloneShell({
         </header>
         {workspaceView === 'workspace' ? <>
                 {/* 当前桌宠快捷开关：独立于预览画布，避免遮挡模型 */}
-        <div className="grid shrink-0 grid-cols-4 gap-1.5 rounded-lg border border-border bg-card p-1.5 shadow-sm" aria-label="当前桌宠快捷开关">
+        <div className={`grid shrink-0 ${selectedSlotControls.length > 4 ? 'grid-cols-5' : 'grid-cols-4'} gap-1.5 rounded-lg border border-border bg-card p-1.5 shadow-sm`} aria-label="当前桌宠快捷开关">
           {selectedSlotControls.map((control) => (
             <button
               key={control.label}

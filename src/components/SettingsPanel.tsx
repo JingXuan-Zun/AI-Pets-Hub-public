@@ -1,3 +1,6 @@
+import { reflectGrowth } from '../character-growth/growthReflection';
+import { appendNeuralMemoryProposals } from '../neural-memory/neuralMemoryProposalConfig';
+import { withPersonaMode, type PersonaMode } from '../personaMode';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { type ReactNode } from 'react';
 import { SettingsTabErrorBoundary } from './settings/SettingsTabErrorBoundary';
@@ -20,6 +23,7 @@ import {
   PRIMARY_DESKTOP_PET_SLOT_ID,
   applyDesktopPetModelSelection,
   applyDesktopPetSlotChanges,
+  getDesktopPetSlot,
 } from '../multiPetRoster';
 import { type AvatarRuntimeEventSummaryByPetId } from '../pet-runtime/avatar-runtime/avatarRuntimeEventState';
 import { useSettingsPanelActivityState } from './settings/useSettingsPanelActivityState';
@@ -418,6 +422,31 @@ export default function SettingsPanel({
     }));
   };
 
+  // The 人格节点 saves at once: the memory workspace covers the window's own 保存 button, and
+  // its editor says “已保存” (same reason as “保存接口”).
+  const handleSavePersonaPrompt = (slotId: string, systemInstruction: string) => {
+    commitModelConfig((baseConfig) => {
+      const slot = getDesktopPetSlot(baseConfig, slotId);
+      return slot ? applyDesktopPetSlotChanges(baseConfig, slotId, { personality: { ...slot.personality, systemInstruction } }) : baseConfig;
+    });
+  };
+
+  // 成长日记 “回顾一下”: she looks back now; what she proposes goes to the chat window's sidebar.
+  const handleReflectGrowth = async (slotId: string) => {
+    try {
+      const result = await reflectGrowth({ config: localConfig, force: true, roleId: slotId });
+      if (result.status !== 'proposed') return result.reason;
+      commitModelConfig((baseConfig) => appendNeuralMemoryProposals(baseConfig, result.proposals));
+      return `她想到了 ${result.proposals.length} 条变化，在聊天窗口左边等你认可。`;
+    } catch (error) {
+      return `回顾失败：${error instanceof Error ? error.message : String(error)}`;
+    }
+  };
+
+  const handleSetPetPersonaMode = (slotId: string, mode: PersonaMode) => {
+    commitModelConfig((baseConfig) => withPersonaMode(baseConfig, slotId, mode));
+  };
+
   const handleUpdatePetPointerLookEnabled = (slotId: string, enabled: boolean) => {
     commitModelConfig((baseConfig) => applyDesktopPetSlotChanges(baseConfig, slotId, {
       pointerLookEnabled: enabled,
@@ -598,6 +627,8 @@ export default function SettingsPanel({
               onSetPetSlotEnabled: handleSetPetSlotEnabled,
               onSetTraitsDraft: handleSetTraitsDraft,
               onUpdatePersonality: handleUpdatePersonality,
+              onSavePersonaPrompt: handleSavePersonaPrompt,
+              onReflectGrowth: handleReflectGrowth,
               selectedPetSlot,
               selectedPetSlotId: selectedPetSlot.id,
               traitsDraft,
@@ -836,6 +867,7 @@ export default function SettingsPanel({
             onSetPetSlotEnabled={handleSetPetSlotEnabled}
             onSetPetSlotModelVisible={handleUpdatePetModelVisible}
             onSetPetSlotPointerLookEnabled={handleUpdatePetPointerLookEnabled}
+            onSetPetSlotPersonaMode={handleSetPetPersonaMode}
             onUpdateStat={updateStat}
             renderTabContent={() => (
               <SettingsTabErrorBoundary key={`${activeControlCenterPageId}:${resetToken}`} activeTab={activeControlCenterPage.runtimeTab}>

@@ -154,10 +154,12 @@ export function applyAutoMemoryOperations(
 ): CharacterMemoryState {
   const removed = new Set(operations.remove);
   const updates = new Map(operations.update.map((entry) => [entry.id, entry.text]));
+  // Pinned items are the user's (or a correction they made): automatic upkeep never removes or
+  // rewrites them; the user can still edit them in the memory list.
   const items = state.items
-    .filter((item) => !removed.has(item.id))
+    .filter((item) => item.pinned || !removed.has(item.id))
     .map((item) => {
-      const text = updates.get(item.id);
+      const text = item.pinned ? undefined : updates.get(item.id);
       return text && text !== item.text ? { ...item, text, updatedAt: now } : item;
     });
   const fingerprints = new Set(items.map((item) => memoryTextFingerprint(item.text)));

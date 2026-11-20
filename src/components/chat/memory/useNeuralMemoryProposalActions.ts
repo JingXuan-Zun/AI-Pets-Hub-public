@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
 import { pushFrontendRuntimeLog } from '../../../frontendRuntimeLogger';
-import { addSharedUserMemoryItem, listSharedUserMemory, updateSharedUserMemoryItem } from '../../../character-memory/sharedUserMemory';
 import { removeNeuralMemoryProposal } from '../../../neural-memory/neuralMemoryProposalConfig';
+import { approveNeuralMemoryProposal } from '../../../neural-memory/neuralMemoryProposalApproval';
 import type { NeuralMemoryProposal } from '../../../neural-memory/neuralMemoryProposalTypes';
-import { stageNeuralMemoryProposal } from '../../../neural-memory/neuralMemoryStaging';
 import type { PetConfig, PetConfigUpdateHandler } from '../../../types';
 
 export function useNeuralMemoryProposalActions(options: {
@@ -21,34 +20,15 @@ export function useNeuralMemoryProposalActions(options: {
 
   const approve = useCallback(async (proposal: NeuralMemoryProposal, content: string) => {
     if (!onUpdateConfig || busyProposalId) return;
-    if (proposal.scope === 'shared') {
-      const withoutProposal = removeNeuralMemoryProposal(config, proposal.id);
-      const replaced = proposal.replacesSharedId
-        && listSharedUserMemory(withoutProposal).some((item) => item.id === proposal.replacesSharedId);
-      onUpdateConfig(replaced
-        ? updateSharedUserMemoryItem(withoutProposal, proposal.replacesSharedId as string, content)
-        : addSharedUserMemoryItem(withoutProposal, { kind: proposal.sharedKind, text: content }));
-      setMessage('已记到「关于你」，所有角色都会知道。');
-      pushFrontendRuntimeLog('角色记忆提议', '用户批准共享记忆', { proposalId: proposal.id, roleId: proposal.roleId });
-      return;
-    }
     setBusyProposalId(proposal.id);
     try {
-      const result = await stageNeuralMemoryProposal(proposal, content);
-      // A repeated approval (another window, a retried click) already staged this proposal.
-      const alreadyStaged = result.status === 'invalid' && result.reason === 'node-already-exists';
-      if (result.status === 'ok' || alreadyStaged) {
-        onUpdateConfig(removeNeuralMemoryProposal(config, proposal.id));
-        setMessage('已暂存。到设置页「知识记忆人格」的记忆列表里确认生效后，才会参与对话。');
-        return;
-      }
-      setMessage(result.status === 'conflict'
-        ? '图谱刚被修改过，请再点一次“记住”。'
-        : `暂存失败：${result.reason}`);
+      const outcome = await approveNeuralMemoryProposal(config, proposal, content);
+      if (outcome.ok) onUpdateConfig(outcome.config);
+      setMessage(outcome.message);
     } catch (error) {
-      setMessage(`暂存失败：${error instanceof Error ? error.message : String(error)}`);
+      setMessage(`记录失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
-      pushFrontendRuntimeLog('角色记忆提议', '用户批准记忆提议', { proposalId: proposal.id, roleId: proposal.roleId });
+      pushFrontendRuntimeLog('角色记忆提议', '用户批准记忆提议', { proposalId: proposal.id, roleId: proposal.roleId, shared: proposal.scope === 'shared' });
       setBusyProposalId(null);
     }
   }, [busyProposalId, config, onUpdateConfig]);

@@ -86,6 +86,10 @@ export interface SettingsPersonalityTabProps {
   onSetPetSlotEnabled: (slotId: string, enabled: boolean) => void;
   onSetTraitsDraft: (value: string) => void;
   onUpdatePersonality: (updates: Partial<PetPersonality>) => void;
+  /** Saves a character's persona prompt at once (from the 人格节点). */
+  onSavePersonaPrompt?: (slotId: string, personaPrompt: string) => void;
+  /** She looks back now (成长日记 “回顾一下”). */
+  onReflectGrowth?: (slotId: string) => Promise<string>;
   selectedPetSlot: DesktopPetSlot;
   selectedPetSlotId: string;
   traitsDraft: string;
@@ -229,6 +233,8 @@ export function SettingsPersonalityTab({
   onSetPetSlotEnabled,
   onSetTraitsDraft,
   onUpdatePersonality,
+  onSavePersonaPrompt,
+  onReflectGrowth,
   selectedPetSlot,
   selectedPetSlotId,
   traitsDraft,
@@ -269,6 +275,8 @@ export function SettingsPersonalityTab({
         enabled
         feedbackEnabled={NEURAL_PERSONA_FEEDBACK_PREVIEW_ENABLED}
         onProviderSettingsUpdate={applySettings}
+        onSavePersonaPrompt={onSavePersonaPrompt ? (text) => onSavePersonaPrompt(selectedPetSlotId, text) : undefined}
+        onReflectGrowth={onReflectGrowth ? () => onReflectGrowth(selectedPetSlotId) : undefined}
         personality={selectedPetSlot.personality}
         roleId={selectedPetSlotId}
         settings={settings}

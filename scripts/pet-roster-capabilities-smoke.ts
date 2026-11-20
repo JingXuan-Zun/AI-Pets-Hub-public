@@ -67,7 +67,8 @@ check(persisted, 4, 'every change is saved');
 // Switching the private chat to another character: the one who switched only hands over.
 const handover = await run('chat.set_mode', { mode: 'single', pet: '高冷小桃' });
 check(handover.ok, true, 'switching to another character works');
-assert.match(handover.text, /由高冷小桃和用户单聊[\s\S]*不要扮演高冷小桃/u);
+// She hands over in her own scene (no app words), the other one then speaks first (11-19).
+assert.match(handover.text, /高冷小桃来接着陪用户了[\s\S]*她会自己开口[\s\S]*不要说“切换”[\s\S]*不要扮演高冷小桃/u);
 check((await run('chat.set_mode', { mode: 'group' })).text, '已切换到群聊模式。', 'a plain mode switch needs no hand-over');
 
 console.log(`pet roster capabilities smoke ok: ${cases} checks`);

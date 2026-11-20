@@ -1,3 +1,5 @@
+import { liveWatchStore } from '../live-watch/liveWatchStore';
+import { requestCharacterHandoff } from '../character-handoff/handoffStore';
 import { desktopPetChatStore } from '../chatStore';
 import {
   normalizeLifeCompanionSettings,
@@ -80,6 +82,27 @@ const screenWatch: PlatformCapability = {
     };
   },
   title: '开启或断开看屏幕陪伴',
+};
+
+const watchAlong: PlatformCapability = {
+  args: [{ description: 'true to start watching a video together now, false to stop.', key: 'on', required: true, type: 'boolean' }],
+  description: 'Start or stop watching a video together in real time (“陪我看视频”“一起看这个”/“不看了”): she sees the screen, hears the system sound and now and then says a short line. Only when the user asks for it; starting is their consent.',
+  describe: (args) => (booleanArg(args, 'on') === false ? '停止一起看视频' : '开始一起看视频：角色会看屏幕、听电脑里的声音，偶尔说一句，随时可以停'),
+  group: '生活陪伴',
+  id: 'life_companion.watch_along',
+  risk: 'change',
+  // Starting (seeing the screen, hearing the sound) is asked; stopping never is.
+  confirmWhen: (args) => booleanArg(args, 'on') !== false,
+  run: (_context, args) => {
+    const on = booleanArg(args, 'on');
+    if (on === null) return { ok: false, text: '需要说明是开始还是停止一起看。' };
+    if (on) {
+      const started = liveWatchStore.start('video');
+      return { ok: true, text: started ? '已开始一起看：会看屏幕、听电脑里的声音，大多数时候安静看着，偶尔说一句。想停就说“不看了”，或点桌宠下面的停止。' : '已经在一起看了。' };
+    }
+    return { ok: true, text: liveWatchStore.stop() ? '已停止一起看。' : '现在没有在一起看。' };
+  },
+  title: '开始或停止一起看视频',
 };
 
 const proactiveChat: PlatformCapability = {
@@ -293,7 +316,8 @@ const setPetPresence: PlatformCapability = {
     saveConfig(context, applyDesktopPetSlotChanges(config, slot.id, { enabled: nextEnabled, modelVisible: nextVisible }));
     return {
       ok: true,
-      text: nextEnabled && nextVisible ? `${slot.personality.name}已经出现在桌面上了。` : `${slot.personality.name}已经从桌面上收起来了。`,
+      // A neutral fact: she tells it in her own words (and scene), not by reading this out.
+      text: nextEnabled && nextVisible ? `完成：${slot.personality.name}现在在了。` : `完成：${slot.personality.name}去休息了。`,
     };
   },
   title: '让角色出现或收起',
@@ -322,16 +346,20 @@ const setChatMode: PlatformCapability = {
     if (mode === 'single' && petArg) {
       const slot = resolvePetSlot(config, petArg, null);
       if (!slot) return missingPet(config, petArg);
+      if (context.petId && slot.id !== context.petId) {
+        handedOverTo = slot.personality.name;
+        // She learns what was talked about and speaks first once this reply is done.
+        requestCharacterHandoff(slot.id, 'asked');
+      }
       desktopPetChatStore.setActivePetId(slot.id);
-      if (context.petId && slot.id !== context.petId) handedOverTo = slot.personality.name;
     }
     desktopPetChatStore.setChatMode(mode);
-    // The rest of this reply is still written by the character who switched: she hands over
-    // in her own voice; the other one answers from the user's next message.
+    // The rest of this reply is still written by the character who switched: she hands over in
+    // her own voice and in her own scene (no app words); the other one then speaks first.
     if (handedOverTo) {
       return {
         ok: true,
-        text: `已切换：从用户的下一条消息开始，由${handedOverTo}和用户单聊。你只用你自己的口吻简单交接一句（比如“好，让${handedOverTo}来陪你”），不要扮演${handedOverTo}，也不要用她的自称和口头禅。`,
+        text: `完成：${handedOverTo}来接着陪用户了，你这句说完她会自己开口。现在用你自己的口吻、在你的人设场景里交接一句（比如把她叫来、让个位置），不要说“切换”“单聊”“桌面”“窗口”这类软件用语，不要扮演${handedOverTo}，也不要用她的自称和口头禅。`,
       };
     }
     return { ok: true, text: `已切换到${CHAT_MODE_LABELS[mode]}模式。` };
@@ -342,6 +370,7 @@ const setChatMode: PlatformCapability = {
 export const BUILTIN_PLATFORM_CAPABILITIES: PlatformCapability[] = [
   lifeCompanionStatus,
   screenWatch,
+  watchAlong,
   proactiveChat,
   quietHours,
   approvalVoicePrompt,

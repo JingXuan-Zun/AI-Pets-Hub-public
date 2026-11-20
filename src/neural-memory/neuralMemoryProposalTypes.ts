@@ -1,5 +1,6 @@
 import type { NeuralPersonaNodeType } from '../character-graph/neural-persona';
 import { isCharacterMemoryKind, type CharacterMemoryKind } from '../character-memory/characterMemoryTypes';
+import { GROWTH_KINDS, type GrowthKind } from '../character-growth/growthRules';
 
 /** Memory kinds a character may propose; all map onto neural persona node types. */
 export const NEURAL_MEMORY_PROPOSAL_TYPES = [
@@ -10,6 +11,8 @@ export const NEURAL_MEMORY_PROPOSAL_TYPES = [
   'belief-or-viewpoint',
   'desire-or-goal',
   'concern-or-risk',
+  // A small habit (character growth, 11-19).
+  'style-tendency',
 ] as const satisfies readonly NeuralPersonaNodeType[];
 
 export type NeuralMemoryProposalType = typeof NEURAL_MEMORY_PROPOSAL_TYPES[number];
@@ -22,6 +25,7 @@ export const NEURAL_MEMORY_PROPOSAL_TYPE_LABELS: Record<NeuralMemoryProposalType
   experience: '经历',
   preference: '偏好',
   'relationship-influence': '关系',
+  'style-tendency': '习惯',
 };
 
 /** A memory the character wants to keep, waiting for the user's approval. */
@@ -39,6 +43,8 @@ export interface NeuralMemoryProposal {
   sourceExcerpt: string;
   sourceMessageIds: string[];
   type: NeuralMemoryProposalType;
+  /** A change she grew from her memories (src/character-growth): approved = part of her at once. */
+  growth?: { evidenceNodeIds: string[]; kind: GrowthKind };
 }
 
 export const NEURAL_MEMORY_PROPOSAL_MAX_CONTENT_LENGTH = 160;
@@ -76,7 +82,16 @@ function normalizeProposal(value: unknown): NeuralMemoryProposal | null {
       ? item.sourceMessageIds.filter((entry): entry is string => typeof entry === 'string').slice(0, 8)
       : [],
     type: isNeuralMemoryProposalType(item.type) ? item.type : 'experience',
+    ...normalizeGrowth(item.growth),
   };
+}
+
+function normalizeGrowth(value: unknown) {
+  if (!value || typeof value !== 'object') return {};
+  const growth = value as Record<string, unknown>;
+  const kind = GROWTH_KINDS.find((item) => item === growth.kind);
+  const evidenceNodeIds = Array.isArray(growth.evidenceNodeIds) ? growth.evidenceNodeIds.filter((id): id is string => typeof id === 'string').slice(0, 6) : [];
+  return kind ? { growth: { evidenceNodeIds, kind } } : {};
 }
 
 export function normalizeNeuralMemoryProposals(value: unknown): NeuralMemoryProposal[] {

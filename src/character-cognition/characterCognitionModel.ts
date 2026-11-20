@@ -43,6 +43,8 @@ export function buildCognitionUpdatePrompt(input: CognitionPersonaInput & {
   dialogue: Array<{ speaker: string; text: string }>;
   /** Also note what the characters said about their own / each other's doings (角色之间互通近况). */
   statusInstruction?: string;
+  /** What the other characters have been up to lately (status board), "name：what". */
+  familyNews?: string[];
   now?: number;
 }) {
   const { current } = input;
@@ -54,6 +56,7 @@ export function buildCognitionUpdatePrompt(input: CognitionPersonaInput & {
       currentConcerns: current.concerns.map((concern) => ({ about: concern.about, id: concern.id, notedOn: formatCognitionDay(concern.createdAt), text: concern.text })),
       currentMood: current.mood,
       dialogue: input.dialogue.map((line) => ({ speaker: line.speaker, text: clip(line.text, 300) })),
+      ...(input.familyNews?.length ? { familyNews: input.familyNews.map((line) => clip(line, 200)) } : {}),
       others: input.otherNames,
       persona: clip(input.persona, 6000),
       today: describeCognitionToday(now),
@@ -67,6 +70,8 @@ export function buildCognitionUpdatePrompt(input: CognitionPersonaInput & {
       `${DATE_RULE}today 是今天；旧事的 notedOn 是记下那天，旧事里的“明天”指那天的第二天。约好的时间已经过去的事放进 drop，或改写成已经发生过的事。`,
       'boost：这件事现在有多想说出口 0～60。about：关于用户写 user，关于别的角色写名字，都不是写 null。keywords：让她想起这件事的 2～4 个词。',
       'toward：她现在最想跟谁说话（user / 角色名 / null）和一句原因。change：用一句话说这次她心里变了什么。',
+      // 11-19: family matters on her mind too, so "我们家某某…" can come up without being asked.
+      ...(input.familyNews?.length ? ['familyNews 是其他角色最近的近况。persona 里她们和她是一家人或住在一起时，真正会让她挂念的一件可以放进 concerns（about 写那人的名字），用她自己的口吻，像家里人惦记家里事；persona 里不是一家人就不必放。普通小事不算。'] : []),
       ...(input.statusInstruction ? [input.statusInstruction] : []),
       `只输出 JSON：{"mood":{"label":"","intensity":0.5,"towardUser":0.5},"concerns":[{"id":null,"text":"","about":"user","keywords":[],"boost":30}],"drop":[],"toward":{"target":"user","why":""},"change":""${input.statusInstruction ? ',"status":[]' : ''}}`,
     ].join('\n'),

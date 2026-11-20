@@ -86,6 +86,15 @@ function ago(now: number, at: number) {
 }
 
 /** What she knows of the others, and what others recently told the user about her (design §6). */
+/** The other characters' recent doings, newest first ("name：what"), for what goes on her mind. */
+export function familyNewsFor(roleId: string, facts = readStatusFacts(), now = Date.now()) {
+  return facts
+    .filter((fact) => fact.subjectPetId !== roleId && now - fact.createdAt < STATUS_FACT_TTL_MS)
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .slice(0, OTHERS_IN_NOTE)
+    .map((fact) => `${fact.subjectName}：${fact.text}`);
+}
+
 export function describeStatusBoardFor(roleId: string, facts: CharacterStatusFact[], now: number) {
   const live = facts.filter((fact) => now - fact.createdAt < STATUS_FACT_TTL_MS);
   const perSubject = new Map<string, CharacterStatusFact[]>();

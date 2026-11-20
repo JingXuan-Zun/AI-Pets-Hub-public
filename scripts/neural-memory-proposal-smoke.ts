@@ -115,22 +115,32 @@ assert.equal(staged.status, 'ok', 'staging initializes a missing graph and creat
 if (staged.status !== 'ok') throw new Error('unreachable');
 const stagedNode = staged.record.graph.nodes.find((node) => node.nodeId === `memory-${parsed[0].id}`)!;
 assert.equal(stagedNode.influenceSummary, '主人不吃辣椒，做饭时要避开。', 'edited content is what gets stored');
-assert.ok(isNeuralMemoryStagedNode(stagedNode));
+// 2026-11-20 (user): approving is enough — the memory joins her chats at once, no staging.
+assert.ok(!isNeuralMemoryStagedNode(stagedNode), 'approved memories are not staged any more');
 const contextInput: NeuralPersonaContextInput = {
   groupIds: [], includePrivate: true, now: 1000, query: '辣椒', requestId: 'r',
   roleId: 'role-a', sessionId: 's', subgroupIds: [], turnId: 't',
 };
-assert.equal(canReadNeuralPersonaNode(stagedNode, contextInput), false, 'staged memories stay out of chat');
+assert.equal(canReadNeuralPersonaNode(stagedNode, contextInput), true, 'an approved memory joins chat activation right away');
 assert.deepEqual(await loadNeuralMemorySummaries('role-a', repository), ['主人不吃辣椒，做饭时要避开。']);
+// Staged memories from before still exist in old graphs: they stay out of chat until activated.
 const service = createNeuralPersonaNodeCommandService({ now: () => 600, repository });
+const restaged = await service.updateNode({
+  commandId: 'restage', expectedRevision: staged.record.revision,
+  nodeId: stagedNode.nodeId, patch: { status: 'pending-review' }, roleId: 'role-a',
+});
+assert.equal(restaged.status, 'ok');
+if (restaged.status !== 'ok') throw new Error('unreachable');
+const oldStaged = restaged.record.graph.nodes.find((node) => node.nodeId === stagedNode.nodeId)!;
+assert.ok(isNeuralMemoryStagedNode(oldStaged) && !canReadNeuralPersonaNode(oldStaged, contextInput), 'an old staged memory stays out until activated');
 const activated = await service.updateNode({
-  commandId: 'activate', expectedRevision: staged.record.revision,
+  commandId: 'activate', expectedRevision: restaged.record.revision,
   nodeId: stagedNode.nodeId, patch: { status: 'active' }, roleId: 'role-a',
 });
 assert.equal(activated.status, 'ok');
 if (activated.status !== 'ok') throw new Error('unreachable');
 const activeNode = activated.record.graph.nodes.find((node) => node.nodeId === stagedNode.nodeId)!;
-assert.equal(canReadNeuralPersonaNode(activeNode, contextInput), true, 'confirmed memories join chat activation');
+assert.equal(canReadNeuralPersonaNode(activeNode, contextInput), true, 'activating (全部生效 / 确认生效) brings it in');
 assert.ok(!isNeuralMemoryStagedNode(activeNode));
 
 // A shared proposal that supersedes an older memory keeps which one it replaces (2026-11-09).

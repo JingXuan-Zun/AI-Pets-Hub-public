@@ -1,6 +1,7 @@
 import { useCallback, useRef, type MutableRefObject } from 'react';
 import { listSharedUserMemory } from './sharedUserMemory';
 import { desktopPetChatStore } from '../chatStore';
+import { withEarlierPerspectiveCorrection, withPerspectiveCorrection } from './perspectiveCorrection';
 import { buildScopedChatHistory } from '../components/chat/chatScopedContextUtils';
 import { pushFrontendRuntimeLog } from '../frontendRuntimeLogger';
 import { applyDesktopPetSlotChanges, getDesktopPetSlot } from '../multiPetRoster';
@@ -88,10 +89,28 @@ export function useCharacterMemoryMaintenance(options: {
 }) {
   const triggerRef = useRef(createAutoMemoryExtractionTrigger());
   const runningRolesRef = useRef(new Set<string>());
+  const historyCheckedRef = useRef(new Set<string>());
   const { configRef, onUpdateConfig } = options;
 
   return useCallback((event: NeuralMemoryReplyCompletedEvent) => {
     if (event.chatMode !== 'single') return;
+    // "这是我们家": a correction of how she frames "us" is kept as a pinned memory right away;
+    // the first time per run, earlier corrections in her history count too.
+    const firstLook = !historyCheckedRef.current.has(event.roleId);
+    historyCheckedRef.current.add(event.roleId);
+    const earlierUserTexts = firstLook
+      ? buildScopedChatHistory(desktopPetChatStore.getState().messages, 'single', event.roleId).filter((message) => message.role === 'user').map((message) => message.text)
+      : [];
+    const corrected = updateCharacterMemoryState(configRef.current, event.roleId, (state) => withPerspectiveCorrection(
+      withEarlierPerspectiveCorrection(state, earlierUserTexts, Date.now()), event.userText, Date.now(),
+    ));
+    if (corrected !== configRef.current) {
+      // Updated right away: the upkeep below reads configRef before React re-renders, and would
+      // otherwise save over this change (seen in the first real test).
+      configRef.current = corrected;
+      onUpdateConfig(corrected, { persist: true });
+      pushFrontendRuntimeLog('角色记忆', '记下了说法上的纠正（我们家）', { petId: event.roleId });
+    }
     // Neural roles keep their own propose-and-approve memory flow.
     const shouldExtract = !event.neuralPersonaEnabled
       && triggerRef.current.recordTurn(event.roleId, event.userText);
@@ -100,7 +119,11 @@ export function useCharacterMemoryMaintenance(options: {
 
     const commit = (update: (state: CharacterMemoryState) => CharacterMemoryState) => {
       const next = updateCharacterMemoryState(configRef.current, event.roleId, update);
-      if (next !== configRef.current) onUpdateConfig(next);
+      if (next === configRef.current) return;
+      configRef.current = next;
+      // Saved to disk now: the chat session's handler only changes the running config, so memory
+      // upkeep used to be lost when the app closed before some other change saved (found 11-19).
+      onUpdateConfig(next, { persist: true });
     };
 
     void (async () => {

@@ -1,3 +1,4 @@
+import { GROWTH_KIND_LABELS } from '../../../character-growth/growthRules';
 import { useState } from 'react';
 import { Brain } from 'lucide-react';
 import {
@@ -25,7 +26,7 @@ function NeuralMemoryProposalCard({
   return (
     <article data-neural-memory-proposal={proposal.id} className="space-y-1.5 rounded-xl border border-white/80 bg-white/70 p-2 text-[10px] leading-4 text-sky-950">
       <span className="inline-flex rounded-full bg-primary/10 px-1.5 text-[9px] text-primary">
-        {proposal.scope === 'shared' ? '关于你 · 所有角色都会知道' : NEURAL_MEMORY_PROPOSAL_TYPE_LABELS[proposal.type]}
+        {proposal.scope === 'shared' ? '关于你 · 所有角色都会知道' : proposal.growth ? `成长 · ${GROWTH_KIND_LABELS[proposal.growth.kind]}（来自 ${proposal.growth.evidenceNodeIds.length} 段经历）` : NEURAL_MEMORY_PROPOSAL_TYPE_LABELS[proposal.type]}
       </span>
       {editing ? (
         <textarea
@@ -38,15 +39,18 @@ function NeuralMemoryProposalCard({
       {proposal.sourceExcerpt ? (
         <p className="line-clamp-2 text-[9px] text-sky-700/70" title={proposal.sourceExcerpt}>来自：{proposal.sourceExcerpt}</p>
       ) : null}
+      {proposal.growth && proposal.reason ? (
+        <p className="line-clamp-3 text-[9px] text-sky-700/70" title={proposal.reason}>为什么：{proposal.reason}</p>
+      ) : null}
       <div className="flex flex-wrap gap-1">
         <button type="button" disabled={busy || !content} onClick={() => onApprove(content)} className={`${ACTION_CLASS} border-primary bg-primary text-white hover:bg-primary/90`}>
-          {busy ? '记录中…' : '记住'}
+          {busy ? '记录中…' : proposal.growth ? '认可' : '记住'}
         </button>
         <button type="button" disabled={busy} onClick={() => { setDraft(proposal.content); setEditing(!editing); }} className={`${ACTION_CLASS} border-sky-100 bg-white text-sky-800 hover:bg-sky-50`}>
           {editing ? '取消修改' : '修改'}
         </button>
         <button type="button" disabled={busy} onClick={onDismiss} className={`${ACTION_CLASS} border-transparent text-sky-700/70 hover:text-sky-950`}>
-          不用记
+          {proposal.growth ? '不认可' : '不用记'}
         </button>
       </div>
     </article>

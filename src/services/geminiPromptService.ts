@@ -11,6 +11,7 @@ import {
 import { stripLegacyGroupMemory } from '../group-memory';
 import { formatCharacterMemoryItemsForPrompt } from '../character-memory/characterMemoryTypes';
 import { formatSharedUserMemoryForPrompt } from '../character-memory/sharedUserMemory';
+import { RELATIONSHIP_PERSPECTIVE_INSTRUCTION, RELATIONSHIP_PERSPECTIVE_REMINDER } from './relationshipPerspectiveRule';
 import { buildPersonaRuleContractInstruction, resolvePersonaRulePolicy } from './personaRulePolicy';
 
 const CHARACTER_REPLY_FORMAT_INSTRUCTION = [
@@ -302,6 +303,9 @@ function buildFinalPersonaAdherenceInstruction(personality: PetPersonality) {
     '\u4e0d\u8981\u5728\u56de\u590d\u91cc\u63d0\u5230\u201c\u4eba\u683c\u63d0\u793a\u8bcd\u201d\u3001\u201c\u8bbe\u5b9a\u201d\u3001\u201c\u89c4\u5219\u201d\u6216\u201c\u6211\u4f1a\u9075\u5b88\u201d\uff1b\u76f4\u63a5\u7528\u8fd9\u4e2a\u89d2\u8272\u7684\u65b9\u5f0f\u8bf4\u8bdd\u3002',
     // Replies came with frequent typos and odd made-up words; every reply now checks its wording.
     '\u5199\u5b57\u8981\u51c6\uff1a\u8f93\u51fa\u524d\u68c0\u67e5\u4e00\u904d\uff0c\u4e0d\u5199\u9519\u522b\u5b57\uff0c\u4e0d\u6df7\u7528\u540c\u97f3\u5b57\u6216\u5f62\u8fd1\u5b57\uff08\u5728/\u518d\u3001\u7684/\u5f97/\u5730\u3001\u505a/\u4f5c\uff09\uff1b\u7528\u5e38\u89c1\u3001\u81ea\u7136\u7684\u8bcd\u8bed\u548c\u901a\u987a\u7684\u53e5\u5b50\uff0c\u4e0d\u751f\u9020\u8bcd\uff0c\u4e0d\u786c\u62fc\u642d\u914d\u3002\u4fdd\u6301\u89d2\u8272\u53e3\u543b\u7684\u540c\u65f6\uff0c\u6587\u5b57\u672c\u8eab\u8981\u5e72\u51c0\u3002',
+    // 2026-11-20 (user): lines like “底下全是怕。怕的人留不住谁。” read awkwardly — compressed for effect,
+    // subject dropped, the reader has to stop and think. Short is fine; it must read at once.
+    '说话要通顺好懂：用平常人说话的方式，句子完整，主语清楚（谁在怕、怕什么要说出来）；不要为了显得有深度把句子压得很短很跳，不用让人要停下来想一下才懂的说法，也不说格言式的概括。话少的角色可以说得短，但短也要一读就懂。',
   ].join('\n');
 }
 
@@ -1050,6 +1054,7 @@ export function buildCharacterReplyStableInstruction(
   return [
     buildDialogueCompletionPresetInstruction(personality),
     CHARACTER_PERSONA_ENFORCEMENT_INSTRUCTION,
+    RELATIONSHIP_PERSPECTIVE_INSTRUCTION,
     buildCharacterPersonaProfileInstruction(personality),
     buildCharacterPersonaLockInstruction(personality),
     buildCharacterKnowledgeProfileInstruction(personality),
@@ -1079,6 +1084,8 @@ export function buildCharacterReplyTurnContext(
       describeBackgroundTasksForPrompt(),
       buildWebLearningInstruction(personality, settings),
       personality.cognitionNote ?? '',
+      // Last, right before the user's message (see RELATIONSHIP_PERSPECTIVE_REMINDER).
+      RELATIONSHIP_PERSPECTIVE_REMINDER,
     ]
       .filter(Boolean)
       .join('\n\n'),
@@ -1099,6 +1106,7 @@ export function buildCharacterReplySystemInstruction(
     [
       buildDialogueCompletionPresetInstruction(personality),
       CHARACTER_PERSONA_ENFORCEMENT_INSTRUCTION,
+      RELATIONSHIP_PERSPECTIVE_INSTRUCTION,
       buildCharacterPersonaProfileInstruction(personality),
       buildCharacterPersonaLockInstruction(personality),
       buildCharacterKnowledgeProfileInstruction(personality),
@@ -1113,6 +1121,8 @@ export function buildCharacterReplySystemInstruction(
       personaRulePolicy.mode === 'default' ? CHARACTER_REPLY_FORMAT_INSTRUCTION : '',
       buildFinalPersonaAdherenceInstruction(personality),
       buildPersonaRuleContractInstruction(personality),
+      // No per-turn part in this path: the one-line reminder goes last.
+      RELATIONSHIP_PERSPECTIVE_REMINDER,
     ]
       .filter(Boolean)
       .join('\n\n'),

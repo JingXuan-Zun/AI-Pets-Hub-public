@@ -2,6 +2,9 @@ import { describeStatusBoardFor, readStatusFacts } from '../../character-status/
 import { delegatedScopeFields } from './runController/chatDelegation';
 import { describeCognitionForReply } from '../../character-cognition/characterCognitionRules';
 import { readCharacterCognition } from '../../character-cognition/characterCognitionStore';
+import { describeHandoffForReply } from '../../character-handoff/handoffRules';
+import { readHandoffRecord } from '../../character-handoff/handoffStore';
+import { growthNoteFor } from '../../character-growth/growthStore';
 import { desktopPetChatStore } from '../../chatStore';
 import { pushFrontendRuntimeLog } from '../../frontendRuntimeLogger';
 import { type ChatMessage, type ChatMessageImageAttachment, type DesktopPetChatMode, type PetConfig } from '../../types';
@@ -120,7 +123,9 @@ export async function requestPetResponseStream(options: {
     appStartedAt: readAppStartedAt(),
     now: Date.now(),
   });
-  const innerNote = [timeline.note, cognition ? describeCognitionForReply(cognition, Date.now()) : '', statusNote].filter(Boolean).join('\n\n');
+  // Took over from another character; and (知识记忆人格) what she grew into this week.
+  const handoffNote = chatMode === 'single' ? [describeHandoffForReply(readHandoffRecord(targetSlot.id), Date.now()), growthNoteFor(targetSlot.id)].filter(Boolean).join('\n\n') : '';
+  const innerNote = [timeline.note, cognition ? describeCognitionForReply(cognition, Date.now()) : '', statusNote, handoffNote].filter(Boolean).join('\n\n');
   const scopedPersonality = innerNote
     ? { ...scopedWithMotions, cognitionNote: innerNote }
     : scopedWithMotions;

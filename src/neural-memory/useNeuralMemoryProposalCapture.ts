@@ -76,7 +76,7 @@ export function useNeuralMemoryProposalCapture(options: {
           petId: event.roleId, petName: event.roleName,
         });
         if (proposals.length) {
-          onUpdateConfig(appendNeuralMemoryProposals(configRef.current, proposals));
+          onUpdateConfig(appendNeuralMemoryProposals(configRef.current, proposals), { persist: true });
         }
       } catch (error) {
         pushFrontendRuntimeLog('角色记忆提议', '判断失败，本轮跳过', {

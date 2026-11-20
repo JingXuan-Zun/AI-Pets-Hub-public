@@ -109,10 +109,18 @@ function buildOpenAICompatibleMessageContent(
   ];
 }
 
+/**
+ * Thinking models count their thinking in max_tokens: with the old small caps (400–1600) a
+ * DeepSeek call spent the whole budget thinking (finishReason: length) and returned no answer,
+ * so cognition updates, memory extraction and memory proposals failed quietly (found 11-19).
+ * The cap is a ceiling only: short answers still stop early and cost the same.
+ */
+export const BACKGROUND_MIN_MAX_TOKENS = 4000;
+
 function resolveCognitionRequestParams(settings: PetConfig['settings'], maxTokensOverride?: number) {
   const params = resolveModelRequestParams(settings);
   return Number.isFinite(maxTokensOverride) && Number(maxTokensOverride) > 0
-    ? { ...params, max_tokens: Math.floor(Number(maxTokensOverride)) }
+    ? { ...params, max_tokens: Math.max(Math.floor(Number(maxTokensOverride)), BACKGROUND_MIN_MAX_TOKENS) }
     : params;
 }
 

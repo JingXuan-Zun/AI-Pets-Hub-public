@@ -89,7 +89,7 @@ function capabilityTool(capability: PlatformCapability): ConversationTool {
     ...(arg.enumValues ? { enum: arg.enumValues } : {}),
   }]));
   return {
-    confirmation: (args) => (capability.risk === 'change' ? capability.describe(args) : null),
+    confirmation: (args) => (capability.risk === 'change' && (capability.confirmWhen?.(args) ?? true) ? capability.describe(args) : null),
     definition: {
       function: {
         description: `【${capability.group}】${capability.title}。${capability.description}`,
